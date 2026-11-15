@@ -267,6 +267,8 @@ namespace Dogpatch.Gameplay
                 if (Chip(new Rect(left + i * (w + gap), effectsTop, w, h), label, selected, s)) EffectsSettings.Intensity = intensity;
             }
             if (Chip(new Rect(left + EffectsRow.Length * (w + gap), effectsTop, w, h), "MAP", Minimap.Shown, s)) Minimap.Shown = !Minimap.Shown;
+            if (Chip(new Rect(left + (EffectsRow.Length + 1) * (w + gap), effectsTop, w, h), "SOCKET", Dogpatch.Race.ConvexRaceSession.SocketEnabled, s))
+                Dogpatch.Race.ConvexRaceSession.SocketEnabled = !Dogpatch.Race.ConvexRaceSession.SocketEnabled;
         }
 
         bool Chip(Rect r, string label, bool selected, float s)

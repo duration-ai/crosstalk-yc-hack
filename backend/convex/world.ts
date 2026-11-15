@@ -60,7 +60,9 @@ export function toWorldPlayer(row: Doc<"worldPresence">) {
 
 // Writes this player's presence. An active row only patches itself, so steady heartbeats never
 // contend with each other; joining (or coming back after the timeout) picks the first shard with
-// room and the player colour fewest active players there have.
+// room and the player colour fewest members of its world room have. Joining counts world-room
+// members rather than active presence rows, because those rows change on every heartbeat and a
+// join that read them kept failing on write conflicts once a few players were online.
 const heartbeatArgs = { ...presenceArgs, now: v.number() };
 
 export async function beat(ctx: MutationCtx, args: ObjectType<typeof heartbeatArgs>) {
@@ -90,14 +92,18 @@ export async function beat(ctx: MutationCtx, args: ObjectType<typeof heartbeatAr
   if (row) await dropPresence(ctx, row);
 
   let shard = 0;
-  let others: Doc<"worldPresence">[] = [];
+  let room: Doc<"rooms">;
+  let others: Doc<"roomPlayers">[];
   for (;; shard++) {
-    others = (await activeInShard(ctx, shard, args.now).take(SHARD_CAP + 1)).filter((r) => r.playerId !== player._id);
+    room = await worldRoom(ctx, shard, args.now);
+    const roomId = room._id;
+    others = (await ctx.db.query("roomPlayers").withIndex("by_room", (q) => q.eq("roomId", roomId)).take(SHARD_CAP + 1)).filter(
+      (r) => r.playerId !== player._id,
+    );
     if (others.length < SHARD_CAP) break;
   }
   const used = COLORS.map((_, i) => others.filter((r) => r.slot === i).length);
   const slot = used.indexOf(Math.min(...used));
-  const room = await worldRoom(ctx, shard, args.now);
   await enterWorldRoom(ctx, room, player, slot, args.now);
   await ctx.db.insert("worldPresence", { ...fields, playerId: player._id, shard, slot, worldRoomId: room._id, joinedAt: args.now });
   await sweep(ctx, shard, args.now);
