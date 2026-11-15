@@ -247,6 +247,12 @@ namespace Dogpatch.Gameplay
                 hud.Toast("Walk closer to get in");
                 return;
             }
+            if (!cars.ContainsKey(tapped.VehicleId))
+            {
+                if (!(backend is InMemoryGameBackend local)) return;
+                local.SeedVehicle(tapped.VehicleId, tapped.ModelId, ToVec(tapped.transform.position), tapped.transform.eulerAngles.y);
+                cars[tapped.VehicleId] = tapped;
+            }
             await RunAsync(() => EnterCarAsync(tapped));
         }
 
