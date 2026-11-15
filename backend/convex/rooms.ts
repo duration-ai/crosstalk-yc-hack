@@ -33,11 +33,13 @@ async function leaveOtherRooms(ctx: MutationCtx, playerId: Id<"players">, keep: 
     .collect();
   for (const row of rows) {
     if (row.roomId === keep || row.left) continue;
-    await removeFromRoom(ctx, (await ctx.db.get(row.roomId))!, row, now);
+    const room = (await ctx.db.get(row.roomId))!;
+    if (room.kind === "world") continue;
+    await removeFromRoom(ctx, room, row, now);
   }
 }
 
-async function newRoomCode(ctx: MutationCtx) {
+export async function newRoomCode(ctx: MutationCtx) {
   for (;;) {
     const code = Array.from({ length: 4 }, () => CODE_LETTERS[Math.floor(Math.random() * CODE_LETTERS.length)]).join("");
     const taken = await ctx.db
@@ -60,7 +62,7 @@ async function joinedResponse(ctx: MutationCtx, roomId: Id<"rooms">, playerId: I
   };
 }
 
-async function addRacer(ctx: MutationCtx, room: Doc<"rooms">, player: Doc<"players">, slot: number, now: number) {
+export async function addRacer(ctx: MutationCtx, room: Doc<"rooms">, player: Doc<"players">, slot: number, now: number) {
   await ctx.db.insert("roomPlayers", {
     roomId: room._id,
     playerId: player._id,
