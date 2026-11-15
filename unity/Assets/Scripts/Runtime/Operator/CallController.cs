@@ -1,6 +1,7 @@
 using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
+using Dogpatch.Audio;
+using Dogpatch.Feel;
 using Dogpatch.Gameplay;
 using Dogpatch.Race;
 using UnityEngine;
@@ -10,55 +11,43 @@ namespace Dogpatch.Operator
     public enum CallState
     {
         None,
-        Holding,
         Talking,
         Waiting,
         Answered,
     }
 
-    public sealed class Payphone : MonoBehaviour
-    {
-        public Spot Spot;
-        public float ReadyAt;
-
-        public Vector3 HandsetPoint => transform.position + transform.forward * 0.9f;
-        public bool Ringing => Time.time >= ReadyAt;
-    }
-
-    // A call from a hotline-pink payphone. Walking up to one on foot grabs the handset and the Call
-    // plate slides in; the call stays with you (into a car too) until you use it. Holding Call is
-    // talking; letting go sends the call to the Operator, whose answer is a world change and a line.
-    // With a Voice, the plate opens the transcriber, pressing snapshots the View and streams the
-    // microphone, and releasing sends the final transcript. Say sends typed words the same way.
-    // A payphone only picks up while the caller has an ask left (Asks); with none, the Operator turns
-    // them down in one line and the Call plate stays away.
+    // The Operator on the cell-phone button: always in reach from the HUD, on foot or driving.
+    // Holding the button is talking: pressing snapshots the View, opens the transcriber and streams
+    // the microphone; letting go sends the final transcript, and the Operator answers with a world
+    // change and a line. Each call needs an ask (Asks, when set); with none the button turns her
+    // down in one line. Buzz is the phone ringing in your pocket (a new ask, the race's GO). Say
+    // sends typed words the same way, for live tests only.
     public sealed class CallController : MonoBehaviour
     {
         public const string NoAsksLine = "No asks! Find a pink token.";
-        const float Reach = 1.6f;
-        const float RefusedRest = 4f;
         const float HoldMinimum = 0.35f;
-        const float CallLasts = 45f;
-        const float PhoneRest = 20f;
+        const float AnswerShown = 2.6f;
 
         public GameController Game;
         public IOperator Operator;
         public Func<string> PlayerId;
         public Func<string> RoomId;
-        public List<Payphone> Phones = new List<Payphone>();
-        public IVoiceInput Voice;
         public Func<int> Asks;
+        public IVoiceInput Voice;
         public Func<OperatorView> View;
 
         public CallState State { get; private set; }
         public float StateSince { get; private set; }
         public string Line { get; private set; }
         public int Calls { get; private set; }
-        public bool Refused { get; private set; }
         public string Heard { get; private set; } = "";
         public string Partial => State == CallState.Talking || State == CallState.Waiting ? Voice?.Partial ?? "" : "";
+        public float BuzzedAt { get; private set; } = -10f;
+        public float TurnedDownAt { get; private set; } = -10f;
+        public bool HasAsks => Asks == null || Asks() > 0;
 
         OperatorView snapshot;
+        int lastAsks = -1;
 
         public event Action<OperatorResponse> Answered;
 
@@ -66,35 +55,32 @@ namespace Dogpatch.Operator
         {
             State = state;
             StateSince = Time.time;
-            Refused = false;
             if (state == CallState.None) Voice?.Close();
         }
 
         public void HangUp() => Set(CallState.None);
 
-        public bool Grab(Payphone phone)
+        public void Buzz()
         {
-            if (State != CallState.None || !phone.Ringing) return false;
-            if (Asks != null && Asks() <= 0)
-            {
-                phone.ReadyAt = Time.time + RefusedRest;
-                Line = NoAsksLine;
-                Set(CallState.Answered);
-                Refused = true;
-                Debug.Log("[SpeedDial] no asks left: the Operator turned the call down");
-                return false;
-            }
-            phone.ReadyAt = Time.time + PhoneRest;
-            Set(CallState.Holding);
-            Voice?.Open();
-            Debug.Log("[SpeedDial] handset grabbed, call is live");
-            return true;
+            if (!HasAsks) return;
+            BuzzedAt = Time.time;
+            SoundSystem.Play2D("call_ring", Bus.Ui, 0.6f, 1f, 250);
+            Haptics.Notify(HapticNotice.Warning);
         }
 
         public void BeginTalk()
         {
-            if (State != CallState.Holding) return;
+            if (State != CallState.None && State != CallState.Answered) return;
+            if (!HasAsks)
+            {
+                Line = NoAsksLine;
+                TurnedDownAt = Time.time;
+                Haptics.Notify(HapticNotice.Error);
+                Debug.Log("[SpeedDial] no asks left: the Operator turned the call down");
+                return;
+            }
             snapshot = View?.Invoke();
+            Voice?.Open();
             Voice?.BeginTalk();
             Set(CallState.Talking);
         }
@@ -105,14 +91,14 @@ namespace Dogpatch.Operator
             if (Time.time - StateSince < HoldMinimum)
             {
                 Voice?.Cancel();
-                Set(CallState.Holding);
+                Set(CallState.None);
                 return;
             }
             _ = SendAsync(null);
         }
 
         // Typed words straight to the Operator, for live tests only (the dev-flag text field,
-        // speeddial://operator?say=..., -operator-say): no payphone or microphone needed.
+        // speeddial://operator?say=..., -operator-say): no microphone needed.
         public bool Say(string text)
         {
             if (State == CallState.Talking || State == CallState.Waiting || string.IsNullOrWhiteSpace(text)) return false;
@@ -145,24 +131,17 @@ namespace Dogpatch.Operator
             catch (Exception e)
             {
                 Debug.LogWarning("[SpeedDial] Operator call failed: " + e.Message);
-                Set(typed == null ? CallState.Holding : CallState.None);
-                if (typed == null) Voice?.Open();
+                Set(CallState.None);
             }
         }
 
         void Update()
         {
             if (Game == null || !Game.IsReady) return;
-            if (State == CallState.Holding && Time.time - StateSince > CallLasts) Set(CallState.None);
-            if (State == CallState.Answered && Time.time - StateSince > 2.6f) Set(CallState.None);
-            if (State != CallState.None || Game.CurrentCar != null) return;
-            var me = Game.Player.transform.position;
-            foreach (var phone in Phones)
-            {
-                var handset = phone.HandsetPoint;
-                if (Mathf.Abs(me.y - handset.y) > 2f || Vector2.Distance(new Vector2(me.x, me.z), new Vector2(handset.x, handset.z)) > Reach) continue;
-                if (Grab(phone)) break;
-            }
+            if (State == CallState.Answered && Time.time - StateSince > AnswerShown) Set(CallState.None);
+            int asks = Asks?.Invoke() ?? -1;
+            if (lastAsks >= 0 && asks > lastAsks) Buzz();
+            lastAsks = asks;
         }
     }
 }

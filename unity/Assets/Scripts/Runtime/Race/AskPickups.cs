@@ -120,7 +120,9 @@ namespace Dogpatch.Race
                 var result = await Race.Session.CollectAskAsync(playerId, Race.RoomId, pickup, new Vec3(at.x, at.y, at.z));
                 if (!result.collected) return;
                 Debug.Log($"[SpeedDial] {Race.NameOf(playerId)} collected ask pickup {pickup}: {result.asks} asks");
-                if (playerId == Race.MyId) GameEvents.RaiseAskCollected(positions[pickup]);
+                if (playerId != Race.MyId) return;
+                GameEvents.RaiseAskCollected(positions[pickup]);
+                Race.Calls.Buzz();
             }
             catch (BackendException e)
             {
