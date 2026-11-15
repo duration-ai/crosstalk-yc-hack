@@ -6,6 +6,7 @@ using Dogpatch.Backend;
 using Dogpatch.Data;
 using Dogpatch.Glb;
 using Dogpatch.Smash;
+using Dogpatch.Vehicles;
 using Dogpatch.World;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -102,7 +103,13 @@ namespace Dogpatch.Gameplay
             var seed = new List<(string, Vec3, float)> { (models.Role("car")[0].id, ToVec(world.HeroCar.Position), world.HeroCar.Heading) };
             var carModels = models.Role("car");
             var rng = new System.Random(7);
-            foreach (var spot in world.ParkedCars) seed.Add((carModels[rng.Next(carModels.Count)].id, ToVec(spot.Position), spot.Heading));
+            string[] curbside = { VehicleTypes.Sedan, VehicleTypes.Sedan, VehicleTypes.Sedan, VehicleTypes.Hatchback, VehicleTypes.Hatchback, VehicleTypes.YellowCab, VehicleTypes.Cybertruck };
+            foreach (var spot in world.ParkedCars)
+            {
+                string type = curbside[rng.Next(curbside.Length)];
+                string model = rng.NextDouble() < 0.7 && VehicleCatalog.Has(type) ? type : carModels[rng.Next(carModels.Count)].id;
+                seed.Add((model, ToVec(spot.Position), spot.Heading));
+            }
             local.SeedVehicles(seed);
             backend = local;
 
@@ -136,13 +143,24 @@ namespace Dogpatch.Gameplay
                 PlayerPrefs.Save();
             }
 
+            VehicleRoster.Configure(material, models.Role("player").Count > 0 ? models.Get(models.Role("player")[0].id) : null);
+            float spawnStart = Time.realtimeSinceStartup;
             foreach (var vehicle in await backend.ListVehiclesAsync())
             {
-                var asset = models.Get(vehicle.model) ?? models.Get(models.Role("car")[0].id);
-                var car = CarController.Create(vehicle.id, asset, material, ToVector(vehicle.position), vehicle.heading);
-                car.transform.SetParent(world.Root.transform, true);
+                CarController car;
+                if (VehicleCatalog.Has(vehicle.model))
+                {
+                    car = VehicleRoster.Spawn(vehicle.model, ToVector(vehicle.position), vehicle.heading, world.Root.transform, id: vehicle.id);
+                }
+                else
+                {
+                    var asset = models.Get(vehicle.model) ?? models.Get(models.Role("car")[0].id);
+                    car = CarController.Create(vehicle.id, asset, material, ToVector(vehicle.position), vehicle.heading);
+                    car.transform.SetParent(world.Root.transform, true);
+                }
                 cars[vehicle.id] = car;
             }
+            Debug.Log($"[Dogpatch] {cars.Count} vehicles spawned in {Time.realtimeSinceStartup - spawnStart:F1}s");
 
             var playerModel = models.Role("player").Count > 0 ? models.Get(models.Role("player")[0].id) : null;
             player = PlayerController.Create(playerModel, material);
@@ -167,6 +185,7 @@ namespace Dogpatch.Gameplay
 
             SmashWorld.Install(gameObject, world.Instances, models, material, view);
             VehicleDamage.Wrecked += OnWrecked;
+            gameObject.AddComponent<ParkedCarStreamer>().Init(this, cars.Values);
         }
 
         void OnDestroy() => VehicleDamage.Wrecked -= OnWrecked;
