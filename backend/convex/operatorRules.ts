@@ -60,7 +60,9 @@ export type RefusalReason =
   | "incompatible"
   | "not_visible"
   | "protected"
-  | "unavailable";
+  | "unavailable"
+  | "no_asks"
+  | "race_over";
 
 export type EffectCommand = {
   kind: "effect";
@@ -93,6 +95,8 @@ export const REFUSAL_MESSAGES: Record<RefusalReason, string> = {
   not_visible: "Can't see one.",
   protected: "That landmark's protected.",
   unavailable: "Operator busy. Retry.",
+  no_asks: "No asks! Find a pink token.",
+  race_over: "The race is over.",
 };
 
 const NONE = "none";

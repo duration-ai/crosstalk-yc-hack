@@ -17,7 +17,7 @@ const client = new ConvexClient(url);
 
 const tim = await client.mutation(api.players.create, { displayName: "Live Tim" });
 const maya = await client.mutation(api.players.create, { displayName: "Live Maya" });
-const { room } = await client.mutation(api.rooms.create, { playerId: tim.id });
+const { room } = await client.mutation(api.rooms.create, { playerId: tim.id, freeAsks: true });
 await client.mutation(api.rooms.join, { playerId: maya.id, code: room.code });
 
 const e = (id: string, cls: string, rank: number, desc: string, color: string, extra: object = {}) => ({
@@ -156,6 +156,12 @@ const summary = {
   serverP50: pct(rows.map((r) => r.serverMs), 0.5),
 };
 console.log(JSON.stringify(summary));
+
+const broke = await client.mutation(api.rooms.create, { playerId: maya.id, asks: 1 });
+const spent = await client.action(api.operator.call, { roomId: broke.room.id, playerId: maya.id, transcript: "make it rain", view });
+const refused: any = await client.action(api.operator.call, { roomId: broke.room.id, playerId: maya.id, transcript: "make it night", view });
+const asksPass = spent.outcome === "applied" && refused.outcome === "refused" && refused.refusal?.reason === "no_asks";
+console.log(`${asksPass ? "PASS" : "FAIL"} asks: 1 ask -> ${spent.outcome}, then ${refused.outcome}:${refused.refusal?.reason} "${refused.line}"`);
 const out = process.argv.indexOf("--json");
 if (out > 0) writeFileSync(process.argv[out + 1], JSON.stringify({ summary, rows }, null, 2));
 await client.close();

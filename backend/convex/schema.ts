@@ -40,6 +40,7 @@ export default defineSchema({
     asks: v.optional(v.number()),
     pickups: v.optional(v.array(vec3)),
     pickupRadius: v.optional(v.number()),
+    freeAsks: v.optional(v.boolean()),
   }).index("by_code", ["code"]),
   roomPlayers: defineTable({
     roomId: v.id("rooms"),
