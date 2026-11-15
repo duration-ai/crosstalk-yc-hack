@@ -238,6 +238,10 @@ namespace Dogpatch.Race
                     continue;
                 }
                 if (game.CurrentCar != null) yield return WaitTask(game.ExitCar());
+                yield return Seconds(0.5f);
+                var damage = race.MyCar.GetComponent<Dogpatch.Smash.VehicleDamage>();
+                damage.Burn(3f);
+                Log($"tour {name}: free-roam car burnt, wrecked {damage.IsWrecked}, health {damage.Health01:F2}");
                 game.Player.Teleport(course.RingCenter + Vector3.up * 0.1f, 0f);
                 game.Follow.Snap(game.Player.transform, false);
                 yield return Until(() => race.RouteId == id && !race.Switching && race.Room != null && race.Room.id == race.RoomId && race.Room.status != RoomStatus.Finished, 30f, name + " lobby", fatal: false);
@@ -251,7 +255,8 @@ namespace Dogpatch.Race
                 if (!race.Started) continue;
                 race.EnableAutopilot();
                 yield return Seconds(1f);
-                Log($"tour {name}: GO, phones on the line {AskPickups.Positions.Count}, shown {Shown()}");
+                var car = race.MyCar;
+                Log($"tour {name}: GO, phones on the line {AskPickups.Positions.Count}, shown {Shown()}; car health {damage.Health01:F2}, wrecked {damage.IsWrecked}, stunned {car.Stunned}, enabled {car.enabled}, driven {car.Driven}, speed {car.GetComponent<Rigidbody>().linearVelocity.magnitude:F1} m/s");
                 yield return Until(() => race.Last.racers.Any(r => r.finished), 420f, name + " first finisher", fatal: false);
                 var first = race.Last.racers.FirstOrDefault(r => r.finished);
                 Log($"tour {name}: first finisher {(first != null ? race.NameOf(first.playerId) : "none")} at the {race.Course.Data.finishName} finish");

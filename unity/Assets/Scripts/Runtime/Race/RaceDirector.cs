@@ -543,6 +543,7 @@ namespace Dogpatch.Race
                 myCar.gameObject.SetActive(true);
                 Debug.Log("[SpeedDial] your race car was switched off where the last race left it; switched it back on");
             }
+            Fresh(myCar);
             var spot = Course.Grid[MySlot];
             if (Game.CurrentCar != myCar)
             {
@@ -561,6 +562,7 @@ namespace Dogpatch.Race
             {
                 var s = Course.Grid[bot.Slot];
                 bot.Avatar.gameObject.SetActive(false);
+                Fresh(bot.Car);
                 bot.Car.Place(s.Position, s.Heading);
                 bot.Car.SetDriven(true);
                 bot.Driver.Route = Course.Route;
@@ -701,10 +703,19 @@ namespace Dogpatch.Race
             WreckFade = 0f;
         }
 
+        // A racer's car made race-ready at the grid and on every respawn: full health with any wreck,
+        // dents and fire undone, no stun, enabled and with no input held.
+        public static void Fresh(CarController car)
+        {
+            if (car.TryGetComponent<Dogpatch.Smash.VehicleDamage>(out var damage) && (damage.IsWrecked || damage.Damage > 0f)) damage.Repair();
+            car.ClearStun();
+            car.enabled = true;
+            car.SetInput(Vector3.zero, 0f);
+        }
+
         IEnumerator PutBack(CarController car)
         {
-            var damage = car.GetComponent<Dogpatch.Smash.VehicleDamage>();
-            if (damage != null && damage.IsWrecked) damage.Repair();
+            Fresh(car);
             var bot = bots.FirstOrDefault(b => b.Car == car);
             float d = Mathf.Clamp(Course.Route.Project(RoutePath.Flat(car.transform.position)), 2f, Course.Route.Length - 3f);
             var p = Course.Route.PointAt(d) + Course.Route.RightAt(d) * RaceCourse.GridLane(bot != null ? bot.Slot : MySlot);
