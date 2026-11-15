@@ -368,7 +368,7 @@ namespace Dogpatch.Smash
                 for (int j = 0; j < all.Count; j++)
                 {
                     var other = all[j];
-                    if (other == mover || !other.Body.isKinematic || other.Car.Driven) continue;
+                    if (other == mover || !other.Body.isKinematic || other.Car.Driven || other.Car.Autopilot) continue;
                     if ((other.transform.position - p).sqrMagnitude < WakeRadius * WakeRadius) other.Loosen(0.6f);
                 }
             }

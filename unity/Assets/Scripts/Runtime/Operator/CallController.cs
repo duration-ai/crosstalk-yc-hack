@@ -19,7 +19,9 @@ namespace Dogpatch.Operator
     // The Operator on the cell-phone button: always in reach from the HUD, on foot or driving.
     // Holding the button is talking: pressing snapshots the View, opens the transcriber and streams
     // the microphone; letting go sends the final transcript, and the Operator answers with a world
-    // change and a line. Each call needs an ask (Asks, when set); with none the button turns her
+    // change and a line. A tap (or a touch the OS cancels) latches the call instead: it keeps
+    // listening and sends after a second of quiet once words arrive, at the latch window, or on the
+    // next press. Each call needs an ask (Asks, when set); with none the button turns her
     // down in one line. Buzz is the phone ringing in your pocket (a new ask, the race's GO). Say
     // sends typed words the same way, for live tests only.
     public sealed class CallController : MonoBehaviour
@@ -27,6 +29,8 @@ namespace Dogpatch.Operator
         public const string NoAsksLine = "No asks! Find a pink token.";
         const float HoldMinimum = 0.35f;
         const float AnswerShown = 2.6f;
+        const float LatchWindow = 5f;
+        const float LatchSilence = 1f;
 
         public GameController Game;
         public IOperator Operator;
@@ -48,6 +52,9 @@ namespace Dogpatch.Operator
 
         OperatorView snapshot;
         int lastAsks = -1;
+        bool latched;
+        string lastPartial = "";
+        float partialAt;
 
         public event Action<OperatorResponse> Answered;
 
@@ -55,6 +62,7 @@ namespace Dogpatch.Operator
         {
             State = state;
             StateSince = Time.time;
+            if (state != CallState.Talking) latched = false;
             if (state == CallState.None) Voice?.Close();
         }
 
@@ -70,6 +78,12 @@ namespace Dogpatch.Operator
 
         public void BeginTalk()
         {
+            if (State == CallState.Talking && latched)
+            {
+                latched = false;
+                _ = SendAsync(null);
+                return;
+            }
             if (State != CallState.None && State != CallState.Answered) return;
             if (!HasAsks)
             {
@@ -87,11 +101,13 @@ namespace Dogpatch.Operator
 
         public void EndTalk()
         {
-            if (State != CallState.Talking) return;
+            if (State != CallState.Talking || latched) return;
             if (Time.time - StateSince < HoldMinimum)
             {
-                Voice?.Cancel();
-                Set(CallState.None);
+                latched = true;
+                lastPartial = Voice?.Partial ?? "";
+                partialAt = Time.time;
+                Debug.Log("[SpeedDial] short press: the call stays open until you stop talking");
                 return;
             }
             _ = SendAsync(null);
@@ -139,6 +155,21 @@ namespace Dogpatch.Operator
         {
             if (Game == null || !Game.IsReady) return;
             if (State == CallState.Answered && Time.time - StateSince > AnswerShown) Set(CallState.None);
+            if (State == CallState.Talking && latched)
+            {
+                var partial = Voice?.Partial ?? "";
+                if (partial != lastPartial)
+                {
+                    lastPartial = partial;
+                    partialAt = Time.time;
+                }
+                bool quiet = partial.Trim().Length > 0 && Time.time - partialAt >= LatchSilence;
+                if (quiet || Time.time - StateSince >= LatchWindow)
+                {
+                    latched = false;
+                    _ = SendAsync(null);
+                }
+            }
             int asks = Asks?.Invoke() ?? -1;
             if (lastAsks >= 0 && asks > lastAsks) Buzz();
             lastAsks = asks;

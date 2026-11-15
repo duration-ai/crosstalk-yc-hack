@@ -216,7 +216,6 @@ namespace Dogpatch.Race
         {
             RoomId = room.room.id;
             RoomCode = room.room.code;
-            IsHost = host;
             raceNumber = room.room.raceNumber;
             cursor = null;
             MySlot = room.you.slot;
@@ -282,6 +281,31 @@ namespace Dogpatch.Race
             return new Vector3(p.x, Course.GroundY(new Vector2(p.x, p.z)) + 0.06f, p.z);
         }
 
+        // Online players start 32 to 40 m from the ring, facing it, at a spot picked from their id so
+        // phones launching together don't stack. Spots on the ring's open side come first.
+        Vector3 SpawnSpot(out float facing)
+        {
+            var center = RoutePath.Flat(Course.RingCenter);
+            var open = RoutePath.Flat(Course.RingFacing);
+            var spots = new List<Vector2>();
+            var fallback = new List<Vector2>();
+            foreach (float r in new[] { 32f, 36f, 40f })
+                for (int a = 0; a < 24; a++)
+                {
+                    float ang = a * Mathf.PI / 12f;
+                    var dir = new Vector2(Mathf.Cos(ang), Mathf.Sin(ang));
+                    var p = center + dir * r;
+                    if (!Course.StandFits(p)) continue;
+                    (Vector2.Dot(dir, open) > 0.5f ? spots : fallback).Add(p);
+                }
+            if (spots.Count == 0) spots = fallback;
+            var at = center + open * 34f;
+            if (spots.Count > 0) at = spots[(int)((uint)(MyId ?? "").GetHashCode() % (uint)spots.Count)];
+            facing = RoutePath.Heading(center - at);
+            Debug.Log($"[SpeedDial] spawned {Vector2.Distance(at, center):F0} m from the ring at ({at.x:F0},{at.y:F0}), one of {spots.Count} clear spots");
+            return new Vector3(at.x, Course.GroundY(at) + 0.1f, at.y);
+        }
+
         void PlaceForLobby(bool onRing)
         {
             foreach (var bot in bots)
@@ -301,6 +325,7 @@ namespace Dogpatch.Race
             var mine = Course.Grid[MySlot];
             myCar.Place(mine.Position, mine.Heading);
             if (onRing) Game.Player.Teleport(RingSpot(MySlot), LobbyHeading);
+            else if (Online) Game.Player.Teleport(SpawnSpot(out float facing), facing);
             else Game.Player.Teleport(Course.RingCenter + Course.RingFacing * (Course.RingRadius + 2.5f) + Vector3.up * 0.1f, LobbyHeading + 180f);
             Game.Follow.enabled = true;
             Game.Follow.Snap(Game.Player.transform, false);
@@ -308,8 +333,11 @@ namespace Dogpatch.Race
             everInRing = onRing;
         }
 
+        // One poll in flight at a time; while the server can't be reached the last state stays up
+        // and the next try backs off with jitter.
         IEnumerator PollLoop()
         {
+            int failures = 0;
             while (true)
             {
                 if (RoomId == null)
@@ -319,8 +347,15 @@ namespace Dogpatch.Race
                 }
                 string polled = RoomId;
                 var poll = Session.PollAsync(polled, cursor);
-                yield return Wait(poll);
-                if (poll.Status == TaskStatus.RanToCompletion && polled == RoomId) yield return Handle(poll.Result);
+                while (!poll.IsCompleted) yield return null;
+                if (poll.Status != TaskStatus.RanToCompletion)
+                {
+                    if (++failures == 1) Debug.LogWarning("[SpeedDial] poll: " + poll.Exception?.GetBaseException().Message);
+                    yield return Pause(Backoff(failures));
+                    continue;
+                }
+                failures = 0;
+                if (polled == RoomId) yield return Handle(poll.Result);
                 yield return Pause(PollEvery);
             }
         }
@@ -537,6 +572,7 @@ namespace Dogpatch.Race
 
         IEnumerator SendLoop()
         {
+            int failures = 0;
             while (true)
             {
                 if (RoomId == null)
@@ -552,7 +588,15 @@ namespace Dogpatch.Race
                     var t = BodyOf(bot.Id);
                     sends.Add(Session.UpdateAsync(bot.Id, RoomId, new Vec3(t.position.x, t.position.y, t.position.z), t.eulerAngles.y));
                 }
-                yield return Wait(Task.WhenAll(sends));
+                var all = Task.WhenAll(sends);
+                while (!all.IsCompleted) yield return null;
+                if (all.Status != TaskStatus.RanToCompletion)
+                {
+                    if (++failures == 1) Debug.LogWarning("[SpeedDial] update: " + all.Exception?.GetBaseException().Message);
+                    yield return Pause(Backoff(failures));
+                    continue;
+                }
+                failures = 0;
                 yield return Pause(SendEvery);
             }
         }
@@ -726,6 +770,7 @@ namespace Dogpatch.Race
 
             if (Started && !ResultsIn) BotRaceBehaviour();
             else if (!Gridded) BotLobbyBehaviour();
+            if (Online) MissionRing();
         }
 
         // A bot on its own spends an ask for each call, like a player. Online the server only charges

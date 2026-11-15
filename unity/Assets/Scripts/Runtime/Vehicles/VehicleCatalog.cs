@@ -76,7 +76,12 @@ namespace Dogpatch.Vehicles
                 Grip = grip, Mass = mass, Durability = durability, BargeStrength = barge, PassengerOnly = passenger,
             };
 
-        static void Add(VehicleSpec spec) => specs[spec.Id] = spec;
+        static void Add(VehicleSpec spec)
+        {
+            spec.Handling = Pace.Apply(spec.Handling);
+            spec.CruiseSpeed *= Pace.Current.trafficSpeedScale;
+            specs[spec.Id] = spec;
+        }
 
         static VehicleCatalog()
         {
