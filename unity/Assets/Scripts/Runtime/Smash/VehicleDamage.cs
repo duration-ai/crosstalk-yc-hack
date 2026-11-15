@@ -30,6 +30,7 @@ namespace Dogpatch.Smash
         public float Durability => Spec.Durability * (Car.Driven ? DamageTuning.Current.playerDurabilityScale : DamageTuning.Current.otherDurabilityScale);
         public float Health01 => Mathf.Clamp01(1f - Damage / Mathf.Max(Durability, 1f));
         public bool IsWrecked { get; private set; }
+        public int Invulnerable;
         public Vector3 LastVelocity => lastVelocity;
         public float LastHitTime { get; private set; } = -99f;
         public CarController LastAttacker => Time.time - lastAttackTime < AttackMemory ? lastAttacker : null;
@@ -249,7 +250,7 @@ namespace Dogpatch.Smash
         {
             LastHitTime = Time.time;
             VehicleImpacts.Raise(new VehicleHit(Car, other, otherCar, impact, point, normal, damage));
-            if (IsWrecked || dent <= 0f) return;
+            if (IsWrecked || dent <= 0f || Invulnerable > 0) return;
             Damage += damage;
             Dent(point, dent);
             var fx = SmashWorld.Instance?.Fx;
