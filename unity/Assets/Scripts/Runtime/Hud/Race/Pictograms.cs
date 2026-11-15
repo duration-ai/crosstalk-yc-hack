@@ -107,6 +107,12 @@ namespace Dogpatch.Slipstream
                     s.Add(new Fill(42, 30, 54, 30, 54, 40, 42, 40));
                     s.Add(new Fill(20, 40, 44, 40, 50, 54, 14, 54));
                     break;
+                case "cellphone":
+                    s.AddRange(Box(19, 6, 45, 58, 4.4f));
+                    s.Add(new Fill(26, 15, 38, 15, 38, 43, 26, 43));
+                    s.Add(new Seg(29, 10.5f, 35, 10.5f, 1.4f));
+                    s.Add(new Dot(32, 50.5f, 3f));
+                    break;
                 case "ready":
                     s.Add(new Seg(13, 33, 26, 46, 4.2f));
                     s.Add(new Seg(26, 46, 51, 19, 4.2f));

@@ -151,6 +151,7 @@ namespace Dogpatch.Look
             {
                 fogBankScale = 0.6f + fog * 1.15f;
                 sky.Bank.localScale = new Vector3(1f, fogBankScale, 1f);
+                sky.BankMaterial.SetFloat("_Density", Mathf.Lerp(0.6f, 1f, fog));
                 sky.Props.SetColor("_Tint", Color.Lerp(Color.white, SpeedDial.Hex("#C9D1DE"), rainAmount * 0.8f));
             }
 

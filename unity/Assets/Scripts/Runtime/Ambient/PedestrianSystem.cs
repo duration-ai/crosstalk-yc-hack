@@ -17,7 +17,7 @@ namespace Dogpatch.Ambient
     // side of the sidewalk with simple predictive avoidance, makes them wait and look both ways at
     // crosswalks, dive away from cars, tumble and get up when hit or shoved, and draws them all
     // through the instanced crowd renderer. Distant people think less often and animate coarser.
-    public sealed class PedestrianSystem : MonoBehaviour
+    public sealed partial class PedestrianSystem : MonoBehaviour
     {
         public static PedestrianSystem Instance { get; private set; }
         public static Vector3? FocusOverride;
@@ -730,6 +730,7 @@ namespace Dogpatch.Ambient
 
         void Walk(Pedestrian ped, float dt, float now, bool near)
         {
+            if (Mood != CrowdMood.Normal && MoodWalk(ped, dt, now, near)) return;
             if (ped.PathIndex >= ped.Path.Count)
             {
                 Arrive(ped);
@@ -737,7 +738,7 @@ namespace Dogpatch.Ambient
             }
             int node = ped.Path[ped.PathIndex];
             var target = PathPoint(ped, ped.PathIndex);
-            float speed = ped.Cruise * (ped.Hurry > 0f ? 1.3f : 1f) * PlayerController.RunScale;
+            float speed = ped.Cruise * (ped.Hurry > 0f ? 1.3f : 1f) * PlayerController.RunScale * MoodPace;
             ped.Hurry = Mathf.Max(0f, ped.Hurry - dt);
             bool crossing = ped.Crossing >= 0;
             if (crossing)

@@ -27,6 +27,11 @@ namespace Dogpatch.Race
         const float PollEvery = 0.12f;
         const float SendEvery = 0.1f;
         const float LockMs = 3000f;
+        const float GhostFor = 4f;
+        const float ContactWatch = 10f;
+        const float ClearRoadFor = 10f;
+        const float ClearRoadMeters = 150f;
+        const float ClearRoadRadius = 14f;
 
         public static RaceDirector Instance { get; private set; }
 
@@ -65,6 +70,7 @@ namespace Dogpatch.Race
             public float NextCall;
             public float LastProgress;
             public float NextShove;
+            public float LaunchAt;
         }
 
         readonly List<Bot> bots = new List<Bot>();
@@ -80,6 +86,11 @@ namespace Dogpatch.Race
         float lobbySince;
         float botCallsAfter;
         bool lobbyCam;
+        bool ghosted;
+        bool roadCleared;
+        int clearZone;
+        bool contactsReported;
+        readonly Dictionary<string, int> launchContacts = new Dictionary<string, int>();
 
         public long NowMs => convex != null ? convex.ServerNowMs : (long)(epochMs + Time.timeAsDouble * 1000.0);
         public Room Room => Last?.room;
@@ -120,7 +131,17 @@ namespace Dogpatch.Race
         {
             var material = Game.SharedMaterial;
             Catalog = WorldChangeCatalog.Load();
-            Course = RaceCourse.Build(Game.World, Game.Data, Resources.Load<TextAsset>("SpeedDial/course").text);
+            var hero = Game.Cars.Values.First();
+            bool Occupied(Vector2 p)
+            {
+                foreach (var hit in Physics.OverlapSphere(new Vector3(p.x, Dogpatch.World.RoadSurface.GroundY(p) + 1f, p.y), 1.5f, ~0, QueryTriggerInteraction.Ignore))
+                {
+                    var car = hit.GetComponentInParent<CarController>();
+                    if (car != null && car != hero) return true;
+                }
+                return false;
+            }
+            Course = RaceCourse.Build(Game.World, Game.Data, Resources.Load<TextAsset>("SpeedDial/course").text, Occupied);
 
             var root = new GameObject("SpeedDialCourse").transform;
             root.SetParent(Game.World.Root.transform, false);
@@ -130,15 +151,6 @@ namespace Dogpatch.Race
             var flagSpot = Course.Finish + finishRight * ycSide * (Course.FinishHalfWidth + 1.6f) + Quaternion.Euler(0f, Course.FinishHeading, 0f) * Vector3.forward * 3f;
             CourseDressing.Finish(root, Course.Finish, Course.FinishHeading, Course.FinishHalfWidth, flagSpot, material);
             CourseDressing.TurnChevrons(root, Course.Route, Course.RouteWorld, material);
-
-            var phoneAsset = GlbAsset.Load("payphone-stand-f97728", Resources.Load<TextAsset>("SpeedDial/Models/payphone-stand-f97728").bytes);
-            var phones = new List<Payphone>();
-            foreach (var spot in Course.Payphones)
-            {
-                var phone = CourseDressing.Payphone(root, phoneAsset, spot, material).AddComponent<Payphone>();
-                phone.Spot = spot;
-                phones.Add(phone);
-            }
 
             MyId = Game.Profile.id;
             var url = ConvexRaceSession.ConfiguredUrl();
@@ -153,6 +165,7 @@ namespace Dogpatch.Race
             Remotes.Race = this;
 
             Game.Player.gameObject.AddComponent<PlayerShoveable>();
+            Dogpatch.Smash.VehicleDamage.Wrecked += OnWrecked;
             Changes = gameObject.AddComponent<WorldChangeDirector>();
             Changes.Game = Game;
             Changes.Race = this;
@@ -163,7 +176,6 @@ namespace Dogpatch.Race
             Calls.Operator = Operator;
             Calls.PlayerId = () => MyId;
             Calls.RoomId = () => RoomId;
-            Calls.Phones = phones;
 
             Hud = gameObject.AddComponent<SlipstreamHud>();
             Hud.Race = this;
@@ -172,7 +184,7 @@ namespace Dogpatch.Race
             Shove.IgnoreTouch = Hud.HitTest;
             Game.Drag.IgnoreTouch = Hud.HitTest;
 
-            Debug.Log($"[SpeedDial] {(Online ? "online at " + convex.BaseUrl : "offline")}: {Course.Data.startName} -> {Course.Data.finishName}, {Course.Route.Length:F0} m, ring at ({Course.RingCenter.x:F0},{Course.RingCenter.z:F0}), finish at ({Course.Finish.x:F0},{Course.Finish.z:F0}), {phones.Count} payphones");
+            Debug.Log($"[SpeedDial] {(Online ? "online at " + convex.BaseUrl : "offline")}: {Course.Data.startName} -> {Course.Data.finishName}, {Course.Route.Length:F0} m, ring at ({Course.RingCenter.x:F0},{Course.RingCenter.z:F0}), finish at ({Course.Finish.x:F0},{Course.Finish.z:F0})");
             if (!Online)
             {
                 var created = await Session.CreateRoomAsync(MyId, RouteWire(), Course.Data.finishRadius, 2);
@@ -224,7 +236,7 @@ namespace Dogpatch.Race
                 bot.Driver.Car = bot.Car;
                 bot.Driver.Route = Course.Route;
                 bot.Driver.Skill = BotSkill[Array.IndexOf(BotNames, botName)];
-                bot.Driver.Lane = bot.Slot % 2 == 0 ? -1.9f : 1.9f;
+                bot.Driver.Lane = RaceCourse.GridLane(bot.Slot);
                 bot.Avatar = RacerAvatar.Create(avatarAsset, material, PaintJob.Linear(SlotHex[bot.Slot]), bot.Name);
                 bot.Avatar.transform.SetParent(Game.World.Root.transform, true);
                 bot.Car.SetDriven(false);
@@ -386,12 +398,112 @@ namespace Dogpatch.Race
             botCallsAfter = Time.time + 4f;
             foreach (var bot in bots)
             {
-                bot.Driver.Active = true;
+                bot.LaunchAt = Time.time + 0.2f + (float)random.NextDouble() * 0.4f;
                 bot.NextCall = Time.time + 5f + (float)random.NextDouble() * 6f;
             }
+            Ghost(true);
+            launchContacts.Clear();
+            contactsReported = false;
+            foreach (var car in RacerCars())
+            {
+                var watch = car.GetComponent<LaunchContacts>() ?? car.gameObject.AddComponent<LaunchContacts>();
+                watch.Race = this;
+                watch.Until = Time.time + ContactWatch;
+            }
             Game.ExternalInput = Autopilot;
+            Calls.Buzz();
             if (myPilot != null) myPilot.Active = Autopilot;
             Debug.Log("[SpeedDial] GO");
+        }
+
+        // For the first seconds after GO the racers pass through each other, so a bunched launch can't
+        // pile up.
+        void Ghost(bool on)
+        {
+            ghosted = on;
+            var cars = RacerCars().Where(c => c != null).Select(c => c.GetComponentsInChildren<Collider>()).ToList();
+            for (int i = 0; i < cars.Count; i++)
+                for (int j = i + 1; j < cars.Count; j++)
+                    foreach (var a in cars[i])
+                        foreach (var b in cars[j])
+                            if (a != null && b != null) Physics.IgnoreCollision(a, b, on);
+        }
+
+        // Traffic stays off the grid and the first stretch of the route from the countdown until a few
+        // seconds after GO; a countdown that is called off reopens it straight away.
+        void ClearRoad(bool on)
+        {
+            roadCleared = on;
+            if (!on)
+            {
+                if (clearZone != 0) Dogpatch.Traffic.TrafficSystem.EndZone(clearZone);
+                clearZone = 0;
+                return;
+            }
+            var path = new List<Vector3>();
+            float end = Mathf.Min(Course.Grid[0].Progress + ClearRoadMeters, Course.Route.Length);
+            for (float d = Mathf.Max(0f, Course.Grid[3].Progress - 6f); d <= end; d += 6f)
+            {
+                var p = Course.Route.PointAt(d);
+                path.Add(new Vector3(p.x, 0f, p.y));
+            }
+            float countdown = MsToStart == float.MaxValue ? 30f : Mathf.Max(0f, MsToStart / 1000f);
+            clearZone = Dogpatch.Traffic.TrafficSystem.ClearZone(path, ClearRoadRadius, countdown + ClearRoadFor + 5f);
+        }
+
+        void OnDestroy()
+        {
+            Dogpatch.Smash.VehicleDamage.Wrecked -= OnWrecked;
+            ClearRoad(false);
+        }
+
+        // A wreck doesn't end anyone's race: a moment later the car is repaired and back on the route
+        // where it was, and the player is back in it.
+        void OnWrecked(CarController car)
+        {
+            if (!Started || ResultsIn || !IsRacerCar(car)) return;
+            StartCoroutine(Recover(car));
+        }
+
+        IEnumerator Recover(CarController car)
+        {
+            yield return new WaitForSeconds(1.5f);
+            if (ResultsIn) yield break;
+            var damage = car.GetComponent<Dogpatch.Smash.VehicleDamage>();
+            if (damage != null && damage.IsWrecked) damage.Repair();
+            var bot = bots.FirstOrDefault(b => b.Car == car);
+            float d = Mathf.Clamp(Course.Route.Project(RoutePath.Flat(car.transform.position)), 2f, Course.Route.Length - 3f);
+            var p = Course.Route.PointAt(d) + Course.Route.RightAt(d) * RaceCourse.GridLane(bot != null ? bot.Slot : MySlot);
+            var spot = new Vector3(p.x, Dogpatch.World.RoadSurface.GroundY(p) + 0.4f, p.y);
+            float heading = RoutePath.Heading(Course.Route.DirectionAt(d));
+            if (bot != null)
+            {
+                MoveBody(bot.Id, spot, heading);
+            }
+            else
+            {
+                if (Game.CurrentCar != myCar)
+                {
+                    Game.Player.Teleport(spot + Quaternion.Euler(0f, heading, 0f) * Vector3.left * 2.2f, heading);
+                    myCar.Place(spot, heading);
+                    yield return Wait(Game.EnterCar(myCar));
+                }
+                MoveBody(MyId, spot, heading);
+                Game.Follow.Snap(myCar.transform, true);
+            }
+            Debug.Log($"[SpeedDial] {(bot != null ? bot.Name : "You")} wrecked, back on the route at {d:F0} m");
+        }
+
+        public bool IsRacerCar(CarController car) => RacerCars().Contains(car);
+
+        public void NoteLaunchContact(string kind, CarController a, CarController b)
+        {
+            launchContacts.TryGetValue(kind, out int n);
+            launchContacts[kind] = n + 1;
+            var p = RoutePath.Flat(b.transform.position);
+            float along = Course.Route.Project(p);
+            float off = Vector2.Dot(p - Course.Route.PointAt(along), Course.Route.RightAt(along));
+            Debug.Log($"[SpeedDial] launch contact {kind}: {a.name} hit {b.name} at {Time.time - StartedAt:F1} s, {along:F0} m along the route and {off:+0.0;-0.0} m off it");
         }
 
         IEnumerator BackToLobby()
@@ -438,7 +550,7 @@ namespace Dogpatch.Race
                 myPilot.Car = myCar;
                 myPilot.Route = Course.Route;
                 myPilot.Skill = 1f;
-                myPilot.Lane = MySlot % 2 == 0 ? -1.9f : 1.9f;
+                myPilot.Lane = RaceCourse.GridLane(MySlot);
                 myPilot.ResetProgress(Course.Grid[MySlot].Progress);
             }
             if (Started && !ResultsIn)
@@ -572,6 +684,21 @@ namespace Dogpatch.Race
             }
             stillFor = Game.Drag.Dragging ? 0f : stillFor + Time.deltaTime;
 
+            bool clearRoad = Room != null && (Room.status == RoomStatus.Countdown || (Started && !ResultsIn && Time.time - StartedAt < ClearRoadFor));
+            if (clearRoad != roadCleared) ClearRoad(clearRoad);
+            if (Started && ghosted && Time.time - StartedAt > GhostFor) Ghost(false);
+            if (Started && !contactsReported && Time.time - StartedAt > ContactWatch)
+            {
+                contactsReported = true;
+                Debug.Log($"[SpeedDial] launch contacts in the first {ContactWatch:F0} s: {launchContacts.Values.Sum()} (racer {launchContacts.GetValueOrDefault("racer")}, traffic {launchContacts.GetValueOrDefault("traffic")}, parked {launchContacts.GetValueOrDefault("parked")})");
+            }
+            foreach (var bot in bots)
+            {
+                if (!Started || ResultsIn || bot.LaunchAt <= 0f || Time.time < bot.LaunchAt) continue;
+                bot.LaunchAt = 0f;
+                bot.Driver.Active = true;
+            }
+
             if (Started && !ResultsIn) BotRaceBehaviour();
             else if (!Gridded) BotLobbyBehaviour();
         }
@@ -611,16 +738,11 @@ namespace Dogpatch.Race
             {
                 float progress = bot.Driver.Progress;
                 if (Time.time >= bot.NextCall && Time.time >= botCallsAfter)
-                    foreach (var phone in Calls.Phones)
-                    {
-                        float at = phone.Spot.Progress;
-                        if (at <= bot.LastProgress || at > progress) continue;
-                        if (Vector3.Distance(phone.transform.position, bot.Car.transform.position) > 22f || random.NextDouble() > 0.7) continue;
-                        bot.NextCall = Time.time + 18f;
-                        botCallsAfter = Time.time + 8f;
-                        StartCoroutine(Wait(BotCallAsync(bot, null)));
-                        break;
-                    }
+                {
+                    bot.NextCall = Time.time + 18f + (float)random.NextDouble() * 10f;
+                    botCallsAfter = Time.time + 8f;
+                    StartCoroutine(Wait(BotCallAsync(bot, null)));
+                }
                 bot.LastProgress = progress;
 
                 if (Time.time < bot.NextShove) continue;
