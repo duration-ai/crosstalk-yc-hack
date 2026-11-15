@@ -11,7 +11,5 @@
   },
   "via": [],
   "finishRadius": 15,
-  "ringRadius": 7.2,
-  "routePayphones": 3,
-  "payphones": []
+  "ringRadius": 7.2
 }

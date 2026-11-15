@@ -34,6 +34,11 @@ extern "C"
         [notificationGenerator prepare];
     }
 
+    void DogpatchNativeLog(const char *message)
+    {
+        NSLog(@"%s", message);
+    }
+
     void DogpatchHapticSelection()
     {
         if (selectionGenerator == nil) selectionGenerator = [[UISelectionFeedbackGenerator alloc] init];

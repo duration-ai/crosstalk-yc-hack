@@ -18,6 +18,10 @@ namespace Dogpatch.Race
 
         readonly Dictionary<int, (Vector2 start, float time)> touches = new Dictionary<int, (Vector2, float)>();
 
+        void OnEnable() => ScreenShape.Changed += touches.Clear;
+
+        void OnDisable() => ScreenShape.Changed -= touches.Clear;
+
         void Update()
         {
             if (Game == null || !Game.IsReady) return;

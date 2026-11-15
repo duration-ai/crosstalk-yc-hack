@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using Dogpatch.Gameplay;
-using Dogpatch.Operator;
 using Dogpatch.Race;
 using Dogpatch.World;
 using UnityEngine;
@@ -10,7 +9,7 @@ namespace Dogpatch.Nav
     // The one current objective and the street path to it, shared by the 3D direction arrow and the
     // minimap route line. Target, when set, wins; otherwise during a race it is the finish along the
     // course (A* back to the finish when you leave the course), and in free roam the nearest
-    // ringing payphone. Driving routes respect one-way streets; walking routes ignore them.
+    // mission start (the race's start ring). Driving routes respect one-way streets; walking routes ignore them.
     public sealed class NavService : MonoBehaviour
     {
         const float ReplanSeconds = 3f;
@@ -33,8 +32,6 @@ namespace Dogpatch.Nav
 
         NavGraph drive;
         NavGraph walk;
-        Payphone phone;
-        float nextPhonePick;
         float nextPlan;
         bool plannedDriving;
         float courseHint = -1f;
@@ -156,33 +153,9 @@ namespace Dogpatch.Nav
                 kind = NavKind.Race;
                 return true;
             }
-            var calls = race.Calls;
-            if (calls == null || calls.State != CallState.None) return false;
-            if (Time.time >= nextPhonePick || phone == null || !phone.Ringing)
-            {
-                nextPhonePick = Time.time + 1f;
-                phone = PickPhone(calls.Phones, Game.Focus.position, phone);
-            }
-            if (phone == null) return false;
-            objective = phone.transform.position;
-            kind = NavKind.Payphone;
+            objective = race.Course.RingCenter;
+            kind = NavKind.Mission;
             return true;
-        }
-
-        // Nearest ringing payphone; the current one is kept unless another is clearly closer.
-        static Payphone PickPhone(List<Payphone> phones, Vector3 from, Payphone current)
-        {
-            Payphone best = null;
-            float bestD = float.MaxValue;
-            foreach (var p in phones)
-            {
-                if (p == null || !p.Ringing) continue;
-                float d = Vector3.Distance(p.transform.position, from) * (p == current ? 0.8f : 1f);
-                if (d >= bestD) continue;
-                bestD = d;
-                best = p;
-            }
-            return best;
         }
 
         float DistanceToPath(Vector2 p)

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using Dogpatch.Audio;
 using Dogpatch.Data;
 using Dogpatch.Gameplay;
 using Dogpatch.Glb;
@@ -16,7 +17,7 @@ namespace Dogpatch.Ambient
     // side of the sidewalk with simple predictive avoidance, makes them wait and look both ways at
     // crosswalks, dive away from cars, tumble and get up when hit or shoved, and draws them all
     // through the instanced crowd renderer. Distant people think less often and animate coarser.
-    public sealed class PedestrianSystem : MonoBehaviour
+    public sealed partial class PedestrianSystem : MonoBehaviour
     {
         public static PedestrianSystem Instance { get; private set; }
         public static Vector3? FocusOverride;
@@ -34,6 +35,14 @@ namespace Dogpatch.Ambient
         const float DespawnHidden = 85f;
         const float HashCell = 4f;
         const int PathsPerFrame = 3;
+        const float Gravity = 16f;
+        const int MaxLaunched = 4;
+        const float StumbleBelow = 3.2f;
+        const float LaunchAbove = 8f;
+        const float RollAbove = 2.2f;
+        const float Pace = 1.15f;
+        const float WarnSeconds = 1.9f;
+        const float ThreatRange = 45f;
 
         [Serializable]
         sealed class Manifest
@@ -419,6 +428,7 @@ namespace Dogpatch.Ambient
                     _ => Range(1.15f, 1.55f),
                 },
             };
+            ped.Cruise *= Pace;
             ped.Radius = role == PedRole.Walker ? 0.3f : 0.5f;
             ped.Lateral = Range(0.35f, 0.9f);
             ped.Pos = pos;
@@ -427,7 +437,10 @@ namespace Dogpatch.Ambient
             ped.StateTime = 0f;
             ped.Spot = -1;
             ped.Crossing = -1;
-            ped.Tip = ped.Roll = ped.Lean = ped.Lift = ped.Hurry = 0f;
+            ped.Lean = ped.Hurry = 0f;
+            ped.Posed = false;
+            ped.FadeCap = 1f;
+            ped.FadeSpeed = 1f / 0.22f;
             ped.HeadYaw = ped.HeadTarget = 0f;
             ped.Clip = ped.PrevClip = Clip.Idle;
             ped.ClipTime = (float)rng.NextDouble() * 2f;
@@ -703,22 +716,11 @@ namespace Dogpatch.Ambient
                         else Resume(ped);
                     }
                     break;
-                case PedState.Stumble:
-                    Slide(ped, dt, 5f);
-                    ped.Tip = Mathf.MoveTowards(ped.Tip, ped.StateTime < 0.25f ? 18f : 0f, 90f * dt);
-                    if (ped.StateTime >= ped.StateLength) Startle(ped, 0.6f);
-                    break;
+                case PedState.Stumble: Stumble(ped, dt); break;
                 case PedState.Tumble: Tumble(ped, dt); break;
-                case PedState.Down:
-                    Slide(ped, dt, 8f);
-                    if (ped.StateTime >= ped.StateLength) Enter(ped, PedState.GetUp, 0.8f);
-                    break;
-                case PedState.GetUp:
-                    float u = Mathf.Clamp01(ped.StateTime / ped.StateLength);
-                    ped.Tip = Mathf.Lerp(90f, 0f, u * u * (3f - 2f * u));
-                    ped.Lift = 0f;
-                    if (u >= 1f) Startle(ped, 1.0f);
-                    break;
+                case PedState.Down: Down(ped, dt); break;
+                case PedState.GetUp: GetUp(ped); break;
+                case PedState.Dazed: Dazed(ped); break;
             }
 
             Head(ped, dt, now);
@@ -728,6 +730,7 @@ namespace Dogpatch.Ambient
 
         void Walk(Pedestrian ped, float dt, float now, bool near)
         {
+            if (Mood != CrowdMood.Normal && MoodWalk(ped, dt, now, near)) return;
             if (ped.PathIndex >= ped.Path.Count)
             {
                 Arrive(ped);
@@ -735,7 +738,7 @@ namespace Dogpatch.Ambient
             }
             int node = ped.Path[ped.PathIndex];
             var target = PathPoint(ped, ped.PathIndex);
-            float speed = ped.Cruise * (ped.Hurry > 0f ? 1.3f : 1f);
+            float speed = ped.Cruise * (ped.Hurry > 0f ? 1.3f : 1f) * PlayerController.RunScale * MoodPace;
             ped.Hurry = Mathf.Max(0f, ped.Hurry - dt);
             bool crossing = ped.Crossing >= 0;
             if (crossing)
@@ -927,18 +930,19 @@ namespace Dogpatch.Ambient
 
         void Brake(Pedestrian ped, float dt) => ped.Vel = Vector2.MoveTowards(ped.Vel, Vector2.zero, 4f * dt);
 
-        void Move(Pedestrian ped, Vector2 delta)
+        bool Move(Pedestrian ped, Vector2 delta)
         {
             var next = ped.Pos + delta;
             if (Graph.InBuilding(next, 0.25f))
             {
                 var a = new Vector2(next.x, ped.Pos.y);
                 var b = new Vector2(ped.Pos.x, next.y);
-                if (!Graph.InBuilding(a, 0.25f)) next = a;
-                else if (!Graph.InBuilding(b, 0.25f)) next = b;
-                else return;
+                if (!Graph.InBuilding(a, 0.25f)) ped.Pos = a;
+                else if (!Graph.InBuilding(b, 0.25f)) ped.Pos = b;
+                return false;
             }
             ped.Pos = next;
+            return true;
         }
 
         // Predictive avoidance: steer away from where each neighbour will be at closest approach,
@@ -996,12 +1000,14 @@ namespace Dogpatch.Ambient
                     ped.HeadTarget = rng.NextDouble() < 0.55 ? 0f : busy ? Range(-70f, -30f) : Range(-40f, 40f);
                 }
             }
-            if (ped.State == PedState.Startled || ped.State == PedState.Dive)
+            if (ped.State == PedState.Startled || (ped.State == PedState.Dive && ped.Phase == 0))
             {
                 var to = ped.ThreatFrom - ped.Pos;
                 float yaw = Mathf.DeltaAngle(ped.Heading, Mathf.Atan2(to.x, to.y) * Mathf.Rad2Deg);
                 ped.HeadTarget = Mathf.Clamp(yaw, -75f, 75f);
             }
+            else if (ped.State == PedState.Dazed) ped.HeadTarget = 35f * Mathf.Sin(ped.StateTime * 6f);
+            else if (ped.State >= PedState.Dive && ped.State != PedState.Startled) ped.HeadTarget = 0f;
             ped.HeadYaw = Mathf.MoveTowards(ped.HeadYaw, Mathf.Clamp(ped.HeadTarget, -75f, 75f), 240f * dt);
         }
 
@@ -1028,22 +1034,42 @@ namespace Dogpatch.Ambient
                     }
                     break;
                 case PedState.Sit: clip = Clip.Sit; break;
-                case PedState.Dive: clip = ped.StateTime < 0.15f || ped.StateTime > 0.95f ? Clip.Idle : Clip.Run; rate = 1.6f; break;
-                case PedState.Tumble: clip = Clip.Run; rate = 1.8f; break;
+                case PedState.Stumble: rate = 1.7f; goto case PedState.Dive;
+                case PedState.Dive:
+                case PedState.Tumble:
+                case PedState.Down:
+                case PedState.GetUp:
+                    clip = ped.Clip;
+                    break;
                 default: clip = Clip.Idle; break;
             }
             if (clip != ped.Clip)
             {
                 bool cycle = (clip == Clip.Walk || clip == Clip.Push) && (ped.Clip == Clip.Walk || ped.Clip == Clip.Push);
-                ped.PrevClip = ped.Clip;
-                ped.PrevClipTime = ped.ClipTime;
-                ped.Clip = clip;
-                if (!cycle) ped.ClipTime = 0f;
-                ped.Fade = 0f;
+                float time = ped.ClipTime;
+                Pose(ped, clip, 0.22f);
+                if (cycle) ped.ClipTime = time;
             }
             ped.ClipTime += dt * rate;
             ped.PrevClipTime += dt * rate;
-            ped.Fade = Mathf.Min(1f, ped.Fade + dt / 0.22f);
+            ped.Fade = Mathf.MoveTowards(ped.Fade, ped.FadeCap, dt * ped.FadeSpeed);
+        }
+
+        // Cross-fades to a clip over the given time; cap < 1 holds the blend part-way, so two
+        // clips mix (running legs under half-raised flailing arms, for a stumble).
+        static void Pose(Pedestrian ped, Clip clip, float fade, float cap = 1f)
+        {
+            ped.FadeSpeed = 1f / Mathf.Max(fade, 0.01f);
+            ped.FadeCap = cap;
+            if (clip == ped.Clip) return;
+            if (ped.Fade >= 0.5f)
+            {
+                ped.PrevClip = ped.Clip;
+                ped.PrevClipTime = ped.ClipTime;
+            }
+            ped.Clip = clip;
+            ped.ClipTime = 0f;
+            ped.Fade = 0f;
         }
 
         // --- cars, the player and shoves -------------------------------------------------------
@@ -1054,7 +1080,7 @@ namespace Dogpatch.Ambient
             {
                 if (car == null || Mathf.Abs(car.Speed) < 3f) continue;
                 var t = car.transform;
-                if ((new Vector2(t.position.x, t.position.z) - ped.Pos).sqrMagnitude > 35f * 35f) continue;
+                if ((new Vector2(t.position.x, t.position.z) - ped.Pos).sqrMagnitude > ThreatRange * ThreatRange) continue;
                 var v = new Vector2(t.forward.x, t.forward.z) * car.Speed;
                 if (Predict(ped, new Vector2(t.position.x, t.position.z), v, car.HalfExtents.x + 0.6f, out float tti))
                 {
@@ -1067,7 +1093,7 @@ namespace Dogpatch.Ambient
                 var v = new Vector2(vehicle.Velocity.x, vehicle.Velocity.z);
                 if (v.sqrMagnitude < 9f) continue;
                 var p = new Vector2(vehicle.Position.x, vehicle.Position.z);
-                if ((p - ped.Pos).sqrMagnitude > 35f * 35f) continue;
+                if ((p - ped.Pos).sqrMagnitude > ThreatRange * ThreatRange) continue;
                 if (Predict(ped, p, v, 1.6f, out float tti))
                 {
                     Threat(ped, p, v, tti);
@@ -1086,7 +1112,7 @@ namespace Dogpatch.Ambient
             var rel = ped.Pos - p;
             float v2 = v.sqrMagnitude;
             tti = Vector2.Dot(rel, v) / v2;
-            if (tti < 0f || tti > 1.5f) return false;
+            if (tti < 0f || tti > WarnSeconds) return false;
             float lateral = Mathf.Abs(rel.x * v.y - rel.y * v.x) / Mathf.Sqrt(v2);
             return lateral < halfWidth + ped.Radius;
         }
@@ -1111,13 +1137,18 @@ namespace Dogpatch.Ambient
 
         internal void Threat(Pedestrian ped, Vector2 from, Vector2 v, float tti)
         {
-            if (ped.State >= PedState.Dive && ped.State != PedState.Startled) return;
+            if (ped.State >= PedState.Dive && ped.State != PedState.Startled && ped.State != PedState.Dazed) return;
             if (ped.State == PedState.Startled && ped.StateTime < 0.3f) return;
             ped.ThreatFrom = from;
             if (ped.State == PedState.Sit) ped.Pos += Graph.Spots[ped.Spot >= 0 ? ped.Spot : 0].Facing * 0.5f;
             LeaveSpotState(ped);
             ped.FallDir = Side(ped, from, v);
-            Enter(ped, PedState.Dive, 1.45f);
+            Stand(ped);
+            ped.Phase = 0;
+            ped.Pitch = 0f;
+            Pose(ped, Clip.Brace, 0.12f);
+            Enter(ped, PedState.Dive, 0f);
+            GameEvents.RaisePedestrianDive(new Vector3(ped.Pos.x, 0f, ped.Pos.y), ped.Id);
         }
 
         void LeaveSpotState(Pedestrian ped)
@@ -1127,103 +1158,301 @@ namespace Dogpatch.Ambient
             if (ped.State == PedState.Sit || ped.State == PedState.BusWait) ReleaseSpot(ped);
         }
 
-        // Startled crouch, a sideways dive, a roll along the ground, then up again.
+        // Switches to the posed body, starting from however the person stands now.
+        static void Stand(Pedestrian ped)
+        {
+            if (ped.Posed) return;
+            ped.Posed = true;
+            ped.Orient = Quaternion.Euler(0f, ped.Heading + (ped.Role == PedRole.Skater ? 90f : 0f), 0f) * Quaternion.AngleAxis(ped.Lean, Vector3.right);
+            ped.Height = ped.Model.StandHeight;
+            ped.Climb = 0f;
+            ped.Spin = Vector3.zero;
+            ped.Lean = 0f;
+        }
+
+        static float Clearance(Pedestrian ped)
+        {
+            float now = ped.Model.Clearance(ped.Orient, ped.Clip);
+            if (ped.Fade >= 1f) return now;
+            return Mathf.Lerp(ped.Model.Clearance(ped.Orient, ped.PrevClip), now, ped.Fade);
+        }
+
+        static Quaternion Upright(float heading) => Quaternion.Euler(0f, heading, 0f);
+
+        static float Smooth(float u)
+        {
+            u = Mathf.Clamp01(u);
+            return u * u * (3f - 2f * u);
+        }
+
+        // A crouch and a flinch, a leap away from the car with arms out front, a forward roll and
+        // up again, then a startled look back at the car.
         void Dive(Pedestrian ped, float dt)
         {
-            float t = ped.StateTime;
-            if (t < 0.15f)
+            float target = Mathf.Atan2(ped.FallDir.x, ped.FallDir.y) * Mathf.Rad2Deg;
+            float t = ped.StateTime - ped.Mark;
+            switch (ped.Phase)
             {
-                ped.Lean = Mathf.MoveTowards(ped.Lean, -14f, 120f * dt);
-                ped.Vel = Vector2.zero;
+                case 0:
+                    ped.Vel = Vector2.zero;
+                    ped.Heading = Mathf.MoveTowardsAngle(ped.Heading, target, 900f * dt);
+                    ped.Orient = Quaternion.Slerp(ped.Orient, Upright(ped.Heading), 1f - Mathf.Exp(-25f * dt));
+                    ped.Height = Mathf.MoveTowards(ped.Height, Clearance(ped), 3f * dt);
+                    if (t < 0.16f) return;
+                    ped.Heading = target;
+                    ped.Vel = ped.FallDir * 6f;
+                    ped.Climb = 3.2f;
+                    Pose(ped, Clip.Leap, 0.1f);
+                    NextPhase(ped);
+                    return;
+                case 1:
+                    Move(ped, ped.Vel * dt);
+                    ped.Climb -= Gravity * dt;
+                    ped.Height += ped.Climb * dt;
+                    ped.Pitch = Mathf.MoveTowards(ped.Pitch, 82f, 420f * dt);
+                    ped.Orient = Upright(ped.Heading) * Quaternion.AngleAxis(ped.Pitch, Vector3.right);
+                    float floor = Clearance(ped);
+                    if (ped.Height > floor || ped.Climb > 0f) return;
+                    ped.Height = floor;
+                    ped.Climb = 0f;
+                    Pose(ped, Clip.Tuck, 0.1f);
+                    NextPhase(ped);
+                    return;
+                case 2:
+                    ped.Vel = Vector2.MoveTowards(ped.Vel, ped.FallDir * 1.6f, 6f * dt);
+                    Move(ped, ped.Vel * dt);
+                    ped.Pitch += 600f * dt;
+                    if (ped.Pitch >= 290f && ped.Clip == Clip.Tuck) Pose(ped, Clip.Brace, 0.15f);
+                    if (ped.Pitch >= 360f)
+                    {
+                        ped.Pitch = 0f;
+                        Pose(ped, Clip.Idle, 0.4f);
+                        NextPhase(ped);
+                    }
+                    ped.Orient = Upright(ped.Heading) * Quaternion.AngleAxis(ped.Pitch, Vector3.right);
+                    ped.Height = Clearance(ped);
+                    return;
+                default:
+                    ped.Vel = Vector2.MoveTowards(ped.Vel, Vector2.zero, 6f * dt);
+                    Move(ped, ped.Vel * dt);
+                    ped.Orient = Upright(ped.Heading);
+                    ped.Height = Clearance(ped) + Mathf.Sin(Mathf.Clamp01(t / 0.4f) * Mathf.PI) * 0.04f;
+                    if (t >= 0.4f) Startle(ped, 0.8f);
+                    return;
             }
-            else if (t < 0.45f)
-            {
-                float u = (t - 0.15f) / 0.3f;
-                ped.Lean = 0f;
-                ped.Tip = Mathf.Lerp(0f, 90f, u);
-                ped.Lift = Mathf.Sin(u * Mathf.PI) * 0.35f;
-                ped.Vel = ped.FallDir * 4.5f;
-                Move(ped, ped.Vel * dt);
-            }
-            else if (t < 0.95f)
-            {
-                float u = (t - 0.45f) / 0.5f;
-                ped.Tip = 90f;
-                ped.Roll = 360f * u;
-                ped.Lift = 0f;
-                ped.Vel = ped.FallDir * Mathf.Lerp(3f, 0.5f, u);
-                Move(ped, ped.Vel * dt);
-            }
-            else
-            {
-                float u = Mathf.Clamp01((t - 0.95f) / 0.5f);
-                ped.Roll = 0f;
-                ped.Tip = Mathf.Lerp(90f, 0f, u * u * (3f - 2f * u));
-                ped.Vel = Vector2.zero;
-                if (u >= 1f) Startle(ped, 1.1f);
-            }
+        }
+
+        static void NextPhase(Pedestrian ped)
+        {
+            ped.Phase++;
+            ped.Mark = ped.StateTime;
         }
 
         void Startle(Pedestrian ped, float length)
         {
-            ped.Tip = 0f;
-            ped.Roll = 0f;
-            ped.Lift = 0f;
+            ped.Posed = false;
             Enter(ped, PedState.Startled, length);
         }
 
-        internal void Hit(Pedestrian ped, Vector2 impulse)
+        // A hit scaled to its speed: a light bump stumbles, a firmer one knocks the person off their
+        // feet, and a fast one launches them into an arc with spin that bounces, rolls in a ball and
+        // settles. At most MaxLaunched people are in the air at once; extra hits knock down instead.
+        // from is where the hit came from (the vehicle's centre); people are thrown forward and off
+        // to the side of its line, so the car doesn't run straight on over them.
+        internal void Hit(Pedestrian ped, Vector2 impulse, Vector2 from)
         {
-            if (ped.State == PedState.Tumble || ped.State == PedState.Down || ped.State == PedState.GetUp) return;
-            if (impulse.sqrMagnitude < 1f) return;
+            if (ped.State == PedState.Tumble) return;
+            float speed = impulse.magnitude;
+            bool down = ped.State == PedState.Down || ped.State == PedState.GetUp;
+            if (speed < 1f || (down && speed < 6f)) return;
             LeaveSpotState(ped);
             ped.Crossing = -1;
             Unregister(ped);
-            var push = Vector2.ClampMagnitude(impulse * 0.6f, 9f);
-            ped.Slide = push;
-            ped.FallDir = push.normalized;
-            ped.LiftSpeed = Mathf.Clamp(push.magnitude * 0.45f, 2f, 4.5f);
-            ped.Lift = 0.01f;
-            ped.Tip = 0f;
-            ped.Roll = 0f;
-            Enter(ped, PedState.Tumble, 2f * ped.LiftSpeed / 18f);
+            var dir = impulse / speed;
+            var aside = new Vector2(-dir.y, dir.x);
+            float offset = Vector2.Dot(ped.Pos - from, aside);
+            if (offset < 0f || (Mathf.Abs(offset) < 0.05f && rng.NextDouble() < 0.5)) aside = -aside;
+            if (speed < StumbleBelow)
+            {
+                StartStumble(ped, dir * (1f + speed * 0.4f) + aside * 1.8f);
+                return;
+            }
+            Stand(ped);
+            ped.Impact = speed;
+            ped.FallDir = dir;
+            ped.Launched = speed >= LaunchAbove && Airborne() < MaxLaunched;
+            float flips, twist;
+            if (ped.Launched)
+            {
+                ped.Vel = (dir + aside * 0.3f) * Mathf.Clamp(0.55f * speed, 4f, 13f);
+                ped.Climb = Mathf.Clamp(1.4f + 0.27f * speed, 3.5f, 8.5f);
+                flips = Range(300f, 480f);
+                twist = Range(90f, 220f);
+            }
+            else
+            {
+                ped.Vel = (dir + aside * 0.45f) * Mathf.Clamp(0.5f * speed, 2f, 5f);
+                ped.Climb = Mathf.Clamp(0.8f + 0.25f * speed, 2f, 3.4f);
+                flips = Range(100f, 130f);
+                twist = Range(20f, 70f);
+            }
+            float flight = 2f * ped.Climb / Gravity;
+            var d3 = new Vector3(dir.x, 0f, dir.y);
+            ped.Spin = Vector3.Cross(d3, Vector3.up) * Mathf.Min(flips / flight, 1000f)
+                + Vector3.up * twist * (rng.NextDouble() < 0.5 ? -1f : 1f)
+                + d3 * Range(-50f, 50f);
+            Pose(ped, Clip.Flail, 0.1f);
+            Enter(ped, PedState.Tumble, 0f);
+            if (speed >= LaunchAbove) GameEvents.RaisePedestrianDive(new Vector3(ped.Pos.x, 0f, ped.Pos.y), ped.Id);
+        }
+
+        int Airborne()
+        {
+            int n = 0;
+            foreach (var p in active) if (p.State == PedState.Tumble && p.Launched) n++;
+            return n;
         }
 
         internal void Shove(Pedestrian ped, Vector2 impulse, GameObject by)
         {
             if (!ped.CanBeShoved) return;
             if (by != null) ped.ThreatFrom = new Vector2(by.transform.position.x, by.transform.position.z);
+            GameEvents.RaiseShove(new Vector3(ped.Pos.x, 0f, ped.Pos.y));
             if (impulse.magnitude > 3.5f)
             {
-                Hit(ped, impulse / 0.6f);
+                Hit(ped, impulse * 1.3f, ped.Pos - impulse.normalized);
                 return;
             }
             LeaveSpotState(ped);
-            ped.Slide = Vector2.ClampMagnitude(impulse, 3f);
-            ped.FallDir = ped.Slide.normalized;
-            Enter(ped, PedState.Stumble, 0.7f);
+            StartStumble(ped, Vector2.ClampMagnitude(impulse, 3f));
         }
 
-        // A stylised flip: up in an arc, a full turn and a quarter over the direction of the hit,
-        // landing flat, then lying still a moment before getting up. No ragdoll.
+        // Knocked back a few steps: legs scrambling, arms half up and windmilling, the body tipping
+        // with the push and swaying back upright.
+        void StartStumble(Pedestrian ped, Vector2 push)
+        {
+            Stand(ped);
+            ped.Slide = Vector2.ClampMagnitude(push, 3.2f);
+            ped.FallDir = ped.Slide.sqrMagnitude > 0.01f ? ped.Slide.normalized : Forward(ped);
+            ped.Mark = ped.Heading + (ped.Role == PedRole.Skater ? 90f : 0f);
+            Pose(ped, Clip.Run, 0.08f);
+            Pose(ped, Clip.Flail, 0.12f, 0.5f);
+            Enter(ped, PedState.Stumble, 0.7f + 0.12f * ped.Slide.magnitude);
+        }
+
+        void Stumble(Pedestrian ped, float dt)
+        {
+            Move(ped, ped.Slide * dt);
+            ped.Slide = Vector2.MoveTowards(ped.Slide, Vector2.zero, 4.5f * dt);
+            ped.Vel = ped.Slide;
+            float t = ped.StateTime;
+            float tip = 26f * Mathf.Exp(-3.5f * t) * Mathf.Sin(10f * t + 0.25f);
+            var axis = Vector3.Cross(Vector3.up, new Vector3(ped.FallDir.x, 0f, ped.FallDir.y));
+            ped.Orient = Quaternion.AngleAxis(tip, axis) * Upright(ped.Mark);
+            ped.Height = ped.Model.StandHeight - Mathf.Abs(tip) * 0.003f;
+            if (t >= ped.StateLength - 0.2f && ped.Clip != Clip.Idle) Pose(ped, Clip.Idle, 0.2f);
+            if (t < ped.StateLength) return;
+            ped.Heading = ped.Mark - (ped.Role == PedRole.Skater ? 90f : 0f);
+            Startle(ped, 0.5f);
+        }
+
+        // Ballistic flight with spin; on touching down it bounces, then rolls in a tuck while it has
+        // speed, and opens out to settle once it slows.
         void Tumble(Pedestrian ped, float dt)
         {
-            ped.LiftSpeed -= 18f * dt;
-            ped.Lift += ped.LiftSpeed * dt;
-            Move(ped, ped.Slide * dt);
-            ped.Slide = Vector2.MoveTowards(ped.Slide, Vector2.zero, 3f * dt);
-            ped.Tip = Mathf.Min(450f, ped.StateTime / Mathf.Max(ped.StateLength, 0.1f) * 450f);
-            if (ped.Lift > 0f || ped.StateTime < 0.2f) return;
-            ped.Lift = 0f;
-            ped.Tip = 90f;
-            Enter(ped, PedState.Down, Range(1.4f, 2.4f));
+            if (!Move(ped, ped.Vel * dt)) ped.Vel *= -0.3f;
+            ped.Climb -= Gravity * dt;
+            ped.Height += ped.Climb * dt;
+            float spin = ped.Spin.magnitude;
+            if (spin > 1f) ped.Orient = Quaternion.AngleAxis(spin * dt, ped.Spin / spin) * ped.Orient;
+            float floor = Clearance(ped);
+            if (ped.Height > floor) return;
+            ped.Height = floor;
+            float speed = ped.Vel.magnitude;
+            if (ped.Climb < -3f)
+            {
+                ped.Climb = -ped.Climb * 0.3f;
+                ped.Vel *= 0.7f;
+                ped.Spin *= 0.6f;
+                if (speed > RollAbove) Pose(ped, Clip.Tuck, 0.12f);
+                return;
+            }
+            ped.Climb = 0f;
+            if (speed > RollAbove)
+            {
+                var d = ped.Vel / speed;
+                var roll = Vector3.Cross(Vector3.up, new Vector3(d.x, 0f, d.y)) * (speed / 0.42f * Mathf.Rad2Deg);
+                ped.Spin = Vector3.MoveTowards(ped.Spin, roll, 2500f * dt);
+                ped.Vel = Vector2.MoveTowards(ped.Vel, Vector2.zero, 5.5f * dt);
+                if (ped.Clip != Clip.Tuck) Pose(ped, Clip.Tuck, 0.15f);
+                return;
+            }
+            ped.LieOrient = LieFlat(ped.Orient, ped.FallDir);
+            Pose(ped, Clip.Sprawl, 0.3f);
+            Enter(ped, PedState.Down, ped.Launched ? Range(1.0f, 1.5f) : Range(0.6f, 0.9f));
         }
 
-        void Slide(Pedestrian ped, float dt, float friction)
+        // The nearest way to lie flat: face down or up, whichever the body is closer to, with the
+        // head toward wherever it points now.
+        static Quaternion LieFlat(Quaternion orient, Vector2 fallback)
         {
-            Move(ped, ped.Slide * dt);
-            ped.Slide = Vector2.MoveTowards(ped.Slide, Vector2.zero, friction * dt);
-            ped.Vel = ped.Slide;
+            var up = orient * Vector3.up;
+            var head = new Vector3(up.x, 0f, up.z);
+            if (head.sqrMagnitude < 0.04f) head = new Vector3(fallback.x, 0f, fallback.y) * (up.y > 0f ? 1f : -1f);
+            if (head.sqrMagnitude < 1e-4f) head = Vector3.forward;
+            bool faceDown = (orient * Vector3.forward).y < 0f;
+            return Quaternion.LookRotation(faceDown ? Vector3.down : Vector3.up, head.normalized);
+        }
+
+        void Down(Pedestrian ped, float dt)
+        {
+            ped.Vel = Vector2.MoveTowards(ped.Vel, Vector2.zero, 9f * dt);
+            Move(ped, ped.Vel * dt);
+            ped.Orient = Quaternion.Slerp(ped.Orient, ped.LieOrient, 1f - Mathf.Exp(-9f * dt));
+            ped.Height = Mathf.Max(Clearance(ped), ped.Height - 3f * dt);
+            if (ped.StateTime < ped.StateLength) return;
+            ped.Vel = Vector2.zero;
+            ped.LieOrient = ped.Orient;
+            var head = ped.Orient * Vector3.up;
+            bool faceDown = (ped.Orient * Vector3.forward).y < 0f;
+            var facing = faceDown ? head : -head;
+            ped.Heading = Mathf.Atan2(facing.x, facing.z) * Mathf.Rad2Deg;
+            Pose(ped, Clip.Kneel, 0.45f);
+            Enter(ped, PedState.GetUp, 1.05f);
+        }
+
+        // Rolls or pushes up onto one knee, then stands, with a little bob at the top.
+        void GetUp(Pedestrian ped)
+        {
+            float u = ped.StateTime / ped.StateLength;
+            if (u < 0.5f)
+            {
+                ped.Orient = Quaternion.Slerp(ped.LieOrient, Upright(ped.Heading), Smooth(u / 0.5f));
+                ped.Height = Clearance(ped);
+                return;
+            }
+            if (ped.Clip == Clip.Kneel) Pose(ped, Clip.Idle, 0.4f);
+            ped.Orient = Upright(ped.Heading);
+            ped.Height = Clearance(ped) + Mathf.Sin(Mathf.Clamp01((u - 0.5f) / 0.5f) * Mathf.PI) * 0.05f;
+            if (u >= 1f) Enter(ped, PedState.Dazed, Range(1.1f, 1.6f));
+        }
+
+        // Back on their feet but woozy: a fading sway and a shake of the head, then on their way.
+        void Dazed(Pedestrian ped)
+        {
+            float t = ped.StateTime;
+            float a = 9f * (1f - Smooth(t / ped.StateLength));
+            ped.Orient = Upright(ped.Heading)
+                * Quaternion.AngleAxis(a * Mathf.Sin(t * 6.5f), Vector3.forward)
+                * Quaternion.AngleAxis(a * 0.6f * Mathf.Sin(t * 4.3f + 1f), Vector3.right);
+            ped.Height = ped.Model.StandHeight;
+            ped.Vel = Vector2.zero;
+            if (t < ped.StateLength) return;
+            ped.Posed = false;
+            ped.Hurry = 3f;
+            Enter(ped, PedState.Walk, 0f);
+            if (ped.Path.Count == 0 || ped.PathIndex >= ped.Path.Count) NewTrip(ped);
+            else Resume(ped);
         }
 
         internal void Contact(Pedestrian ped, Collider other)
@@ -1235,7 +1464,7 @@ namespace Dogpatch.Ambient
                 if (Mathf.Abs(car.Speed) > 1.5f)
                 {
                     var v = car.transform.forward * car.Speed;
-                    Hit(ped, new Vector2(v.x, v.z) - ped.Vel);
+                    Hit(ped, new Vector2(v.x, v.z) - ped.Vel, new Vector2(car.transform.position.x, car.transform.position.z));
                 }
                 return;
             }
@@ -1243,12 +1472,16 @@ namespace Dogpatch.Ambient
             if (traffic != null)
             {
                 var v = new Vector2(traffic.Velocity.x, traffic.Velocity.z);
-                if (v.sqrMagnitude > 2.25f) Hit(ped, v - ped.Vel);
+                if (v.sqrMagnitude > 2.25f) Hit(ped, v - ped.Vel, new Vector2(traffic.Position.x, traffic.Position.z));
                 return;
             }
             if (other.GetComponentInParent<PlayerController>() == null || !CanStumble(ped)) return;
             ped.ThreatFrom = playerPos;
-            if (playerVel.magnitude > 4.5f) Hit(ped, playerVel * 1.1f);
+            if (playerVel.magnitude > 4.5f)
+            {
+                GameEvents.RaiseShove(new Vector3(ped.Pos.x, 0f, ped.Pos.y));
+                Hit(ped, playerVel * 1.1f, playerPos);
+            }
             else Shove(ped, (ped.Pos - playerPos).normalized * 1.6f + playerVel * 0.4f, other.gameObject);
         }
 
@@ -1273,24 +1506,23 @@ namespace Dogpatch.Ambient
                 var rot = Quaternion.Euler(0f, heading, 0f);
                 var ground = new Vector3(pos.x, 0.03f, pos.y);
                 if (ped.Role == PedRole.Skater) ground.y += 0.12f;
+                var model = ped.Model;
                 Matrix4x4 matrix;
-                if (ped.Tip != 0f || ped.Lean != 0f)
+                if (ped.Posed)
                 {
-                    var fall = new Vector3(ped.FallDir.x, 0f, ped.FallDir.y);
-                    if (fall.sqrMagnitude < 0.01f) fall = rot * Vector3.forward;
-                    var axis = Vector3.Cross(Vector3.up, fall);
-                    var lean = Quaternion.AngleAxis(ped.Lean, rot * Vector3.right);
-                    var tilt = Quaternion.AngleAxis(ped.Roll, fall) * Quaternion.AngleAxis(ped.Tip, axis) * lean * rot;
-                    float lying = Mathf.Abs(Mathf.Sin(ped.Tip * Mathf.Deg2Rad));
-                    float hip = Mathf.Lerp(0.9f, 0.28f, lying) + ped.Lift;
-                    matrix = Matrix4x4.TRS(ground + Vector3.up * hip, tilt, Vector3.one) * Matrix4x4.Translate(Vector3.down * 0.9f);
+                    var hip = new Vector3(pos.x, 0.03f + ped.Height - model.StandHeight + model.HipHeight, pos.y);
+                    matrix = Matrix4x4.TRS(hip, ped.Orient, Vector3.one) * Matrix4x4.Translate(Vector3.down * model.HipHeight);
+                }
+                else if (ped.Lean != 0f)
+                {
+                    var tilt = Quaternion.AngleAxis(ped.Lean, rot * Vector3.right) * rot;
+                    matrix = Matrix4x4.TRS(ground + Vector3.up * model.HipHeight, tilt, Vector3.one) * Matrix4x4.Translate(Vector3.down * model.HipHeight);
                 }
                 else
                 {
                     matrix = Matrix4x4.TRS(ground, rot, Vector3.one);
                 }
 
-                var model = ped.Model;
                 float time = far ? Mathf.Floor(ped.ClipTime * 15f) / 15f : ped.ClipTime;
                 int current = model.Frame(ped.Clip, time);
                 int previous = far ? current : model.Frame(ped.PrevClip, ped.PrevClipTime);
@@ -1298,7 +1530,7 @@ namespace Dogpatch.Ambient
                 crowd.Add(model, matrix, anim, ped.Outfit, shadows);
 
                 var travel = Quaternion.Euler(0f, ped.Heading, 0f);
-                if (ped.Role == PedRole.Skater && skateboard != null && ped.Tip == 0f)
+                if (ped.Role == PedRole.Skater && skateboard != null && !ped.Posed)
                     crowd.Add(skateboard, Matrix4x4.TRS(new Vector3(pos.x, 0.03f, pos.y), travel, Vector3.one), Vector4.zero, ped.Outfit, shadows);
                 else if (ped.Role == PedRole.Cart && cart != null)
                     crowd.Add(cart, Matrix4x4.TRS(new Vector3(pos.x, 0.03f, pos.y) + travel * Vector3.forward * 0.95f, travel, Vector3.one), Vector4.zero, ped.Outfit, shadows);

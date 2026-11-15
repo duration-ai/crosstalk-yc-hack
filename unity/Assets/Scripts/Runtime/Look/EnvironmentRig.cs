@@ -141,15 +141,17 @@ namespace Dogpatch.Look
                 ? Mathf.Lerp(1.4f, 1f, fog / WorldEnvironment.DefaultFog)
                 : Mathf.Lerp(1f, 0.1f, (fog - WorldEnvironment.DefaultFog) / (1f - WorldEnvironment.DefaultFog));
             reach *= (1f - 0.4f * rainAmount) * (1f - 0.5f * snowAmount);
+            reach *= 1f + Mathf.Max(view.transform.position.y - 5f, 0f) / 60f;
             RenderSettings.fogColor = horizon.gamma;
-            RenderSettings.fogStartDistance = 450f * reach;
-            RenderSettings.fogEndDistance = 3600f * reach;
+            RenderSettings.fogStartDistance = 220f * reach;
+            RenderSettings.fogEndDistance = 1900f * reach;
             view.backgroundColor = horizon.gamma;
 
             if (sky != null)
             {
                 fogBankScale = 0.6f + fog * 1.15f;
                 sky.Bank.localScale = new Vector3(1f, fogBankScale, 1f);
+                sky.BankMaterial.SetFloat("_Density", Mathf.Lerp(0.6f, 1f, fog));
                 sky.Props.SetColor("_Tint", Color.Lerp(Color.white, SpeedDial.Hex("#C9D1DE"), rainAmount * 0.8f));
             }
 

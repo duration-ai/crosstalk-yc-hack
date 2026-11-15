@@ -130,7 +130,7 @@ async function schedule(ctx: MutationCtx, id: Id<"activeEffects">, endsAt: numbe
   await ctx.db.patch(id, { expiryJob: job });
 }
 
-/** Makes an effect live: counters, undo and contradicting effects end what they replace, and a repeat extends. */
+/** Makes an effect live: counters and contradicting effects end what they replace, and a repeat extends. */
 async function activate(ctx: MutationCtx, fields: EffectFields, now: number, pendingId?: Id<"activeEffects">) {
   const active = await activeRows(ctx, fields.roomId);
   const sameTarget = (row: Row) => row.target === fields.target && row.targetClass === fields.targetClass;
@@ -151,11 +151,6 @@ async function activate(ctx: MutationCtx, fields: EffectFields, now: number, pen
       if (overlaps) await end(ctx, row, "extinguished");
     }
   }
-  if (fields.effect === "undo_last") {
-    const newest = active.filter((row) => !row.instant).sort((a, b) => b.startsAt - a.startsAt || b._creationTime - a._creationTime)[0];
-    if (newest) await end(ctx, newest, "undone");
-  }
-
   if (!fields.instant) {
     const repeat = active.find((row) => row.effect === fields.effect && sameTarget(row));
     if (repeat) {

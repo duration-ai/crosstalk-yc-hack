@@ -199,6 +199,14 @@ namespace Dogpatch.World
                 }
             }
 
+            for (int r = 0; r < net.Roads.Length; r++)
+            {
+                var road = net.Roads[r];
+                if (RoadNetwork.IsCurbed(road) || road.kind == "path") continue;
+                foreach (var p in net.Points[r])
+                    if (refs.ContainsKey(Key(p))) sharedVertices.Add(Key(p));
+            }
+
             foreach (var pair in refs)
             {
                 var list = pair.Value;
@@ -226,8 +234,9 @@ namespace Dogpatch.World
         // crossing street's sidewalk across this street (snapped to the OSM crossing node on that leg when
         // there is one), curb to curb, and never reaches into the junction box. Legs shorter than two
         // crosswalks between junctions (the middle of a divided street's crossing) get none. Mid-block OSM
-        // crossings are painted where they are unless OSM says they are unmarked. Two crosswalks never
-        // overlap.
+        // crossings are painted where they are unless OSM says they are unmarked. Two crosswalks on curbed
+        // streets never overlap. Marked crossings on flush ground-level roads (service roads) are painted
+        // at their node, without curb ramps.
         void PlanCrossings()
         {
             var legCrosswalk = new Dictionary<(int, int, int), float>();
@@ -272,7 +281,16 @@ namespace Dogpatch.World
             for (int r = 0; r < net.Roads.Length; r++)
             {
                 var road = net.Roads[r];
-                if (!RoadNetwork.IsCurbed(road)) continue;
+                if (!RoadNetwork.IsCurbed(road))
+                {
+                    if (road.kind == "path" || road.bridge || road.tunnel || road.layer != 0) continue;
+                    foreach (float s in Marks(road, r, "crossing"))
+                    {
+                        PointAt(r, s, out var p, out var d);
+                        if (!Unmarked(p)) Crosswalks.Add(new Crosswalk { Road = r, Center = p, Along = d, HalfWidth = RoadNetwork.HalfWidth(road), MidBlock = true });
+                    }
+                    continue;
+                }
                 foreach (float s in Marks(road, r, "crossing"))
                 {
                     bool atJunction = false;
@@ -280,11 +298,7 @@ namespace Dogpatch.World
                         if (Mathf.Abs(arc[r][idx] - s) < clear + 10f) atJunction = true;
                     if (atJunction) continue;
                     PointAt(r, s, out var p, out var d);
-                    bool unmarked = false;
-                    foreach (var prop in data.props)
-                        if (prop.kind == "crossing" && prop.tags != null && (new Vector2(prop.x, prop.z) - p).sqrMagnitude < 9f
-                            && (Array.IndexOf(prop.tags, "crossing=unmarked") >= 0 || Array.IndexOf(prop.tags, "crossing:markings=no") >= 0)) unmarked = true;
-                    if (unmarked) continue;
+                    if (Unmarked(p)) continue;
                     float away = 1f;
                     float nearest = float.MaxValue;
                     foreach (var j in Junctions)
@@ -336,6 +350,15 @@ namespace Dogpatch.World
 
         readonly HashSet<(int, int, int)> stops = new HashSet<(int, int, int)>();
         readonly List<(int road, float s, float from, float to)> stopBars = new List<(int, float, float, float)>();
+
+        // True when OSM tags the crossing node at p as having no paint.
+        bool Unmarked(Vector2 p)
+        {
+            foreach (var prop in data.props)
+                if (prop.kind == "crossing" && prop.tags != null && (new Vector2(prop.x, prop.z) - p).sqrMagnitude < 9f
+                    && (Array.IndexOf(prop.tags, "crossing=unmarked") >= 0 || Array.IndexOf(prop.tags, "crossing:markings=no") >= 0)) return true;
+            return false;
+        }
 
         IEnumerable<float> Marks(Road road, int r, params string[] kinds)
         {
@@ -412,8 +435,9 @@ namespace Dogpatch.World
             int bars = Mathf.Max(1, Mathf.FloorToInt((span + BarGap) / (Bar + BarGap)));
             float start = -(bars * Bar + (bars - 1) * BarGap) * 0.5f + Bar * 0.5f;
             var mb = visual.At(cw.Center);
+            float y = RoadNetwork.IsCurbed(net.Roads[cw.Road]) ? PaintY : FlushY + 0.02f;
             for (int i = 0; i < bars; i++)
-                Rect(mb, cw.Center + n * (start + i * (Bar + BarGap)), cw.Along, CrosswalkDepth * 0.5f, Bar * 0.5f, White);
+                Rect(mb, cw.Center + n * (start + i * (Bar + BarGap)), cw.Along, CrosswalkDepth * 0.5f, Bar * 0.5f, White, y);
         }
 
         // A curb ramp: the sidewalk slopes from a lip just above the asphalt up to sidewalk height over
@@ -440,8 +464,10 @@ namespace Dogpatch.World
             {
                 if (!net.OnCurbedCarriageway(c + d * (side * (h + 0.4f)) - o * (w * 0.5f), 0f, r)) continue;
                 var facing = new Vector3(d.x, 0f, d.y) * side;
-                Both(P(inner, side, RoadY), P(mid, side, RoadY), P(mid, side, SidewalkY), P(inner, side, RoadY + Lip), CurbFace, facing);
-                Both(P(mid, side, RoadY), P(outer, side, RoadY), P(outer, side, SidewalkY), P(mid, side, SidewalkY), CurbFace, facing);
+                mb.Quad(P(inner, side, RoadY), P(mid, side, RoadY), P(mid, side, SidewalkY), P(inner, side, RoadY + Lip), CurbFace, facing);
+                mb.Quad(P(mid, side, RoadY), P(outer, side, RoadY), P(outer, side, SidewalkY), P(mid, side, SidewalkY), CurbFace, facing);
+                Bevel(cb, P(inner, side, RoadY + Lip), P(mid, side, SidewalkY), facing);
+                Bevel(cb, P(mid, side, SidewalkY), P(outer, side, SidewalkY), facing);
             }
         }
 
@@ -548,12 +574,12 @@ namespace Dogpatch.World
             return pieces;
         }
 
-        static void Rect(MeshBuilder mb, Vector2 c, Vector2 along, float halfAlong, float halfAcross, Color color)
+        static void Rect(MeshBuilder mb, Vector2 c, Vector2 along, float halfAlong, float halfAcross, Color color, float y = PaintY)
         {
             var n = new Vector2(-along.y, along.x);
             var a = along * halfAlong;
             var w = n * halfAcross;
-            mb.Quad(MeshBuilder.At(c - a - w, PaintY), MeshBuilder.At(c + a - w, PaintY), MeshBuilder.At(c + a + w, PaintY), MeshBuilder.At(c - a + w, PaintY), color, Vector3.up);
+            mb.Quad(MeshBuilder.At(c - a - w, y), MeshBuilder.At(c + a - w, y), MeshBuilder.At(c + a + w, y), MeshBuilder.At(c - a + w, y), color, Vector3.up);
         }
 
         public void PointAt(int r, float s, out Vector2 point, out Vector2 dir)
@@ -663,19 +689,30 @@ namespace Dogpatch.World
             Wall(visual.At(p), colliders.At(p), a, b, top, facing);
         }
 
-        // Vertical curb face between two ground points, from the asphalt up to 'top'.
+        // Vertical curb face between two ground points, from the asphalt up to 'top'. Its collider is a
+        // bevel instead, so a car bumps up onto the sidewalk at any angle rather than hitting a wall.
         static void Wall(MeshBuilder mb, MeshBuilder cb, Vector3 a, Vector3 b, float top, Vector3 facing)
         {
-            var a0 = new Vector3(a.x, RoadY, a.z);
-            var b0 = new Vector3(b.x, RoadY, b.z);
             var a1 = new Vector3(a.x, top, a.z);
             var b1 = new Vector3(b.x, top, b.z);
-            mb.Quad(a0, b0, b1, a1, CurbFace, facing);
-            cb.Quad(a0, b0, b1, a1, CurbFace, facing);
+            mb.Quad(new Vector3(a.x, RoadY, a.z), new Vector3(b.x, RoadY, b.z), b1, a1, CurbFace, facing);
+            Bevel(cb, a1, b1, facing);
         }
 
-        // A street that stops short of any other curbed street ends in a round turnaround: the asphalt
-        // already has a round cap, so ring it with curb and sidewalk.
+        // A collider slope from a curb's top edge (a, b) down to the asphalt CurbRun out in front of it.
+        const float CurbRun = 0.5f;
+        static void Bevel(MeshBuilder cb, Vector3 a, Vector3 b, Vector3 facing)
+        {
+            var run = facing * CurbRun;
+            var a0 = new Vector3(a.x + run.x, RoadY, a.z + run.z);
+            var b0 = new Vector3(b.x + run.x, RoadY, b.z + run.z);
+            float rise = Mathf.Max(a.y, b.y) - RoadY;
+            cb.Quad(a0, b0, b, a, CurbFace, (Vector3.up * CurbRun + facing * rise).normalized);
+        }
+
+        // A street that stops short of any other street ends in a round turnaround: the asphalt already
+        // has a round cap, so ring it with curb and sidewalk. A street carried on by a bridge or a service
+        // road doesn't end there.
         void DeadEnd(int r, Vector2 end, Vector2 outward, float hw)
         {
             if (sharedVertices.Contains(Key(end)) || net.OnCurbedCarriageway(end, -0.5f, r)) return;
@@ -798,8 +835,8 @@ namespace Dogpatch.World
         }
 
         // Ground the player and parked cars stand on away from the streets: a 1 m raster of the land
-        // polygons with every curbed street removed (dilated so the hole edge stays under a sidewalk),
-        // merged into rectangles of at most 64 m a side.
+        // polygons with every curbed street and every curb ramp's slope removed (dilated so the hole edge
+        // stays under a sidewalk), merged into rectangles of at most 64 m a side.
         ChunkedMeshBuilder LandColliders()
         {
             const float Cell = 1f;
@@ -850,6 +887,25 @@ namespace Dogpatch.World
                             if ((c - Geometry.ClosestPointOnSegment(c, pts[s], pts[s + 1], out _)).sqrMagnitude < reach * reach) solid[j * w + i] = false;
                         }
                 }
+            }
+
+            const float CellReach = 0.75f;
+            foreach (var (_, c, d, o) in ramps)
+            {
+                var inner = c - o * (SidewalkWidth * 0.5f);
+                float halfAlong = CrosswalkDepth * 0.5f + CellReach;
+                var reach = new Vector2(Mathf.Abs(d.x) * halfAlong + Mathf.Abs(o.x) * (RampRun + CellReach), Mathf.Abs(d.y) * halfAlong + Mathf.Abs(o.y) * (RampRun + CellReach));
+                var min = inner - reach;
+                var max = inner + reach;
+                int i0 = Mathf.Max(0, Mathf.FloorToInt((min.x - bounds.xMin) / Cell)), i1 = Mathf.Min(w - 1, Mathf.FloorToInt((max.x - bounds.xMin) / Cell));
+                int j0 = Mathf.Max(0, Mathf.FloorToInt((min.y - bounds.yMin) / Cell)), j1 = Mathf.Min(h - 1, Mathf.FloorToInt((max.y - bounds.yMin) / Cell));
+                for (int j = j0; j <= j1; j++)
+                    for (int i = i0; i <= i1; i++)
+                    {
+                        var local = new Vector2(bounds.xMin + (i + 0.5f) * Cell, bounds.yMin + (j + 0.5f) * Cell) - inner;
+                        float across = Vector2.Dot(local, o);
+                        if (Mathf.Abs(Vector2.Dot(local, d)) < halfAlong && across > -CellReach && across < RampRun + CellReach) solid[j * w + i] = false;
+                    }
             }
 
             var result = new ChunkedMeshBuilder(ChunkSize);

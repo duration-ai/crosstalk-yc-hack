@@ -13,7 +13,7 @@ namespace Dogpatch.Operator
 {
     // Wires the voice Operator into the Speed Dial race once RaceDirector is set up: tags the
     // city for view snapshots, adds the effect layer and its HUD, and, when a Convex deployment is
-    // configured and reachable, swaps the payphone's LocalOperator for ConvexOperator with a
+    // configured and reachable, swaps the phone's LocalOperator for ConvexOperator with a
     // Scribe microphone, a Convex player and room of its own, and the room's activeEffects
     // subscription. Offline (or -operator-local, or the scripted demo) LocalOperator stays.
     // When the race itself is online (RaceDirector's session is not the local one), the Operator
@@ -133,7 +133,7 @@ namespace Dogpatch.Operator
                 while (!connect.IsCompleted) yield return null;
                 if (connect.IsFaulted) Debug.LogWarning("[Operator] Convex setup failed, keeping LocalOperator: " + connect.Exception?.GetBaseException().Message);
             }
-            else Debug.Log("[Operator] no Convex deployment configured; LocalOperator answers the payphones");
+            else Debug.Log("[Operator] no Convex deployment configured; LocalOperator answers the phone");
 
             if (queuedLink != null) OnDeepLink(queuedLink);
             var args = Environment.GetCommandLineArgs();
@@ -172,7 +172,6 @@ namespace Dogpatch.Operator
             calls.PlayerId = () => PlayerId;
             calls.RoomId = () => RoomId;
             calls.Voice = voice;
-            if (calls.State == CallState.Holding) voice.Open();
             EntityTagger.MyPlayerId = PlayerId;
             EntityTagger.TagDynamic(race.Game, race);
             Effects.ServerNow = () => convex.ServerNowMs;
@@ -358,7 +357,7 @@ namespace Dogpatch.Operator
                 var key = pair.Substring(0, eq);
                 var value = Uri.UnescapeDataString(pair.Substring(eq + 1).Replace('+', ' '));
                 if (key == "room") JoinRoom(value);
-                else if (key == "say") race.Calls.Say(value);
+                else if (key == "say" && Config.debugInput) race.Calls.Say(value);
             }
         }
     }

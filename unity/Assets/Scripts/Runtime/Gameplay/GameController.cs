@@ -75,11 +75,7 @@ namespace Dogpatch.Gameplay
         async void Start()
         {
             Application.targetFrameRate = 60;
-            if (Application.isMobilePlatform && Screen.height > 1400)
-            {
-                float scale = 1400f / Screen.height;
-                Screen.SetResolution(Mathf.RoundToInt(Screen.width * scale), 1400, true);
-            }
+            gameObject.AddComponent<ScreenShape>();
             material = new Material(Resources.Load<Shader>("Shaders/FlatVertexColor")) { name = "FlatVertexColor" };
             SetupRendering();
 
@@ -341,9 +337,11 @@ namespace Dogpatch.Gameplay
         {
             var car = current;
             var t = car.transform;
+            var momentum = t.forward * car.Speed;
             float side = car.HalfExtents.x + 0.9f;
             var exit = t.position - t.right * side;
             if (world.Buildings.Blocked(new Vector2(exit.x, exit.z), 0.5f)) exit = t.position + t.right * side;
+            var door = exit - t.position;
             exit.y = Mathf.Max(t.position.y, 0f) + 0.1f;
 
             await backend.UpdateVehicleAsync(profile.id, car.VehicleId, ToVec(t.position), t.eulerAngles.y);
@@ -352,6 +350,7 @@ namespace Dogpatch.Gameplay
             current = null;
             player.gameObject.SetActive(true);
             player.Teleport(ToVector(result.state.position), result.state.heading);
+            BailOut.Begin(player, momentum, door);
             follow.Target = player.transform;
             follow.Driving = false;
             VehicleExited?.Invoke(car);
