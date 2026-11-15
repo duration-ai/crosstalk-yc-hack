@@ -13,7 +13,7 @@ namespace Dogpatch.Operator
 {
     // Players, sky and physics effects (CRO-36): shape, flight, grip, armour, time of day, weather
     // grades, time warps, flood, lava, earthquakes and cars that fly, float or sail. Every effect
-    // honours small/medium/large, reverts cleanly, layers on others through ShapeLayers, Knob and
+    // honours small/medium/large, reverts cleanly, layers on others through ShapeLayers, GuardedKnob and
     // SkyGrade, and is applied the same way on every device from its activeEffects row.
     public static class WorldEffectsA
     {
@@ -86,13 +86,13 @@ namespace Dogpatch.Operator
         readonly List<ShapeLayers> tilted = new List<ShapeLayers>();
         EffectTicker ticker;
         Flyer flyer;
-        Knob run;
+        GuardedKnob run;
 
         public override void Apply(string strength, EffectTarget target)
         {
             float onFoot = Scale(strength, 5f, 9f, 14f);
             float inCar = Scale(strength, 4f, 7f, 11f);
-            run = Knob.Times(() => PlayerController.RunScale, v => PlayerController.RunScale = v, Scale(strength, 1.3f, 1.6f, 2f));
+            run = GuardedKnob.Times(() => PlayerController.RunScale, v => PlayerController.RunScale = v, Scale(strength, 1.3f, 1.6f, 2f));
             void Sweep()
             {
                 var player = Context.Game.Player;
@@ -263,12 +263,12 @@ namespace Dogpatch.Operator
         readonly List<GameObject> props = new List<GameObject>();
         readonly HashSet<Object> armoured = new HashSet<Object>();
         EffectTicker ticker;
-        Knob durability;
+        GuardedKnob durability;
 
         public override void Apply(string strength, EffectTarget target)
         {
             var tuning = DamageTuning.Current;
-            durability = Knob.Times(() => tuning.playerDurabilityScale, v => tuning.playerDurabilityScale = v, Scale(strength, 3f, 5f, 10f));
+            durability = GuardedKnob.Times(() => tuning.playerDurabilityScale, v => tuning.playerDurabilityScale = v, Scale(strength, 3f, 5f, 10f));
             void Sweep()
             {
                 foreach (var car in Racers.Cars(Context, target))

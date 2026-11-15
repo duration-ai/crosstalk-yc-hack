@@ -3,6 +3,7 @@ import { ConvexError } from "convex/values";
 import { api, internal } from "./_generated/api";
 import { httpAction, type ActionCtx } from "./_generated/server";
 import { checkPlayerId } from "./avatars";
+import { COLORS } from "./raceModel";
 
 type Handler = (ctx: ActionCtx, input: Record<string, any>) => Promise<unknown>;
 
@@ -182,6 +183,23 @@ http.route({
   handler: endpoint((ctx, { playerId, roomId, position, heading, smash }) =>
     ctx.runMutation(api.race.update, { playerId, roomId, position, heading, smash }),
   ),
+});
+
+http.route({
+  path: "/api/world/presence",
+  method: "POST",
+  handler: endpoint(async (ctx, { playerId, position, heading, speed, mode, vehicleType }) => {
+    const now = Date.now();
+    const me = await ctx.runMutation(internal.world.heartbeat, { playerId, position, heading, speed, mode, vehicleType, now });
+    const players = await ctx.runQuery(internal.world.snapshot, { shard: me.shard, playerId, now });
+    return { serverTime: now, shard: me.shard, worldRoomId: me.worldRoomId, you: COLORS[me.slot % COLORS.length], players };
+  }),
+});
+
+http.route({
+  path: "/api/world/leave",
+  method: "POST",
+  handler: endpoint((ctx, { playerId }) => ctx.runMutation(internal.world.leave, { playerId })),
 });
 
 const NO_VIEW = { mode: "onFoot" as const, entities: [] };

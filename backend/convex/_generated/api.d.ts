@@ -26,6 +26,7 @@ import type * as race from "../race.js";
 import type * as raceModel from "../raceModel.js";
 import type * as rooms from "../rooms.js";
 import type * as vehicles from "../vehicles.js";
+import type * as world from "../world.js";
 import type * as worldChanges from "../worldChanges.js";
 
 import type {
@@ -53,6 +54,7 @@ declare const fullApi: ApiFromModules<{
   raceModel: typeof raceModel;
   rooms: typeof rooms;
   vehicles: typeof vehicles;
+  world: typeof world;
   worldChanges: typeof worldChanges;
 }>;
 

@@ -11,5 +11,5 @@
   "preRollMs": 500,
   "silencePadMs": 0,
   "finalWaitMs": 1500,
-  "debugInput": true
+  "debugInput": false
 }

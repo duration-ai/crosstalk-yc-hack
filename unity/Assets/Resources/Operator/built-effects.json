@@ -1,3 +1,6 @@
 {
-  "built": ["rain", "night", "gravity_lower", "run_faster", "vehicle_hop", "recolor", "set_fire", "launch", "stop", "big_heads", "vehicle_faster", "vehicle_slower", "nitro", "run_slower", "jump_higher", "slow_fall", "bigger", "smaller", "grip_down", "slippery_ground", "gravity_higher", "snow", "storm", "fog", "sunset", "day", "explode", "demolish", "grow", "shrink", "chunky", "skinny", "flight", "grip_up", "tougher", "cars_fly"]
+  "built": ["rain", "night", "gravity_lower", "run_faster", "vehicle_hop", "recolor", "set_fire", "launch", "stop", "big_heads", "vehicle_faster", "vehicle_slower", "nitro", "run_slower", "jump_higher", "slow_fall", "bigger", "smaller", "grip_down", "slippery_ground", "gravity_higher", "snow", "storm", "fog", "sunset", "day", "explode", "demolish", "grow", "shrink",
+    "more_traffic", "less_traffic", "aggressive_traffic", "green_lights", "speed_up", "slow_down",
+    "more_pedestrians", "fewer_pedestrians", "angry_npcs", "calm_npcs", "panic", "ped_theme",
+    "chunky", "skinny", "flight", "grip_up", "tougher", "cars_fly"]
 }

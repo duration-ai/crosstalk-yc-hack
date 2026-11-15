@@ -97,6 +97,9 @@ namespace Dogpatch.Gameplay
             verticalVelocity = 0f;
         }
 
+        // Hands back control mid-stride, e.g. coming up running out of a bail-out roll.
+        public void CarryOn(float runSpeed) => speed = runSpeed;
+
         void Update()
         {
             float dt = Time.deltaTime;

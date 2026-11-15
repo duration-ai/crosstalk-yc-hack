@@ -126,6 +126,7 @@ namespace Dogpatch.Operator
             registry.Register("big_heads", () => new BigHeadsEffect());
             MoreEffects.Register(registry);
             WorldEffectsA.Register(registry);
+            WorldEffectsB.Register(registry);
             return registry;
         }
     }

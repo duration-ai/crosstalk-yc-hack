@@ -15,14 +15,14 @@ namespace Dogpatch.Operator
 
     // A game knob set by one effect and put back only if nobody has written it since, so effects
     // that set the same knob absolutely (MoreEffects) never get stuck by our revert.
-    public sealed class Knob
+    public sealed class GuardedKnob
     {
         readonly Func<float> get;
         readonly Action<float> set;
         readonly float before;
         readonly float mine;
 
-        public Knob(Func<float> get, Action<float> set, float value)
+        public GuardedKnob(Func<float> get, Action<float> set, float value)
         {
             this.get = get;
             this.set = set;
@@ -31,7 +31,7 @@ namespace Dogpatch.Operator
             set(value);
         }
 
-        public static Knob Times(Func<float> get, Action<float> set, float k) => new Knob(get, set, get() * k);
+        public static GuardedKnob Times(Func<float> get, Action<float> set, float k) => new GuardedKnob(get, set, get() * k);
 
         public void Undo()
         {

@@ -35,6 +35,7 @@ namespace Dogpatch.Slipstream
         float s;
         float left, right, top, bottom;
         float band;
+        bool narrow;
         readonly Queue<News> queue = new Queue<News>();
         News showing;
         int place;
@@ -250,7 +251,8 @@ namespace Dogpatch.Slipstream
             right = safe.xMax - 22f * s;
             top = Screen.height - safe.yMax + 14f * s;
             bottom = Screen.height - safe.yMin - 20f * s;
-            band = right - left < 700f * s ? top + 76f * s : top + 4f * s;
+            narrow = right - left < 700f * s;
+            band = narrow ? top + 76f * s : top + 4f * s;
             readyVisible = false;
             callVisible = false;
             if (Race.Last == null)
@@ -265,6 +267,7 @@ namespace Dogpatch.Slipstream
 
             Markers();
             if (!Race.ResultsIn) NameTags();
+            if (racing) FindMe();
             if (lobby) Lobby(room);
             if (Race.Online && (lobby || Race.ResultsIn)) RoomCorner(room, lobby);
             if (Race.Gridded && !Race.ResultsIn) Countdown();
@@ -398,7 +401,7 @@ namespace Dogpatch.Slipstream
             if (since < 0.45f && previousPlace > 0)
             {
                 float a = 1f - since / 0.45f;
-                Panel(new Rect(left - 6f * s, top + 30f * s, digit.width + 70f * s, 14f * s), new Color(Sun.r, Sun.g, Sun.b, a));
+                Panel(new Rect(left - 6f * s, top + 58f * s, digit.width + 64f * s, 7f * s), new Color(Sun.r, Sun.g, Sun.b, a));
             }
             if (since < 0.28f && previousPlace > 0)
             {
@@ -410,8 +413,9 @@ namespace Dogpatch.Slipstream
                 GUI.EndGroup();
             }
             else Text(digit, place.ToString(), 64f, Sun, TextAnchor.UpperLeft, 2.6f * s);
-            var suffix = Measure(Ordinal(place), 22f);
-            Text(new Rect(digit.xMax - 2f * s, top + 4f * s, suffix.x, suffix.y), Ordinal(place), 22f, White, TextAnchor.UpperLeft, 1.6f * s);
+            int shown = since < 0.14f && previousPlace > 0 ? previousPlace : place;
+            var suffix = Measure(Ordinal(shown), 22f);
+            Text(new Rect(digit.xMax - 2f * s, top + 4f * s, suffix.x, suffix.y), Ordinal(shown), 22f, White, TextAnchor.UpperLeft, 1.6f * s);
             Text(new Rect(digit.xMax - 8f * s, top + 28f * s, 60f * s, suffix.y), "/" + total, 22f, White, TextAnchor.UpperLeft, 1.6f * s);
 
             float length = Mathf.Max(Race.Room.routeLength, 1f);
@@ -498,7 +502,7 @@ namespace Dogpatch.Slipstream
                 float t = Time.time - calls.StateSince;
                 float inP = EaseOut(Mathf.Clamp01(t / 0.18f));
                 float outP = Mathf.Clamp01((t - 2.3f) / 0.25f);
-                float baseX = band > top + 4f * s ? left : Screen.width * 0.5f - 150f * s;
+                float baseX = narrow ? left : Screen.width * 0.5f - 150f * s;
                 float x = Mathf.Lerp(-360f * s, baseX, inP) - outP * outP * (baseX + 400f * s);
                 float lineY = band;
                 var size = Measure(calls.Line, 18f);
@@ -524,7 +528,7 @@ namespace Dogpatch.Slipstream
                 showing = null;
                 return;
             }
-            float baseLeft = band > top + 4f * s ? left : Mathf.Max(left + 150f * s, Screen.width * 0.5f - 270f * s);
+            float baseLeft = narrow ? left : Mathf.Max(left + 150f * s, Screen.width * 0.5f - 270f * s);
             float offset;
             float lean;
             if (since < 0.12f)

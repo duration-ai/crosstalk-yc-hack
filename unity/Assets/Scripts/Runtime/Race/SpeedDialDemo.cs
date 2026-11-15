@@ -89,8 +89,10 @@ namespace Dogpatch.Race
             race.EnableAutopilot();
             yield return Seconds(0.05f);
             yield return Shot("countdown-go");
+            yield return Seconds(1.6f);
+            yield return Shot("countdown-find-me");
 
-            yield return Seconds(6f);
+            yield return Seconds(4.4f);
             yield return Shot("11a-racing");
 
             if (race.Calls.State == CallState.Holding)
