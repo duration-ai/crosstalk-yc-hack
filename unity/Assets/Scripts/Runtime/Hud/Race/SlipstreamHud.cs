@@ -250,6 +250,7 @@ namespace Dogpatch.Slipstream
 
             Markers();
             if (!Race.ResultsIn) NameTags();
+            if (racing) FindMe();
             if (lobby) Lobby(room);
             if (Race.Online && (lobby || Race.ResultsIn)) RoomCorner(room, lobby);
             if (Race.Gridded && !Race.ResultsIn) Countdown();
@@ -383,7 +384,7 @@ namespace Dogpatch.Slipstream
             if (since < 0.45f && previousPlace > 0)
             {
                 float a = 1f - since / 0.45f;
-                Panel(new Rect(left - 6f * s, top + 30f * s, digit.width + 70f * s, 14f * s), new Color(Sun.r, Sun.g, Sun.b, a));
+                Panel(new Rect(left - 6f * s, top + 58f * s, digit.width + 64f * s, 7f * s), new Color(Sun.r, Sun.g, Sun.b, a));
             }
             if (since < 0.28f && previousPlace > 0)
             {
@@ -395,8 +396,9 @@ namespace Dogpatch.Slipstream
                 GUI.EndGroup();
             }
             else Text(digit, place.ToString(), 64f, Sun, TextAnchor.UpperLeft, 2.6f * s);
-            var suffix = Measure(Ordinal(place), 22f);
-            Text(new Rect(digit.xMax - 2f * s, top + 4f * s, suffix.x, suffix.y), Ordinal(place), 22f, White, TextAnchor.UpperLeft, 1.6f * s);
+            int shown = since < 0.14f && previousPlace > 0 ? previousPlace : place;
+            var suffix = Measure(Ordinal(shown), 22f);
+            Text(new Rect(digit.xMax - 2f * s, top + 4f * s, suffix.x, suffix.y), Ordinal(shown), 22f, White, TextAnchor.UpperLeft, 1.6f * s);
             Text(new Rect(digit.xMax - 8f * s, top + 28f * s, 60f * s, suffix.y), "/" + total, 22f, White, TextAnchor.UpperLeft, 1.6f * s);
 
             float length = Mathf.Max(Race.Room.routeLength, 1f);
