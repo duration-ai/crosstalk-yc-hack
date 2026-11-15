@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Screenshots of every selfie-avatar screen over the game, from the Linux player under Xvfb: the
-# corner card, the pause menu chip, the capture screen (bundled test photo), SUITING UP, NO ONE IN
+# portrait button, the pause menu chip, the capture screen (bundled test photo), SUITING UP, NO ONE IN
 # SHOT, TRY AGAIN, then the avatar in the world. A local fake server answers 422, 503, then a slow
 # 200 with AVATAR_PLAYER's live avatar (default live-kubanino).
 #   SHOT_DIR  output folder (default Builds/avatar-ui)
