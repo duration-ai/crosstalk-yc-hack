@@ -53,6 +53,10 @@ namespace Dogpatch.Nav
             Log($"on foot: objective {nav.Kind}, {nav.Remaining:F0} m along {nav.Path.Count} points, arrived={nav.Arrived}");
             yield return Shot("on-foot-free-roam");
             yield return FullMap("full-map-free-roam");
+            FindAnyObjectByType<Minimap>().StartTravel();
+            yield return Seconds(1f);
+            Log($"fast travel: {Vector3.Distance(game.Player.transform.position, race.Course.RingCenter):F0} m from the ring");
+            yield return Shot("fast-travel");
 
             CarController car = null;
             foreach (var candidate in game.Cars.Values)

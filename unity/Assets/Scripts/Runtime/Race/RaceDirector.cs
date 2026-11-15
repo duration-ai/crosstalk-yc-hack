@@ -284,7 +284,7 @@ namespace Dogpatch.Race
 
         // Online players start 32 to 40 m from the ring, facing it, at a spot picked from their id so
         // phones launching together don't stack. Spots on the ring's open side come first.
-        Vector3 SpawnSpot(out float facing)
+        public Vector3 SpawnSpot(out float facing)
         {
             var center = RoutePath.Flat(Course.RingCenter);
             var open = RoutePath.Flat(Course.RingFacing);
