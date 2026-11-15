@@ -74,7 +74,7 @@ namespace Dogpatch.World
             };
             ctx.Statics = new StaticModels(models);
 
-            BuildGround(data, ctx, material);
+            var ground = BuildGround(data, ctx, material);
             ctx.Surface = new RoadSurface(ctx, data);
             ctx.Surface.Build(material);
             BuildBuildings(data, ctx, models, measure);
@@ -84,6 +84,12 @@ namespace Dogpatch.World
             ctx.Furniture.PlaceProps(data.props);
             ctx.Landmarks = new Landmarks(ctx, ctx.Statics);
             ctx.Landmarks.Build(data);
+            var rails = new List<Vector2[]>();
+            foreach (var rail in data.rails) rails.Add(Geometry.ToPoints(rail.pts));
+            var keepClear = new List<Vector2>();
+            foreach (var landmark in data.landmarks)
+                if (landmark.kind == "yc" || landmark.kind == "caltrain_22nd") keepClear.Add(new Vector2(landmark.x, landmark.z));
+            YardClutter.Build(ctx, ground, rails, keepClear.ToArray(), material);
             ChooseSpawns(ctx, random);
 
             var lod = ctx.Root.AddComponent<DistanceLod>();
@@ -91,7 +97,7 @@ namespace Dogpatch.World
             return ctx;
         }
 
-        static void BuildGround(WorldData data, WorldContext ctx, Material material)
+        static List<(string kind, Vector2[] poly)> BuildGround(WorldData data, WorldContext ctx, Material material)
         {
             var b = ctx.Bounds;
             var water = new MeshBuilder();
@@ -103,7 +109,7 @@ namespace Dogpatch.World
             var ground = RoadSurface.GroundMaterial(material);
             var land = new Vector2[data.land.Length][];
             for (int i = 0; i < land.Length; i++) land[i] = Geometry.ToPoints(data.land[i].pts);
-            GroundCover.Build(ctx.Root.transform, land, ground);
+            var cover = GroundCover.Build(ctx.Root.transform, land, ground);
 
             float coastNorthX = b.xMax, coastEastZ = b.yMin;
             foreach (var line in data.coastline)
@@ -136,6 +142,7 @@ namespace Dogpatch.World
             Wall(new Vector3(b.xMax + 1f, 10f, b.center.y), new Vector3(2f, 40f, b.height + 4f));
             Wall(new Vector3(b.center.x, 10f, b.yMin - 1f), new Vector3(b.width + 4f, 40f, 2f));
             Wall(new Vector3(b.center.x, 10f, b.yMax + 1f), new Vector3(b.width + 4f, 40f, 2f));
+            return cover;
         }
 
         // Every footprint becomes Polyfork models fitted by BuildingFitter; the extruded footprint
