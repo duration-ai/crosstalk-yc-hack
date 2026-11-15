@@ -20,6 +20,7 @@ namespace Dogpatch.Gameplay
         bool gestureUsed;
         ProfilerRecorder drawCalls, triangles;
         int windowFrames, logFrames;
+        long windowDraws, windowTris, logDraws, logTris;
         float windowTime, logTime, logWorst, nextRefresh;
         string text = "";
         GUIStyle style;
@@ -37,6 +38,7 @@ namespace Dogpatch.Gameplay
             drawCalls = ProfilerRecorder.StartNew(ProfilerCategory.Render, "Draw Calls Count");
             triangles = ProfilerRecorder.StartNew(ProfilerCategory.Render, "Triangles Count");
             windowFrames = logFrames = 0;
+            windowDraws = windowTris = logDraws = logTris = 0;
             windowTime = logTime = logWorst = 0f;
             Debug.Log("[Perf] readout on");
         }
@@ -71,13 +73,19 @@ namespace Dogpatch.Gameplay
             logFrames++;
             logTime += dt;
             logWorst = Mathf.Max(logWorst, dt);
+            long draws = drawCalls.Valid ? drawCalls.LastValue : 0, tris = triangles.Valid ? triangles.LastValue : 0;
+            windowDraws += draws;
+            windowTris += tris;
+            logDraws += draws;
+            logTris += tris;
 
             if (Time.unscaledTime >= nextRefresh && windowTime > 0f)
             {
                 nextRefresh = Time.unscaledTime + RefreshSeconds;
                 float fps = windowFrames / windowTime;
-                text = $"{fps:F0} FPS  {1000f * windowTime / windowFrames:F1} ms\n{Count(drawCalls)} draws  {Count(triangles)} tris\nworld {WorldBuildSeconds:F1} s";
+                text = $"{fps:F0} FPS  {1000f * windowTime / windowFrames:F1} ms\n{Count(drawCalls, windowDraws / windowFrames)} draws  {Count(triangles, windowTris / windowFrames)} tris\nworld {WorldBuildSeconds:F1} s";
                 windowFrames = 0;
+                windowDraws = windowTris = 0;
                 windowTime = 0f;
             }
 
@@ -85,16 +93,17 @@ namespace Dogpatch.Gameplay
             {
                 var p = Game != null && Game.View != null ? Game.View.transform.position : Vector3.zero;
                 string street = Game != null ? Game.StreetName : "";
-                Debug.Log($"[Perf] fps={logFrames / logTime:F1} ms={1000f * logTime / logFrames:F1} worstMs={1000f * logWorst:F1} draws={Count(drawCalls)} tris={Count(triangles)} worldBuildS={WorldBuildSeconds:F2} cam=({p.x:F0},{p.z:F0}) street={street} device={SystemInfo.deviceModel} res={Screen.width}x{Screen.height}");
+                Debug.Log($"[Perf] fps={logFrames / logTime:F1} ms={1000f * logTime / logFrames:F1} worstMs={1000f * logWorst:F1} draws={Count(drawCalls, logDraws / logFrames)} tris={Count(triangles, logTris / logFrames)} worldBuildS={WorldBuildSeconds:F2} cam=({p.x:F0},{p.z:F0}) street={street} device={SystemInfo.deviceModel} res={Screen.width}x{Screen.height}");
                 logFrames = 0;
+                logDraws = logTris = 0;
                 logTime = logWorst = 0f;
             }
         }
 
-        static string Count(ProfilerRecorder r)
+        // Mean per frame over the window, so one skipped frame doesn't read as zero.
+        static string Count(ProfilerRecorder r, long v)
         {
             if (!r.Valid) return "n/a";
-            long v = r.LastValue;
             return v >= 1_000_000 ? $"{v / 1_000_000f:F2}M" : v >= 1000 ? $"{v / 1000f:F0}k" : v.ToString();
         }
 
