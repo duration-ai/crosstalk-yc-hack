@@ -558,6 +558,7 @@ namespace Dogpatch.Race
             }
             else
             {
+                if (Game.CurrentCar != null && Game.CurrentCar != myCar) yield return Wait(Game.ExitCar());
                 if (Game.CurrentCar != myCar)
                 {
                     Game.Player.Teleport(spot + Quaternion.Euler(0f, heading, 0f) * Vector3.left * 2.2f, heading);

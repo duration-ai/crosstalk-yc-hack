@@ -44,12 +44,6 @@ namespace Dogpatch.Race
         // Raised on the first answer after Reconnecting, so callers can resync.
         public event Action Reconnected;
 
-        // Every world state the server pushes on its own (the WebSocket path, CROS-43); the HTTP
-        // path never raises it.
-        public event Action<WorldPresenceResponse> WorldPushed;
-
-        internal void PushWorld(WorldPresenceResponse world) => WorldPushed?.Invoke(world);
-
         sealed class Traffic
         {
             public int Count;
