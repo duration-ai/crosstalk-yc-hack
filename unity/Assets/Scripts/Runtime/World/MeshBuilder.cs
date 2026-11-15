@@ -14,6 +14,7 @@ namespace Dogpatch.World
         readonly List<int> triangles = new List<int>();
 
         public int VertexCount => vertices.Count;
+        public int IndexCount => triangles.Count;
 
         public void Triangle(Vector3 a, Vector3 b, Vector3 c, Color color, Vector3 facing)
         {

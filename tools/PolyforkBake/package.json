@@ -1,0 +1,11 @@
+{
+  "name": "polyfork-bake",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "bake": "node bake.mjs"
+  },
+  "dependencies": {
+    "three": "0.180.0"
+  }
+}
