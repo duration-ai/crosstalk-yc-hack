@@ -7,14 +7,24 @@ using UnityEngine;
 namespace Dogpatch.Backend
 {
     // Local, process-lifetime implementation of IGameBackend that enforces the same rules and
-    // error codes as the Convex contract. It makes no network calls. Records are copied in and
-    // out so callers can never mutate stored state by accident.
+    // error codes as the Convex contract. Only the avatar calls touch the network. Records are
+    // copied in and out so callers can never mutate stored state by accident.
     public sealed class InMemoryGameBackend : IGameBackend
     {
         readonly Dictionary<string, Player> players = new Dictionary<string, Player>();
         readonly Dictionary<string, PlayerState> states = new Dictionary<string, PlayerState>();
         readonly Dictionary<string, Vehicle> vehicles = new Dictionary<string, Vehicle>();
+        readonly Dictionary<string, Avatar> avatars = new Dictionary<string, Avatar>();
+        readonly AvatarHttpClient avatarHttp;
         int nextId = 1;
+
+        public InMemoryGameBackend() : this(AvatarHttpClient.ConfiguredBaseUrl()) { }
+
+        // avatarBaseUrl null: avatars come from the stub only.
+        public InMemoryGameBackend(string avatarBaseUrl)
+        {
+            if (!string.IsNullOrEmpty(avatarBaseUrl)) avatarHttp = new AvatarHttpClient(avatarBaseUrl);
+        }
 
         static long Now => DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
@@ -46,7 +56,7 @@ namespace Dogpatch.Backend
         {
             string name = displayName?.Trim() ?? "";
             if (name.Length < 1 || name.Length > 32) return Fail<Player>(BackendErrorCodes.InvalidArgument, "displayName must be 1 to 32 characters");
-            var player = new Player { id = "p" + nextId++, displayName = name, createdAt = Now };
+            var player = new Player { id = NewPlayerId(), displayName = name, createdAt = Now };
             players[player.id] = player;
             return Task.FromResult(Copy(player));
         }
@@ -123,6 +133,80 @@ namespace Dogpatch.Backend
             MoveVehicle(vehicle, position, heading);
             var state = WriteState(playerId, position, heading, PlayerModes.Driving, vehicle.id);
             return Task.FromResult(new VehicleResult { vehicle = Copy(vehicle), state = Copy(state) });
+        }
+
+        // Avatars come from the real server (AvatarHttpClient.ConfiguredBaseUrl) so phones get real
+        // ones. With the URL set to "stub", or when the request gets no HTTP answer at all, the
+        // stub answers instead: any non-empty photo becomes the stock commuter, an empty one is a
+        // RETAKE. Server refusals (RETAKE, DECISION_UNAVAILABLE) always reach the caller.
+        public async Task<AvatarResult> AnalyzeAvatarPhotoAsync(string playerId, byte[] jpeg)
+        {
+            if (Empty(playerId)) throw new BackendException(BackendErrorCodes.InvalidArgument, "playerId is required");
+            if (avatarHttp != null)
+            {
+                try
+                {
+                    var result = await avatarHttp.AnalyzePhotoAsync(playerId, jpeg);
+                    avatars[playerId] = Copy(result.avatar);
+                    return result;
+                }
+                catch (BackendException e) when (e.Code == AvatarErrorCodes.Offline)
+                {
+                    Debug.LogWarning("[Avatar] server unreachable, using the stub: " + e.Message);
+                }
+            }
+            if (jpeg == null || jpeg.Length == 0) throw new BackendException(AvatarErrorCodes.Retake, "No person in the photo");
+            var avatar = StubAvatar(playerId);
+            avatars[playerId] = avatar;
+            return new AvatarResult
+            {
+                avatar = Copy(avatar),
+                decision = new AvatarDecision { provider = "stub", realPerson = 1f, costume = "none" },
+            };
+        }
+
+        public async Task<Avatar> GetAvatarAsync(string playerId)
+        {
+            if (Empty(playerId)) throw new BackendException(BackendErrorCodes.InvalidArgument, "playerId is required");
+            if (avatarHttp != null)
+            {
+                try { return await avatarHttp.GetAvatarAsync(playerId); }
+                catch (BackendException e) when (e.Code == AvatarErrorCodes.Offline)
+                {
+                    Debug.LogWarning("[Avatar] server unreachable, using the stub: " + e.Message);
+                }
+            }
+            return avatars.TryGetValue(playerId, out var avatar) ? Copy(avatar) : null;
+        }
+
+        // The stub's answer: the bundled player model (Polyfork's commuter) as it ships, no recolour.
+        public static Avatar StubAvatar(string playerId) => new Avatar
+        {
+            playerId = playerId,
+            @base = "commuter-381e7f",
+            outfit = "",
+            costume = "",
+            glbUrl = "https://polyfork.dev/cdn/commuter-381e7f.glb",
+            fallbackGlbUrl = "https://polyfork.dev/cdn/commuter-381e7f.glb",
+            recolor = new AvatarRecolor[0],
+            swatches = new AvatarSwatches(),
+            updatedAt = Now,
+        };
+
+        // Player ids are unique per install and stable across launches ("p-<install id>" for the
+        // first player of a run, "-2", "-3" for the race bots after it), because the avatar server
+        // keys on them: a plain counter would give every phone the same "p1".
+        string NewPlayerId()
+        {
+            const string installKey = "dogpatch.installId";
+            string install = PlayerPrefs.GetString(installKey, "");
+            if (install.Length == 0)
+            {
+                install = Guid.NewGuid().ToString("N");
+                PlayerPrefs.SetString(installKey, install);
+                PlayerPrefs.Save();
+            }
+            return players.Count == 0 ? "p-" + install : $"p-{install}-{players.Count + 1}";
         }
 
         Vehicle DrivenBy(string playerId) => vehicles.Values.FirstOrDefault(v => v.occupiedBy == playerId);
