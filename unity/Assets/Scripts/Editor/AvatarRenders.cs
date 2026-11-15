@@ -51,8 +51,8 @@ namespace Dogpatch.EditorTools
                     int changed = AvatarLoader.Recolor(GlbAsset.Load("count", remixBytes), avatar.recolor);
 
                     var root = new GameObject("Avatars");
-                    if (stock != null) Pose(stock.Instantiate(material, root.transform), stock, new Vector3(-0.7f, 0f, 0f), 18f);
-                    Pose(figure.Instantiate(material, root.transform), figure, stock != null ? new Vector3(0.7f, 0f, 0f) : Vector3.zero, -18f);
+                    if (stock != null) Pose(stock.Instantiate(material, root.transform), stock, new Vector3(0.7f, 0f, 0f), -18f);
+                    Pose(figure.Instantiate(material, root.transform), figure, stock != null ? new Vector3(-0.7f, 0f, 0f) : Vector3.zero, 18f);
                     var shot = Shoot(cam);
                     UnityEngine.Object.DestroyImmediate(root);
 
