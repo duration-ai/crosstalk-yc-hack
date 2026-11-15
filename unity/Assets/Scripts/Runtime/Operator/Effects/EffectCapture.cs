@@ -19,6 +19,7 @@ namespace Dogpatch.Operator
         string output;
         string[] ids;
         string strength = "medium";
+        string street = "3rd Street";
         int serial;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -33,6 +34,8 @@ namespace Dogpatch.Operator
             capture.ids = j >= 0 && j + 1 < args.Length ? args[j + 1].Split(',') : EffectRegistry.Built;
             int k = Array.IndexOf(args, "-effectStrength");
             if (k >= 0 && k + 1 < args.Length) capture.strength = args[k + 1];
+            int s = Array.IndexOf(args, "-effectStreet");
+            if (s >= 0 && s + 1 < args.Length) capture.street = args[s + 1];
             Application.runInBackground = true;
         }
 
@@ -63,16 +66,10 @@ namespace Dogpatch.Operator
             cam.fieldOfView = 55f;
 
             var spawn = game.Player.transform.position;
-            var at = new Vector2(spawn.x, spawn.z);
-            var dir = Vector2.up;
-            if (game.World.Roads.Nearest(at, 60f, out var hit))
-            {
-                at = hit.Point;
-                dir = hit.Direction.normalized;
-            }
+            var (at, dir) = Street(game, street);
             var side = new Vector2(-dir.y, dir.x);
-            var look = new Vector3(at.x + dir.x * 14f, 1.5f, at.y + dir.y * 14f);
-            var eye = new Vector3(at.x - dir.x * 16f + side.x * 9f, 10f, at.y - dir.y * 16f + side.y * 9f);
+            var look = new Vector3(at.x + dir.x * 22f, 1f, at.y + dir.y * 22f);
+            var eye = new Vector3(at.x - dir.x * 10f + side.x * 8f, 9f, at.y - dir.y * 10f + side.y * 8f);
             game.Player.transform.position = new Vector3(at.x + side.x * 7f, spawn.y, at.y + side.y * 7f);
             for (float t = 0f; t < 12f; t += Time.deltaTime)
             {
@@ -131,6 +128,35 @@ namespace Dogpatch.Operator
             Application.Quit();
         }
 
+        // The middle of the named street's longest stretch near Pier 70, and its direction.
+        static (Vector2 at, Vector2 dir) Street(GameController game, string name)
+        {
+            var data = game.Data;
+            var yc = new Vector2((float)((-122.38664 - data.originLon) * Math.Cos(data.originLat * Math.PI / 180) * 111194.93), (float)((37.76078 - data.originLat) * 111194.93));
+            var near = yc + new Vector2(-150f, -120f);
+            var roads = game.World.Roads;
+            float best = float.MaxValue;
+            Vector2 at = near, dir = Vector2.up;
+            for (int r = 0; r < roads.Roads.Length; r++)
+            {
+                if (roads.Roads[r].name != name) continue;
+                var pts = roads.Points[r];
+                for (int i = 0; i < pts.Length - 1; i++)
+                {
+                    if (Vector2.Distance(pts[i], pts[i + 1]) < 15f) continue;
+                    var mid = (pts[i] + pts[i + 1]) * 0.5f;
+                    float d = Vector2.Distance(mid, near);
+                    if (d >= best) continue;
+                    best = d;
+                    at = mid;
+                    dir = (pts[i + 1] - pts[i]).normalized;
+                }
+            }
+            return (at, dir);
+        }
+
+        static string Counts() => $"traffic={(Traffic.TrafficSystem.Instance != null ? Traffic.TrafficSystem.Instance.Agents.Count : -1)} pedestrians={Ambient.PedestrianSystem.Count}";
+
         static EntityTag Nearest(Camera cam, Vector3 look, string cls)
         {
             EntityTag best = null;
@@ -171,7 +197,7 @@ namespace Dogpatch.Operator
             RenderTexture.active = null;
             File.WriteAllBytes(Path.Combine(output, name + ".png"), tex.EncodeToPNG());
             Destroy(tex);
-            Debug.Log("[EffectCapture] " + name);
+            Debug.Log("[EffectCapture] " + name + " " + Counts());
         }
     }
 }
