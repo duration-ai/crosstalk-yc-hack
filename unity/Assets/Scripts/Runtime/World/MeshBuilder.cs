@@ -125,6 +125,8 @@ namespace Dogpatch.World
             return builder;
         }
 
+        public MeshBuilder Get(Vector2Int key) => chunks.TryGetValue(key, out var builder) ? builder : null;
+
         public IEnumerable<(Vector2Int key, MeshBuilder builder)> All()
         {
             foreach (var pair in chunks) yield return (pair.Key, pair.Value);

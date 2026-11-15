@@ -8,7 +8,8 @@ namespace Dogpatch.World
     // so every street looking west, south or north ended in open water. This fills the land side
     // of the edge out to the horizon: Potrero Hill rising to the west, and low skyline blocks
     // (painted houses on the hill, warehouses to the south, taller Mission Bay blocks to the north)
-    // that distance fog softens into the horizon. Purely scenery: out of reach behind the map-edge
+    // that distance fog softens into the horizon. Where CityRegions streams in the real city, the land
+    // is flat and the made-up blocks are left out. Purely scenery: out of reach behind the map-edge
     // walls, no colliders, in 1 km chunks so the camera culls what it isn't facing.
     public static class Outskirts
     {
@@ -27,6 +28,7 @@ namespace Dogpatch.World
         public static void Build(Transform parent, Rect map, float coastNorthX, float coastEastZ, Material ground, Material material)
         {
             var random = new System.Random(2240);
+            var real = CityRegions.Active();
             var landChunks = new ChunkedMeshBuilder(1000f);
             var blockChunks = new ChunkedMeshBuilder(1000f);
 
@@ -46,6 +48,8 @@ namespace Dogpatch.World
                 float d = Vector2.Distance(p, new Vector2(map.xMin - 750f, map.center.y - 150f));
                 float hill = 75f * Mathf.Exp(-d * d / (650f * 650f));
                 float outside = Mathf.Max(Mathf.Max(map.xMin - p.x, p.x - map.xMax), Mathf.Max(map.yMin - p.y, p.y - map.yMax));
+                foreach (var (_, rect) in real)
+                    hill *= Mathf.SmoothStep(0f, 1f, Mathf.Max(Mathf.Max(rect.xMin - p.x, p.x - rect.xMax), Mathf.Max(rect.yMin - p.y, p.y - rect.yMax)) / 200f);
                 return hill * Mathf.SmoothStep(0f, 1f, outside / 300f);
             }
             Vector3 V(Vector2 p) => new Vector3(p.x, Height(p), p.y);
@@ -68,7 +72,7 @@ namespace Dogpatch.World
                 for (float z = z0; z < z1; z += 14f)
                 {
                     var p = new Vector2(x + (float)random.NextDouble() * 4f, z + (float)random.NextDouble() * 4f);
-                    if (!Land(p)) continue;
+                    if (!Land(p) || real.Exists(r => r.rect.Contains(p))) continue;
                     if (Mathf.Repeat(p.x, 110f) < 16f || Mathf.Repeat(p.y, 110f) < 16f) continue;
                     float gap = Mathf.Max(Mathf.Max(map.xMin - p.x, p.x - map.xMax), Mathf.Max(map.yMin - p.y, p.y - map.yMax));
                     if (gap < 40f || gap > SkylineReach || random.NextDouble() > Mathf.Lerp(0.45f, 0.04f, gap / SkylineReach)) continue;
