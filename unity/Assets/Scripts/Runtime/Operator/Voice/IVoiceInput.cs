@@ -15,6 +15,9 @@ namespace Dogpatch.Operator
     {
         string Partial { get; }
 
+        // The player turned the microphone down (or off in Settings), so nothing will be heard.
+        bool MicBlocked { get; }
+
         void Open();
 
         void BeginTalk();

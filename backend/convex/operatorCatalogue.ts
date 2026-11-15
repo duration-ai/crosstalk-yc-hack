@@ -1,6 +1,8 @@
+import builtEffects from "../../unity/Assets/Resources/Operator/built-effects.json";
+
 export type Strength = "small" | "medium" | "large";
 export type Scope = "players" | "world" | "object" | "class";
-export type WorldGroup = "sky" | "physics" | "population" | "undo";
+export type WorldGroup = "sky" | "physics" | "population";
 export type Range = readonly [number, number];
 
 export const CLASS_PARENT: Record<string, string | null> = {
@@ -152,6 +154,13 @@ export const COUNTERS: Record<string, readonly string[]> = {
   drain: ["flood"],
 };
 
+/**
+ * Effects the Operator may apply: the ones the Unity client implements (the list shared with it in
+ * unity/Assets/Resources/Operator/built-effects.json) plus the counters and extinguish, which the server
+ * carries out by ending rows. Anything else in the catalogue is refused as not built yet.
+ */
+export const PLAYABLE: ReadonlySet<string> = new Set([...builtEffects.built, ...Object.keys(COUNTERS), "extinguish"]);
+
 /** Effects in one set contradict each other, so a new one ends the others. */
 export const EXCLUSIVE: readonly (readonly string[])[] = [
   ["night", "day", "sunset", "fast_day_cycle"],
@@ -174,7 +183,6 @@ export const WORLD_EFFECTS: Record<string, Effect> = {
   ...SKY_EFFECTS,
   ...PHYSICS_EFFECTS,
   ...POPULATION_EFFECTS,
-  undo_last: { label: "Undone", description: "undo the last change" },
 };
 
 export function effectInfo(effect: string): Effect | undefined {

@@ -67,13 +67,13 @@ export function buildQuestions(view: View): Question[] {
       type: "choice",
       name: "scope",
       instructions:
-        "What does the player's FIRST request change, right now? Answer for the first request only. Changing what something is made of (ice, rubber, glass, jelly, stone) is a property of that thing, not a transformation. A bare effect name (nitro, rush hour, earthquake) is a request. A request with a delay or a condition (in five minutes, later, after the race, when someone wins) is reject.",
+        "What does the player's FIRST request change, right now? Answer for the first request only. Changing what something is made of (ice, rubber, glass, jelly, stone) is a property of that thing, not a transformation. A bare effect name (nitro, rush hour, earthquake) is a request. A request with a delay or a condition (in five minutes, later, after the race, when someone wins) is reject. A generic undo that does not name what to change (undo that, take it back, cancel that, never mind, go back) is reject, never an opposite effect.",
       choices: [
         { value: "players", description: "the racers themselves (me, us, everyone): their size, shape, running, jumping, flying, or how their cars drive (super speed, nitro, grip, hop)" },
-        { value: "world", description: "the whole world: time of day, weather, lights, gravity, ground, time speed, water, traffic, pedestrians and crowds (numbers, mood, costumes, big heads), or undo" },
+        { value: "world", description: "the whole world: time of day, weather, lights, gravity, ground, time speed, water, traffic, pedestrians and crowds (numbers, mood, costumes, big heads)" },
         { value: "object", description: "one specific thing the player can see (that car, this building, the burning tree, my car, his car)" },
         { value: "class", description: "every object of one named kind at once (all the buses, every tree, all Waymos)" },
-        { value: "reject", description: "impossible, or delayed or conditional (in five minutes, later, when I win); otherwise only if nothing else fits" },
+        { value: "reject", description: "impossible, delayed or conditional (in five minutes, later, when I win), or a generic undo (undo that, take it back); otherwise only if nothing else fits" },
       ],
     },
     { type: "choice", name: "player_effect", instructions: "Which change to all players is asked for?", choices: options(PLAYER_EFFECTS) },
@@ -86,7 +86,6 @@ export function buildQuestions(view: View): Question[] {
         { value: "sky", description: "time of day, weather, sky, city lights" },
         { value: "physics", description: "gravity, ground, air, slow motion or fast forward, flood water, lava, earthquake, cars flying or floating" },
         { value: "population", description: "traffic (rush hour, jams, empty roads), traffic lights, pedestrians, crowd mood or costumes, big heads" },
-        { value: "undo", description: "undo or cancel the last change" },
       ],
     },
     { type: "choice", name: "sky_effect", instructions: "Which time, weather or lighting change is asked for?", choices: options(SKY_EFFECTS) },
@@ -137,7 +136,7 @@ export function buildQuestions(view: View): Question[] {
     {
       type: "predicate",
       name: "other_player",
-      instructions: "Does the request target another player (him, her, them, that player, their car, or a car driven by the OTHER player)?",
+      instructions: "Does the request single out another player (him, her, them, that player, their car, or a car driven by the OTHER player)? Everyone, us or all of us includes the player, so it is not another player.",
     },
     {
       type: "choice",
@@ -173,6 +172,7 @@ export function buildQuestions(view: View): Question[] {
         { value: "teleport", description: "move someone or something somewhere else instantly" },
         { value: "deferred", description: "do something later: in five minutes, after the race, when someone wins" },
         { value: "cheat", description: "win, skip ahead, finish the race, get points, or remove other players" },
+        { value: "undo", description: "undo, cancel or take back an earlier change without naming it (undo that, take it back, never mind)" },
         { value: "vague", description: "unclear what change is wanted" },
         { value: "not_a_request", description: "chit-chat, a question or noise; a bare effect name like rush hour is a request" },
       ],
