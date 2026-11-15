@@ -37,7 +37,7 @@ namespace Dogpatch.Operator
                 foreach (var remote in race.Remotes.All)
                 {
                     var r = remote;
-                    players.Add((r.Id, () => r.Left ? null : r.Body, false));
+                    players.Add((r.Id, () => r.Left || r.Car == null || r.Avatar == null ? null : r.Body, false));
                 }
 
             Vector3? caller = null;
