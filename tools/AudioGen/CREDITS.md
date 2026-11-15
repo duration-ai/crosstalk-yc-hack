@@ -192,6 +192,12 @@ A clip listed on several rows is a layer of those sources.
 | `Ui/news_whoosh` | Sonniss GDC 2024 bundle (Sonniss.com-GDC2024-GameAudioBundle6of9.zip): Rescopic Sound - Distinct Whooshes / `WHSH_Airy-Whoosh Wind Gust 11_RSCPC_DW.wav` | Rescopic Sound | https://sonniss.com/gameaudiogdc/ | Sonniss GDC |
 | `Ui/operator_on` | Kenney Interface Sounds / `bong_001.ogg` | Kenney | https://kenney.nl/assets/interface-sounds | CC0 1.0 |
 | `Ui/payphone_pickup` | Sonniss GDC 2026 bundle (Sonniss.com-GDC2026-GameAudioBundle1of5.zip): 344 Audio - Antique Telephone / `COMTelph_Antique Telephone Pick Up & Drop Ear Piece_344 Audio_Antiques - Telephone_05.wav` | 344 Audio | https://gdc.sonniss.com/ | Sonniss GDC |
+| `Ui/ring_hum` | Kenney Sci-Fi Sounds / `forceField_000.ogg` (crossfaded into a loop) | Kenney | https://kenney.nl/assets/sci-fi-sounds | CC0 1.0 |
+| `Ui/ring_whoosh` | Kenney Interface Sounds / `maximize_003.ogg` | Kenney | https://kenney.nl/assets/interface-sounds | CC0 1.0 |
+| `Ui/ring_join` | Kenney Interface Sounds / `confirmation_002.ogg` | Kenney | https://kenney.nl/assets/interface-sounds | CC0 1.0 |
+| `Ui/ring_tick` | Kenney Interface Sounds / `tick_002.ogg` | Kenney | https://kenney.nl/assets/interface-sounds | CC0 1.0 |
+| `Ui/ring_charge` | Kenney Digital Audio / `powerUp3.ogg` | Kenney | https://kenney.nl/assets/digital-audio | CC0 1.0 |
+| `Ui/ring_launch` | Kenney Digital Audio / `zapThreeToneUp.ogg` | Kenney | https://kenney.nl/assets/digital-audio | CC0 1.0 |
 | `Ui/call_hangup` | Sonniss GDC 2026 bundle (Sonniss.com-GDC2026-GameAudioBundle1of5.zip): 344 Audio - Antique Telephone / `COMTelph_Antique Telephone Pick Up & Drop Ear Piece_344 Audio_Antiques - Telephone_05.wav` | 344 Audio | https://gdc.sonniss.com/ | Sonniss GDC |
 | `Music/music_roam` | "Funky Disco Beats to Boogie/Woogie to" (48.030-117.848 s (32 bars at 110 BPM; 10 ms crossfade from 117.848-117.858 into the loop head)) | fupi (opengameart.org/users/fupi) | https://opengameart.org/content/funky-disco-beats-to-boogiewoogie-to | CC0 1.0 |
 | `Music/music_race` | "Neon sign Circuit (main, bpm145)" (0.000-52.966 s, the first 32 bars, 40 ms loop crossfade) | MintoDog (opengameart.org/users/mintodog) | https://opengameart.org/content/neon-sign-circuit | CC0 1.0 |
