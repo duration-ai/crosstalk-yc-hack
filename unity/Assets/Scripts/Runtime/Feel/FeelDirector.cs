@@ -9,6 +9,7 @@ namespace Dogpatch.Feel
     {
         PlayerController player;
         float nextScan;
+        bool cameraFeelFailed;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Boot()
@@ -51,7 +52,11 @@ namespace Dogpatch.Feel
             if (Time.unscaledTime < nextScan) return;
             nextScan = Time.unscaledTime + 0.5f;
             var cam = Camera.main;
-            if (cam != null && cam.GetComponent<CameraFeel>() == null) cam.gameObject.AddComponent<CameraFeel>();
+            if (!cameraFeelFailed && cam != null && cam.GetComponent<CameraFeel>() == null && cam.gameObject.AddComponent<CameraFeel>() == null)
+            {
+                cameraFeelFailed = true;
+                Debug.LogError("[Feel] Could not add CameraFeel to the main camera; camera shake is off");
+            }
             if (player != null) return;
             player = FindAnyObjectByType<PlayerController>();
             if (player != null) player.Landed += OnLanded;

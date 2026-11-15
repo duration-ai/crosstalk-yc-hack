@@ -86,6 +86,7 @@ namespace Dogpatch.EditorTools
             PlayerSettings.allowedAutorotateToLandscapeRight = true;
             PlayerSettings.statusBarHidden = true;
             PlayerSettings.SplashScreen.show = false;
+            PlayerSettings.stripEngineCode = false;
 
             var settings = AssetDatabase.LoadAllAssetsAtPath("ProjectSettings/ProjectSettings.asset").FirstOrDefault();
             if (settings != null)
