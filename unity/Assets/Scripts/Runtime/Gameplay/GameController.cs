@@ -329,12 +329,6 @@ namespace Dogpatch.Gameplay
                 hud.Toast("Walk closer to get in");
                 return;
             }
-            if (!cars.ContainsKey(tapped.VehicleId))
-            {
-                if (!(backend is InMemoryGameBackend local)) return;
-                local.SeedVehicle(tapped.VehicleId, tapped.ModelId, ToVec(tapped.transform.position), tapped.transform.eulerAngles.y);
-                cars[tapped.VehicleId] = tapped;
-            }
             await RunAsync(() => EnterCarAsync(tapped));
         }
 
@@ -352,6 +346,12 @@ namespace Dogpatch.Gameplay
 
         async Task EnterCarAsync(CarController car)
         {
+            if (!cars.ContainsKey(car.VehicleId))
+            {
+                if (!(backend is InMemoryGameBackend local)) return;
+                local.SeedVehicle(car.VehicleId, car.ModelId, ToVec(car.transform.position), car.transform.eulerAngles.y);
+                cars[car.VehicleId] = car;
+            }
             var result = await backend.EnterVehicleAsync(profile.id, car.VehicleId);
             TakeWheel(car, result);
             Debug.Log($"[Dogpatch] entered car {car.VehicleId} ({car.ModelId}) on {world.Roads.StreetNameAt(car.transform.position)}");

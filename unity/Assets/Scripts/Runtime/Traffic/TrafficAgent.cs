@@ -143,6 +143,22 @@ namespace Dogpatch.Traffic
             Pose(0.02f, true);
         }
 
+        // A ride (CabRide): follow the route at a brisk pace through lights and stop signs and pull
+        // up on the goal lane at goalS. A null route ends the ride and the agent drives freely again.
+        public bool Express;
+        public StreetGraph.Lane GoalLane;
+        public float GoalS;
+
+        public void DriveTo(List<StreetGraph.Lane> route, StreetGraph.Lane goal, float goalS)
+        {
+            if (route == null) Route = null;
+            else FollowRoute(route, 0, new List<RouteStop>());
+            nextLink = null;
+            Express = route != null;
+            GoalLane = goal;
+            GoalS = goalS;
+        }
+
         public void FollowRoute(List<StreetGraph.Lane> route, int index, List<RouteStop> stops)
         {
             Route = route;
@@ -240,12 +256,21 @@ namespace Dogpatch.Traffic
             float halfWidth = Car.HalfExtents.x;
             float now = Time.time;
 
-            float target = (OnRail ? Spec.CruiseSpeed : Mathf.Min(Spec.CruiseSpeed, Lane.Speed * (Spec.Robotaxi ? 0.8f : 1f))) * Mathf.Clamp(CarController.SpeedScale * Pace * (1f + Rage * 0.6f), 0.3f, 2.5f);
+            float cruise = OnRail ? Spec.CruiseSpeed
+                : Express ? Mathf.Min(Car.Handling.TopSpeed, Mathf.Max(Spec.CruiseSpeed, Lane.Speed * 1.2f))
+                : Mathf.Min(Spec.CruiseSpeed, Lane.Speed * (Spec.Robotaxi ? 0.8f : 1f));
+            float target = cruise * Mathf.Clamp(CarController.SpeedScale * Pace * (1f + Rage * 0.6f), 0.3f, 2.5f);
             if (!OnRail && Link != null && Mathf.Abs(Link.Turn) > 30f) target = Mathf.Min(target, Spec.Robotaxi ? 4.5f : 6f);
             float rate = brake;
             State = "cruising";
 
-            if (!OnRail && Link == null)
+            if (Express && Link == null && Lane == GoalLane)
+            {
+                Limit(ref target, GoalS - S, brake);
+                State = "pulling up";
+            }
+
+            if (!OnRail && Link == null && !Express)
             {
                 float stopDistance = Lane.Path.Length - S - halfLength - 0.6f;
                 var node = Lane.To;
