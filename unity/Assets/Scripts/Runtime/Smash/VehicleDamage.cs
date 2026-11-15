@@ -27,7 +27,8 @@ namespace Dogpatch.Smash
         public Rigidbody Body { get; private set; }
         public VehicleSpec Spec { get; private set; }
         public float Damage { get; private set; }
-        public float Health01 => Mathf.Clamp01(1f - Damage / Mathf.Max(Spec.Durability, 1f));
+        public float Durability => Spec.Durability * (Car.Driven ? DamageTuning.Current.playerDurabilityScale : DamageTuning.Current.otherDurabilityScale);
+        public float Health01 => Mathf.Clamp01(1f - Damage / Mathf.Max(Durability, 1f));
         public bool IsWrecked { get; private set; }
         public Vector3 LastVelocity => lastVelocity;
         public float LastHitTime { get; private set; } = -99f;
@@ -141,6 +142,8 @@ namespace Dogpatch.Smash
                 return;
             }
 
+            var tuning = DamageTuning.Current;
+            bool breakable = false;
             var world = SmashWorld.Instance;
             if (world != null && world.Index != null && world.Index.TryFromCollider(other, out var instance))
             {
@@ -152,15 +155,19 @@ namespace Dogpatch.Smash
                     var v = lastVelocity * (1f - Mathf.Clamp(share, 0f, 0.85f) * (1f - Spec.BargeStrength * 0.7f));
                     Body.linearVelocity = new Vector3(v.x, Body.linearVelocity.y, v.z);
                     Body.angularVelocity = lastAngular;
-                    TakeHit(other, null, impact, point, normal, impact * share * 0.6f, null);
+                    float smash = impact * share * 0.6f;
+                    TakeHit(other, null, impact, point, normal, smash * tuning.breakableDamageScale, smash, null);
                     return;
                 }
+                breakable = instance.Class == World.PhysicsClass.Breakable;
             }
 
             if (otherBody != null && !otherBody.isKinematic) return;
             float speed = Mathf.Abs(Vector3.Dot(lastVelocity, normal));
             if (speed < MinImpact) return;
-            TakeHit(other, null, speed, point, normal, speed * 1.4f * (1f - Spec.BargeStrength), null);
+            float dent = speed * 1.4f * (1f - Spec.BargeStrength);
+            float damage = speed < tuning.minDamageImpact ? 0f : speed * tuning.wallDamagePerImpact * (1f - Spec.BargeStrength);
+            TakeHit(other, null, speed, point, normal, breakable ? damage * tuning.breakableDamageScale : damage, dent, null);
         }
 
         // Resolves a car-on-car hit once per pair: a 1D collision along the line between them with
@@ -208,8 +215,11 @@ namespace Dogpatch.Smash
             victim.lastAttackTime = Time.time;
             float ratioToVictim = Mathf.Clamp(m1 / m2, 0.25f, 4f);
             float ratioToInstigator = Mathf.Clamp(m2 / m1, 0.25f, 4f);
-            instigator.TakeHit(otherCollider, victim.Car, closing, point, -dir, closing * ratioToInstigator * (1f - instigator.Spec.BargeStrength), null);
-            victim.TakeHit(otherCollider, instigator.Car, closing, point, dir, closing * ratioToVictim * (1f - victim.Spec.BargeStrength), instigator.Car);
+            float toInstigator = closing * ratioToInstigator * (1f - instigator.Spec.BargeStrength);
+            float toVictim = closing * ratioToVictim * (1f - victim.Spec.BargeStrength);
+            float scale = closing < DamageTuning.Current.minDamageImpact ? 0f : DamageTuning.Current.carDamageScale;
+            instigator.TakeHit(otherCollider, victim.Car, closing, point, -dir, toInstigator * scale, toInstigator, null);
+            victim.TakeHit(otherCollider, instigator.Car, closing, point, dir, toVictim * scale, toVictim, instigator.Car);
 
             if (closing > 4f)
             {
@@ -233,17 +243,19 @@ namespace Dogpatch.Smash
         // Who gets the points for what this car does: the car that launched it, if that was recent.
         CarController Scorer() => LastAttacker != null && !Car.Driven ? LastAttacker : Car;
 
-        void TakeHit(Collider other, CarController otherCar, float impact, Vector3 point, Vector3 normal, float damage, CarController attacker)
+        // damage is what the hit costs in health; dent is how hard it looks (dents, debris, panels
+        // popping off), which stays as dramatic as before the damage tuning.
+        void TakeHit(Collider other, CarController otherCar, float impact, Vector3 point, Vector3 normal, float damage, float dent, CarController attacker)
         {
             LastHitTime = Time.time;
             VehicleImpacts.Raise(new VehicleHit(Car, other, otherCar, impact, point, normal, damage));
-            if (IsWrecked || damage <= 0f) return;
+            if (IsWrecked || dent <= 0f) return;
             Damage += damage;
-            Dent(point, damage);
+            Dent(point, dent);
             var fx = SmashWorld.Instance?.Fx;
-            if (fx != null && damage > 3f) fx.Debris(point, lastVelocity * 0.3f + normal * 2f, Palette(), Mathf.Clamp(Mathf.RoundToInt(damage * 0.5f), 2, 10), 0.18f);
-            if (damage > 9f) PopPanel(point, normal);
-            if (Damage >= Spec.Durability) Wreck(attacker ?? LastAttacker);
+            if (fx != null && dent > 3f) fx.Debris(point, lastVelocity * 0.3f + normal * 2f, Palette(), Mathf.Clamp(Mathf.RoundToInt(dent * 0.5f), 2, 10), 0.18f);
+            if (dent > 9f) PopPanel(point, normal);
+            if (Damage >= Durability) Wreck(attacker ?? LastAttacker);
         }
 
         IReadOnlyList<Color> Palette()
@@ -392,7 +404,7 @@ namespace Dogpatch.Smash
         {
             if (IsWrecked) return;
             IsWrecked = true;
-            Damage = Spec.Durability;
+            Damage = Durability;
             Car.enabled = false;
             Body.isKinematic = false;
             block ??= new MaterialPropertyBlock();
@@ -449,7 +461,7 @@ namespace Dogpatch.Smash
             var fx = SmashWorld.Instance?.Fx;
             if (fx == null || Time.time < nextSmoke) return;
             float health = Health01;
-            if (health > 0.6f) return;
+            if (health > DamageTuning.Current.lightSmokeBelowHealth) return;
             var view = SmashWorld.Instance.View;
             if (view != null && (view.transform.position - transform.position).sqrMagnitude > 140f * 140f) return;
             var ext = Car.HalfExtents;
@@ -459,7 +471,7 @@ namespace Dogpatch.Smash
                 nextSmoke = Time.time + 0.09f;
                 fx.Smoke(engine, SmashFx.SmokeDark, 1.1f, 1, 2.2f);
             }
-            else if (health < 0.3f)
+            else if (health < DamageTuning.Current.greySmokeBelowHealth)
             {
                 nextSmoke = Time.time + 0.14f;
                 fx.Smoke(engine, SmashFx.SmokeGrey, 0.75f, 1, 1.8f, -lastVelocity * 0.3f);
