@@ -1,5 +1,6 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { avatarParams, decisionSummary } from "./avatars";
 import { movementMode, vec3 } from "./model";
 import { roomStatus } from "./raceModel";
 import { worldChangeParams } from "./worldChanges";
@@ -112,4 +113,10 @@ export default defineSchema({
     playerId: v.id("players"),
     at: v.number(),
   }).index("by_player_at", ["playerId", "at"]),
+  avatars: defineTable({
+    playerId: v.string(),
+    params: avatarParams,
+    decision: decisionSummary,
+    updatedAt: v.number(),
+  }).index("by_player", ["playerId"]),
 });

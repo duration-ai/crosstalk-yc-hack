@@ -56,6 +56,8 @@ Every failure returns this body with the status below:
 | 404 | `NOT_FOUND` | The `playerId`, `vehicleId`, `roomId` or room `code` does not exist (including malformed ids). |
 | 409 | `CONFLICT` | The request contradicts current state: the vehicle is taken, the player is in another vehicle, or the player is not the driver; the room is full, started, finished or in its countdown lock, or the player is not in it. |
 | 429 | `RATE_LIMITED` | More than 10 Scribe tokens a minute for one player. |
+| 422 | `RETAKE` | The avatar photo does not clearly show a real person (likelihood below 0.5). |
+| 503 | `DECISION_UNAVAILABLE` | Both avatar decision models failed or timed out. |
 | 503 | `UNAVAILABLE` | The speech service could not mint a token, or its key is not set. |
 | 500 | `INTERNAL` | Anything unexpected. The message is always `Internal error`. |
 
@@ -170,6 +172,76 @@ Errors: `404`; `409` when the player is not in this vehicle.
 Only the driver can move a vehicle. The same call moves the driver's player state, so while driving the client sends only this, not a separate state save. Response `200`: `{ "vehicle": Vehicle, "state": PlayerState }`.
 
 Errors: `404`; `409` when the player is not the driver.
+
+## Avatars
+
+Selfie-to-avatar. The client uploads one full-body photo; the server resizes it, asks a decision model one set of typed questions about it, maps the answers onto a Polyfork character with fixed rules, and saves the result per player. Everything tunable (option lists, outfits, swatches, costume presets, thresholds, models, hedge timing) lives in `convex/avatarData.ts`.
+
+### Upload a photo: `POST /api/avatar/photo?playerId=<id>`
+
+The body is the raw image (`Content-Type: image/jpeg`, or any `image/*` sharp can read), 1 byte to 8 MB. Send a ~1024 px JPEG; the server auto-rotates by EXIF and shrinks it to 1024 px on the long side either way. `playerId` is the client's own player id: 1 to 64 letters, digits or `_ - : .`. It does not have to be a Convex `players` id, because the Unity client still runs the in-memory `IGameBackend`.
+
+The photo is never stored: it exists only in the action's memory for the one call.
+
+Response `200`:
+
+```jsonc
+{
+  "avatar": Avatar,
+  "decision": {
+    "provider": "typesafe-ai/jev-1.14.0", // or the backup, "perplexity/pplx-decider-flash-v1.3"
+    "latencyMs": 312,                     // first request to winning answer
+    "hedged": false,                      // true when the backup was asked too
+    "realPerson": 0.98,
+    "costume": "none",                    // the costume question's top answer
+    "costumeProbability": 0.02            // the highest probability of any real costume
+  },
+  "answers": [ … ]                        // raw decision answers, for debugging
+}
+```
+
+Errors: `422 RETAKE` when the real-person likelihood is below 0.5 (`error` also carries `realPerson`; the previous avatar is kept), `503 DECISION_UNAVAILABLE` when both decision models failed, `400 INVALID_ARGUMENT` for a bad `playerId`, a non-image body or an unreadable image.
+
+### Get an avatar: `GET /api/avatar?playerId=<id>`
+
+Response `200`: `{ "avatar": Avatar }`, or `{ "avatar": null }` when the player has none. Other racers call this to load your avatar.
+
+### Avatar
+
+```jsonc
+{
+  "playerId": "tim-1",
+  "base": "suburban-resident-a9db9c",   // Polyfork model id
+  "outfit": "tee",                      // the outfit answer, even when a costume replaced it
+  "costume": null,                      // or a preset name such as "pirate"
+  "figure": "feminine",                 // null when the model has no figure knob
+  "age": "adult",                       // snapped to the model's age options; null if it has none
+  "build": 0.94,                        // snapped to 5 steps across the model's range; null if none
+  "expression": "warm",                 // Polyfork expression knob; null when the model has none
+  "glbUrl": "https://polyfork.dev/cdn/suburban-resident-a9db9c-remix.glb?p=%7B…%7D",
+  "fallbackGlbUrl": "https://polyfork.dev/cdn/suburban-resident-a9db9c.glb",
+  "recolor": [ { "zone": "shirt", "from": "#62798c", "to": "#e2453a" } ],
+  "swatches": { "skin": "medium", "hair": "brown", "top": "red", "outer": "none", "bottoms": "denim", "headwear": "none" },
+  "updatedAt": 1794770000000
+}
+```
+
+- `glbUrl` is Polyfork's remix GLB with the geometry knobs (figure, age, build, expression, and per-outfit toggles such as hiding a held prop) baked in. Keys are sorted so identical avatars share one cached bake. It has no animations: retarget Idle/Walk/Run by bone name (Polyfork humans share one 31-bone skeleton). Load `fallbackGlbUrl`, the stock model, if the remix fails.
+- `recolor` maps exact sRGB vertex colours: every `COLOR_0` value equal to `from` becomes `to`. `from` is the zone's default from the model's `-params.json`, and one `from` never appears twice.
+
+### Mapping rules
+
+- **Refusal:** `real_person` below 0.5 → `RETAKE`.
+- **Costume:** if any costume's probability is at least 0.70, its preset decides the model, the expression and every colour except skin and hair, which still come from the photo. Figure, age and build also still come from the photo, so a child in a pirate costume is a child-sized pirate. Below 0.70 the normal avatar is built.
+- **Outfit:** the outfit answer picks the base model. Outfits are judged on clothing type, never colour or body.
+- **Colours:** each swatch has one fixed hex. Each outfit lists which of its model's zones are the top, outer layer, bottoms and headwear; some zones take a darker shade (×0.78) of the same swatch so two-tone details survive. No outer layer → the outer zones take the top colour. No headwear, or hair `hidden` → those zones keep the model's colours. `bald` → the hair zone takes the skin colour.
+- **Body:** figure is used when the model supports it; age snaps to the nearest band the model has; the build score (0 very slim … 4 heavy) snaps to 5 steps across the model's own range.
+
+### Decision call
+
+One call to `https://ai-gateway.vercel.sh/v1/decisions` with 13 typed questions about the image: `real_person` (predicate); `outfit`, `figure`, `age` (choices); `build` (score, 5 levels); `skin`, `hair`, `top`, `outer`, `bottoms`, `headwear` (named swatch choices); `expression` and `costume` (choices). Jev (`typesafe-ai/jev-1.14.0`) is asked first. If it hasn't answered within 1.5 s, or fails, the backup (`perplexity/pplx-decider-flash-v1.3`) is asked too and the first complete answer wins; the other request is aborted. An answer set missing any question counts as a failure. Each request times out at 8 s. Every call logs one `avatar.decision` JSON line with the provider, latency, whether it hedged, and each attempt.
+
+The deployment needs `AI_GATEWAY_API_KEY` (`npx convex env set AI_GATEWAY_API_KEY "$AI_GATEWAY_API_KEY"`).
 
 ## Client notes
 

@@ -19,6 +19,7 @@ type Choice = { value: string; description: string };
 type Question =
   | { type: "choice"; name: string; instructions: string; choices: Choice[] }
   | { type: "predicate"; name: string; instructions: string };
+export type DecisionQuestion = Question | { type: "score"; name: string; instructions: string; levels: { label: string }[] };
 
 export type ActiveForPrompt = { effect: string; target: string; targetClass: string; secondsLeft: number };
 
@@ -232,23 +233,27 @@ export function parseAnswers(raw: RawAnswer[]): Answers {
 
 export class JevUnavailable extends Error {}
 
+/** One decision call to the AI Gateway's /v1/decisions endpoint; throws on a non-2xx reply. */
+export async function postDecision(apiKey: string, model: string, input: unknown, questions: DecisionQuestion[], signal?: AbortSignal) {
+  const response = await fetch(JEV_URL, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ model, input, questions }),
+    signal,
+  });
+  if (!response.ok) throw new Error(`HTTP ${response.status}: ${(await response.text()).slice(0, 300)}`);
+  return (await response.json()) as { model?: string; answers: unknown[] };
+}
+
 /** One Jev decision with a 2 s timeout and one retry. */
 export async function askJev(apiKey: string, input: string, questions: Question[]) {
-  const body = JSON.stringify({ model: JEV_MODEL, input, questions });
   const errors: string[] = [];
   const started = Date.now();
   for (let attempt = 1; attempt <= 2; attempt++) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), JEV_TIMEOUT_MS);
     try {
-      const response = await fetch(JEV_URL, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-        body,
-        signal: controller.signal,
-      });
-      if (!response.ok) throw new Error(`HTTP ${response.status}: ${(await response.text()).slice(0, 300)}`);
-      const json = (await response.json()) as { answers: RawAnswer[] };
+      const json = (await postDecision(apiKey, JEV_MODEL, input, questions, controller.signal)) as { answers: RawAnswer[] };
       return { raw: json.answers, answers: parseAnswers(json.answers), attempts: attempt, jevMs: Date.now() - started };
     } catch (error) {
       errors.push(controller.signal.aborted ? `timeout after ${JEV_TIMEOUT_MS} ms` : String(error));

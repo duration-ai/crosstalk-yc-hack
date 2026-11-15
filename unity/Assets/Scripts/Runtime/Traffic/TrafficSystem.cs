@@ -261,7 +261,7 @@ namespace Dogpatch.Traffic
             if (lane.Path.Length < 12f) return;
             float s = Random.Range(4f, lane.Path.Length - 6f);
             var p = lane.Path.Sample(s, out _);
-            var world = new Vector3(p.x, 0.05f, p.y);
+            var world = new Vector3(p.x, RoadSurface.GroundY(p) + 0.05f, p.y);
             float d = Vector2.Distance(p, f2);
             if (d > SpawnMax || d < (initial ? 25f : SpawnMin)) return;
             if (!initial && d < 170f && Visible(world)) return;
@@ -530,7 +530,7 @@ namespace Dogpatch.Traffic
             void Park(string type, Vector3 at, float heading)
             {
                 if (game.World.Buildings.Blocked(new Vector2(at.x, at.z), 0.6f)) return;
-                VehicleRoster.Spawn(type, new Vector3(at.x, 0.05f, at.z), heading, root);
+                VehicleRoster.Spawn(type, at, heading, root);
             }
             Park(VehicleTypes.RaceCar, hero.Position - fwd * 8.5f, hero.Heading);
             Park(VehicleTypes.Cybertruck, hero.Position + fwd * 9.5f, hero.Heading);
