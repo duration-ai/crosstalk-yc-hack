@@ -145,7 +145,7 @@ namespace Dogpatch.World
                         continue;
                     }
                     string cellVariant = terrace ? Recolour(pick, candidates, Hash(building.id + "/" + (i / 2)), colour) : variant;
-                    if (statics.Place(StaticModels.Layer.Buildings, cellVariant, c, Matrix4x4.TRS(MeshBuilder.At(c, 0f), rotation, scale))) placed++;
+                    if (statics.Place(StaticModels.Layer.Buildings, cellVariant, c, Matrix4x4.TRS(MeshBuilder.At(c, 0f), rotation, scale), building.id) >= 0) placed++;
                 }
 
             AddFar(poly, height, centroid, variant);

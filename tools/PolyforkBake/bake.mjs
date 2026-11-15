@@ -2,7 +2,9 @@
 // merges it to one indexed mesh with COLOR_0, and writes:
 //   unity/Assets/Resources/Polyfork/<key>.bytes   GLB per variant
 //   unity/Assets/Resources/Polyfork/variants.json  catalogue the game loads (ModelCatalog shape)
-//   tools/PolyforkBake/manifest.json                every asset, knob value, reason, size and triangle count
+//   unity/Assets/Resources/Polyfork/colliders/<asset>.json  Polyfork convex hulls for breakable models, in Unity model space
+//   tools/PolyforkBake/manifest.json                every asset, knob value, reason, size, triangle count and physics
+// physics.json is Polyfork's getAsset physics block per asset (mass, body, material, collision), fetched through the MCP.
 // Modules and metadata are cached in tools/PolyforkBake/.cache (gitignored); the .mjs files are never committed.
 //   node tools/PolyforkBake/bake.mjs [--only <prefix>]
 import * as THREE from 'three';
@@ -16,6 +18,8 @@ const root = path.resolve(here, '..', '..');
 const cache = path.join(here, '.cache');
 const outDir = path.join(root, 'unity', 'Assets', 'Resources', 'Polyfork');
 const UA = { 'User-Agent': 'crosstalk-dogpatch-bake/1.0 (+https://github.com/duration-ai/crosstalk-yc-hack)' };
+const physics = JSON.parse(fs.readFileSync(path.join(here, 'physics.json'), 'utf8')).assets;
+const physicsClass = role => role.startsWith('building:') || role === 'prop:crane_mast' || role === 'prop:crane_top' || role === 'prop:bollard' ? 'static' : 'breakable';
 const only = process.argv.includes('--only') ? process.argv[process.argv.indexOf('--only') + 1] : null;
 fs.mkdirSync(cache, { recursive: true });
 const realWarn = console.warn;
@@ -124,8 +128,16 @@ for (const v of variants) {
   const { bytes, min, max } = glb(mesh, v.key);
   fs.writeFileSync(path.join(outDir, v.key + '.bytes'), bytes);
   const size = { x: +(max[0] - min[0]).toFixed(3), y: +(max[1] - min[1]).toFixed(3), z: +(max[2] - min[2]).toFixed(3) };
-  records.push({ key: v.key, role: v.role, asset: v.asset, knobs, night, why: v.why, size, center: { x: +((max[0] + min[0]) / 2).toFixed(3), z: +((max[2] + min[2]) / 2).toFixed(3) }, minY: +min[1].toFixed(3), triangles: mesh.idx.length / 3, vertices: mesh.pos.length / 3, bytes: bytes.length });
+  records.push({ key: v.key, role: v.role, asset: v.asset, physicsClass: physicsClass(v.role), knobs, night, why: v.why, size, center: { x: +((max[0] + min[0]) / 2).toFixed(3), z: +((max[2] + min[2]) / 2).toFixed(3) }, minY: +min[1].toFixed(3), triangles: mesh.idx.length / 3, vertices: mesh.pos.length / 3, bytes: bytes.length });
   console.log(v.key.padEnd(34), String(mesh.idx.length / 3).padStart(5), 'tris', size.x + ' x ' + size.y + ' x ' + size.z);
+}
+fs.mkdirSync(path.join(outDir, 'colliders'), { recursive: true });
+for (const id of new Set(records.filter(r => physicsClass(r.role) !== 'static').map(r => r.asset))) {
+  const p = physics[id];
+  if (!p?.collision?.colliders_url) { problems.push(id + ': no Polyfork colliders'); continue; }
+  const src = JSON.parse(fs.readFileSync(await cached(id + '-colliders.json', p.collision.colliders_url), 'utf8'));
+  const parts = (src.parts ?? [src.hull]).map(part => ({ pts: part.flatMap(([x, y, z]) => [-x, y, z]) }));
+  fs.writeFileSync(path.join(outDir, 'colliders', id + '.json'), JSON.stringify({ asset: id, url: p.collision.colliders_url, approximation: src.approximation, space: 'Unity model space (glTF X mirrored), metres, default knobs', parts }));
 }
 if (problems.length) { console.log('\nPROBLEMS\n' + problems.join('\n')); }
 if (only) process.exit(problems.length ? 1 : 0);
@@ -134,11 +146,12 @@ const manifest = {
   generatedBy: 'node tools/PolyforkBake/bake.mjs', source: 'https://polyfork.dev', palette, derivedColours: derived,
   nightRule: 'night[] per variant is the asset\'s Polyfork night map with each zone\'s albedo replaced by the recoloured knob value (sRGB hex). Vertices whose COLOR_0, converted to sRGB, equals that albedo are the zone: make them emissive at color x intensity after dark. The bake fails if a zone shares its colour with another knob.',
   colourRule: 'Every colour knob of every variant is set to a Speed Dial palette colour (STYLE-GUIDE.md); none is left at its stock value.',
-  assets: Object.fromEntries(Object.entries(assets).map(([id, a]) => [id, { title: a.title, kit: a.kit, page: a.page, credit: a.credit, license: a.license, stockSize: a.stockSize, stockTriangles: a.stockTriangles }])),
+  assets: Object.fromEntries(Object.entries(assets).map(([id, a]) => [id, { title: a.title, kit: a.kit, page: a.page, credit: a.credit, license: a.license, stockSize: a.stockSize, stockTriangles: a.stockTriangles, physics: physics[id] ?? null }])),
+  physicsRule: 'physics per asset is Polyfork\'s own block for the default knobs. physicsClass per variant: static for buildings, crane parts and bollards, breakable for trees and every other prop. Breakable assets ship their Polyfork convex hulls under Resources/Polyfork/colliders.',
   variants: records,
 };
 fs.writeFileSync(path.join(here, 'manifest.json'), JSON.stringify(manifest, null, 1) + '\n');
-const catalog = { source: 'https://polyfork.dev', models: records.map(r => ({ id: r.key, role: r.role, title: assets[r.asset].title, asset: r.asset, sizeX: r.size.x, sizeY: r.size.y, sizeZ: r.size.z, centerX: r.center.x, centerZ: r.center.z, triangles: r.triangles })) };
+const catalog = { source: 'https://polyfork.dev', models: records.map(r => ({ id: r.key, role: r.role, title: assets[r.asset].title, asset: r.asset, sizeX: r.size.x, sizeY: r.size.y, sizeZ: r.size.z, centerX: r.center.x, centerZ: r.center.z, triangles: r.triangles, massKg: physics[r.asset]?.mass_kg ?? 0, body: physics[r.asset]?.body ?? '', material: physics[r.asset]?.material ?? '', physicsClass: r.physicsClass, colliders: r.physicsClass === 'static' ? '' : 'Polyfork/colliders/' + r.asset, collidersUrl: physics[r.asset]?.collision?.colliders_url ?? '' })) };
 fs.writeFileSync(path.join(outDir, 'variants.json'), JSON.stringify(catalog));
 console.log('\n' + records.length + ' variants, ' + Object.keys(assets).length + ' assets, ' + (records.reduce((s, r) => s + r.bytes, 0) / 1048576).toFixed(1) + ' MB' + (problems.length ? ', ' + problems.length + ' problems' : ''));
 process.exit(problems.length ? 1 : 0);

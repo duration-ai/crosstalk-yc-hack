@@ -23,7 +23,6 @@ namespace Dogpatch.World
 
         readonly WorldContext ctx;
         readonly StaticModels statics;
-        readonly List<(Vector3 position, float radius, float height)> colliders = new List<(Vector3, float, float)>();
         readonly HashSet<Vector2Int> signalledJunctions = new HashSet<Vector2Int>();
 
         public StreetFurniture(WorldContext ctx, StaticModels statics)
@@ -64,12 +63,11 @@ namespace Dogpatch.World
                 if (mesh == null) { tally.Except("model missing"); continue; }
                 float scale = Mathf.Clamp(height / mesh.bounds.size.y, 0.45f, 2.6f);
                 var m = Matrix4x4.TRS(MeshBuilder.At(p, 0.03f), Quaternion.Euler(0f, h % 360, 0f), Vector3.one * scale);
-                if (!statics.PlaceAtOrigin(StaticModels.Layer.Trees, id, p, m)) { tally.Except("model missing"); continue; }
+                if (statics.PlaceAtOrigin(StaticModels.Layer.Trees, id, p, m, tree.id, 0.3f * Mathf.Max(1f, scale), 3f) < 0) { tally.Except("model missing"); continue; }
                 tally.Placed++;
                 TreeVariants.TryGetValue(id, out int n);
                 TreeVariants[id] = n + 1;
                 TreeHeights.Add(mesh.bounds.size.y * scale);
-                colliders.Add((MeshBuilder.At(p, 0f), 0.3f * Mathf.Max(1f, scale), 3f));
             }
         }
 
@@ -130,7 +128,7 @@ namespace Dogpatch.World
                 {
                     case "traffic_signal": PlaceSignal(prop, p, tally); continue;
                     case "crossing": PlaceCrossing(prop, p, tally); continue;
-                    case "bus_stop": PlaceSingle(Has(prop, "shelter=yes") ? "p-shelter" : "p-busstop", 0.15f, prop, p, tally); continue;
+                    case "bus_stop": PlaceSingle(Has(prop, "shelter=yes") ? "p-shelter" : "p-busstop", Has(prop, "shelter=yes") ? 0f : 0.15f, prop, p, tally); continue;
                     case "bicycle_rental": PlaceDock(prop, p, tally); continue;
                 }
                 if (!PropModels.TryGetValue(prop.kind, out var model)) { tally.Except("no Polyfork model for this kind"); continue; }
@@ -143,13 +141,12 @@ namespace Dogpatch.World
             var q = ToCurb(p, tally, prop.kind == "stop" || prop.kind == "give_way" ? 0.6f : 0.5f);
             float heading = prop.heading >= 0f ? prop.heading : FaceStreet(q);
             if (prop.kind == "stop" || prop.kind == "give_way") q = StopSignSpot(p, heading, q);
-            if (!statics.PlaceAtOrigin(StaticModels.Layer.Props, id, q, Matrix4x4.TRS(MeshBuilder.At(q, 0.03f), Quaternion.Euler(0f, heading, 0f), Vector3.one)))
+            if (statics.PlaceAtOrigin(StaticModels.Layer.Props, id, q, Matrix4x4.TRS(MeshBuilder.At(q, 0.03f), Quaternion.Euler(0f, heading, 0f), Vector3.one), prop.id, radius) < 0)
             {
                 tally.Except("model missing");
                 return;
             }
             tally.Placed++;
-            if (radius > 0f) colliders.Add((MeshBuilder.At(q, 0f), radius, 2.5f));
         }
 
         // A sign on the carriageway (OSM puts stop nodes on the road) goes to the curb on the right of
@@ -203,8 +200,7 @@ namespace Dogpatch.World
             {
                 var corner = hit.Point + n * side * (hw + 1f) - d * side * (hw + 2.5f);
                 float yaw = Mathf.Atan2(d.x * side, d.y * side) * Mathf.Rad2Deg;
-                statics.PlaceAtOrigin(StaticModels.Layer.Props, "p-signal", corner, Matrix4x4.TRS(MeshBuilder.At(corner, 0.03f), Quaternion.Euler(0f, yaw, 0f), Vector3.one));
-                colliders.Add((MeshBuilder.At(corner, 0f), 0.2f, 3f));
+                statics.PlaceAtOrigin(StaticModels.Layer.Props, "p-signal", corner, Matrix4x4.TRS(MeshBuilder.At(corner, 0.03f), Quaternion.Euler(0f, yaw, 0f), Vector3.one), prop.id, 0.2f, 3f);
             }
         }
 
@@ -243,28 +239,12 @@ namespace Dogpatch.World
             for (int i = 0; i < racks; i++)
             {
                 var q = p + along * ((i - (racks - 1) * 0.5f) * (length + 0.2f));
-                statics.PlaceAtOrigin(StaticModels.Layer.Props, "p-bikerack", q, Matrix4x4.TRS(MeshBuilder.At(q, 0.03f), Quaternion.Euler(0f, heading - 90f, 0f), Vector3.one));
+                statics.PlaceAtOrigin(StaticModels.Layer.Props, "p-bikerack", q, Matrix4x4.TRS(MeshBuilder.At(q, 0.03f), Quaternion.Euler(0f, heading - 90f, 0f), Vector3.one), prop.id);
             }
             tally.Placed++;
         }
 
         static bool Has(Prop prop, string kv) => prop.tags != null && System.Array.IndexOf(prop.tags, kv) >= 0;
-
-        public void EmitColliders(Transform parent)
-        {
-            var root = new GameObject("PropColliders");
-            root.transform.SetParent(parent, false);
-            foreach (var (position, radius, height) in colliders)
-            {
-                var go = new GameObject("c");
-                go.transform.SetParent(root.transform, false);
-                go.transform.position = position;
-                var capsule = go.AddComponent<CapsuleCollider>();
-                capsule.radius = radius;
-                capsule.height = Mathf.Max(height, radius * 2f);
-                capsule.center = new Vector3(0f, capsule.height * 0.5f, 0f);
-            }
-        }
 
         static uint Hash(string s)
         {

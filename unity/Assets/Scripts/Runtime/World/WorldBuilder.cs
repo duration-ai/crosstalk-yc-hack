@@ -27,6 +27,7 @@ namespace Dogpatch.World
         public BuildingFitter Fitter;
         public StreetFurniture Furniture;
         public Landmarks Landmarks;
+        public StaticInstanceIndex Instances => Statics?.Index;
     }
 
     // Builds Dogpatch from the committed OSM/DataSF extract: land, water, parks, streets with
@@ -93,7 +94,6 @@ namespace Dogpatch.World
 
             var lod = ctx.Root.AddComponent<DistanceLod>();
             ctx.Statics.Emit(ctx.Root.transform, material, lod);
-            ctx.Furniture.EmitColliders(ctx.Root.transform);
             new PropPlacer(ctx, models, random).PlaceNpcs(ctx, material);
             return ctx;
         }

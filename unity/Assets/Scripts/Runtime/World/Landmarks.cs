@@ -81,7 +81,7 @@ namespace Dogpatch.World
                     var dir = (pts[pts.Length - 1] - pts[0]).normalized;
                     var shelterAt = Vector2.Lerp(pts[0], pts[pts.Length - 1], 0.5f);
                     float yaw = Mathf.Atan2(-dir.y, dir.x) * Mathf.Rad2Deg;
-                    statics.PlaceAtOrigin(StaticModels.Layer.Landmarks, "p-shelter", shelterAt, Matrix4x4.TRS(MeshBuilder.At(shelterAt, platform.kind == "rail" ? 1.0f : 0.9f), Quaternion.Euler(0f, yaw, 0f), Vector3.one));
+                    statics.PlaceAtOrigin(StaticModels.Layer.Landmarks, "p-shelter", shelterAt, Matrix4x4.TRS(MeshBuilder.At(shelterAt, platform.kind == "rail" ? 1.0f : 0.9f), Quaternion.Euler(0f, yaw, 0f), Vector3.one), platform.osmId);
                     Count("platform:" + platform.kind);
                 }
 
@@ -210,12 +210,15 @@ namespace Dogpatch.World
             return -1f;
         }
 
+        // One breakable instance per billboard (panel on its legs), with a solid box over the legs.
         void Billboard(Vector2 at, float heading, float baseY, float poleHeight)
         {
             var lines = LandmarkMeshes.BillboardLines;
             string text = lines[billboard++ % lines.Length];
-            LandmarkMeshes.BillboardPanel(statics.Generated(StaticModels.Layer.Landmarks, at), MeshBuilder.At(at, baseY), heading, 10f, 4f, poleHeight, text,
-                WorldBuilder.Palette(billboard % 3 == 0 ? "sunshine" : billboard % 3 == 1 ? "cloud" : "mint"), WorldBuilder.Palette("ink"), WorldBuilder.Palette("ink"));
+            var panel = WorldBuilder.Palette(billboard % 3 == 0 ? "sunshine" : billboard % 3 == 1 ? "cloud" : "mint");
+            var pivot = Matrix4x4.TRS(MeshBuilder.At(at, baseY), Quaternion.Euler(0f, heading, 0f), Vector3.one);
+            statics.GeneratedInstance(StaticModels.Layer.Landmarks, at, "billboard", "billboard-" + billboard, PhysicsClass.Breakable, 900f, "steel", pivot, new Vector3(10f, poleHeight, 0.6f),
+                mb => LandmarkMeshes.BillboardPanel(mb, MeshBuilder.At(at, baseY), heading, 10f, 4f, poleHeight, text, panel, WorldBuilder.Palette("ink"), WorldBuilder.Palette("ink")));
         }
 
         float FaceStreet(Vector2 p)

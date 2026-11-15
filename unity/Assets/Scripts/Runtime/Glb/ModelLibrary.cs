@@ -11,6 +11,7 @@ namespace Dogpatch.Glb
     {
         readonly Dictionary<string, GlbAsset> cache = new Dictionary<string, GlbAsset>();
         readonly Dictionary<string, List<ModelEntry>> byRole = new Dictionary<string, List<ModelEntry>>();
+        readonly Dictionary<string, ModelEntry> byId = new Dictionary<string, ModelEntry>();
 
         public ModelLibrary()
         {
@@ -22,12 +23,15 @@ namespace Dogpatch.Glb
                 {
                     if (!byRole.TryGetValue(entry.role, out var list)) byRole[entry.role] = list = new List<ModelEntry>();
                     list.Add(entry);
+                    byId[entry.id] = entry;
                 }
             }
         }
 
         public IReadOnlyList<ModelEntry> Role(string role) =>
             byRole.TryGetValue(role, out var list) ? list : (IReadOnlyList<ModelEntry>)System.Array.Empty<ModelEntry>();
+
+        public ModelEntry Entry(string id) => byId.TryGetValue(id, out var e) ? e : null;
 
         public GlbAsset Get(string id)
         {

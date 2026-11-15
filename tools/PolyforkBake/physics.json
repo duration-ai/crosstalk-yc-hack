@@ -1,0 +1,797 @@
+{
+ "source": "Polyfork getAsset physics block, measured for default knobs; fetched 2026-11-15",
+ "assets": {
+  "auto-repair-garage-b91464": {
+   "class": "building",
+   "mass_kg": 350000,
+   "mass_source": "estimated",
+   "material": "ceramic",
+   "body": "static",
+   "dimensions_m": {
+    "x": 12,
+    "y": 7.2,
+    "z": 8
+   },
+   "volume_m3": 689.7674,
+   "collision": {
+    "approximation": "convexHull",
+    "parts": 4,
+    "colliders_url": "https://polyfork.dev/cdn/auto-repair-garage-b91464-colliders.json"
+   }
+  },
+  "backyard-garden-shed-38d79f": {
+   "class": "building",
+   "mass_kg": 600,
+   "mass_source": "estimated",
+   "material": "wood",
+   "body": "static",
+   "dimensions_m": {
+    "x": 4,
+    "y": 4.115,
+    "z": 4
+   },
+   "volume_m3": 51.850146,
+   "collision": {
+    "approximation": "convexHull",
+    "parts": 5,
+    "colliders_url": "https://polyfork.dev/cdn/backyard-garden-shed-38d79f-colliders.json"
+   }
+  },
+  "bike-rack-a1e7c3": {
+   "class": "prop",
+   "mass_kg": 70,
+   "mass_source": "estimated",
+   "material": "metal",
+   "body": "static",
+   "dimensions_m": {
+    "x": 3.586,
+    "y": 0.9,
+    "z": 0.19
+   },
+   "volume_m3": 0.135534,
+   "collision": {
+    "approximation": "convexDecomposition",
+    "parts": 10,
+    "colliders_url": "https://polyfork.dev/cdn/bike-rack-a1e7c3-colliders.json"
+   }
+  },
+  "brick-church-322885": {
+   "class": "building",
+   "mass_kg": 1000000,
+   "mass_source": "estimated",
+   "material": "ceramic",
+   "body": "static",
+   "dimensions_m": {
+    "x": 8,
+    "y": 16.4,
+    "z": 12
+   },
+   "volume_m3": 931.964024,
+   "collision": {
+    "approximation": "convexHull",
+    "parts": 3,
+    "colliders_url": "https://polyfork.dev/cdn/brick-church-322885-colliders.json"
+   }
+  },
+  "brick-depot-warehouse-3dd642": {
+   "class": "building",
+   "mass_kg": 1000000,
+   "mass_source": "estimated",
+   "material": "stone",
+   "body": "static",
+   "dimensions_m": {
+    "x": 12,
+    "y": 7.23,
+    "z": 8
+   },
+   "volume_m3": 638.142804,
+   "collision": {
+    "approximation": "convexHull",
+    "parts": 2,
+    "colliders_url": "https://polyfork.dev/cdn/brick-depot-warehouse-3dd642-colliders.json"
+   }
+  },
+  "broad-canopy-shade-tree-e7c4a2": {
+   "class": "prop",
+   "mass_kg": 70000,
+   "mass_source": "estimated",
+   "material": "wood",
+   "body": "static",
+   "dimensions_m": {
+    "x": 7.341,
+    "y": 8.536,
+    "z": 6.626
+   },
+   "volume_m3": 105.045411,
+   "collision": {
+    "approximation": "convexDecomposition",
+    "parts": 13,
+    "colliders_url": "https://polyfork.dev/cdn/broad-canopy-shade-tree-e7c4a2-colliders.json"
+   }
+  },
+  "brownstone-row-house-1b84fd": {
+   "class": "building",
+   "mass_kg": 1200000,
+   "mass_source": "estimated",
+   "material": "stone",
+   "body": "static",
+   "dimensions_m": {
+    "x": 8,
+    "y": 17.06,
+    "z": 8
+   },
+   "volume_m3": 770.657182,
+   "collision": {
+    "approximation": "convexHull",
+    "parts": 2,
+    "colliders_url": "https://polyfork.dev/cdn/brownstone-row-house-1b84fd-colliders.json"
+   }
+  },
+  "bus-shelter-f786b4": {
+   "class": "prop",
+   "mass_kg": 500,
+   "mass_source": "estimated",
+   "material": "steel",
+   "body": "static",
+   "dimensions_m": {
+    "x": 4,
+    "y": 2.6,
+    "z": 1.9
+   },
+   "volume_m3": 4.527086,
+   "collision": {
+    "approximation": "convexDecomposition",
+    "parts": 26,
+    "colliders_url": "https://polyfork.dev/cdn/bus-shelter-f786b4-colliders.json"
+   }
+  },
+  "cast-iron-loft-b04b5a": {
+   "class": "building",
+   "mass_kg": 3200000,
+   "mass_source": "estimated",
+   "material": "metal",
+   "body": "static",
+   "dimensions_m": {
+    "x": 12,
+    "y": 20.06,
+    "z": 8.95
+   },
+   "volume_m3": 1597.945208,
+   "collision": {
+    "approximation": "convexHull",
+    "parts": 8,
+    "colliders_url": "https://polyfork.dev/cdn/cast-iron-loft-b04b5a-colliders.json"
+   }
+  },
+  "chilean-palm-45fef5": {
+   "class": "prop",
+   "mass_kg": 7000,
+   "mass_source": "estimated",
+   "material": "wood",
+   "body": "static",
+   "dimensions_m": {
+    "x": 8.354,
+    "y": 12,
+    "z": 7.261
+   },
+   "volume_m3": 10.136221,
+   "collision": {
+    "approximation": "convexHull",
+    "parts": 1,
+    "colliders_url": "https://polyfork.dev/cdn/chilean-palm-45fef5-colliders.json"
+   }
+  },
+  "cobra-head-street-light-3e25b8": {
+   "class": "prop",
+   "mass_kg": 800,
+   "mass_source": "estimated",
+   "material": "metal",
+   "body": "static",
+   "dimensions_m": {
+    "x": 1.05,
+    "y": 8.012,
+    "z": 3.125
+   },
+   "volume_m3": 2.672674,
+   "collision": {
+    "approximation": "convexDecomposition",
+    "parts": 5,
+    "colliders_url": "https://polyfork.dev/cdn/cobra-head-street-light-3e25b8-colliders.json"
+   }
+  },
+  "corner-shop-5aec8c": {
+   "class": "building",
+   "mass_kg": 470000,
+   "mass_source": "estimated",
+   "material": "ceramic",
+   "body": "static",
+   "dimensions_m": {
+    "x": 8.85,
+    "y": 7,
+    "z": 8.85
+   },
+   "volume_m3": 436.931821,
+   "collision": {
+    "approximation": "convexHull",
+    "parts": 1,
+    "colliders_url": "https://polyfork.dev/cdn/corner-shop-5aec8c-colliders.json"
+   }
+  },
+  "department-store-ffbd58": {
+   "class": "building",
+   "mass_kg": 8000000,
+   "mass_source": "estimated",
+   "material": "stone",
+   "body": "static",
+   "dimensions_m": {
+    "x": 16,
+    "y": 23.06,
+    "z": 12.75
+   },
+   "volume_m3": 3675.851296,
+   "collision": {
+    "approximation": "convexHull",
+    "parts": 3,
+    "colliders_url": "https://polyfork.dev/cdn/department-store-ffbd58-colliders.json"
+   }
+  },
+  "detached-garage-38a178": {
+   "class": "building",
+   "mass_kg": 15000,
+   "mass_source": "estimated",
+   "material": "mixed",
+   "body": "static",
+   "dimensions_m": {
+    "x": 8,
+    "y": 4.641,
+    "z": 4
+   },
+   "volume_m3": 121.736254,
+   "collision": {
+    "approximation": "convexHull",
+    "parts": 3,
+    "colliders_url": "https://polyfork.dev/cdn/detached-garage-38a178-colliders.json"
+   }
+  },
+  "engine-shed-eff627": {
+   "class": "building",
+   "mass_kg": 1500000,
+   "mass_source": "estimated",
+   "material": "brick",
+   "body": "static",
+   "dimensions_m": {
+    "x": 12,
+    "y": 9.557,
+    "z": 16
+   },
+   "volume_m3": 1504.936585,
+   "collision": {
+    "approximation": "convexHull",
+    "parts": 3,
+    "colliders_url": "https://polyfork.dev/cdn/engine-shed-eff627-colliders.json"
+   }
+  },
+  "fire-hydrant-b68b17": {
+   "class": "prop",
+   "mass_kg": 200,
+   "mass_source": "estimated",
+   "material": "iron",
+   "body": "static",
+   "dimensions_m": {
+    "x": 0.508,
+    "y": 0.812,
+    "z": 0.502
+   },
+   "volume_m3": 0.076789,
+   "collision": {
+    "approximation": "convexDecomposition",
+    "parts": 15,
+    "colliders_url": "https://polyfork.dev/cdn/fire-hydrant-b68b17-colliders.json"
+   }
+  },
+  "fire-station-e2b756": {
+   "class": "building",
+   "mass_kg": 300000,
+   "mass_source": "estimated",
+   "material": "ceramic",
+   "body": "static",
+   "dimensions_m": {
+    "x": 8,
+    "y": 7,
+    "z": 8
+   },
+   "volume_m3": 440.710001,
+   "collision": {
+    "approximation": "convexHull",
+    "parts": 4,
+    "colliders_url": "https://polyfork.dev/cdn/fire-station-e2b756-colliders.json"
+   }
+  },
+  "flag-pole-015e53": {
+   "class": "prop",
+   "mass_kg": 100,
+   "mass_source": "estimated",
+   "material": "metal",
+   "body": "static",
+   "dimensions_m": {
+    "x": 3.605,
+    "y": 9,
+    "z": 1
+   },
+   "volume_m3": 1.241189,
+   "collision": {
+    "approximation": "convexDecomposition",
+    "parts": 7,
+    "colliders_url": "https://polyfork.dev/cdn/flag-pole-015e53-colliders.json"
+   }
+  },
+  "fuel-farm-tank-ed67f0": {
+   "class": "building",
+   "mass_kg": 140000,
+   "mass_source": "estimated",
+   "material": "steel",
+   "body": "static",
+   "dimensions_m": {
+    "x": 16,
+    "y": 13.525,
+    "z": 16
+   },
+   "volume_m3": 1632.482001,
+   "collision": {
+    "approximation": "convexHull",
+    "parts": 6,
+    "colliders_url": "https://polyfork.dev/cdn/fuel-farm-tank-ed67f0-colliders.json"
+   }
+  },
+  "mailbox-8e36e8": {
+   "class": "prop",
+   "mass_kg": 200,
+   "mass_source": "estimated",
+   "material": "steel",
+   "body": "static",
+   "dimensions_m": {
+    "x": 0.71,
+    "y": 1.2,
+    "z": 0.687
+   },
+   "volume_m3": 0.458348,
+   "collision": {
+    "approximation": "convexHull",
+    "parts": 4,
+    "colliders_url": "https://polyfork.dev/cdn/mailbox-8e36e8-colliders.json"
+   }
+  },
+  "metal-trash-can-f57043": {
+   "class": "prop",
+   "mass_kg": 15,
+   "mass_source": "estimated",
+   "material": "steel",
+   "body": "dynamic",
+   "dimensions_m": {
+    "x": 0.72,
+    "y": 0.9,
+    "z": 0.618
+   },
+   "volume_m3": 0.211893,
+   "collision": {
+    "approximation": "convexHull",
+    "parts": 4,
+    "colliders_url": "https://polyfork.dev/cdn/metal-trash-can-f57043-colliders.json"
+   }
+  },
+  "newspaper-box-3f2c0e": {
+   "class": "prop",
+   "mass_kg": 80,
+   "mass_source": "estimated",
+   "material": "metal",
+   "body": "dynamic",
+   "dimensions_m": {
+    "x": 0.5,
+    "y": 1.1,
+    "z": 0.49
+   },
+   "volume_m3": 0.191614,
+   "collision": {
+    "approximation": "convexHull",
+    "parts": 14,
+    "colliders_url": "https://polyfork.dev/cdn/newspaper-box-3f2c0e-colliders.json"
+   }
+  },
+  "office-tower-1538cc": {
+   "class": "building",
+   "mass_kg": 4500000,
+   "mass_source": "estimated",
+   "material": "concrete",
+   "body": "static",
+   "dimensions_m": {
+    "x": 8,
+    "y": 32.06,
+    "z": 8
+   },
+   "volume_m3": 1866.469913,
+   "collision": {
+    "approximation": "convexHull",
+    "parts": 2,
+    "colliders_url": "https://polyfork.dev/cdn/office-tower-1538cc-colliders.json"
+   }
+  },
+  "one-storey-shop-row-83c958": {
+   "class": "building",
+   "mass_kg": 250000,
+   "mass_source": "estimated",
+   "material": "ceramic",
+   "body": "static",
+   "dimensions_m": {
+    "x": 12,
+    "y": 4.66,
+    "z": 8.92
+   },
+   "volume_m3": 444.296545,
+   "collision": {
+    "approximation": "convexHull",
+    "parts": 2,
+    "colliders_url": "https://polyfork.dev/cdn/one-storey-shop-row-83c958-colliders.json"
+   }
+  },
+  "ornamental-front-yard-tree-c6781a": {
+   "class": "prop",
+   "mass_kg": 600,
+   "mass_source": "estimated",
+   "material": "wood",
+   "body": "static",
+   "dimensions_m": {
+    "x": 3.117,
+    "y": 4.5,
+    "z": 2.712
+   },
+   "volume_m3": 12.455626,
+   "collision": {
+    "approximation": "convexDecomposition",
+    "parts": 15,
+    "colliders_url": "https://polyfork.dev/cdn/ornamental-front-yard-tree-c6781a-colliders.json"
+   }
+  },
+  "park-bench-dc8b62": {
+   "class": "prop",
+   "mass_kg": 70,
+   "mass_source": "estimated",
+   "material": "mixed",
+   "body": "dynamic",
+   "dimensions_m": {
+    "x": 1.8,
+    "y": 0.935,
+    "z": 0.729
+   },
+   "volume_m3": 0.114681,
+   "collision": {
+    "approximation": "convexDecomposition",
+    "parts": 14,
+    "colliders_url": "https://polyfork.dev/cdn/park-bench-dc8b62-colliders.json"
+   }
+  },
+  "park-drinking-fountain-b1c25b": {
+   "class": "prop",
+   "mass_kg": 680,
+   "mass_source": "estimated",
+   "material": "concrete",
+   "body": "static",
+   "dimensions_m": {
+    "x": 0.67,
+    "y": 1.1,
+    "z": 0.637
+   },
+   "volume_m3": 0.285322,
+   "collision": {
+    "approximation": "convexHull",
+    "parts": 2,
+    "colliders_url": "https://polyfork.dev/cdn/park-drinking-fountain-b1c25b-colliders.json"
+   }
+  },
+  "parking-garage-6e4f2c": {
+   "class": "building",
+   "mass_kg": 4700000,
+   "mass_source": "estimated",
+   "material": "concrete",
+   "body": "static",
+   "dimensions_m": {
+    "x": 12,
+    "y": 17.06,
+    "z": 12
+   },
+   "volume_m3": 1958.744092,
+   "collision": {
+    "approximation": "convexHull",
+    "parts": 3,
+    "colliders_url": "https://polyfork.dev/cdn/parking-garage-6e4f2c-colliders.json"
+   }
+  },
+  "parking-meter-e9cf71": {
+   "class": "prop",
+   "mass_kg": 30,
+   "mass_source": "estimated",
+   "material": "steel",
+   "body": "static",
+   "dimensions_m": {
+    "x": 0.41,
+    "y": 1.3,
+    "z": 0.341
+   },
+   "volume_m3": 0.076115,
+   "collision": {
+    "approximation": "convexDecomposition",
+    "parts": 7,
+    "colliders_url": "https://polyfork.dev/cdn/parking-meter-e9cf71-colliders.json"
+   }
+  },
+  "picnic-table-4ee33a": {
+   "class": "prop",
+   "mass_kg": 130,
+   "mass_source": "estimated",
+   "material": "wood",
+   "body": "dynamic",
+   "dimensions_m": {
+    "x": 1.8,
+    "y": 0.75,
+    "z": 1.51
+   },
+   "volume_m3": 0.165239,
+   "collision": {
+    "approximation": "convexDecomposition",
+    "parts": 19,
+    "colliders_url": "https://polyfork.dev/cdn/picnic-table-4ee33a-colliders.json"
+   }
+  },
+  "public-school-19ade5": {
+   "class": "building",
+   "mass_kg": 3400000,
+   "mass_source": "estimated",
+   "material": "ceramic",
+   "body": "static",
+   "dimensions_m": {
+    "x": 20,
+    "y": 13.2,
+    "z": 12
+   },
+   "volume_m3": 3167.999954,
+   "collision": {
+    "approximation": "convexHull",
+    "parts": 4,
+    "colliders_url": "https://polyfork.dev/cdn/public-school-19ade5-colliders.json"
+   }
+  },
+  "sidewalk-bollard-c2567e": {
+   "class": "prop",
+   "mass_kg": 250,
+   "mass_source": "estimated",
+   "material": "concrete",
+   "body": "static",
+   "dimensions_m": {
+    "x": 0.44,
+    "y": 1,
+    "z": 0.44
+   },
+   "volume_m3": 0.093658,
+   "collision": {
+    "approximation": "convexDecomposition",
+    "parts": 2,
+    "colliders_url": "https://polyfork.dev/cdn/sidewalk-bollard-c2567e-colliders.json"
+   }
+  },
+  "skate-hall-bay-197a78": {
+   "class": "building",
+   "mass_kg": 150000,
+   "mass_source": "estimated",
+   "material": "steel",
+   "body": "static",
+   "dimensions_m": {
+    "x": 16,
+    "y": 7.911,
+    "z": 6
+   },
+   "volume_m3": 680.859406,
+   "collision": {
+    "approximation": "convexHull",
+    "parts": 7,
+    "colliders_url": "https://polyfork.dev/cdn/skate-hall-bay-197a78-colliders.json"
+   }
+  },
+  "slab-apartment-block-1b02a2": {
+   "class": "building",
+   "mass_kg": 5500000,
+   "mass_source": "estimated",
+   "material": "concrete",
+   "body": "static",
+   "dimensions_m": {
+    "x": 12,
+    "y": 24.9,
+    "z": 12
+   },
+   "volume_m3": 2773.340272,
+   "collision": {
+    "approximation": "convexHull",
+    "parts": 1,
+    "colliders_url": "https://polyfork.dev/cdn/slab-apartment-block-1b02a2-colliders.json"
+   }
+  },
+  "street-sign-pole-1e9551": {
+   "class": "prop",
+   "mass_kg": 70,
+   "mass_source": "estimated",
+   "material": "iron",
+   "body": "static",
+   "dimensions_m": {
+    "x": 1.34,
+    "y": 3,
+    "z": 1.237
+   },
+   "volume_m3": 0.24478,
+   "collision": {
+    "approximation": "convexDecomposition",
+    "parts": 6,
+    "colliders_url": "https://polyfork.dev/cdn/street-sign-pole-1e9551-colliders.json"
+   }
+  },
+  "street-sign-post-c621b4": {
+   "class": "prop",
+   "mass_kg": 25,
+   "mass_source": "estimated",
+   "material": "steel",
+   "body": "static",
+   "dimensions_m": {
+    "x": 0.72,
+    "y": 2.4,
+    "z": 0.4
+   },
+   "volume_m3": 0.054225,
+   "collision": {
+    "approximation": "convexDecomposition",
+    "parts": 7,
+    "colliders_url": "https://polyfork.dev/cdn/street-sign-post-c621b4-colliders.json"
+   }
+  },
+  "street-tree-0d33f3": {
+   "class": "prop",
+   "mass_kg": 800,
+   "mass_source": "estimated",
+   "material": "wood",
+   "body": "static",
+   "dimensions_m": {
+    "x": 3.05,
+    "y": 6,
+    "z": 3.05
+   },
+   "volume_m3": 13.838707,
+   "collision": {
+    "approximation": "convexDecomposition",
+    "parts": 3,
+    "colliders_url": "https://polyfork.dev/cdn/street-tree-0d33f3-colliders.json"
+   }
+  },
+  "tall-pine-tree-ab4108": {
+   "class": "prop",
+   "mass_kg": 19000,
+   "mass_source": "estimated",
+   "material": "wood",
+   "body": "static",
+   "dimensions_m": {
+    "x": 3.667,
+    "y": 9,
+    "z": 3.564
+   },
+   "volume_m3": 34.652182,
+   "collision": {
+    "approximation": "convexHull",
+    "parts": 2,
+    "colliders_url": "https://polyfork.dev/cdn/tall-pine-tree-ab4108-colliders.json"
+   }
+  },
+  "timber-utility-pole-a93693": {
+   "class": "prop",
+   "mass_kg": 1543,
+   "mass_source": "estimated",
+   "material": "wood",
+   "body": "static",
+   "dimensions_m": {
+    "x": 3.995,
+    "y": 9,
+    "z": 8.097
+   },
+   "volume_m3": 1.542515,
+   "collision": {
+    "approximation": "convexDecomposition",
+    "parts": 13,
+    "colliders_url": "https://polyfork.dev/cdn/timber-utility-pole-a93693-colliders.json"
+   }
+  },
+  "tower-crane-mast-1784a3": {
+   "class": "building",
+   "mass_kg": 35000,
+   "mass_source": "estimated",
+   "material": "steel",
+   "body": "static",
+   "dimensions_m": {
+    "x": 4,
+    "y": 15,
+    "z": 4
+   },
+   "volume_m3": 15.367478,
+   "collision": {
+    "approximation": "convexDecomposition",
+    "parts": 31,
+    "colliders_url": "https://polyfork.dev/cdn/tower-crane-mast-1784a3-colliders.json"
+   }
+  },
+  "tower-crane-top-d8d9c9": {
+   "class": "vehicle",
+   "mass_kg": 80000,
+   "mass_source": "estimated",
+   "material": "steel",
+   "body": "static",
+   "dimensions_m": {
+    "x": 43.526,
+    "y": 17.1,
+    "z": 4.355
+   },
+   "volume_m3": 46.622293,
+   "collision": {
+    "approximation": "convexDecomposition",
+    "parts": 32,
+    "colliders_url": "https://polyfork.dev/cdn/tower-crane-top-d8d9c9-colliders.json"
+   }
+  },
+  "townhouse-row-unit-b9544b": {
+   "class": "building",
+   "mass_kg": 70000,
+   "mass_source": "estimated",
+   "material": "stone",
+   "body": "static",
+   "dimensions_m": {
+    "x": 4,
+    "y": 7.46,
+    "z": 8
+   },
+   "volume_m3": 214.282006,
+   "collision": {
+    "approximation": "convexHull",
+    "parts": 4,
+    "colliders_url": "https://polyfork.dev/cdn/townhouse-row-unit-b9544b-colliders.json"
+   }
+  },
+  "traffic-light-b217a2": {
+   "class": "prop",
+   "mass_kg": 400,
+   "mass_source": "estimated",
+   "material": "metal",
+   "body": "static",
+   "dimensions_m": {
+    "x": 2.684,
+    "y": 5.283,
+    "z": 0.722
+   },
+   "volume_m3": 0.5699,
+   "collision": {
+    "approximation": "convexDecomposition",
+    "parts": 22,
+    "colliders_url": "https://polyfork.dev/cdn/traffic-light-b217a2-colliders.json"
+   }
+  },
+  "vehicle-charging-post-45cbb8": {
+   "class": "prop",
+   "mass_kg": 100,
+   "mass_source": "estimated",
+   "material": "mixed",
+   "body": "static",
+   "dimensions_m": {
+    "x": 0.6,
+    "y": 1.4,
+    "z": 0.6
+   },
+   "volume_m3": 0.217467,
+   "collision": {
+    "approximation": "convexDecomposition",
+    "parts": 6,
+    "colliders_url": "https://polyfork.dev/cdn/vehicle-charging-post-45cbb8-colliders.json"
+   }
+  }
+ }
+}

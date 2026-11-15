@@ -20,5 +20,11 @@ namespace Dogpatch.Data
         public float sizeY;
         public float sizeZ;
         public int triangles;
+        public float massKg;
+        public string body;
+        public string material;
+        public string physicsClass;
+        public string colliders;
+        public string collidersUrl;
     }
 }

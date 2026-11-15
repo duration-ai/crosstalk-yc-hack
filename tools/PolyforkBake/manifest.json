@@ -43,7 +43,25 @@
     "y": 7.46,
     "z": 8
    },
-   "stockTriangles": 822
+   "stockTriangles": 822,
+   "physics": {
+    "class": "building",
+    "mass_kg": 70000,
+    "mass_source": "estimated",
+    "material": "stone",
+    "body": "static",
+    "dimensions_m": {
+     "x": 4,
+     "y": 7.46,
+     "z": 8
+    },
+    "volume_m3": 214.282006,
+    "collision": {
+     "approximation": "convexHull",
+     "parts": 4,
+     "colliders_url": "https://polyfork.dev/cdn/townhouse-row-unit-b9544b-colliders.json"
+    }
+   }
   },
   "brownstone-row-house-1b84fd": {
    "title": "Brownstone Row House",
@@ -56,7 +74,25 @@
     "y": 17.06,
     "z": 8
    },
-   "stockTriangles": 3050
+   "stockTriangles": 3050,
+   "physics": {
+    "class": "building",
+    "mass_kg": 1200000,
+    "mass_source": "estimated",
+    "material": "stone",
+    "body": "static",
+    "dimensions_m": {
+     "x": 8,
+     "y": 17.06,
+     "z": 8
+    },
+    "volume_m3": 770.657182,
+    "collision": {
+     "approximation": "convexHull",
+     "parts": 2,
+     "colliders_url": "https://polyfork.dev/cdn/brownstone-row-house-1b84fd-colliders.json"
+    }
+   }
   },
   "slab-apartment-block-1b02a2": {
    "title": "Slab Apartment Block",
@@ -69,7 +105,25 @@
     "y": 24.9,
     "z": 12
    },
-   "stockTriangles": 1216
+   "stockTriangles": 1216,
+   "physics": {
+    "class": "building",
+    "mass_kg": 5500000,
+    "mass_source": "estimated",
+    "material": "concrete",
+    "body": "static",
+    "dimensions_m": {
+     "x": 12,
+     "y": 24.9,
+     "z": 12
+    },
+    "volume_m3": 2773.340272,
+    "collision": {
+     "approximation": "convexHull",
+     "parts": 1,
+     "colliders_url": "https://polyfork.dev/cdn/slab-apartment-block-1b02a2-colliders.json"
+    }
+   }
   },
   "cast-iron-loft-b04b5a": {
    "title": "Cast Iron Loft",
@@ -82,7 +136,25 @@
     "y": 20.06,
     "z": 8.95
    },
-   "stockTriangles": 3212
+   "stockTriangles": 3212,
+   "physics": {
+    "class": "building",
+    "mass_kg": 3200000,
+    "mass_source": "estimated",
+    "material": "metal",
+    "body": "static",
+    "dimensions_m": {
+     "x": 12,
+     "y": 20.06,
+     "z": 8.95
+    },
+    "volume_m3": 1597.945208,
+    "collision": {
+     "approximation": "convexHull",
+     "parts": 8,
+     "colliders_url": "https://polyfork.dev/cdn/cast-iron-loft-b04b5a-colliders.json"
+    }
+   }
   },
   "department-store-ffbd58": {
    "title": "Department Store",
@@ -95,7 +167,25 @@
     "y": 23.06,
     "z": 12.75
    },
-   "stockTriangles": 3108
+   "stockTriangles": 3108,
+   "physics": {
+    "class": "building",
+    "mass_kg": 8000000,
+    "mass_source": "estimated",
+    "material": "stone",
+    "body": "static",
+    "dimensions_m": {
+     "x": 16,
+     "y": 23.06,
+     "z": 12.75
+    },
+    "volume_m3": 3675.851296,
+    "collision": {
+     "approximation": "convexHull",
+     "parts": 3,
+     "colliders_url": "https://polyfork.dev/cdn/department-store-ffbd58-colliders.json"
+    }
+   }
   },
   "corner-shop-5aec8c": {
    "title": "Corner Shop",
@@ -108,7 +198,25 @@
     "y": 7,
     "z": 8.85
    },
-   "stockTriangles": 2887
+   "stockTriangles": 2887,
+   "physics": {
+    "class": "building",
+    "mass_kg": 470000,
+    "mass_source": "estimated",
+    "material": "ceramic",
+    "body": "static",
+    "dimensions_m": {
+     "x": 8.85,
+     "y": 7,
+     "z": 8.85
+    },
+    "volume_m3": 436.931821,
+    "collision": {
+     "approximation": "convexHull",
+     "parts": 1,
+     "colliders_url": "https://polyfork.dev/cdn/corner-shop-5aec8c-colliders.json"
+    }
+   }
   },
   "one-storey-shop-row-83c958": {
    "title": "One-Storey Shop Row",
@@ -121,7 +229,25 @@
     "y": 4.66,
     "z": 8.92
    },
-   "stockTriangles": 2410
+   "stockTriangles": 2410,
+   "physics": {
+    "class": "building",
+    "mass_kg": 250000,
+    "mass_source": "estimated",
+    "material": "ceramic",
+    "body": "static",
+    "dimensions_m": {
+     "x": 12,
+     "y": 4.66,
+     "z": 8.92
+    },
+    "volume_m3": 444.296545,
+    "collision": {
+     "approximation": "convexHull",
+     "parts": 2,
+     "colliders_url": "https://polyfork.dev/cdn/one-storey-shop-row-83c958-colliders.json"
+    }
+   }
   },
   "auto-repair-garage-b91464": {
    "title": "Auto Repair Garage",
@@ -134,7 +260,25 @@
     "y": 7.2,
     "z": 8
    },
-   "stockTriangles": 2782
+   "stockTriangles": 2782,
+   "physics": {
+    "class": "building",
+    "mass_kg": 350000,
+    "mass_source": "estimated",
+    "material": "ceramic",
+    "body": "static",
+    "dimensions_m": {
+     "x": 12,
+     "y": 7.2,
+     "z": 8
+    },
+    "volume_m3": 689.7674,
+    "collision": {
+     "approximation": "convexHull",
+     "parts": 4,
+     "colliders_url": "https://polyfork.dev/cdn/auto-repair-garage-b91464-colliders.json"
+    }
+   }
   },
   "skate-hall-bay-197a78": {
    "title": "Skate Hall Bay",
@@ -147,7 +291,25 @@
     "y": 7.91,
     "z": 6
    },
-   "stockTriangles": 1178
+   "stockTriangles": 1178,
+   "physics": {
+    "class": "building",
+    "mass_kg": 150000,
+    "mass_source": "estimated",
+    "material": "steel",
+    "body": "static",
+    "dimensions_m": {
+     "x": 16,
+     "y": 7.911,
+     "z": 6
+    },
+    "volume_m3": 680.859406,
+    "collision": {
+     "approximation": "convexHull",
+     "parts": 7,
+     "colliders_url": "https://polyfork.dev/cdn/skate-hall-bay-197a78-colliders.json"
+    }
+   }
   },
   "brick-depot-warehouse-3dd642": {
    "title": "Brick Depot Warehouse",
@@ -160,7 +322,25 @@
     "y": 7.23,
     "z": 8
    },
-   "stockTriangles": 1456
+   "stockTriangles": 1456,
+   "physics": {
+    "class": "building",
+    "mass_kg": 1000000,
+    "mass_source": "estimated",
+    "material": "stone",
+    "body": "static",
+    "dimensions_m": {
+     "x": 12,
+     "y": 7.23,
+     "z": 8
+    },
+    "volume_m3": 638.142804,
+    "collision": {
+     "approximation": "convexHull",
+     "parts": 2,
+     "colliders_url": "https://polyfork.dev/cdn/brick-depot-warehouse-3dd642-colliders.json"
+    }
+   }
   },
   "engine-shed-eff627": {
    "title": "Engine Shed",
@@ -173,7 +353,25 @@
     "y": 9.56,
     "z": 16
    },
-   "stockTriangles": 1906
+   "stockTriangles": 1906,
+   "physics": {
+    "class": "building",
+    "mass_kg": 1500000,
+    "mass_source": "estimated",
+    "material": "brick",
+    "body": "static",
+    "dimensions_m": {
+     "x": 12,
+     "y": 9.557,
+     "z": 16
+    },
+    "volume_m3": 1504.936585,
+    "collision": {
+     "approximation": "convexHull",
+     "parts": 3,
+     "colliders_url": "https://polyfork.dev/cdn/engine-shed-eff627-colliders.json"
+    }
+   }
   },
   "backyard-garden-shed-38d79f": {
    "title": "Backyard Garden Shed",
@@ -186,7 +384,25 @@
     "y": 4.11,
     "z": 4
    },
-   "stockTriangles": 984
+   "stockTriangles": 984,
+   "physics": {
+    "class": "building",
+    "mass_kg": 600,
+    "mass_source": "estimated",
+    "material": "wood",
+    "body": "static",
+    "dimensions_m": {
+     "x": 4,
+     "y": 4.115,
+     "z": 4
+    },
+    "volume_m3": 51.850146,
+    "collision": {
+     "approximation": "convexHull",
+     "parts": 5,
+     "colliders_url": "https://polyfork.dev/cdn/backyard-garden-shed-38d79f-colliders.json"
+    }
+   }
   },
   "detached-garage-38a178": {
    "title": "Detached Garage",
@@ -199,7 +415,25 @@
     "y": 4.64,
     "z": 4
    },
-   "stockTriangles": 696
+   "stockTriangles": 696,
+   "physics": {
+    "class": "building",
+    "mass_kg": 15000,
+    "mass_source": "estimated",
+    "material": "mixed",
+    "body": "static",
+    "dimensions_m": {
+     "x": 8,
+     "y": 4.641,
+     "z": 4
+    },
+    "volume_m3": 121.736254,
+    "collision": {
+     "approximation": "convexHull",
+     "parts": 3,
+     "colliders_url": "https://polyfork.dev/cdn/detached-garage-38a178-colliders.json"
+    }
+   }
   },
   "parking-garage-6e4f2c": {
    "title": "Parking Garage",
@@ -212,7 +446,25 @@
     "y": 17.06,
     "z": 12
    },
-   "stockTriangles": 2229
+   "stockTriangles": 2229,
+   "physics": {
+    "class": "building",
+    "mass_kg": 4700000,
+    "mass_source": "estimated",
+    "material": "concrete",
+    "body": "static",
+    "dimensions_m": {
+     "x": 12,
+     "y": 17.06,
+     "z": 12
+    },
+    "volume_m3": 1958.744092,
+    "collision": {
+     "approximation": "convexHull",
+     "parts": 3,
+     "colliders_url": "https://polyfork.dev/cdn/parking-garage-6e4f2c-colliders.json"
+    }
+   }
   },
   "public-school-19ade5": {
    "title": "Public School",
@@ -225,7 +477,25 @@
     "y": 13.2,
     "z": 12
    },
-   "stockTriangles": 3074
+   "stockTriangles": 3074,
+   "physics": {
+    "class": "building",
+    "mass_kg": 3400000,
+    "mass_source": "estimated",
+    "material": "ceramic",
+    "body": "static",
+    "dimensions_m": {
+     "x": 20,
+     "y": 13.2,
+     "z": 12
+    },
+    "volume_m3": 3167.999954,
+    "collision": {
+     "approximation": "convexHull",
+     "parts": 4,
+     "colliders_url": "https://polyfork.dev/cdn/public-school-19ade5-colliders.json"
+    }
+   }
   },
   "brick-church-322885": {
    "title": "Brick Church",
@@ -238,7 +508,25 @@
     "y": 16.4,
     "z": 12
    },
-   "stockTriangles": 2952
+   "stockTriangles": 2952,
+   "physics": {
+    "class": "building",
+    "mass_kg": 1000000,
+    "mass_source": "estimated",
+    "material": "ceramic",
+    "body": "static",
+    "dimensions_m": {
+     "x": 8,
+     "y": 16.4,
+     "z": 12
+    },
+    "volume_m3": 931.964024,
+    "collision": {
+     "approximation": "convexHull",
+     "parts": 3,
+     "colliders_url": "https://polyfork.dev/cdn/brick-church-322885-colliders.json"
+    }
+   }
   },
   "fire-station-e2b756": {
    "title": "Fire Station",
@@ -251,7 +539,25 @@
     "y": 7,
     "z": 8
    },
-   "stockTriangles": 2282
+   "stockTriangles": 2282,
+   "physics": {
+    "class": "building",
+    "mass_kg": 300000,
+    "mass_source": "estimated",
+    "material": "ceramic",
+    "body": "static",
+    "dimensions_m": {
+     "x": 8,
+     "y": 7,
+     "z": 8
+    },
+    "volume_m3": 440.710001,
+    "collision": {
+     "approximation": "convexHull",
+     "parts": 4,
+     "colliders_url": "https://polyfork.dev/cdn/fire-station-e2b756-colliders.json"
+    }
+   }
   },
   "fuel-farm-tank-ed67f0": {
    "title": "Fuel Farm Tank",
@@ -264,7 +570,25 @@
     "y": 13.52,
     "z": 16
    },
-   "stockTriangles": 1762
+   "stockTriangles": 1762,
+   "physics": {
+    "class": "building",
+    "mass_kg": 140000,
+    "mass_source": "estimated",
+    "material": "steel",
+    "body": "static",
+    "dimensions_m": {
+     "x": 16,
+     "y": 13.525,
+     "z": 16
+    },
+    "volume_m3": 1632.482001,
+    "collision": {
+     "approximation": "convexHull",
+     "parts": 6,
+     "colliders_url": "https://polyfork.dev/cdn/fuel-farm-tank-ed67f0-colliders.json"
+    }
+   }
   },
   "office-tower-1538cc": {
    "title": "Office Tower",
@@ -277,7 +601,25 @@
     "y": 32.06,
     "z": 8
    },
-   "stockTriangles": 2676
+   "stockTriangles": 2676,
+   "physics": {
+    "class": "building",
+    "mass_kg": 4500000,
+    "mass_source": "estimated",
+    "material": "concrete",
+    "body": "static",
+    "dimensions_m": {
+     "x": 8,
+     "y": 32.06,
+     "z": 8
+    },
+    "volume_m3": 1866.469913,
+    "collision": {
+     "approximation": "convexHull",
+     "parts": 2,
+     "colliders_url": "https://polyfork.dev/cdn/office-tower-1538cc-colliders.json"
+    }
+   }
   },
   "street-tree-0d33f3": {
    "title": "Street Tree",
@@ -290,7 +632,25 @@
     "y": 6,
     "z": 3.05
    },
-   "stockTriangles": 272
+   "stockTriangles": 272,
+   "physics": {
+    "class": "prop",
+    "mass_kg": 800,
+    "mass_source": "estimated",
+    "material": "wood",
+    "body": "static",
+    "dimensions_m": {
+     "x": 3.05,
+     "y": 6,
+     "z": 3.05
+    },
+    "volume_m3": 13.838707,
+    "collision": {
+     "approximation": "convexDecomposition",
+     "parts": 3,
+     "colliders_url": "https://polyfork.dev/cdn/street-tree-0d33f3-colliders.json"
+    }
+   }
   },
   "broad-canopy-shade-tree-e7c4a2": {
    "title": "Broad Canopy Shade Tree",
@@ -303,7 +663,25 @@
     "y": 8.54,
     "z": 6.63
    },
-   "stockTriangles": 394
+   "stockTriangles": 394,
+   "physics": {
+    "class": "prop",
+    "mass_kg": 70000,
+    "mass_source": "estimated",
+    "material": "wood",
+    "body": "static",
+    "dimensions_m": {
+     "x": 7.341,
+     "y": 8.536,
+     "z": 6.626
+    },
+    "volume_m3": 105.045411,
+    "collision": {
+     "approximation": "convexDecomposition",
+     "parts": 13,
+     "colliders_url": "https://polyfork.dev/cdn/broad-canopy-shade-tree-e7c4a2-colliders.json"
+    }
+   }
   },
   "ornamental-front-yard-tree-c6781a": {
    "title": "Ornamental Front-Yard Tree",
@@ -316,7 +694,25 @@
     "y": 4.5,
     "z": 2.71
    },
-   "stockTriangles": 526
+   "stockTriangles": 526,
+   "physics": {
+    "class": "prop",
+    "mass_kg": 600,
+    "mass_source": "estimated",
+    "material": "wood",
+    "body": "static",
+    "dimensions_m": {
+     "x": 3.117,
+     "y": 4.5,
+     "z": 2.712
+    },
+    "volume_m3": 12.455626,
+    "collision": {
+     "approximation": "convexDecomposition",
+     "parts": 15,
+     "colliders_url": "https://polyfork.dev/cdn/ornamental-front-yard-tree-c6781a-colliders.json"
+    }
+   }
   },
   "chilean-palm-45fef5": {
    "title": "Chilean Palm",
@@ -329,7 +725,25 @@
     "y": 12,
     "z": 7.26
    },
-   "stockTriangles": 910
+   "stockTriangles": 910,
+   "physics": {
+    "class": "prop",
+    "mass_kg": 7000,
+    "mass_source": "estimated",
+    "material": "wood",
+    "body": "static",
+    "dimensions_m": {
+     "x": 8.354,
+     "y": 12,
+     "z": 7.261
+    },
+    "volume_m3": 10.136221,
+    "collision": {
+     "approximation": "convexHull",
+     "parts": 1,
+     "colliders_url": "https://polyfork.dev/cdn/chilean-palm-45fef5-colliders.json"
+    }
+   }
   },
   "tall-pine-tree-ab4108": {
    "title": "Tall Pine Tree",
@@ -342,7 +756,25 @@
     "y": 9,
     "z": 3.56
    },
-   "stockTriangles": 350
+   "stockTriangles": 350,
+   "physics": {
+    "class": "prop",
+    "mass_kg": 19000,
+    "mass_source": "estimated",
+    "material": "wood",
+    "body": "static",
+    "dimensions_m": {
+     "x": 3.667,
+     "y": 9,
+     "z": 3.564
+    },
+    "volume_m3": 34.652182,
+    "collision": {
+     "approximation": "convexHull",
+     "parts": 2,
+     "colliders_url": "https://polyfork.dev/cdn/tall-pine-tree-ab4108-colliders.json"
+    }
+   }
   },
   "cobra-head-street-light-3e25b8": {
    "title": "Cobra-Head Street Light",
@@ -355,7 +787,25 @@
     "y": 8.01,
     "z": 3.13
    },
-   "stockTriangles": 464
+   "stockTriangles": 464,
+   "physics": {
+    "class": "prop",
+    "mass_kg": 800,
+    "mass_source": "estimated",
+    "material": "metal",
+    "body": "static",
+    "dimensions_m": {
+     "x": 1.05,
+     "y": 8.012,
+     "z": 3.125
+    },
+    "volume_m3": 2.672674,
+    "collision": {
+     "approximation": "convexDecomposition",
+     "parts": 5,
+     "colliders_url": "https://polyfork.dev/cdn/cobra-head-street-light-3e25b8-colliders.json"
+    }
+   }
   },
   "traffic-light-b217a2": {
    "title": "Traffic Light",
@@ -368,7 +818,25 @@
     "y": 5.28,
     "z": 0.72
    },
-   "stockTriangles": 714
+   "stockTriangles": 714,
+   "physics": {
+    "class": "prop",
+    "mass_kg": 400,
+    "mass_source": "estimated",
+    "material": "metal",
+    "body": "static",
+    "dimensions_m": {
+     "x": 2.684,
+     "y": 5.283,
+     "z": 0.722
+    },
+    "volume_m3": 0.5699,
+    "collision": {
+     "approximation": "convexDecomposition",
+     "parts": 22,
+     "colliders_url": "https://polyfork.dev/cdn/traffic-light-b217a2-colliders.json"
+    }
+   }
   },
   "street-sign-post-c621b4": {
    "title": "Street Sign Post",
@@ -381,7 +849,25 @@
     "y": 2.4,
     "z": 0.4
    },
-   "stockTriangles": 242
+   "stockTriangles": 242,
+   "physics": {
+    "class": "prop",
+    "mass_kg": 25,
+    "mass_source": "estimated",
+    "material": "steel",
+    "body": "static",
+    "dimensions_m": {
+     "x": 0.72,
+     "y": 2.4,
+     "z": 0.4
+    },
+    "volume_m3": 0.054225,
+    "collision": {
+     "approximation": "convexDecomposition",
+     "parts": 7,
+     "colliders_url": "https://polyfork.dev/cdn/street-sign-post-c621b4-colliders.json"
+    }
+   }
   },
   "fire-hydrant-b68b17": {
    "title": "Fire Hydrant",
@@ -394,7 +880,25 @@
     "y": 0.81,
     "z": 0.5
    },
-   "stockTriangles": 525
+   "stockTriangles": 525,
+   "physics": {
+    "class": "prop",
+    "mass_kg": 200,
+    "mass_source": "estimated",
+    "material": "iron",
+    "body": "static",
+    "dimensions_m": {
+     "x": 0.508,
+     "y": 0.812,
+     "z": 0.502
+    },
+    "volume_m3": 0.076789,
+    "collision": {
+     "approximation": "convexDecomposition",
+     "parts": 15,
+     "colliders_url": "https://polyfork.dev/cdn/fire-hydrant-b68b17-colliders.json"
+    }
+   }
   },
   "park-bench-dc8b62": {
    "title": "Park Bench",
@@ -407,7 +911,25 @@
     "y": 0.94,
     "z": 0.73
    },
-   "stockTriangles": 756
+   "stockTriangles": 756,
+   "physics": {
+    "class": "prop",
+    "mass_kg": 70,
+    "mass_source": "estimated",
+    "material": "mixed",
+    "body": "dynamic",
+    "dimensions_m": {
+     "x": 1.8,
+     "y": 0.935,
+     "z": 0.729
+    },
+    "volume_m3": 0.114681,
+    "collision": {
+     "approximation": "convexDecomposition",
+     "parts": 14,
+     "colliders_url": "https://polyfork.dev/cdn/park-bench-dc8b62-colliders.json"
+    }
+   }
   },
   "bus-shelter-f786b4": {
    "title": "Bus Shelter",
@@ -420,7 +942,25 @@
     "y": 2.6,
     "z": 1.9
    },
-   "stockTriangles": 308
+   "stockTriangles": 308,
+   "physics": {
+    "class": "prop",
+    "mass_kg": 500,
+    "mass_source": "estimated",
+    "material": "steel",
+    "body": "static",
+    "dimensions_m": {
+     "x": 4,
+     "y": 2.6,
+     "z": 1.9
+    },
+    "volume_m3": 4.527086,
+    "collision": {
+     "approximation": "convexDecomposition",
+     "parts": 26,
+     "colliders_url": "https://polyfork.dev/cdn/bus-shelter-f786b4-colliders.json"
+    }
+   }
   },
   "street-sign-pole-1e9551": {
    "title": "Street Sign Pole",
@@ -433,7 +973,25 @@
     "y": 3,
     "z": 1.24
    },
-   "stockTriangles": 353
+   "stockTriangles": 353,
+   "physics": {
+    "class": "prop",
+    "mass_kg": 70,
+    "mass_source": "estimated",
+    "material": "iron",
+    "body": "static",
+    "dimensions_m": {
+     "x": 1.34,
+     "y": 3,
+     "z": 1.237
+    },
+    "volume_m3": 0.24478,
+    "collision": {
+     "approximation": "convexDecomposition",
+     "parts": 6,
+     "colliders_url": "https://polyfork.dev/cdn/street-sign-pole-1e9551-colliders.json"
+    }
+   }
   },
   "sidewalk-bollard-c2567e": {
    "title": "Sidewalk Bollard",
@@ -446,7 +1004,25 @@
     "y": 1,
     "z": 0.44
    },
-   "stockTriangles": 568
+   "stockTriangles": 568,
+   "physics": {
+    "class": "prop",
+    "mass_kg": 250,
+    "mass_source": "estimated",
+    "material": "concrete",
+    "body": "static",
+    "dimensions_m": {
+     "x": 0.44,
+     "y": 1,
+     "z": 0.44
+    },
+    "volume_m3": 0.093658,
+    "collision": {
+     "approximation": "convexDecomposition",
+     "parts": 2,
+     "colliders_url": "https://polyfork.dev/cdn/sidewalk-bollard-c2567e-colliders.json"
+    }
+   }
   },
   "bike-rack-a1e7c3": {
    "title": "Bike Rack",
@@ -459,7 +1035,25 @@
     "y": 0.9,
     "z": 0.19
    },
-   "stockTriangles": 480
+   "stockTriangles": 480,
+   "physics": {
+    "class": "prop",
+    "mass_kg": 70,
+    "mass_source": "estimated",
+    "material": "metal",
+    "body": "static",
+    "dimensions_m": {
+     "x": 3.586,
+     "y": 0.9,
+     "z": 0.19
+    },
+    "volume_m3": 0.135534,
+    "collision": {
+     "approximation": "convexDecomposition",
+     "parts": 10,
+     "colliders_url": "https://polyfork.dev/cdn/bike-rack-a1e7c3-colliders.json"
+    }
+   }
   },
   "parking-meter-e9cf71": {
    "title": "Parking Meter",
@@ -472,7 +1066,25 @@
     "y": 1.3,
     "z": 0.34
    },
-   "stockTriangles": 386
+   "stockTriangles": 386,
+   "physics": {
+    "class": "prop",
+    "mass_kg": 30,
+    "mass_source": "estimated",
+    "material": "steel",
+    "body": "static",
+    "dimensions_m": {
+     "x": 0.41,
+     "y": 1.3,
+     "z": 0.341
+    },
+    "volume_m3": 0.076115,
+    "collision": {
+     "approximation": "convexDecomposition",
+     "parts": 7,
+     "colliders_url": "https://polyfork.dev/cdn/parking-meter-e9cf71-colliders.json"
+    }
+   }
   },
   "metal-trash-can-f57043": {
    "title": "Metal Trash Can",
@@ -485,7 +1097,25 @@
     "y": 0.9,
     "z": 0.62
    },
-   "stockTriangles": 720
+   "stockTriangles": 720,
+   "physics": {
+    "class": "prop",
+    "mass_kg": 15,
+    "mass_source": "estimated",
+    "material": "steel",
+    "body": "dynamic",
+    "dimensions_m": {
+     "x": 0.72,
+     "y": 0.9,
+     "z": 0.618
+    },
+    "volume_m3": 0.211893,
+    "collision": {
+     "approximation": "convexHull",
+     "parts": 4,
+     "colliders_url": "https://polyfork.dev/cdn/metal-trash-can-f57043-colliders.json"
+    }
+   }
   },
   "mailbox-8e36e8": {
    "title": "Mailbox",
@@ -498,7 +1128,25 @@
     "y": 1.2,
     "z": 0.69
    },
-   "stockTriangles": 450
+   "stockTriangles": 450,
+   "physics": {
+    "class": "prop",
+    "mass_kg": 200,
+    "mass_source": "estimated",
+    "material": "steel",
+    "body": "static",
+    "dimensions_m": {
+     "x": 0.71,
+     "y": 1.2,
+     "z": 0.687
+    },
+    "volume_m3": 0.458348,
+    "collision": {
+     "approximation": "convexHull",
+     "parts": 4,
+     "colliders_url": "https://polyfork.dev/cdn/mailbox-8e36e8-colliders.json"
+    }
+   }
   },
   "park-drinking-fountain-b1c25b": {
    "title": "Park Drinking Fountain",
@@ -511,7 +1159,25 @@
     "y": 1.1,
     "z": 0.64
    },
-   "stockTriangles": 742
+   "stockTriangles": 742,
+   "physics": {
+    "class": "prop",
+    "mass_kg": 680,
+    "mass_source": "estimated",
+    "material": "concrete",
+    "body": "static",
+    "dimensions_m": {
+     "x": 0.67,
+     "y": 1.1,
+     "z": 0.637
+    },
+    "volume_m3": 0.285322,
+    "collision": {
+     "approximation": "convexHull",
+     "parts": 2,
+     "colliders_url": "https://polyfork.dev/cdn/park-drinking-fountain-b1c25b-colliders.json"
+    }
+   }
   },
   "picnic-table-4ee33a": {
    "title": "Picnic-table",
@@ -524,7 +1190,25 @@
     "y": 0.75,
     "z": 1.51
    },
-   "stockTriangles": 484
+   "stockTriangles": 484,
+   "physics": {
+    "class": "prop",
+    "mass_kg": 130,
+    "mass_source": "estimated",
+    "material": "wood",
+    "body": "dynamic",
+    "dimensions_m": {
+     "x": 1.8,
+     "y": 0.75,
+     "z": 1.51
+    },
+    "volume_m3": 0.165239,
+    "collision": {
+     "approximation": "convexDecomposition",
+     "parts": 19,
+     "colliders_url": "https://polyfork.dev/cdn/picnic-table-4ee33a-colliders.json"
+    }
+   }
   },
   "newspaper-box-3f2c0e": {
    "title": "Newspaper Box",
@@ -537,7 +1221,25 @@
     "y": 1.1,
     "z": 0.49
    },
-   "stockTriangles": 474
+   "stockTriangles": 474,
+   "physics": {
+    "class": "prop",
+    "mass_kg": 80,
+    "mass_source": "estimated",
+    "material": "metal",
+    "body": "dynamic",
+    "dimensions_m": {
+     "x": 0.5,
+     "y": 1.1,
+     "z": 0.49
+    },
+    "volume_m3": 0.191614,
+    "collision": {
+     "approximation": "convexHull",
+     "parts": 14,
+     "colliders_url": "https://polyfork.dev/cdn/newspaper-box-3f2c0e-colliders.json"
+    }
+   }
   },
   "vehicle-charging-post-45cbb8": {
    "title": "Vehicle Charging Post",
@@ -550,7 +1252,25 @@
     "y": 1.4,
     "z": 0.6
    },
-   "stockTriangles": 482
+   "stockTriangles": 482,
+   "physics": {
+    "class": "prop",
+    "mass_kg": 100,
+    "mass_source": "estimated",
+    "material": "mixed",
+    "body": "static",
+    "dimensions_m": {
+     "x": 0.6,
+     "y": 1.4,
+     "z": 0.6
+    },
+    "volume_m3": 0.217467,
+    "collision": {
+     "approximation": "convexDecomposition",
+     "parts": 6,
+     "colliders_url": "https://polyfork.dev/cdn/vehicle-charging-post-45cbb8-colliders.json"
+    }
+   }
   },
   "timber-utility-pole-a93693": {
    "title": "Timber Utility Pole",
@@ -563,7 +1283,25 @@
     "y": 9,
     "z": 8.1
    },
-   "stockTriangles": 588
+   "stockTriangles": 588,
+   "physics": {
+    "class": "prop",
+    "mass_kg": 1543,
+    "mass_source": "estimated",
+    "material": "wood",
+    "body": "static",
+    "dimensions_m": {
+     "x": 3.995,
+     "y": 9,
+     "z": 8.097
+    },
+    "volume_m3": 1.542515,
+    "collision": {
+     "approximation": "convexDecomposition",
+     "parts": 13,
+     "colliders_url": "https://polyfork.dev/cdn/timber-utility-pole-a93693-colliders.json"
+    }
+   }
   },
   "flag-pole-015e53": {
    "title": "Flag Pole",
@@ -576,7 +1314,25 @@
     "y": 9,
     "z": 1
    },
-   "stockTriangles": 588
+   "stockTriangles": 588,
+   "physics": {
+    "class": "prop",
+    "mass_kg": 100,
+    "mass_source": "estimated",
+    "material": "metal",
+    "body": "static",
+    "dimensions_m": {
+     "x": 3.605,
+     "y": 9,
+     "z": 1
+    },
+    "volume_m3": 1.241189,
+    "collision": {
+     "approximation": "convexDecomposition",
+     "parts": 7,
+     "colliders_url": "https://polyfork.dev/cdn/flag-pole-015e53-colliders.json"
+    }
+   }
   },
   "tower-crane-mast-1784a3": {
    "title": "Tower Crane Mast",
@@ -589,7 +1345,25 @@
     "y": 15,
     "z": 4
    },
-   "stockTriangles": 1242
+   "stockTriangles": 1242,
+   "physics": {
+    "class": "building",
+    "mass_kg": 35000,
+    "mass_source": "estimated",
+    "material": "steel",
+    "body": "static",
+    "dimensions_m": {
+     "x": 4,
+     "y": 15,
+     "z": 4
+    },
+    "volume_m3": 15.367478,
+    "collision": {
+     "approximation": "convexDecomposition",
+     "parts": 31,
+     "colliders_url": "https://polyfork.dev/cdn/tower-crane-mast-1784a3-colliders.json"
+    }
+   }
   },
   "tower-crane-top-d8d9c9": {
    "title": "Tower Crane Top",
@@ -602,14 +1376,34 @@
     "y": 17.1,
     "z": 4.36
    },
-   "stockTriangles": 2521
+   "stockTriangles": 2521,
+   "physics": {
+    "class": "vehicle",
+    "mass_kg": 80000,
+    "mass_source": "estimated",
+    "material": "steel",
+    "body": "static",
+    "dimensions_m": {
+     "x": 43.526,
+     "y": 17.1,
+     "z": 4.355
+    },
+    "volume_m3": 46.622293,
+    "collision": {
+     "approximation": "convexDecomposition",
+     "parts": 32,
+     "colliders_url": "https://polyfork.dev/cdn/tower-crane-top-d8d9c9-colliders.json"
+    }
+   }
   }
  },
+ "physicsRule": "physics per asset is Polyfork's own block for the default knobs. physicsClass per variant: static for buildings, crane parts and bollards, breakable for trees and every other prop. Breakable assets ship their Polyfork convex hulls under Resources/Polyfork/colliders.",
  "variants": [
   {
    "key": "b-rowhouse-lemon",
    "role": "building:victorian-low",
    "asset": "townhouse-row-unit-b9544b",
+   "physicsClass": "static",
    "knobs": {
     "piece": "mid",
     "lights": 2,
@@ -651,6 +1445,7 @@
    "key": "b-rowhouse-mint",
    "role": "building:victorian-low",
    "asset": "townhouse-row-unit-b9544b",
+   "physicsClass": "static",
    "knobs": {
     "piece": "mid",
     "lights": 2,
@@ -692,6 +1487,7 @@
    "key": "b-rowhouse-coral",
    "role": "building:victorian-low",
    "asset": "townhouse-row-unit-b9544b",
+   "physicsClass": "static",
    "knobs": {
     "piece": "mid",
     "lights": 2,
@@ -733,6 +1529,7 @@
    "key": "b-rowhouse-lilac",
    "role": "building:victorian-low",
    "asset": "townhouse-row-unit-b9544b",
+   "physicsClass": "static",
    "knobs": {
     "piece": "mid",
     "lights": 2,
@@ -774,6 +1571,7 @@
    "key": "b-rowhouse-powder",
    "role": "building:victorian-low",
    "asset": "townhouse-row-unit-b9544b",
+   "physicsClass": "static",
    "knobs": {
     "piece": "mid",
     "lights": 2,
@@ -815,6 +1613,7 @@
    "key": "b-rowhouse-cream",
    "role": "building:victorian-low",
    "asset": "townhouse-row-unit-b9544b",
+   "physicsClass": "static",
    "knobs": {
     "piece": "mid",
     "lights": 2,
@@ -856,6 +1655,7 @@
    "key": "b-italianate-lemon-3",
    "role": "building:victorian",
    "asset": "brownstone-row-house-1b84fd",
+   "physicsClass": "static",
    "knobs": {
     "floors": 3,
     "entrance": "stoop",
@@ -905,6 +1705,7 @@
    "key": "b-italianate-lemon-4",
    "role": "building:victorian",
    "asset": "brownstone-row-house-1b84fd",
+   "physicsClass": "static",
    "knobs": {
     "floors": 4,
     "entrance": "stoop",
@@ -954,6 +1755,7 @@
    "key": "b-italianate-mint-3",
    "role": "building:victorian",
    "asset": "brownstone-row-house-1b84fd",
+   "physicsClass": "static",
    "knobs": {
     "floors": 3,
     "entrance": "stoop",
@@ -1003,6 +1805,7 @@
    "key": "b-italianate-mint-4",
    "role": "building:victorian",
    "asset": "brownstone-row-house-1b84fd",
+   "physicsClass": "static",
    "knobs": {
     "floors": 4,
     "entrance": "stoop",
@@ -1052,6 +1855,7 @@
    "key": "b-italianate-coral-3",
    "role": "building:victorian",
    "asset": "brownstone-row-house-1b84fd",
+   "physicsClass": "static",
    "knobs": {
     "floors": 3,
     "entrance": "stoop",
@@ -1101,6 +1905,7 @@
    "key": "b-italianate-coral-4",
    "role": "building:victorian",
    "asset": "brownstone-row-house-1b84fd",
+   "physicsClass": "static",
    "knobs": {
     "floors": 4,
     "entrance": "stoop",
@@ -1150,6 +1955,7 @@
    "key": "b-italianate-lilac-3",
    "role": "building:victorian",
    "asset": "brownstone-row-house-1b84fd",
+   "physicsClass": "static",
    "knobs": {
     "floors": 3,
     "entrance": "stoop",
@@ -1199,6 +2005,7 @@
    "key": "b-italianate-lilac-4",
    "role": "building:victorian",
    "asset": "brownstone-row-house-1b84fd",
+   "physicsClass": "static",
    "knobs": {
     "floors": 4,
     "entrance": "stoop",
@@ -1248,6 +2055,7 @@
    "key": "b-italianate-powder-3",
    "role": "building:victorian",
    "asset": "brownstone-row-house-1b84fd",
+   "physicsClass": "static",
    "knobs": {
     "floors": 3,
     "entrance": "stoop",
@@ -1297,6 +2105,7 @@
    "key": "b-italianate-powder-4",
    "role": "building:victorian",
    "asset": "brownstone-row-house-1b84fd",
+   "physicsClass": "static",
    "knobs": {
     "floors": 4,
     "entrance": "stoop",
@@ -1346,6 +2155,7 @@
    "key": "b-italianate-cream-3",
    "role": "building:victorian",
    "asset": "brownstone-row-house-1b84fd",
+   "physicsClass": "static",
    "knobs": {
     "floors": 3,
     "entrance": "stoop",
@@ -1395,6 +2205,7 @@
    "key": "b-italianate-cream-4",
    "role": "building:victorian",
    "asset": "brownstone-row-house-1b84fd",
+   "physicsClass": "static",
    "knobs": {
     "floors": 4,
     "entrance": "stoop",
@@ -1444,6 +2255,7 @@
    "key": "b-condo-cream-4",
    "role": "building:apartment",
    "asset": "slab-apartment-block-1b02a2",
+   "physicsClass": "static",
    "knobs": {
     "floors": 4,
     "bays": 1,
@@ -1491,6 +2303,7 @@
    "key": "b-condo-cream-6",
    "role": "building:apartment",
    "asset": "slab-apartment-block-1b02a2",
+   "physicsClass": "static",
    "knobs": {
     "floors": 6,
     "bays": 1,
@@ -1538,6 +2351,7 @@
    "key": "b-condo-lemon-4",
    "role": "building:apartment",
    "asset": "slab-apartment-block-1b02a2",
+   "physicsClass": "static",
    "knobs": {
     "floors": 4,
     "bays": 1,
@@ -1585,6 +2399,7 @@
    "key": "b-condo-lemon-6",
    "role": "building:apartment",
    "asset": "slab-apartment-block-1b02a2",
+   "physicsClass": "static",
    "knobs": {
     "floors": 6,
     "bays": 1,
@@ -1632,6 +2447,7 @@
    "key": "b-condo-coral-4",
    "role": "building:apartment",
    "asset": "slab-apartment-block-1b02a2",
+   "physicsClass": "static",
    "knobs": {
     "floors": 4,
     "bays": 1,
@@ -1679,6 +2495,7 @@
    "key": "b-condo-coral-6",
    "role": "building:apartment",
    "asset": "slab-apartment-block-1b02a2",
+   "physicsClass": "static",
    "knobs": {
     "floors": 6,
     "bays": 1,
@@ -1726,6 +2543,7 @@
    "key": "b-condo-powder-4",
    "role": "building:apartment",
    "asset": "slab-apartment-block-1b02a2",
+   "physicsClass": "static",
    "knobs": {
     "floors": 4,
     "bays": 1,
@@ -1773,6 +2591,7 @@
    "key": "b-condo-powder-6",
    "role": "building:apartment",
    "asset": "slab-apartment-block-1b02a2",
+   "physicsClass": "static",
    "knobs": {
     "floors": 6,
     "bays": 1,
@@ -1820,6 +2639,7 @@
    "key": "b-loft-brick-3",
    "role": "building:loft",
    "asset": "cast-iron-loft-b04b5a",
+   "physicsClass": "static",
    "knobs": {
     "floors": 3,
     "archHead": "segmental",
@@ -1867,6 +2687,7 @@
    "key": "b-loft-brick-5",
    "role": "building:loft",
    "asset": "cast-iron-loft-b04b5a",
+   "physicsClass": "static",
    "knobs": {
     "floors": 5,
     "archHead": "segmental",
@@ -1914,6 +2735,7 @@
    "key": "b-loft-brickDeep-3",
    "role": "building:loft",
    "asset": "cast-iron-loft-b04b5a",
+   "physicsClass": "static",
    "knobs": {
     "floors": 3,
     "archHead": "segmental",
@@ -1961,6 +2783,7 @@
    "key": "b-loft-brickDeep-5",
    "role": "building:loft",
    "asset": "cast-iron-loft-b04b5a",
+   "physicsClass": "static",
    "knobs": {
     "floors": 5,
     "archHead": "segmental",
@@ -2008,6 +2831,7 @@
    "key": "b-loft-cream-3",
    "role": "building:loft",
    "asset": "cast-iron-loft-b04b5a",
+   "physicsClass": "static",
    "knobs": {
     "floors": 3,
     "archHead": "segmental",
@@ -2055,6 +2879,7 @@
    "key": "b-loft-cream-5",
    "role": "building:loft",
    "asset": "cast-iron-loft-b04b5a",
+   "physicsClass": "static",
    "knobs": {
     "floors": 5,
     "archHead": "segmental",
@@ -2102,6 +2927,7 @@
    "key": "b-midrise-cream-4",
    "role": "building:midrise",
    "asset": "department-store-ffbd58",
+   "physicsClass": "static",
    "knobs": {
     "floors": 4,
     "display": "empty",
@@ -2160,6 +2986,7 @@
    "key": "b-midrise-cream-6",
    "role": "building:midrise",
    "asset": "department-store-ffbd58",
+   "physicsClass": "static",
    "knobs": {
     "floors": 6,
     "display": "empty",
@@ -2218,6 +3045,7 @@
    "key": "b-midrise-coral-4",
    "role": "building:midrise",
    "asset": "department-store-ffbd58",
+   "physicsClass": "static",
    "knobs": {
     "floors": 4,
     "display": "empty",
@@ -2276,6 +3104,7 @@
    "key": "b-midrise-coral-6",
    "role": "building:midrise",
    "asset": "department-store-ffbd58",
+   "physicsClass": "static",
    "knobs": {
     "floors": 6,
     "display": "empty",
@@ -2334,6 +3163,7 @@
    "key": "b-cornershop-brick-1",
    "role": "building:corner-shop",
    "asset": "corner-shop-5aec8c",
+   "physicsClass": "static",
    "knobs": {
     "floors": 1,
     "entrance": "corner",
@@ -2393,6 +3223,7 @@
    "key": "b-cornershop-brick-2",
    "role": "building:corner-shop",
    "asset": "corner-shop-5aec8c",
+   "physicsClass": "static",
    "knobs": {
     "floors": 2,
     "entrance": "corner",
@@ -2452,6 +3283,7 @@
    "key": "b-cornershop-coral-1",
    "role": "building:corner-shop",
    "asset": "corner-shop-5aec8c",
+   "physicsClass": "static",
    "knobs": {
     "floors": 1,
     "entrance": "corner",
@@ -2511,6 +3343,7 @@
    "key": "b-cornershop-coral-2",
    "role": "building:corner-shop",
    "asset": "corner-shop-5aec8c",
+   "physicsClass": "static",
    "knobs": {
     "floors": 2,
     "entrance": "corner",
@@ -2570,6 +3403,7 @@
    "key": "b-cornershop-lemon-1",
    "role": "building:corner-shop",
    "asset": "corner-shop-5aec8c",
+   "physicsClass": "static",
    "knobs": {
     "floors": 1,
     "entrance": "corner",
@@ -2629,6 +3463,7 @@
    "key": "b-cornershop-lemon-2",
    "role": "building:corner-shop",
    "asset": "corner-shop-5aec8c",
+   "physicsClass": "static",
    "knobs": {
     "floors": 2,
     "entrance": "corner",
@@ -2688,6 +3523,7 @@
    "key": "b-shoprow-brick-2",
    "role": "building:shop-row",
    "asset": "one-storey-shop-row-83c958",
+   "physicsClass": "static",
    "knobs": {
     "bays": 2,
     "shutter": "open",
@@ -2738,6 +3574,7 @@
    "key": "b-shoprow-brick-3",
    "role": "building:shop-row",
    "asset": "one-storey-shop-row-83c958",
+   "physicsClass": "static",
    "knobs": {
     "bays": 3,
     "shutter": "open",
@@ -2788,6 +3625,7 @@
    "key": "b-shoprow-brick-4",
    "role": "building:shop-row",
    "asset": "one-storey-shop-row-83c958",
+   "physicsClass": "static",
    "knobs": {
     "bays": 4,
     "shutter": "open",
@@ -2838,6 +3676,7 @@
    "key": "b-shoprow-cream-2",
    "role": "building:shop-row",
    "asset": "one-storey-shop-row-83c958",
+   "physicsClass": "static",
    "knobs": {
     "bays": 2,
     "shutter": "open",
@@ -2888,6 +3727,7 @@
    "key": "b-shoprow-cream-3",
    "role": "building:shop-row",
    "asset": "one-storey-shop-row-83c958",
+   "physicsClass": "static",
    "knobs": {
     "bays": 3,
     "shutter": "open",
@@ -2938,6 +3778,7 @@
    "key": "b-shoprow-cream-4",
    "role": "building:shop-row",
    "asset": "one-storey-shop-row-83c958",
+   "physicsClass": "static",
    "knobs": {
     "bays": 4,
     "shutter": "open",
@@ -2988,6 +3829,7 @@
    "key": "b-workshop-shade-1",
    "role": "building:workshop",
    "asset": "auto-repair-garage-b91464",
+   "physicsClass": "static",
    "knobs": {
     "floors": 1,
     "shutter": "closed",
@@ -3037,6 +3879,7 @@
    "key": "b-workshop-shade-2",
    "role": "building:workshop",
    "asset": "auto-repair-garage-b91464",
+   "physicsClass": "static",
    "knobs": {
     "floors": 2,
     "shutter": "closed",
@@ -3086,6 +3929,7 @@
    "key": "b-workshop-shade-3",
    "role": "building:workshop",
    "asset": "auto-repair-garage-b91464",
+   "physicsClass": "static",
    "knobs": {
     "floors": 3,
     "shutter": "closed",
@@ -3135,6 +3979,7 @@
    "key": "b-workshop-cream-1",
    "role": "building:workshop",
    "asset": "auto-repair-garage-b91464",
+   "physicsClass": "static",
    "knobs": {
     "floors": 1,
     "shutter": "closed",
@@ -3184,6 +4029,7 @@
    "key": "b-workshop-cream-2",
    "role": "building:workshop",
    "asset": "auto-repair-garage-b91464",
+   "physicsClass": "static",
    "knobs": {
     "floors": 2,
     "shutter": "closed",
@@ -3233,6 +4079,7 @@
    "key": "b-workshop-cream-3",
    "role": "building:workshop",
    "asset": "auto-repair-garage-b91464",
+   "physicsClass": "static",
    "knobs": {
     "floors": 3,
     "shutter": "closed",
@@ -3282,6 +4129,7 @@
    "key": "b-metalshed-asphalt",
    "role": "building:metal-shed",
    "asset": "skate-hall-bay-197a78",
+   "physicsClass": "static",
    "knobs": {
     "piece": "end",
     "cladding": "corrugated",
@@ -3327,6 +4175,7 @@
    "key": "b-metalshed-powder",
    "role": "building:metal-shed",
    "asset": "skate-hall-bay-197a78",
+   "physicsClass": "static",
    "knobs": {
     "piece": "end",
     "cladding": "corrugated",
@@ -3372,6 +4221,7 @@
    "key": "b-metalshed-cream",
    "role": "building:metal-shed",
    "asset": "skate-hall-bay-197a78",
+   "physicsClass": "static",
    "knobs": {
     "piece": "end",
     "cladding": "corrugated",
@@ -3417,6 +4267,7 @@
    "key": "b-metalshed-mint",
    "role": "building:metal-shed",
    "asset": "skate-hall-bay-197a78",
+   "physicsClass": "static",
    "knobs": {
     "piece": "end",
     "cladding": "corrugated",
@@ -3462,6 +4313,7 @@
    "key": "b-depot-brick-3x1",
    "role": "building:brick-industrial",
    "asset": "brick-depot-warehouse-3dd642",
+   "physicsClass": "static",
    "knobs": {
     "bays": 3,
     "storeys": 1,
@@ -3511,6 +4363,7 @@
    "key": "b-depot-brick-3x2",
    "role": "building:brick-industrial",
    "asset": "brick-depot-warehouse-3dd642",
+   "physicsClass": "static",
    "knobs": {
     "bays": 3,
     "storeys": 2,
@@ -3560,6 +4413,7 @@
    "key": "b-depot-brick-3x3",
    "role": "building:brick-industrial",
    "asset": "brick-depot-warehouse-3dd642",
+   "physicsClass": "static",
    "knobs": {
     "bays": 3,
     "storeys": 3,
@@ -3609,6 +4463,7 @@
    "key": "b-depot-brick-5x1",
    "role": "building:brick-industrial",
    "asset": "brick-depot-warehouse-3dd642",
+   "physicsClass": "static",
    "knobs": {
     "bays": 5,
     "storeys": 1,
@@ -3658,6 +4513,7 @@
    "key": "b-depot-brick-5x2",
    "role": "building:brick-industrial",
    "asset": "brick-depot-warehouse-3dd642",
+   "physicsClass": "static",
    "knobs": {
     "bays": 5,
     "storeys": 2,
@@ -3707,6 +4563,7 @@
    "key": "b-depot-brick-5x3",
    "role": "building:brick-industrial",
    "asset": "brick-depot-warehouse-3dd642",
+   "physicsClass": "static",
    "knobs": {
     "bays": 5,
     "storeys": 3,
@@ -3756,6 +4613,7 @@
    "key": "b-depot-brickDeep-3x1",
    "role": "building:brick-industrial",
    "asset": "brick-depot-warehouse-3dd642",
+   "physicsClass": "static",
    "knobs": {
     "bays": 3,
     "storeys": 1,
@@ -3805,6 +4663,7 @@
    "key": "b-depot-brickDeep-3x2",
    "role": "building:brick-industrial",
    "asset": "brick-depot-warehouse-3dd642",
+   "physicsClass": "static",
    "knobs": {
     "bays": 3,
     "storeys": 2,
@@ -3854,6 +4713,7 @@
    "key": "b-depot-brickDeep-3x3",
    "role": "building:brick-industrial",
    "asset": "brick-depot-warehouse-3dd642",
+   "physicsClass": "static",
    "knobs": {
     "bays": 3,
     "storeys": 3,
@@ -3903,6 +4763,7 @@
    "key": "b-depot-brickDeep-5x1",
    "role": "building:brick-industrial",
    "asset": "brick-depot-warehouse-3dd642",
+   "physicsClass": "static",
    "knobs": {
     "bays": 5,
     "storeys": 1,
@@ -3952,6 +4813,7 @@
    "key": "b-depot-brickDeep-5x2",
    "role": "building:brick-industrial",
    "asset": "brick-depot-warehouse-3dd642",
+   "physicsClass": "static",
    "knobs": {
     "bays": 5,
     "storeys": 2,
@@ -4001,6 +4863,7 @@
    "key": "b-depot-brickDeep-5x3",
    "role": "building:brick-industrial",
    "asset": "brick-depot-warehouse-3dd642",
+   "physicsClass": "static",
    "knobs": {
     "bays": 5,
     "storeys": 3,
@@ -4050,6 +4913,7 @@
    "key": "b-hall-brick-16",
    "role": "building:brick-hall",
    "asset": "engine-shed-eff627",
+   "physicsClass": "static",
    "knobs": {
     "doors": 1,
     "length": 16,
@@ -4092,6 +4956,7 @@
    "key": "b-hall-brick-32",
    "role": "building:brick-hall",
    "asset": "engine-shed-eff627",
+   "physicsClass": "static",
    "knobs": {
     "doors": 1,
     "length": 32,
@@ -4134,6 +4999,7 @@
    "key": "b-hall-brickDeep-16",
    "role": "building:brick-hall",
    "asset": "engine-shed-eff627",
+   "physicsClass": "static",
    "knobs": {
     "doors": 1,
     "length": 16,
@@ -4176,6 +5042,7 @@
    "key": "b-hall-brickDeep-32",
    "role": "building:brick-hall",
    "asset": "engine-shed-eff627",
+   "physicsClass": "static",
    "knobs": {
     "doors": 1,
     "length": 32,
@@ -4218,6 +5085,7 @@
    "key": "b-shed-asphalt",
    "role": "building:shed",
    "asset": "backyard-garden-shed-38d79f",
+   "physicsClass": "static",
    "knobs": {
     "material": "ribbed-metal",
     "doorState": "closed",
@@ -4253,6 +5121,7 @@
    "key": "b-shed-powder",
    "role": "building:shed",
    "asset": "backyard-garden-shed-38d79f",
+   "physicsClass": "static",
    "knobs": {
     "material": "ribbed-metal",
     "doorState": "closed",
@@ -4288,6 +5157,7 @@
    "key": "b-garage-cream",
    "role": "building:garage",
    "asset": "detached-garage-38a178",
+   "physicsClass": "static",
    "knobs": {
     "doorState": "closed",
     "siding": "#FFF3DA",
@@ -4325,6 +5195,7 @@
    "key": "b-garage-mint",
    "role": "building:garage",
    "asset": "detached-garage-38a178",
+   "physicsClass": "static",
    "knobs": {
     "doorState": "closed",
     "siding": "#8CE3BF",
@@ -4362,6 +5233,7 @@
    "key": "b-parking-3",
    "role": "building:parking",
    "asset": "parking-garage-6e4f2c",
+   "physicsClass": "static",
    "knobs": {
     "decks": 3,
     "parapetInfill": "solid-band",
@@ -4409,6 +5281,7 @@
    "key": "b-parking-5",
    "role": "building:parking",
    "asset": "parking-garage-6e4f2c",
+   "physicsClass": "static",
    "knobs": {
     "decks": 5,
     "parapetInfill": "solid-band",
@@ -4456,6 +5329,7 @@
    "key": "b-school-3",
    "role": "building:school",
    "asset": "public-school-19ade5",
+   "physicsClass": "static",
    "knobs": {
     "floors": 3,
     "parapet": "plain",
@@ -4501,6 +5375,7 @@
    "key": "b-school-4",
    "role": "building:school",
    "asset": "public-school-19ade5",
+   "physicsClass": "static",
    "knobs": {
     "floors": 4,
     "parapet": "plain",
@@ -4546,6 +5421,7 @@
    "key": "b-church",
    "role": "building:church",
    "asset": "brick-church-322885",
+   "physicsClass": "static",
    "knobs": {
     "towerHeight": 15,
     "towerTop": "pyramid",
@@ -4588,6 +5464,7 @@
    "key": "b-firestation",
    "role": "building:fire-station",
    "asset": "fire-station-e2b756",
+   "physicsClass": "static",
    "knobs": {
     "floors": 2,
     "bayDoor": "closed",
@@ -4630,6 +5507,7 @@
    "key": "b-tank-8",
    "role": "building:tank",
    "asset": "fuel-farm-tank-ed67f0",
+   "physicsClass": "static",
    "knobs": {
     "height": 8,
     "wear": 0.1,
@@ -4660,6 +5538,7 @@
    "key": "b-tank-14",
    "role": "building:tank",
    "asset": "fuel-farm-tank-ed67f0",
+   "physicsClass": "static",
    "knobs": {
     "height": 14,
     "wear": 0.1,
@@ -4690,6 +5569,7 @@
    "key": "b-tower-6",
    "role": "building:tower",
    "asset": "office-tower-1538cc",
+   "physicsClass": "static",
    "knobs": {
     "floors": 6,
     "lobby": "double",
@@ -4736,6 +5616,7 @@
    "key": "b-tower-10",
    "role": "building:tower",
    "asset": "office-tower-1538cc",
+   "physicsClass": "static",
    "knobs": {
     "floors": 10,
     "lobby": "double",
@@ -4782,6 +5663,7 @@
    "key": "t-street-egg-tree",
    "role": "tree:street",
    "asset": "street-tree-0d33f3",
+   "physicsClass": "breakable",
    "knobs": {
     "crown": "egg",
     "tallness": 1,
@@ -4811,6 +5693,7 @@
    "key": "t-street-egg-treeDeep",
    "role": "tree:street",
    "asset": "street-tree-0d33f3",
+   "physicsClass": "breakable",
    "knobs": {
     "crown": "egg",
     "tallness": 1,
@@ -4840,6 +5723,7 @@
    "key": "t-street-round-tree",
    "role": "tree:street",
    "asset": "street-tree-0d33f3",
+   "physicsClass": "breakable",
    "knobs": {
     "crown": "round",
     "tallness": 1,
@@ -4869,6 +5753,7 @@
    "key": "t-street-round-treeDeep",
    "role": "tree:street",
    "asset": "street-tree-0d33f3",
+   "physicsClass": "breakable",
    "knobs": {
     "crown": "round",
     "tallness": 1,
@@ -4898,6 +5783,7 @@
    "key": "t-street-broad-tree",
    "role": "tree:street",
    "asset": "street-tree-0d33f3",
+   "physicsClass": "breakable",
    "knobs": {
     "crown": "broad",
     "tallness": 1,
@@ -4927,6 +5813,7 @@
    "key": "t-street-broad-treeDeep",
    "role": "tree:street",
    "asset": "street-tree-0d33f3",
+   "physicsClass": "breakable",
    "knobs": {
     "crown": "broad",
     "tallness": 1,
@@ -4956,6 +5843,7 @@
    "key": "t-shade-tree",
    "role": "tree:shade",
    "asset": "broad-canopy-shade-tree-e7c4a2",
+   "physicsClass": "breakable",
    "knobs": {
     "season": "summer",
     "foliage": "#48C26A",
@@ -4982,6 +5870,7 @@
    "key": "t-shade-treeDeep",
    "role": "tree:shade",
    "asset": "broad-canopy-shade-tree-e7c4a2",
+   "physicsClass": "breakable",
    "knobs": {
     "season": "summer",
     "foliage": "#2FA35A",
@@ -5008,6 +5897,7 @@
    "key": "t-ornamental",
    "role": "tree:ornamental",
    "asset": "ornamental-front-yard-tree-c6781a",
+   "physicsClass": "breakable",
    "knobs": {
     "season": "summer",
     "foliage": "#48C26A",
@@ -5036,6 +5926,7 @@
    "key": "t-palm-9",
    "role": "tree:palm",
    "asset": "chilean-palm-45fef5",
+   "physicsClass": "breakable",
    "knobs": {
     "height": 9,
     "fronds": 18,
@@ -5067,6 +5958,7 @@
    "key": "t-palm-14",
    "role": "tree:palm",
    "asset": "chilean-palm-45fef5",
+   "physicsClass": "breakable",
    "knobs": {
     "height": 14,
     "fronds": 18,
@@ -5098,6 +5990,7 @@
    "key": "t-conifer",
    "role": "tree:conifer",
    "asset": "tall-pine-tree-ab4108",
+   "physicsClass": "breakable",
    "knobs": {
     "season": "summer",
     "tallness": 9,
@@ -5125,6 +6018,7 @@
    "key": "p-lamp",
    "role": "prop:street_lamp",
    "asset": "cobra-head-street-light-3e25b8",
+   "physicsClass": "breakable",
    "knobs": {
     "arm": "single",
     "lamp": "led",
@@ -5163,6 +6057,7 @@
    "key": "p-signal",
    "role": "prop:traffic_signal",
    "asset": "traffic-light-b217a2",
+   "physicsClass": "breakable",
    "knobs": {
     "armSignal": true,
     "pedSignal": true,
@@ -5222,6 +6117,7 @@
    "key": "p-stop",
    "role": "prop:stop",
    "asset": "street-sign-post-c621b4",
+   "physicsClass": "breakable",
    "knobs": {
     "face": "stop",
     "base": "sleeve",
@@ -5254,6 +6150,7 @@
    "key": "p-signpost",
    "role": "prop:give_way",
    "asset": "street-sign-post-c621b4",
+   "physicsClass": "breakable",
    "knobs": {
     "face": "streetName",
     "base": "sleeve",
@@ -5286,6 +6183,7 @@
    "key": "p-hydrant",
    "role": "prop:fire_hydrant",
    "asset": "fire-hydrant-b68b17",
+   "physicsClass": "breakable",
    "knobs": {
     "facets": 8,
     "body": "#FFFFFF",
@@ -5314,6 +6212,7 @@
    "key": "p-bench",
    "role": "prop:bench",
    "asset": "park-bench-dc8b62",
+   "physicsClass": "breakable",
    "knobs": {
     "iron": "#1C2347",
     "wood": "#8B5A3C",
@@ -5339,6 +6238,7 @@
    "key": "p-shelter",
    "role": "prop:bus_shelter",
    "asset": "bus-shelter-f786b4",
+   "physicsClass": "breakable",
    "knobs": {
     "bays": 2,
     "adState": "poster",
@@ -5401,6 +6301,7 @@
    "key": "p-busstop",
    "role": "prop:bus_stop",
    "asset": "street-sign-pole-1e9551",
+   "physicsClass": "breakable",
    "knobs": {
     "finial": "cap",
     "iron": "#1C2347",
@@ -5428,6 +6329,7 @@
    "key": "p-bollard",
    "role": "prop:bollard",
    "asset": "sidewalk-bollard-c2567e",
+   "physicsClass": "static",
    "knobs": {
     "style": "steel-pipe",
     "bands": 1,
@@ -5458,6 +6360,7 @@
    "key": "p-bikerack",
    "role": "prop:bike_rack",
    "asset": "bike-rack-a1e7c3",
+   "physicsClass": "breakable",
    "knobs": {
     "hoops": 3,
     "railBar": true,
@@ -5485,6 +6388,7 @@
    "key": "p-meter",
    "role": "prop:parking_meter",
    "asset": "parking-meter-e9cf71",
+   "physicsClass": "breakable",
    "knobs": {
     "head": "single",
     "post": "#6C758B",
@@ -5515,6 +6419,7 @@
    "key": "p-bin",
    "role": "prop:trash_can",
    "asset": "metal-trash-can-f57043",
+   "physicsClass": "breakable",
    "knobs": {
     "lid": "closed",
     "load": "empty",
@@ -5544,6 +6449,7 @@
    "key": "p-mailbox",
    "role": "prop:post_box",
    "asset": "mailbox-8e36e8",
+   "physicsClass": "breakable",
    "knobs": {
     "placard": true,
     "shell": "#2C4FA3",
@@ -5570,6 +6476,7 @@
    "key": "p-fountain",
    "role": "prop:drinking_water",
    "asset": "park-drinking-fountain-b1c25b",
+   "physicsClass": "breakable",
    "knobs": {
     "concrete": "#EEE7DA",
     "basin": "#A3AEC4",
@@ -5598,6 +6505,7 @@
    "key": "p-picnic",
    "role": "prop:picnic_table",
    "asset": "picnic-table-4ee33a",
+   "physicsClass": "breakable",
    "knobs": {
     "wood": "#8B5A3C",
     "frame": "#1C2347",
@@ -5624,6 +6532,7 @@
    "key": "p-newsbox",
    "role": "prop:vending",
    "asset": "newspaper-box-3f2c0e",
+   "physicsClass": "breakable",
    "knobs": {
     "body": "#9ED7FF",
     "sign": "#FFF3DA",
@@ -5655,6 +6564,7 @@
    "key": "p-charger",
    "role": "prop:charging_station",
    "asset": "vehicle-charging-post-45cbb8",
+   "physicsClass": "breakable",
    "knobs": {
     "head": "cable",
     "shell": "#FFFFFF",
@@ -5698,6 +6608,7 @@
    "key": "p-pole",
    "role": "prop:power_pole",
    "asset": "timber-utility-pole-a93693",
+   "physicsClass": "breakable",
    "knobs": {
     "piece": "straight",
     "wires": "two",
@@ -5731,6 +6642,7 @@
    "key": "p-flagpole",
    "role": "prop:flagpole",
    "asset": "flag-pole-015e53",
+   "physicsClass": "breakable",
    "knobs": {
     "arrangement": 1,
     "pole": "#A3AEC4",
@@ -5761,6 +6673,7 @@
    "key": "p-crane-mast",
    "role": "prop:crane_mast",
    "asset": "tower-crane-mast-1784a3",
+   "physicsClass": "static",
    "knobs": {
     "height": 8,
     "ties": true,
@@ -5795,6 +6708,7 @@
    "key": "p-crane-top",
    "role": "prop:crane_top",
    "asset": "tower-crane-top-d8d9c9",
+   "physicsClass": "static",
    "knobs": {
     "load": false,
     "jibSections": 6,
