@@ -144,6 +144,7 @@ namespace Dogpatch.Gameplay
             }
 
             VehicleRoster.Configure(material, models.Role("player").Count > 0 ? models.Get(models.Role("player")[0].id) : null);
+            float spawnStart = Time.realtimeSinceStartup;
             foreach (var vehicle in await backend.ListVehiclesAsync())
             {
                 CarController car;
@@ -159,6 +160,7 @@ namespace Dogpatch.Gameplay
                 }
                 cars[vehicle.id] = car;
             }
+            Debug.Log($"[Dogpatch] {cars.Count} vehicles spawned in {Time.realtimeSinceStartup - spawnStart:F1}s");
 
             var playerModel = models.Role("player").Count > 0 ? models.Get(models.Role("player")[0].id) : null;
             player = PlayerController.Create(playerModel, material);
@@ -186,6 +188,7 @@ namespace Dogpatch.Gameplay
             smashHud.View = view;
             smashHud.Focus = () => current;
             VehicleDamage.Wrecked += OnWrecked;
+            gameObject.AddComponent<ParkedCarStreamer>().Init(this, cars.Values);
         }
 
         void OnDestroy() => VehicleDamage.Wrecked -= OnWrecked;

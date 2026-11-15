@@ -107,6 +107,7 @@ namespace Dogpatch.World
         public void Build(Material shared)
         {
             Active = this;
+            var watch = System.Diagnostics.Stopwatch.StartNew();
             FindJunctions();
             for (int r = 0; r < net.Roads.Length; r++)
             {
@@ -152,7 +153,9 @@ namespace Dogpatch.World
                 WorldBuilder.Emit(ctx.Root.transform, "Streets " + key, builder.ToMesh("streets " + key), streets, false);
             Colliders("Asphalt", asphaltColliders);
             Colliders("Sidewalks", sidewalkColliders);
+            long paint = watch.ElapsedMilliseconds;
             Colliders("Ground", LandColliders());
+            Debug.Log($"[Dogpatch] streets: {Junctions.Count} junctions, {CrosswalkCount} crosswalks, {StopLineCount} stop lines; surfaces {paint} ms, ground colliders {watch.ElapsedMilliseconds - paint} ms");
         }
 
         void Colliders(string name, ChunkedMeshBuilder builders)
@@ -606,6 +609,7 @@ namespace Dogpatch.World
                 return true;
             }
 
+            var watch = System.Diagnostics.Stopwatch.StartNew();
             for (int r = 0; r < net.Roads.Length; r++)
             {
                 var road = net.Roads[r];
@@ -632,6 +636,7 @@ namespace Dogpatch.World
                     }
                 }
             }
+            Debug.Log($"[Dogpatch] parking: {into.Count} curbside spaces taken in {watch.ElapsedMilliseconds} ms");
         }
 
         // Ground the player and parked cars stand on away from the streets: a 1 m raster of the land

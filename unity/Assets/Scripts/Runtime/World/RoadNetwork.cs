@@ -141,23 +141,45 @@ namespace Dogpatch.World
             return new LaneLayout { Forward = f, Backward = b, Width = lane, Divider = road.oneway || b == 0 ? hw : (f - b) * lane * 0.5f };
         }
 
-        // True when p lies on the asphalt of a curbed street (a capsule of HalfWidth + margin around each segment).
+        // True when p lies on the asphalt of a curbed street (a capsule of HalfWidth + margin around each
+        // segment, for margins up to CurbReach). Street building asks this every half metre, so curbed
+        // segments get their own fine grid, filled lazily.
         public bool OnCurbedCarriageway(Vector2 p, float margin, int excludeRoad = -1)
         {
-            var c = CellOf(p);
-            for (int x = c.x - 1; x <= c.x + 1; x++)
-                for (int z = c.y - 1; z <= c.y + 1; z++)
-                {
-                    if (!grid.TryGetValue(new Vector2Int(x, z), out var list)) continue;
-                    foreach (int s in list)
-                    {
-                        var seg = segments[s];
-                        if (seg.Road == excludeRoad || !IsCurbed(Roads[seg.Road])) continue;
-                        float reach = HalfWidth(Roads[seg.Road]) + margin;
-                        if ((p - Geometry.ClosestPointOnSegment(p, seg.A, seg.B, out _)).sqrMagnitude < reach * reach) return true;
-                    }
-                }
+            if (curbGrid == null) BuildCurbGrid();
+            if (!curbGrid.TryGetValue(new Vector2Int(Mathf.FloorToInt(p.x / CurbCell), Mathf.FloorToInt(p.y / CurbCell)), out var list)) return false;
+            foreach (int s in list)
+            {
+                var seg = segments[s];
+                if (seg.Road == excludeRoad) continue;
+                float reach = HalfWidth(Roads[seg.Road]) + margin;
+                if ((p - Geometry.ClosestPointOnSegment(p, seg.A, seg.B, out _)).sqrMagnitude < reach * reach) return true;
+            }
             return false;
+        }
+
+        const float CurbCell = 8f;
+        const float CurbReach = 1f;
+        Dictionary<Vector2Int, List<int>> curbGrid;
+
+        void BuildCurbGrid()
+        {
+            curbGrid = new Dictionary<Vector2Int, List<int>>();
+            for (int s = 0; s < segments.Count; s++)
+            {
+                var seg = segments[s];
+                if (!IsCurbed(Roads[seg.Road])) continue;
+                var pad = Vector2.one * (HalfWidth(Roads[seg.Road]) + CurbReach);
+                var min = Vector2.Min(seg.A, seg.B) - pad;
+                var max = Vector2.Max(seg.A, seg.B) + pad;
+                for (int x = Mathf.FloorToInt(min.x / CurbCell); x <= Mathf.FloorToInt(max.x / CurbCell); x++)
+                    for (int z = Mathf.FloorToInt(min.y / CurbCell); z <= Mathf.FloorToInt(max.y / CurbCell); z++)
+                    {
+                        var cell = new Vector2Int(x, z);
+                        if (!curbGrid.TryGetValue(cell, out var list)) curbGrid[cell] = list = new List<int>();
+                        list.Add(s);
+                    }
+            }
         }
 
         static Vector2Int CellOf(Vector2 p) => new Vector2Int(Mathf.FloorToInt(p.x / Cell), Mathf.FloorToInt(p.y / Cell));
