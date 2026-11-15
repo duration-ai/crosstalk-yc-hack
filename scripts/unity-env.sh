@@ -11,3 +11,12 @@ if [[ -z "${UNITY_PATH:-}" ]]; then
   fi
 fi
 export REPO_ROOT UNITY_VERSION PROJECT_PATH UNITY_PATH
+
+# Builds apply PlayerSettings in memory and Unity writes them into ProjectSettings on exit.
+# Call this before a build so the committed settings come back untouched afterwards.
+preserve_project_settings() {
+  local backup
+  backup="$(mktemp -d)"
+  cp -a "$PROJECT_PATH/ProjectSettings/." "$backup/"
+  trap "rm -rf '$PROJECT_PATH/ProjectSettings' && mkdir -p '$PROJECT_PATH/ProjectSettings' && cp -a '$backup/.' '$PROJECT_PATH/ProjectSettings/' && rm -rf '$backup'" EXIT
+}

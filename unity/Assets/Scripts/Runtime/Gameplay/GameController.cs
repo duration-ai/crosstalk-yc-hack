@@ -36,11 +36,11 @@ namespace Dogpatch.Gameplay
         float nextSync;
         float nextLog;
         Vector3 lastSafe;
-        bool wasDragging;
-        float dragYaw;
 
         public bool Driving => current != null;
         public bool IsReady => ready;
+        public CarController NearestCar { get; private set; }
+        public Camera View => view;
         public bool ExternalInput;
         public IGameBackend Backend => backend;
         public Player Profile => profile;
@@ -52,7 +52,6 @@ namespace Dogpatch.Gameplay
         public CarController CurrentCar => current;
         public IReadOnlyDictionary<string, CarController> Cars => cars;
         public FollowCamera Follow => follow;
-        public Camera View => view;
         public DragInput Drag => input;
         public Hud BaseHud => hud;
 
@@ -65,6 +64,11 @@ namespace Dogpatch.Gameplay
         async void Start()
         {
             Application.targetFrameRate = 60;
+            if (Application.isMobilePlatform && Screen.height > 1400)
+            {
+                float scale = 1400f / Screen.height;
+                Screen.SetResolution(Mathf.RoundToInt(Screen.width * scale), 1400, true);
+            }
             material = new Material(Resources.Load<Shader>("Shaders/FlatVertexColor")) { name = "FlatVertexColor" };
             SetupRendering();
 
@@ -189,15 +193,15 @@ namespace Dogpatch.Gameplay
         {
             if (!ready) return;
 
-            if (input.Dragging && !wasDragging) dragYaw = follow.Yaw;
-            wasDragging = input.Dragging;
+            follow.Hold = input.Dragging && current == null;
             var dir2 = input.Direction;
-            var dir = dir2 == Vector2.zero ? Vector3.zero : Quaternion.Euler(0f, dragYaw, 0f) * new Vector3(dir2.x, 0f, dir2.y);
+            var dir = dir2 == Vector2.zero ? Vector3.zero : Quaternion.Euler(0f, follow.Yaw, 0f) * new Vector3(dir2.x, 0f, dir2.y);
             if (ExternalInput) { }
             else if (current != null) current.SetInput(dir, input.Strength);
             else player.SetInput(dir, input.Strength);
 
             var focus = current != null ? current.transform : player.transform;
+            NearestCar = current == null ? FindNearestCar(player.transform.position, 40f) : null;
             StreetName = world.Roads.StreetNameAt(new Vector2(focus.position.x, focus.position.z));
             float kmh = Mathf.Abs(current != null ? current.Speed : player.Speed) * 3.6f;
             StatusLine = (current != null ? "Driving" : "On foot") + $" · {kmh:F0} km/h";
@@ -211,6 +215,20 @@ namespace Dogpatch.Gameplay
                 nextLog = Time.time + 2f;
                 Debug.Log($"[Dogpatch] mode={(current != null ? "driving" : "onFoot")} pos=({focus.position.x:F1},{focus.position.z:F1}) heading={focus.eulerAngles.y:F0} speed={kmh:F0}km/h street={StreetName}");
             }
+        }
+
+        CarController FindNearestCar(Vector3 position, float range)
+        {
+            CarController best = null;
+            float bestDistance = range;
+            foreach (var car in cars.Values)
+            {
+                float d = Vector3.Distance(car.transform.position, position);
+                if (d >= bestDistance) continue;
+                bestDistance = d;
+                best = car;
+            }
+            return best;
         }
 
         void Respawn(Transform focus)
