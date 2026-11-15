@@ -74,12 +74,14 @@ namespace Dogpatch.Vehicles
         {
             const float Cell = 8f;
             readonly Dictionary<Vector2Int, List<Footprint>> grid = new Dictionary<Vector2Int, List<Footprint>>();
+            float largest;
 
             public bool Blocked(in Footprint f, float gap)
             {
                 var c = Vector2Int.FloorToInt(f.Center / Cell);
-                for (int x = -1; x <= 1; x++)
-                    for (int z = -1; z <= 1; z++)
+                int reach = Mathf.CeilToInt((f.Half.magnitude + largest + gap) / Cell);
+                for (int x = -reach; x <= reach; x++)
+                    for (int z = -reach; z <= reach; z++)
                         if (grid.TryGetValue(c + new Vector2Int(x, z), out var list))
                             foreach (var other in list)
                                 if (Overlap(f, other, gap)) return true;
@@ -88,6 +90,7 @@ namespace Dogpatch.Vehicles
 
             public void Add(in Footprint f)
             {
+                largest = Mathf.Max(largest, f.Half.magnitude);
                 var c = Vector2Int.FloorToInt(f.Center / Cell);
                 if (!grid.TryGetValue(c, out var list)) grid[c] = list = new List<Footprint>();
                 list.Add(f);
@@ -100,18 +103,21 @@ namespace Dogpatch.Vehicles
             var pairs = new List<(CarController, CarController)>();
             var feet = new Footprint[cars.Count];
             var grid = new Dictionary<Vector2Int, List<int>>();
+            float largest = 0f;
             for (int i = 0; i < cars.Count; i++)
             {
                 feet[i] = Of(cars[i]);
+                largest = Mathf.Max(largest, feet[i].Half.magnitude);
                 var c = Vector2Int.FloorToInt(feet[i].Center / 8f);
                 if (!grid.TryGetValue(c, out var list)) grid[c] = list = new List<int>();
                 list.Add(i);
             }
+            int reach = Mathf.CeilToInt((2f * largest + Mathf.Max(gap, 0f)) / 8f);
             for (int i = 0; i < cars.Count; i++)
             {
                 var c = Vector2Int.FloorToInt(feet[i].Center / 8f);
-                for (int x = -1; x <= 1; x++)
-                    for (int z = -1; z <= 1; z++)
+                for (int x = -reach; x <= reach; x++)
+                    for (int z = -reach; z <= reach; z++)
                         if (grid.TryGetValue(c + new Vector2Int(x, z), out var list))
                             foreach (int j in list)
                                 if (j > i && Overlap(feet[i], feet[j], gap)) pairs.Add((cars[i], cars[j]));

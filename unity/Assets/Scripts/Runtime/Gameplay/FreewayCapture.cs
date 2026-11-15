@@ -23,6 +23,7 @@ namespace Dogpatch.Gameplay
 
         string output;
         int every;
+        bool underpasses;
         GameController game;
         CarController car;
         readonly List<Vector3> path = new List<Vector3>();
@@ -36,9 +37,11 @@ namespace Dogpatch.Gameplay
         {
             var args = Environment.GetCommandLineArgs();
             int i = Array.IndexOf(args, "-freewayCapture");
-            if (i < 0 || i + 1 >= args.Length) return;
+            int u = Array.IndexOf(args, "-freewayUnder");
+            if ((i < 0 || i + 1 >= args.Length) && (u < 0 || u + 1 >= args.Length)) return;
             var capture = new GameObject("FreewayCapture").AddComponent<FreewayCapture>();
-            capture.output = args[i + 1];
+            capture.underpasses = u >= 0;
+            capture.output = args[(u >= 0 ? u : i) + 1];
             int j = Array.IndexOf(args, "-captureEvery");
             capture.every = j >= 0 && j + 1 < args.Length && int.TryParse(args[j + 1], out int n) ? n : 2;
             Time.captureFramerate = 30;
@@ -53,7 +56,7 @@ namespace Dogpatch.Gameplay
             if (Race.RaceDirector.Instance != null) Destroy(Race.RaceDirector.Instance);
             var freeway = game.World.Roads.Freeway;
             if (freeway == null) throw new InvalidOperationException("no freeway graph");
-            BuildPath(freeway);
+            if (!underpasses) BuildPath(freeway);
 
             CarController parked = null;
             foreach (var c in FindObjectsByType<CarController>(FindObjectsSortMode.None))
@@ -67,6 +70,13 @@ namespace Dogpatch.Gameplay
             var task = (Task)enter.Invoke(game, new object[] { car });
             while (!task.IsCompleted) yield return null;
             var hud = game.GetComponent<Hud>();
+            if (underpasses)
+            {
+                game.View.GetComponent<FollowCamera>().Snap(car.transform, true);
+                yield return Underpasses(freeway);
+                Application.Quit();
+                yield break;
+            }
             var start = path[0];
             var heading = path[1] - path[0];
             car.Place(start + Vector3.up * 0.3f, Mathf.Atan2(heading.x, heading.z) * Mathf.Rad2Deg);
@@ -104,6 +114,120 @@ namespace Dogpatch.Gameplay
             Application.Quit();
         }
 
+        // Every street that passes under a deck or ramp more than 3 m up, driven through in both directions
+        // from 35 m before to 35 m after the crossing. A pass that stalls logs what the car is touching.
+        IEnumerator Underpasses(FreewayGraph freeway)
+        {
+            var roads = game.World.Roads;
+            var report = new StringBuilder("street,road,crossing_x,crossing_z,deck_h,direction,result,min_speed,stop_x,stop_z,touching\n");
+            var done = new List<Vector2>();
+            int passes = 0, blocked = 0;
+            for (int r = 0; r < roads.Roads.Length; r++)
+            {
+                var road = roads.Roads[r];
+                if (!RoadNetwork.IsDriveable(road) || road.kind == "service" || road.kind == "track") continue;
+                var pts = roads.Points[r];
+                for (int i = 0; i + 1 < pts.Length; i++)
+                    foreach (var way in freeway.Ways)
+                        for (int j = 0; j + 1 < way.Points.Length; j++)
+                        {
+                            var a = way.Points[j];
+                            var b = way.Points[j + 1];
+                            if (!Cross(pts[i], pts[i + 1], new Vector2(a.x, a.z), new Vector2(b.x, b.z), out float t, out float k)) continue;
+                            float h = Mathf.Lerp(a.y, b.y, k);
+                            var at = Vector2.Lerp(pts[i], pts[i + 1], t);
+                            if (h < 3f || done.Exists(d => Vector2.Distance(d, at) < 12f)) continue;
+                            done.Add(at);
+                            foreach (int dir in new[] { 1, -1 })
+                            {
+                                var line = StreetLine(pts, i, t, dir, roads, r);
+                                float minSpeed = float.MaxValue;
+                                bool reached = false;
+                                path.Clear();
+                                speedAt.Clear();
+                                foreach (var q in line) Add(new Vector3(q.x, RoadSurface.GroundY(q), q.y), 9f);
+                                cursor = 0;
+                                var heading = path[1] - path[0];
+                                car.Place(path[0] + Vector3.up * 0.1f, Mathf.Atan2(heading.x, heading.z) * Mathf.Rad2Deg);
+                                driving = true;
+                                float started = Time.time, slowSince = -1f;
+                                while (Time.time - started < 25f)
+                                {
+                                    yield return null;
+                                    var p = car.transform.position;
+                                    if (Time.time - started > 2f) minSpeed = Mathf.Min(minSpeed, car.Speed);
+                                    if (Vector2.Distance(new Vector2(p.x, p.z), line[line.Count - 1]) < 5f) { reached = true; break; }
+                                    if (Time.time - started > 2f && Mathf.Abs(car.Speed) < 1f) { if (slowSince < 0f) slowSince = Time.time; else if (Time.time - slowSince > 2f) break; }
+                                    else slowSince = -1f;
+                                }
+                                driving = false;
+                                car.SetInput(Vector3.zero, 0f);
+                                var stop = car.transform.position;
+                                string touching = reached ? "" : Touching();
+                                passes++;
+                                if (!reached)
+                                {
+                                    blocked++;
+                                    yield return new WaitForEndOfFrame();
+                                    Save(Path.Combine(output, $"blocked_{blocked:D2}.ppm"));
+                                }
+                                Debug.Log($"[FreewayCapture] pass {road.name} at ({at.x:F0},{at.y:F0}) {(dir > 0 ? "forward" : "backward")}: {(reached ? "through" : "BLOCKED at " + stop + " touching " + touching)}");
+                                report.Append(string.Format(CultureInfo.InvariantCulture, "\"{0}\",{1},{2:F1},{3:F1},{4:F1},{5},{6},{7:F1},{8:F1},{9:F1},\"{10}\"\n",
+                                    road.name, road.osmId, at.x, at.y, h, dir > 0 ? "forward" : "backward", reached ? "through" : "BLOCKED", minSpeed, stop.x, stop.z, touching));
+                            }
+                        }
+            }
+            File.WriteAllText(Path.Combine(output, "underpasses.csv"), report.ToString());
+            Debug.Log($"[FreewayCapture] underpasses: {passes} passes, {blocked} blocked");
+        }
+
+        static bool Cross(Vector2 p1, Vector2 p2, Vector2 p3, Vector2 p4, out float t, out float k)
+        {
+            t = k = 0f;
+            var d1 = p2 - p1;
+            var d2 = p4 - p3;
+            float den = d1.x * d2.y - d1.y * d2.x;
+            if (Mathf.Abs(den) < 1e-6f) return false;
+            var w = p3 - p1;
+            t = (w.x * d2.y - w.y * d2.x) / den;
+            k = (w.x * d1.y - w.y * d1.x) / den;
+            return t >= 0f && t <= 1f && k >= 0f && k <= 1f;
+        }
+
+        // 35 m of the street either side of the crossing, in the right-hand lane for the travel direction,
+        // continuing into the next road of the same name when the way ends.
+        static List<Vector2> StreetLine(Vector2[] pts, int i, float t, int dir, RoadNetwork roads, int road)
+        {
+            var poly = new List<Vector2>(pts);
+            var at = Vector2.Lerp(pts[i], pts[i + 1], t);
+            if (dir < 0) { poly.Reverse(); i = pts.Length - 2 - i; }
+            var arc = new List<float> { 0f };
+            for (int n = 1; n < poly.Count; n++) arc.Add(arc[n - 1] + Vector2.Distance(poly[n - 1], poly[n]));
+            float sAt = arc[i] + Vector2.Distance(poly[i], at);
+            var result = new List<Vector2>();
+            float offset = RoadNetwork.Lanes(roads.Roads[road]).Width * 0.5f;
+            for (float s = sAt - 35f; s <= sAt + 35f; s += 3f)
+            {
+                float c = Mathf.Clamp(s, 0f, arc[arc.Count - 1]);
+                int n = 1;
+                while (n < poly.Count - 1 && arc[n] < c) n++;
+                var d = (poly[n] - poly[n - 1]).normalized;
+                var q = Vector2.Lerp(poly[n - 1], poly[n], Mathf.InverseLerp(arc[n - 1], arc[n], c)) + d * (s - c);
+                result.Add(q + new Vector2(d.y, -d.x) * (roads.Roads[road].oneway ? 0f : offset));
+            }
+            return result;
+        }
+
+        string Touching()
+        {
+            var box = car.GetComponent<BoxCollider>();
+            var hits = Physics.OverlapBox(car.transform.TransformPoint(box.center), box.size * 0.5f + Vector3.one * 0.4f, car.transform.rotation, ~0, QueryTriggerInteraction.Ignore);
+            var names = new List<string>();
+            foreach (var h in hits)
+                if (!h.transform.IsChildOf(car.transform) && !names.Contains(h.name)) names.Add(h.name + "@" + h.gameObject.layer);
+            return string.Join(" | ", names);
+        }
+
         static IEnumerable<(string, Vector3, Vector3)> Stills()
         {
             yield return ("still_above_interchange", new Vector3(-250f, 110f, 330f), new Vector3(-365f, 10f, 520f));
@@ -128,22 +252,35 @@ namespace Dogpatch.Gameplay
                 foreach (var p in lane) Add(p, w.Ramp ? 14f : 22f);
             }
             var end = path[path.Count - 1];
-            var net = freeway;
             var roads = game.World.Roads;
-            for (int r = 0; r < roads.Roads.Length; r++)
+            var at = new Vector2(end.x, end.z);
+            float walked = 0f;
+            for (int guard = 0; guard < 8 && walked < 110f; guard++)
             {
-                if (roads.Roads[r].name != "Mariposa Street") continue;
-                var pts = roads.Points[r];
-                if (Vector2.Distance(pts[0], new Vector2(end.x, end.z)) > 3f && Vector2.Distance(pts[pts.Length - 1], new Vector2(end.x, end.z)) > 3f) continue;
-                var far = Vector2.Distance(pts[0], new Vector2(end.x, end.z)) < 3f ? pts[pts.Length - 1] : pts[0];
-                if (far.x > end.x) continue;
-                var dir = (far - new Vector2(end.x, end.z)).normalized;
-                for (float s = 8f; s <= 110f; s += 6f)
+                int road = -1, vertex = -1;
+                for (int r = 0; r < roads.Roads.Length && road < 0; r++)
                 {
-                    var q = new Vector2(end.x, end.z) + dir * s + new Vector2(dir.y, -dir.x) * 1.8f;
-                    Add(new Vector3(q.x, 0f, q.y), 9f);
+                    if (roads.Roads[r].name != "Mariposa Street") continue;
+                    var pts = roads.Points[r];
+                    for (int k = 0; k < pts.Length; k++)
+                        if (Vector2.Distance(pts[k], at) < 6f && (k > 0 && pts[k - 1].x < at.x - 1f || k < pts.Length - 1 && pts[k + 1].x < at.x - 1f)) { road = r; vertex = k; break; }
                 }
-                break;
+                if (road < 0) break;
+                var line = roads.Points[road];
+                int step = vertex > 0 && line[vertex - 1].x < at.x - 1f ? -1 : 1;
+                for (int k = vertex + step; k >= 0 && k < line.Length && walked < 110f; k += step)
+                {
+                    var from = line[k - step];
+                    float len = Vector2.Distance(from, line[k]);
+                    var dir = (line[k] - from) / Mathf.Max(len, 1e-3f);
+                    for (float s = 6f; s <= len; s += 6f)
+                    {
+                        var q = from + dir * s + new Vector2(dir.y, -dir.x) * 1.8f;
+                        Add(new Vector3(q.x, RoadSurface.GroundY(q), q.y), 9f);
+                    }
+                    walked += len;
+                    at = line[k];
+                }
             }
         }
 

@@ -106,6 +106,13 @@ namespace Dogpatch.Smash.Demo
                 }
                 var damage = ram.GetComponent<VehicleDamage>();
                 if (damage != null && damage.IsWrecked) damage.Repair();
+                if (game.Current != ram)
+                {
+                    game.Player.Teleport(ram.transform.position - ram.transform.right * (ram.HalfExtents.x + 1f), 0f);
+                    yield return null;
+                    var back = (Task)enter.Invoke(game, new object[] { ram });
+                    while (!back.IsCompleted) yield return null;
+                }
                 string kind = Kinds[attempt % Kinds.Length];
                 if (!Aim(kind)) continue;
                 attempts.TryGetValue(kind, out int count);
@@ -206,14 +213,23 @@ namespace Dogpatch.Smash.Demo
                 {
                     var center = p + fwd * 32f;
                     var right = Vector3.Cross(Vector3.up, fwd);
+                    var near = new List<VehicleSpacing.Footprint>();
+                    foreach (var c in FindObjectsByType<CarController>(FindObjectsSortMode.None))
+                        if ((c.transform.position - center).sqrMagnitude < 30f * 30f) near.Add(VehicleSpacing.Of(c));
                     CarController middle = null;
                     for (int i = 0; i < 3; i++)
                     {
-                        var q = center + right * ((i - 1) * 2.3f) + fwd * (i % 2 * 1.6f);
+                        var q = center + right * ((i - 1) * 2.6f) + fwd * (i % 2 * 1.6f);
                         q.y = World.RoadSurface.GroundY(new Vector2(q.x, q.z)) + 0.05f;
-                        var car = VehicleRoster.Spawn(i == 1 ? VehicleTypes.YellowCab : VehicleTypes.Sedan, q, Mathf.Atan2(right.x, right.z) * Mathf.Rad2Deg + i * 25f);
-                        if (i == 1) middle = car;
+                        string type = i == 1 ? VehicleTypes.YellowCab : VehicleTypes.Sedan;
+                        float heading = Mathf.Atan2(right.x, right.z) * Mathf.Rad2Deg + i * 25f;
+                        var foot = VehicleSpacing.At(VehicleSpacing.BoundsOf(type, game.Models), new Vector2(q.x, q.z), heading);
+                        if (near.Exists(f => VehicleSpacing.Overlap(foot, f, 0.3f))) continue;
+                        near.Add(foot);
+                        var car = VehicleRoster.Spawn(type, q, heading);
+                        if (middle == null || i == 1) middle = car;
                     }
+                    if (middle == null) return false;
                     ramTarget = middle.transform;
                     return true;
                 }

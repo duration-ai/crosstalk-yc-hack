@@ -71,17 +71,65 @@ namespace Dogpatch.World
                         width = Mathf.Clamp(2f * (alongAxis ? box.ExtentNormal : box.ExtentAxis), 2f, 10f);
                         pts = new[] { box.Center - axis * half, box.Center + axis * half };
                     }
-                    var mid = pts[pts.Length / 2];
-                    LandmarkMeshes.Platform(statics.Generated(StaticModels.Layer.Landmarks, mid), pts, width, platform.kind == "rail" ? 1.0f : 0.9f);
+                    float height = platform.kind == "rail" ? 1.0f : 0.9f;
+                    var pieces = ClearOfStreets(pts, width, height);
+                    if (pieces.Count == 0) continue;
+                    var longest = pieces[0];
+                    foreach (var piece in pieces)
+                    {
+                        LandmarkMeshes.Platform(statics.Generated(StaticModels.Layer.Landmarks, piece[piece.Length / 2]), piece, width, height);
+                        if (Vector2.Distance(piece[0], piece[piece.Length - 1]) > Vector2.Distance(longest[0], longest[longest.Length - 1])) longest = piece;
+                    }
                     var dir = (pts[pts.Length - 1] - pts[0]).normalized;
-                    var shelterAt = Vector2.Lerp(pts[0], pts[pts.Length - 1], 0.5f);
+                    var shelterAt = Vector2.Lerp(longest[0], longest[longest.Length - 1], 0.5f);
                     float yaw = Mathf.Atan2(-dir.y, dir.x) * Mathf.Rad2Deg;
-                    statics.PlaceAtOrigin(StaticModels.Layer.Landmarks, "p-shelter", shelterAt, Matrix4x4.TRS(MeshBuilder.At(shelterAt, platform.kind == "rail" ? 1.0f : 0.9f), Quaternion.Euler(0f, yaw, 0f), Vector3.one), "osm:" + platform.osmId);
+                    statics.PlaceAtOrigin(StaticModels.Layer.Landmarks, "p-shelter", shelterAt, Matrix4x4.TRS(MeshBuilder.At(shelterAt, height), Quaternion.Euler(0f, yaw, 0f), Vector3.one), "osm:" + platform.osmId);
                     Count("platform:" + platform.kind);
                 }
 
             if (ctx.Roads.Freeway != null) FreewayBillboards(ctx.Roads.Freeway);
             ThirdStreetBillboards(data);
+        }
+
+        // OSM platforms sit in the Caltrain cut under the street bridges, but the map is flat, so a platform
+        // stops short of every street that crosses it (its end ramps included) instead of walling the road.
+        List<Vector2[]> ClearOfStreets(Vector2[] centerline, float width, float height)
+        {
+            const float Step = 0.5f;
+            float ramp = Mathf.Clamp(height * 10f, 2f, 12f) + 1f;
+            var samples = new List<(Vector2 p, bool blocked)>();
+            for (int i = 0; i + 1 < centerline.Length; i++)
+            {
+                var a = centerline[i];
+                var b = centerline[i + 1];
+                var axis = (b - a).normalized;
+                int n = Mathf.Max(1, Mathf.CeilToInt(Vector2.Distance(a, b) / Step));
+                for (int k = 0; k <= n; k++)
+                {
+                    if (k == n && i + 2 < centerline.Length) continue;
+                    var p = Vector2.Lerp(a, b, k / (float)n);
+                    bool crossing = ctx.Roads.Nearest(p, width * 0.5f + 1f, out var hit) && Mathf.Abs(Vector2.Dot(hit.Direction, axis)) < 0.8f;
+                    samples.Add((p, crossing));
+                }
+            }
+            var keep = new bool[samples.Count];
+            int reach = Mathf.CeilToInt(ramp / Step);
+            for (int i = 0; i < samples.Count; i++)
+            {
+                keep[i] = true;
+                for (int j = Mathf.Max(0, i - reach); j <= Mathf.Min(samples.Count - 1, i + reach) && keep[i]; j++)
+                    if (samples[j].blocked) keep[i] = false;
+            }
+            var pieces = new List<Vector2[]>();
+            var run = new List<Vector2>();
+            for (int i = 0; i <= samples.Count; i++)
+            {
+                if (i < samples.Count && keep[i]) { run.Add(samples[i].p); continue; }
+                if (run.Count > 1 && Vector2.Distance(run[0], run[run.Count - 1]) >= 8f)
+                    pieces.Add(centerline.Length == 2 ? new[] { run[0], run[run.Count - 1] } : run.ToArray());
+                run.Clear();
+            }
+            return pieces;
         }
 
         // Crane Cove: a four-legged portal on rail bogies, a yellow lattice mast on top and the jib.
