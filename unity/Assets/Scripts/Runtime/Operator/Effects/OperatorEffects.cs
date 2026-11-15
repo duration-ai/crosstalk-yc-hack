@@ -116,7 +116,7 @@ namespace Dogpatch.Operator
             {
                 Debug.Log($"[Operator] {row.effect} {row.id} is another racer's own change; their car shows it, ours stays as is");
                 Started?.Invoke(row);
-                return;
+                return target;
             }
             Debug.Log($"[Operator] apply {row.effect} {row.id} {row.scope}:{row.target}{row.targetClass} on {target.Entities.Count} entities, {row.strength} {row.color}{row.theme}{(row.instant ? " (instant)" : $" for {SecondsLeft(row):F0}s")}");
             try { effect.Apply(row.strength, target); }
