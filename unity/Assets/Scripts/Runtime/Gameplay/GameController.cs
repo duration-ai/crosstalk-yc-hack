@@ -38,10 +38,22 @@ namespace Dogpatch.Gameplay
         float nextLog;
         Vector3 lastSafe;
 
+        // Raised once the city, player and parked cars exist; vehicle and traffic systems start here.
+        public static event Action<GameController> WorldReady;
+        public static event Action<CarController> VehicleEntered;
+        public static event Action<CarController> VehicleExited;
+
         public bool Driving => current != null;
+        public bool Riding => current != null && current.Handling.PassengerOnly;
+        public CarController Current => current;
         public CarController CurrentCar => current;
+        public Transform Focus => current != null ? current.transform : player != null ? player.transform : null;
+        public WorldContext World => world;
+        public ModelLibrary Models => models;
+        public Material SharedMaterial => material;
         public CarController NearestCar { get; private set; }
         public Camera View => view;
+        public PlayerController Player => player;
         public string StreetName { get; private set; } = "";
         public string StatusLine { get; private set; } = "Loading Dogpatch…";
 
@@ -69,6 +81,7 @@ namespace Dogpatch.Gameplay
             hud = gameObject.AddComponent<Hud>();
             hud.Game = this;
             hud.Input = input;
+            gameObject.AddComponent<Look.MotionFx>().Game = this;
 
             var local = new InMemoryGameBackend();
             var seed = new List<(string, Vec3, float)> { (models.Role("car")[0].id, ToVec(world.HeroCar.Position), world.HeroCar.Heading) };
@@ -83,6 +96,7 @@ namespace Dogpatch.Gameplay
                 await LoadFromBackendAsync();
                 ready = true;
                 StatusLine = "On foot";
+                WorldReady?.Invoke(this);
             }
             catch (Exception e)
             {
@@ -160,33 +174,7 @@ namespace Dogpatch.Gameplay
                 var go = new GameObject("Main Camera") { tag = "MainCamera" };
                 view = go.AddComponent<Camera>();
             }
-            var sky = new Color(0.66f, 0.81f, 0.92f);
-            view.clearFlags = CameraClearFlags.SolidColor;
-            view.backgroundColor = sky;
-            view.nearClipPlane = 0.3f;
-            view.farClipPlane = 1400f;
-
-            var sun = new GameObject("Sun").AddComponent<Light>();
-            sun.type = LightType.Directional;
-            sun.transform.rotation = Quaternion.Euler(48f, -35f, 0f);
-            sun.color = new Color(1f, 0.95f, 0.86f);
-            sun.intensity = 1.05f;
-            sun.shadows = LightShadows.Hard;
-            sun.shadowStrength = 0.55f;
-            sun.shadowBias = 0.08f;
-            sun.shadowNormalBias = 0.6f;
-
-            QualitySettings.shadowDistance = 90f;
-            QualitySettings.shadowCascades = 1;
-            QualitySettings.shadowResolution = UnityEngine.ShadowResolution.Medium;
-            RenderSettings.ambientMode = AmbientMode.Flat;
-            RenderSettings.fog = true;
-            RenderSettings.fogMode = FogMode.Linear;
-            RenderSettings.fogColor = sky;
-            RenderSettings.fogStartDistance = 260f;
-            RenderSettings.fogEndDistance = 1100f;
-            Shader.SetGlobalColor("_SkyAmbient", new Color(0.36f, 0.4f, 0.47f));
-            Shader.SetGlobalColor("_GroundAmbient", new Color(0.27f, 0.25f, 0.22f));
+            Look.SpeedDial.Setup(view);
         }
 
         void Update()
@@ -203,7 +191,7 @@ namespace Dogpatch.Gameplay
             NearestCar = current == null ? FindNearestCar(player.transform.position, 40f) : null;
             StreetName = world.Roads.StreetNameAt(new Vector2(focus.position.x, focus.position.z));
             float kmh = Mathf.Abs(current != null ? current.Speed : player.Speed) * 3.6f;
-            StatusLine = (current != null ? "Driving" : "On foot") + $" · {kmh:F0} km/h";
+            StatusLine = (Riding ? "Riding" : current != null ? "Driving" : "On foot") + $" · {kmh:F0} km/h";
 
             if (focus.position.y < -1.5f) Respawn(focus);
             else if (focus.position.y > -0.2f && Time.frameCount % 30 == 0) lastSafe = focus.position;
@@ -247,6 +235,7 @@ namespace Dogpatch.Gameplay
             CarController tapped = null;
             if (Physics.SphereCast(ray, 0.4f, out var hit, 200f, ~0, QueryTriggerInteraction.Ignore))
                 tapped = hit.collider.GetComponentInParent<CarController>();
+            if (tapped != null && tapped != current && !tapped.Enterable) tapped = null;
             Debug.Log($"[Dogpatch] tap at ({screen.x:F0},{screen.y:F0}) hit={(tapped != null ? "car " + tapped.VehicleId : "nothing")}");
 
             if (current != null)
@@ -269,6 +258,12 @@ namespace Dogpatch.Gameplay
             {
                 hud.Toast("Walk closer to get in");
                 return;
+            }
+            if (!cars.ContainsKey(tapped.VehicleId))
+            {
+                if (!(backend is InMemoryGameBackend local)) return;
+                local.SeedVehicle(tapped.VehicleId, tapped.ModelId, ToVec(tapped.transform.position), tapped.transform.eulerAngles.y);
+                cars[tapped.VehicleId] = tapped;
             }
             await RunAsync(() => EnterCarAsync(tapped));
         }
@@ -300,7 +295,8 @@ namespace Dogpatch.Gameplay
             player.gameObject.SetActive(false);
             follow.Target = car.transform;
             follow.Driving = true;
-            hud.Toast("Drag to drive");
+            hud.Toast(car.Handling.PassengerOnly ? "Sit back, it drives itself" : "Drag to drive");
+            VehicleEntered?.Invoke(car);
         }
 
         async Task ExitCarAsync()
@@ -320,6 +316,7 @@ namespace Dogpatch.Gameplay
             player.Teleport(ToVector(result.state.position), result.state.heading);
             follow.Target = player.transform;
             follow.Driving = false;
+            VehicleExited?.Invoke(car);
             Debug.Log($"[Dogpatch] exited car {car.VehicleId} at ({t.position.x:F1},{t.position.z:F1})");
         }
 
