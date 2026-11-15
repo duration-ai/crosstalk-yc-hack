@@ -37,6 +37,9 @@ namespace Dogpatch.Operator
             {
                 await session.SpendAskAsync(call.PlayerId, call.RoomId);
             }
+            catch (BackendException e) when (e.Code == RaceErrorCodes.NotImplemented)
+            {
+            }
             catch (BackendException e) when (e.Code == BackendErrorCodes.Conflict)
             {
                 return new OperatorResponse

@@ -33,6 +33,7 @@ namespace Dogpatch.Race
         readonly List<GameObject> tokens = new List<GameObject>();
         readonly HashSet<(string, int)> asked = new HashSet<(string, int)>();
         int raceNumber;
+        string roomId;
         ulong mask = ulong.MaxValue;
 
         void Awake() => Instance = this;
@@ -58,8 +59,9 @@ namespace Dogpatch.Race
         {
             var me = Race.Me;
             if (me == null || Race.Room.status == RoomStatus.Finished) return 0UL;
+            int served = Race.Room.pickups?.Count ?? 0;
             ulong m = 0UL;
-            for (int i = 0; i < positions.Count; i++)
+            for (int i = 0; i < Mathf.Min(positions.Count, served); i++)
                 if (me.collected == null || !me.collected.Contains(i)) m |= 1UL << i;
             return m;
         }
@@ -68,9 +70,10 @@ namespace Dogpatch.Race
         {
             if (Race == null || !Race.Setup || Race.Last == null) return;
             var room = Race.Room;
-            if (room.raceNumber != raceNumber)
+            if (room.raceNumber != raceNumber || Race.RoomId != roomId)
             {
                 raceNumber = room.raceNumber;
+                roomId = Race.RoomId;
                 asked.Clear();
             }
 
@@ -102,7 +105,7 @@ namespace Dogpatch.Race
                 var body = Race.BodyOf(racer.playerId);
                 if (body == null) continue;
                 var p = body.position;
-                for (int i = 0; i < positions.Count; i++)
+                for (int i = 0; i < Mathf.Min(positions.Count, room.pickups?.Count ?? 0); i++)
                 {
                     if ((racer.collected != null && racer.collected.Contains(i)) || asked.Contains((racer.playerId, i))) continue;
                     var q = positions[i];
