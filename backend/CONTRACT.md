@@ -111,7 +111,7 @@ Upserts the player's state. Use it for on-foot movement and periodic checkpoints
 ```
 
 - `mode: "onFoot"` requires no `vehicleId` and that the player is not driving (else `409`).
-- `mode: "driving"` requires the `vehicleId` the player has entered (else `409`; missing `vehicleId` is `400`).
+- `mode: "driving"` requires the `vehicleId` the player has entered (else `409`; missing `vehicleId` is `400`). The vehicle moves to the saved `position` and `heading` in the same write, so a driving save and `POST /api/vehicles/update` leave the same state.
 
 Response `200`: `{ "state": PlayerState }`. Errors: `400`, `404`, `409`.
 

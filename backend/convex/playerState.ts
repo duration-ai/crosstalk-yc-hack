@@ -43,6 +43,11 @@ export const save = mutation({
       if (vehicle.occupiedBy !== player._id) {
         fail("CONFLICT", `Player is not in vehicle ${vehicle._id}; enter it first`);
       }
+      await ctx.db.patch(vehicle._id, {
+        position: args.position,
+        heading: args.heading,
+        updatedAt: Date.now(),
+      });
     }
 
     const existing = await findPlayerState(ctx, player._id);

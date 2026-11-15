@@ -75,6 +75,25 @@ describe("player state", () => {
     ).rejects.toThrow(/enter it first/);
   });
 
+  it("moves the occupied vehicle with a driving save", async () => {
+    const { t, player, hatchback } = await setup();
+    await t.mutation(api.vehicles.enter, { playerId: player.id, vehicleId: hatchback.id });
+    const moved = { x: 200, y: 0.5, z: -10 };
+    await t.mutation(api.playerState.save, {
+      playerId: player.id,
+      position: moved,
+      heading: 30,
+      mode: "driving",
+      vehicleId: hatchback.id,
+    });
+
+    const listed = await t.query(api.vehicles.list, {});
+    expect(listed.find((v) => v.id === hatchback.id)).toMatchObject({ position: moved, heading: 30 });
+
+    const exited = await t.mutation(api.vehicles.exit, { playerId: player.id, vehicleId: hatchback.id });
+    expect(exited.state).toMatchObject({ mode: "onFoot", position: moved, heading: 30 });
+  });
+
   it("refuses on-foot state while the player occupies a vehicle", async () => {
     const { t, player, hatchback } = await setup();
     await t.mutation(api.vehicles.enter, { playerId: player.id, vehicleId: hatchback.id });
