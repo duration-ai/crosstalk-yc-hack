@@ -153,9 +153,12 @@ export const leave = mutation({
   handler: async (ctx, args) => {
     const player = await getPlayer(ctx, args.playerId);
     const room = await getRoom(ctx, args.roomId);
-    const row = await getMembership(ctx, room, player._id);
+    const row = await ctx.db
+      .query("roomPlayers")
+      .withIndex("by_player", (q) => q.eq("playerId", player._id).eq("roomId", room._id))
+      .unique();
     const now = Date.now();
-    if (row.left) return { left: true };
+    if (!row || row.left) return { left: true };
     if (isLocked(room, now)) fail("CONFLICT", "The race is about to start");
     await removeFromRoom(ctx, room, row, now);
     return { left: true };

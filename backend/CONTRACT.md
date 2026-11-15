@@ -339,7 +339,7 @@ Response `200`: `{ "room": Room, "route": [ Vec3, … ], "you": Racer }`. Joinin
 { "playerId": "jd7…", "roomId": "k57…" }
 ```
 
-Response `200`: `{ "left": true }`. In the lobby or countdown the racer is removed. After the start the racer stays in the standings as `left: true` (DNF) and is removed at the rematch. Leaving twice succeeds. Errors: `404`, `409` (not in the room, countdown locked).
+Response `200`: `{ "left": true }`. In the lobby or countdown the racer is removed. After the start the racer stays in the standings as `left: true` (DNF) and is removed at the rematch. Leaving is idempotent: leaving again, or leaving a room you are not in, succeeds, so a lost response can be retried. Errors: `404`, `409` (countdown locked).
 
 #### Set ready: `POST /api/rooms/ready`
 

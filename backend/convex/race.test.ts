@@ -69,6 +69,7 @@ describe("rooms", () => {
   it("frees a leaver's color and moves a player who joins another room", async () => {
     const { t, roomId, code, maya, jun } = await fourPlayers();
     await t.mutation(api.rooms.leave, { playerId: maya.id, roomId });
+    expect(await t.mutation(api.rooms.leave, { playerId: maya.id, roomId })).toEqual({ left: true });
     const other = await t.mutation(api.rooms.create, { playerId: jun.id });
     expect(other.you.color).toBe("blue");
     const state = await poll(t, roomId);
@@ -368,6 +369,18 @@ describe("Operator", () => {
     const surprise = await call("uhh hello?");
     expect(surprise.line).toMatch(/^Didn't catch that\. /);
     expect((await call("uhh hello?")).command).toEqual(surprise.command);
+  });
+
+  it("ignores names that cannot be matched and matches non-ASCII names", async () => {
+    const t = convexTest(schema, modules);
+    const ids = [];
+    for (const displayName of ["Tim", "李", "Maya", "Zoë"]) ids.push((await t.mutation(api.players.create, { displayName })).id);
+    const { room } = await t.mutation(api.rooms.create, { playerId: ids[0] });
+    for (const id of ids.slice(1)) await t.mutation(api.rooms.join, { playerId: id, code: room.code });
+    const swap = (playerId: string, text: string) => t.action(api.operator.call, { playerId, roomId: room.id, text });
+    expect((await swap(ids[2], "swap me with tim")).command.params.targetPlayerId).toBe(ids[0]);
+    expect((await swap(ids[0], "swap with zoë")).command.params.targetPlayerId).toBe(ids[3]);
+    expect((await swap(ids[0], "swap me with 李")).command.params.targetPlayerId).toBe(ids[1]);
   });
 
   it("rejects empty text and refuses audio without a voice provider", async () => {

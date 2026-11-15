@@ -81,9 +81,11 @@ const RULES: { pattern: RegExp; reply: Reply }[] = [
     pattern: /\b(swap\w*|switch\w*|trade\w*|teleport\w*)\b/,
     reply: (_, text, { caller, racers }) => {
       const others = racers.filter((racer) => racer.playerId !== caller.playerId);
-      const named = others.find((racer) =>
-        new RegExp(`\\b${racer.displayName.split(/\s+/)[0].toLowerCase().replace(/[^a-z0-9]/g, "")}\\b`).test(text),
-      );
+      const words = new Set(text.split(/[^\p{L}\p{N}]+/u));
+      const named = others.find((racer) => {
+        const name = racer.displayName.split(/\s+/)[0].toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+        return name !== "" && words.has(name);
+      });
       const target =
         named ??
         others.find((racer) => racer.place === caller.place - 1) ??
