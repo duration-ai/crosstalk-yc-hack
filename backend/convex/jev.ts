@@ -70,6 +70,7 @@ const VEHICLE_DESCRIPTIONS: Record<string, string> = {
   taxi: "a taxi or yellow cab",
   cybertruck: "a Cybertruck or steel pickup truck",
   waymo: "a Waymo robotaxi",
+  waymo_ojai: "a Waymo Ojai or Waymo van: the tall boxy Waymo minivan robotaxi",
   van: "a van or minivan",
   zoox: "a Zoox robotaxi pod",
   bus: "a bus or Muni bus",

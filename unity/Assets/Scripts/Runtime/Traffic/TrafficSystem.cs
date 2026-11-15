@@ -25,7 +25,7 @@ namespace Dogpatch.Traffic
         static int EverydayQuota => Vehicles.Pace.Current.everydayQuota;
         static int RiderQuota => Vehicles.Pace.Current.riderQuota;
 
-        static readonly string[] RobotaxiTypes = { VehicleTypes.WaymoSuv, VehicleTypes.WaymoSuv, VehicleTypes.WaymoSuv, VehicleTypes.WaymoVan, VehicleTypes.WaymoVan, VehicleTypes.Zoox, VehicleTypes.Zoox, VehicleTypes.Zoox };
+        static readonly string[] RobotaxiTypes = { VehicleTypes.WaymoSuv, VehicleTypes.WaymoSuv, VehicleTypes.WaymoSuv, VehicleTypes.WaymoOjai, VehicleTypes.WaymoOjai, VehicleTypes.WaymoVan, VehicleTypes.Zoox, VehicleTypes.Zoox, VehicleTypes.Zoox };
         static readonly string[] EverydayTypes = { VehicleTypes.Hatchback, VehicleTypes.Hatchback, VehicleTypes.Sedan, VehicleTypes.Sedan, VehicleTypes.YellowCab, VehicleTypes.YellowCab, VehicleTypes.Cybertruck };
         static readonly string[] RiderTypes = { VehicleTypes.DoorDashBike, VehicleTypes.UberEatsBike };
 

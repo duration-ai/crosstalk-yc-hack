@@ -114,6 +114,7 @@ namespace Dogpatch.Operator
 
         void Hearing()
         {
+            if (PhoneCallCard.Showing) return;
             string words = Calls.State == CallState.Talking ? Calls.Partial
                 : Calls.State == CallState.Waiting || Calls.State == CallState.Answered ? (string.IsNullOrEmpty(Calls.Heard) ? Calls.Partial : Calls.Heard)
                 : "";

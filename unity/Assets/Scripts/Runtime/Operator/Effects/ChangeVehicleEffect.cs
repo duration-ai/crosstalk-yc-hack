@@ -27,6 +27,7 @@ namespace Dogpatch.Operator
                 case "taxi": return VehicleTypes.YellowCab;
                 case "cybertruck": return VehicleTypes.Cybertruck;
                 case "waymo": return VehicleTypes.WaymoSuv;
+                case "waymo_ojai": return VehicleTypes.WaymoOjai;
                 case "van": return VehicleTypes.WaymoVan;
                 case "zoox": return VehicleTypes.Zoox;
                 case "bus": return VehicleTypes.MuniBus;
