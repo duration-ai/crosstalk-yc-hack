@@ -228,7 +228,7 @@ export function toRacer(room: Room, row: RoomPlayer, place: number) {
   };
 }
 
-const PLACE_AWARDS = ["FIRST TO YC", "SO CLOSE", "PODIUM FINISH", "SCENIC ROUTE"];
+const PLACE_AWARDS = ["FIRST PAST THE FLAG", "SO CLOSE", "PODIUM FINISH", "SCENIC ROUTE"];
 
 /** One award per racer, from rows already in place order. */
 export function results(room: Room, ordered: RoomPlayer[], calls: Map<Id<"players">, number>) {
