@@ -3,5 +3,6 @@
     "more_traffic", "less_traffic", "aggressive_traffic", "green_lights", "speed_up", "slow_down",
     "more_pedestrians", "fewer_pedestrians", "angry_npcs", "calm_npcs", "panic", "ped_theme",
     "chunky", "skinny", "flight", "grip_up", "tougher", "cars_fly",
-    "fast_day_cycle", "sandstorm", "heatwave", "blackout", "slow_motion", "fast_forward"]
+    "fast_day_cycle", "sandstorm", "heatwave", "blackout", "slow_motion", "fast_forward",
+    "see_through", "bouncy", "icy", "rock_solid", "soft", "ghost"]
 }

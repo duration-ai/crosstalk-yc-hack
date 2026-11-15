@@ -4,7 +4,11 @@ import { internalQuery, mutation, type MutationCtx } from "./_generated/server";
 import { fail, getPlayer, vec3 } from "./model";
 import {
   COLORS,
+  DEFAULT_ASKS,
   DEFAULT_FINISH_RADIUS,
+  DEFAULT_PICKUP_RADIUS,
+  MAX_ASKS,
+  MAX_PICKUPS,
   DEFAULT_ROUTE,
   EVENTS_PER_POLL,
   MAX_PLAYERS,
@@ -19,6 +23,7 @@ import {
   results,
   roomPlayers,
   routeLength,
+  startingAsks,
   toRacer,
   toRoom,
 } from "./raceModel";
@@ -73,6 +78,8 @@ export async function addRacer(ctx: MutationCtx, room: Doc<"rooms">, player: Doc
     heading: 0,
     progress: 0,
     finishedAt: 0,
+    asks: startingAsks(room),
+    collected: [],
     left: false,
     updatedAt: now,
   });
@@ -84,6 +91,9 @@ export const create = mutation({
     route: v.optional(v.array(vec3)),
     finishRadius: v.optional(v.number()),
     minPlayers: v.optional(v.number()),
+    asks: v.optional(v.number()),
+    pickups: v.optional(v.array(vec3)),
+    pickupRadius: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const player = await getPlayer(ctx, args.playerId);
@@ -99,6 +109,12 @@ export const create = mutation({
     if (!Number.isInteger(minPlayers) || minPlayers < 1 || minPlayers > MAX_PLAYERS) {
       fail("INVALID_ARGUMENT", `minPlayers must be an integer from 1 to ${MAX_PLAYERS}`);
     }
+    const asks = args.asks || DEFAULT_ASKS;
+    if (!Number.isInteger(asks) || asks < 1 || asks > MAX_ASKS) fail("INVALID_ARGUMENT", `asks must be an integer from 1 to ${MAX_ASKS}`);
+    const pickups = args.pickups ?? [];
+    if (pickups.length > MAX_PICKUPS) fail("INVALID_ARGUMENT", `pickups must have at most ${MAX_PICKUPS} points`);
+    const pickupRadius = args.pickupRadius || DEFAULT_PICKUP_RADIUS;
+    if (!(pickupRadius >= 1 && pickupRadius <= 20)) fail("INVALID_ARGUMENT", "pickupRadius must be 1 to 20");
 
     const now = Date.now();
     await leaveOtherRooms(ctx, player._id, null, now);
@@ -114,6 +130,9 @@ export const create = mutation({
       finishRadius,
       eventSeq: 0,
       createdAt: now,
+      asks,
+      pickups,
+      pickupRadius,
     });
     await addRacer(ctx, (await ctx.db.get(roomId))!, player, 0, now);
     return joinedResponse(ctx, roomId, player._id, now);
@@ -185,7 +204,16 @@ export const setReady = mutation({
     if (status === "finished" && args.ready) {
       for (const other of await roomPlayers(ctx, room._id)) {
         if (other.left) await ctx.db.delete(other._id);
-        else await ctx.db.patch(other._id, { ready: other._id === row._id, progress: 0, finishedAt: 0, smash: 0 });
+        else {
+          await ctx.db.patch(other._id, {
+            ready: other._id === row._id,
+            progress: 0,
+            finishedAt: 0,
+            smash: 0,
+            asks: startingAsks(room),
+            collected: [],
+          });
+        }
       }
       const reset = { status: "lobby" as const, raceNumber: room.raceNumber + 1, startsAt: 0, closesAt: 0 };
       await ctx.db.patch(room._id, reset);

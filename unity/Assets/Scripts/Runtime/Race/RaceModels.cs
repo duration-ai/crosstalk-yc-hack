@@ -35,6 +35,9 @@ namespace Dogpatch.Race
         public Vec3 finish;
         public float finishRadius;
         public long createdAt;
+        public int asks;
+        public List<Vec3> pickups;
+        public float pickupRadius;
     }
 
     [Serializable]
@@ -55,6 +58,8 @@ namespace Dogpatch.Race
         public long finishMs;
         public bool left;
         public long updatedAt;
+        public int asks;
+        public List<int> collected;
     }
 
     // One flat class for every world change's params; fields a type does not use stay default.
@@ -144,6 +149,13 @@ namespace Dogpatch.Race
         public float metersToFinish;
         public bool finished;
         public long finishMs;
+    }
+
+    [Serializable]
+    public class AskResponse
+    {
+        public bool collected;
+        public int asks;
     }
 
     [Serializable]
