@@ -256,12 +256,14 @@ namespace Dogpatch.Race
                 race.EnableAutopilot();
                 yield return Seconds(1f);
                 var car = race.MyCar;
+                Log($"tour {name}: rings showing in the race {FindObjectsByType<StartRingFx>(FindObjectsSortMode.None).Count(f => f.gameObject.activeInHierarchy)}");
                 Log($"tour {name}: GO, phones on the line {AskPickups.Positions.Count}, shown {Shown()}; car health {damage.Health01:F2}, wrecked {damage.IsWrecked}, stunned {car.Stunned}, enabled {car.enabled}, driven {car.Driven}, speed {car.GetComponent<Rigidbody>().linearVelocity.magnitude:F1} m/s");
                 yield return Until(() => race.Last.racers.Any(r => r.finished), 420f, name + " first finisher", fatal: false);
                 var first = race.Last.racers.FirstOrDefault(r => r.finished);
                 Log($"tour {name}: first finisher {(first != null ? race.NameOf(first.playerId) : "none")} at the {race.Course.Data.finishName} finish");
                 yield return Until(() => race.ResultsIn, 60f, name + " results", fatal: false);
-                Log($"tour {name}: results {race.ResultsIn}, phones shown after {Shown()}");
+                yield return Seconds(0.5f);
+                Log($"tour {name}: results {race.ResultsIn}, phones shown after {Shown()}, rings showing after {FindObjectsByType<StartRingFx>(FindObjectsSortMode.None).Count(f => f.gameObject.activeInHierarchy)}");
             }
             Log("tour done");
         }

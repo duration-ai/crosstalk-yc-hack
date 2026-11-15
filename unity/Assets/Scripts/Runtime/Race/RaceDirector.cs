@@ -170,11 +170,18 @@ namespace Dogpatch.Race
         // True while an offline route switch rebuilds the local room.
         public bool Switching { get; private set; }
 
+        // True while you're committed to the current route: online from entering its lobby, offline from
+        // the countdown, until the results. The other routes' rings and tags hide and can't be picked.
+        public bool InRace => Online ? RoomId != null : (Gridded && !ResultsIn) || Room?.status == RoomStatus.Countdown;
+
+        readonly List<GameObject> otherRings = new List<GameObject>();
+
         // Every other route's start ring, beacon and all, the same as the race course's own, and a map
         // pin per route, online and offline.
         void RouteRings()
         {
             if (ringsRoot != null) Destroy(ringsRoot.gameObject);
+            otherRings.Clear();
             ringsRoot = new GameObject("SpeedDialRouteRings").transform;
             ringsRoot.SetParent(Game.World.Root.transform, false);
             foreach (var kv in courses)
@@ -183,7 +190,7 @@ namespace Dogpatch.Race
                 pin.SetParent(ringsRoot, false);
                 pin.position = kv.Value.RingCenter;
                 Dogpatch.Map.MapMarkers.Track(pin, Dogpatch.Map.MapMarkerKind.Race);
-                if (kv.Key != RouteId) CourseDressing.StartRing(ringsRoot, kv.Value.RingCenter, kv.Value.RingRadius, Game.SharedMaterial);
+                if (kv.Key != RouteId) otherRings.Add(CourseDressing.StartRing(ringsRoot, kv.Value.RingCenter, kv.Value.RingRadius, Game.SharedMaterial));
             }
         }
 
@@ -192,8 +199,9 @@ namespace Dogpatch.Race
         // counting down or racing, and the local room is rebuilt on the new route with its bots.
         void PickRouteByRing()
         {
-            if (Busy || Switching) return;
-            if (Online ? RoomId != null : (Gridded && !ResultsIn) || Room?.status == RoomStatus.Countdown) return;
+            bool show = !InRace;
+            foreach (var ring in otherRings) if (ring.activeSelf != show) ring.SetActive(show);
+            if (Busy || Switching || InRace) return;
             var body = BodyOf(MyId);
             if (body == null) return;
             var me = RoutePath.Flat(body.position);
