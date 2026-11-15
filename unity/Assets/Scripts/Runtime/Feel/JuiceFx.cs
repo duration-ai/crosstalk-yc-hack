@@ -87,6 +87,8 @@ namespace Dogpatch.Feel
                 ("3-hit-flash", () => OnImpact(new ImpactInfo { Position = Camera.main != null ? Camera.main.transform.position + Camera.main.transform.forward * 8f : Vector3.zero, Force = 22f, Surface = Surface.Vehicle, InvolvesPlayer = true }), 0.05f),
                 ("4-go-burst", () => OnCountdown(0), 0.15f),
                 ("5-confetti", () => OnResults(1), 1.2f),
+                ("6-boost", () => OnBoost(true), 0.08f),
+                ("7-wreck", () => OnWreck(Camera.main != null ? Camera.main.transform.position + Camera.main.transform.forward * 10f : Vector3.zero, true), 0.1f),
             };
             foreach (var shot in shots)
             {
@@ -118,6 +120,9 @@ namespace Dogpatch.Feel
             GameEvents.Results += OnResults;
             GameEvents.Countdown += OnCountdown;
             GameEvents.Impact += OnImpact;
+            GameEvents.Boost += OnBoost;
+            GameEvents.Wreck += OnWreck;
+            GameEvents.PlaceChanged += OnPlace;
         }
 
         void OnDisable()
@@ -126,6 +131,9 @@ namespace Dogpatch.Feel
             GameEvents.Results -= OnResults;
             GameEvents.Countdown -= OnCountdown;
             GameEvents.Impact -= OnImpact;
+            GameEvents.Boost -= OnBoost;
+            GameEvents.Wreck -= OnWreck;
+            GameEvents.PlaceChanged -= OnPlace;
             if (race != null) race.EventArrived -= OnRaceEvent;
         }
 
@@ -143,6 +151,7 @@ namespace Dogpatch.Feel
         {
             if (string.IsNullOrEmpty(e.news)) return;
             whooshAt = Now;
+            Punch(0.18f);
             whooshColor = e.color == "purple" ? Hex("#A35BFF") : e.color == "orange" ? Hex("#FF8A1E") : e.color == "green" ? Hex("#2EC27E") : e.color == "blue" ? Hex("#2D8CFF") : Pink;
         }
 
@@ -200,11 +209,25 @@ namespace Dogpatch.Feel
                 });
             }
             if (place == 1) goAt = Now;
+            Punch(place == 1 ? 0.4f : 0.2f);
+        }
+
+        // Screen punch for the big moments: a short burst of camera trauma on top of FeelDirector's.
+        static void Punch(float amount)
+        {
+            if (CameraFeel.Instance != null) CameraFeel.Instance.AddTrauma(amount);
+        }
+
+        void OnPlace(int place, int previous)
+        {
+            if (previous > 0 && place < previous) Punch(0.12f);
         }
 
         void OnCountdown(int left)
         {
-            if (left == 0) goAt = Now;
+            if (left != 0) return;
+            goAt = Now;
+            Punch(0.2f);
         }
 
         void OnImpact(ImpactInfo hit)
@@ -216,6 +239,64 @@ namespace Dogpatch.Feel
             if (hit.Force < 14f) return;
             flashAt = Now;
             flashStrength = Mathf.Clamp01((hit.Force - 10f) / 14f);
+        }
+
+        // Boost: sunshine streaks shoot outward from the screen edges, never through the middle.
+        void OnBoost(bool on)
+        {
+            if (!on) return;
+            var c = new Vector2(Screen.width * 0.5f, Screen.height * 0.45f);
+            float reach = Mathf.Max(Screen.width, Screen.height) * 0.5f;
+            int n = EffectsSettings.Count(16);
+            for (int i = 0; i < n; i++)
+            {
+                float a = (i + UnityEngine.Random.value * 0.5f) / n * Mathf.PI * 2f;
+                var dir = new Vector2(Mathf.Cos(a), Mathf.Sin(a));
+                Spawn(new Bit
+                {
+                    Position = c + dir * reach * UnityEngine.Random.Range(0.4f, 0.6f),
+                    Velocity = dir * UnityEngine.Random.Range(450f, 750f) * U,
+                    Angle = a * Mathf.Rad2Deg,
+                    Life = UnityEngine.Random.Range(0.22f, 0.34f),
+                    Width = UnityEngine.Random.Range(60f, 110f) * U,
+                    Height = 5f * U,
+                    Color = i % 3 == 0 ? Paper : Sun,
+                });
+            }
+        }
+
+        // Your car is wrecked: the strongest edge flash and a burst of ink, paper and sunshine shards
+        // from the car (Burnout Paradise's crash).
+        void OnWreck(Vector3 position, bool isPlayer)
+        {
+            if (!isPlayer) return;
+            flashAt = Now;
+            flashStrength = 1f;
+            var cam = Camera.main;
+            Vector2 at = new Vector2(Screen.width * 0.5f, Screen.height * 0.6f);
+            if (cam != null)
+            {
+                var sp = cam.WorldToScreenPoint(position + Vector3.up);
+                if (sp.z > 0f) at = new Vector2(Mathf.Clamp(sp.x, 0f, Screen.width), Mathf.Clamp(Screen.height - sp.y, 0f, Screen.height));
+            }
+            int n = EffectsSettings.Count(26);
+            for (int i = 0; i < n; i++)
+            {
+                float a = (i + UnityEngine.Random.value) / n * Mathf.PI * 2f;
+                Spawn(new Bit
+                {
+                    Position = at,
+                    Velocity = new Vector2(Mathf.Cos(a), Mathf.Sin(a) - 0.4f) * UnityEngine.Random.Range(500f, 1000f) * U,
+                    Angle = a * Mathf.Rad2Deg,
+                    Spin = UnityEngine.Random.Range(-720f, 720f),
+                    Life = UnityEngine.Random.Range(0.5f, 0.9f),
+                    Width = UnityEngine.Random.Range(14f, 30f) * U,
+                    Height = UnityEngine.Random.Range(8f, 14f) * U,
+                    Gravity = 1400f * U,
+                    Drag = 2.5f,
+                    Color = i % 3 == 0 ? Ink : i % 3 == 1 ? Paper : Sun,
+                });
+            }
         }
 
         void Spawn(Bit b)

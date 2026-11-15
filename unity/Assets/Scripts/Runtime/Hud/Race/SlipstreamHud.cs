@@ -660,7 +660,7 @@ namespace Dogpatch.Slipstream
             if (operatorUp)
             {
                 float t = Time.time - calls.StateSince;
-                float inP = EaseOut(Mathf.Clamp01(t / 0.18f));
+                float inP = Overshoot(Mathf.Clamp01(t / 0.24f));
                 float outP = Mathf.Clamp01((t - 2.3f) / 0.25f);
                 float baseX = narrow ? left : Screen.width * 0.5f - 150f * s;
                 float x = Mathf.Lerp(-360f * s, baseX, inP) - outP * outP * (baseX + 400f * s);
