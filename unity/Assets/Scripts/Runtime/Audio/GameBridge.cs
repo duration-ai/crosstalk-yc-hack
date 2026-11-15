@@ -47,9 +47,6 @@ namespace Dogpatch.Audio
                 case SmashKind.Break:
                     GameEvents.RaiseSmash(e.Position, e.Label, 10f, mine);
                     break;
-                case SmashKind.NearMiss:
-                    GameEvents.RaisePedestrianDive(e.Position, Random.Range(0, 1000));
-                    break;
             }
         }
 

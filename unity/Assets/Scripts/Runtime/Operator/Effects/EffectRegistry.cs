@@ -125,6 +125,7 @@ namespace Dogpatch.Operator
             registry.Register("stop", () => new StopEffect());
             registry.Register("big_heads", () => new BigHeadsEffect());
             MoreEffects.Register(registry);
+            WorldEffectsB.Register(registry);
             return registry;
         }
     }
