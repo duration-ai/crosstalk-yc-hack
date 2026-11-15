@@ -71,10 +71,10 @@ namespace Dogpatch.Nav
                 map.SetFull(true);
                 map.Preview(1f, false);
                 yield return Seconds(0.3f);
-                yield return Shot("map-look-" + MapLook.All[i].Name.ToLowerInvariant());
+                yield return Shot("map-look-" + MapLook.All[i].Name.ToLowerInvariant().Replace(' ', '-'));
                 map.Preview(2.6f, false);
                 yield return Seconds(0.3f);
-                yield return Shot("map-look-" + MapLook.All[i].Name.ToLowerInvariant() + "-zoom");
+                yield return Shot("map-look-" + MapLook.All[i].Name.ToLowerInvariant().Replace(' ', '-') + "-zoom");
                 map.SetFull(false);
             }
             MapLook.Index = 0;

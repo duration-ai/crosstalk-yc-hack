@@ -54,6 +54,36 @@ extern "C"
         NSLog(@"[Audio] session %@ options %lu route %@", session.category, (unsigned long)session.categoryOptions, session.currentRoute.outputs.firstObject.portType);
     }
 
+    // After the microphone starts or stops: puts the session back on PlayAndRecord with
+    // DefaultToSpeaker, MixWithOthers and A2DP only if Unity changed the category, dropped an option
+    // or moved the route to the receiver. Runs on a serial background queue so the main thread never
+    // blocks on AVAudioSession, and checks again 0.3 s later in case Unity's change lands after
+    // Microphone.IsRecording flips.
+    static void ReassertAudioSession(const char *when)
+    {
+        AVAudioSession *session = [AVAudioSession sharedInstance];
+        AVAudioSessionCategoryOptions options = AVAudioSessionCategoryOptionDefaultToSpeaker | AVAudioSessionCategoryOptionMixWithOthers | AVAudioSessionCategoryOptionAllowBluetoothA2DP;
+        BOOL categoryOk = [session.category isEqualToString:AVAudioSessionCategoryPlayAndRecord] && (session.categoryOptions & options) == options;
+        BOOL routeOk = ![session.currentRoute.outputs.firstObject.portType isEqualToString:AVAudioSessionPortBuiltInReceiver];
+        BOOL changed = NO;
+        if (!categoryOk || !routeOk)
+        {
+            NSError *error = nil;
+            if ([session setCategory:AVAudioSessionCategoryPlayAndRecord mode:AVAudioSessionModeDefault options:options error:&error]) changed = YES;
+            else NSLog(@"[Audio] session category failed: %@", error);
+        }
+        NSLog(@"[Audio] session %@ options %lu route %@ (%s check: %s)", session.category, (unsigned long)session.categoryOptions, session.currentRoute.outputs.firstObject.portType, when, changed ? "reasserted" : "unchanged");
+    }
+
+    void DogpatchAudioSessionReassert()
+    {
+        static dispatch_queue_t queue;
+        static dispatch_once_t once;
+        dispatch_once(&once, ^{ queue = dispatch_queue_create("dogpatch.audiosession", DISPATCH_QUEUE_SERIAL); });
+        dispatch_async(queue, ^{ ReassertAudioSession("mic change"); });
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.3 * NSEC_PER_SEC)), queue, ^{ ReassertAudioSession("0.3 s later"); });
+    }
+
     void DogpatchHapticSelection()
     {
         if (selectionGenerator == nil) selectionGenerator = [[UISelectionFeedbackGenerator alloc] init];

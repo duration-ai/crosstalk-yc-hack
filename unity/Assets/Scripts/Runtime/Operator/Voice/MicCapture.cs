@@ -4,6 +4,10 @@ using UnityEngine;
 namespace Dogpatch.Operator.Voice
 {
     // Unity's Microphone as a stream: a looping clip, read from the last position every frame.
+    // Once started, the microphone keeps recording until Release: on iOS every Microphone.Start and
+    // End reconfigures the audio session on the main thread, a 0.3-0.6 s stall at each call's pickup
+    // and hang-up. Stop only stops handing samples on, and Start after it resumes from the current
+    // position, so nothing recorded between calls is ever sent.
     public sealed class MicCapture
     {
         const int LoopSeconds = 2;
@@ -11,18 +15,24 @@ namespace Dogpatch.Operator.Voice
         AudioClip clip;
         string device;
         int readAt;
+        bool listening;
         float[] scratch = new float[0];
 
-        public bool Running => clip != null;
+        public bool Running => listening;
 
-        // Peak of the latest block read, 0 to 1; 0 while stopped. Read-only, for the call card's waveform.
+        // Peak of the latest block read, 0 to 1; 0 while not listening. Read-only, for the call card's waveform.
         public static float Level { get; private set; }
         public int Rate => clip != null ? clip.frequency : 0;
         public int Channels => clip != null ? clip.channels : 1;
 
         public bool Start(int preferredRate)
         {
-            if (clip != null) return true;
+            if (clip != null)
+            {
+                if (!listening) readAt = Math.Max(0, Microphone.GetPosition(device));
+                listening = true;
+                return true;
+            }
             if (Microphone.devices.Length == 0)
             {
                 Debug.LogWarning("[Operator] no microphone on this device");
@@ -38,6 +48,7 @@ namespace Dogpatch.Operator.Voice
                 return false;
             }
             readAt = 0;
+            listening = true;
             Debug.Log($"[Operator] microphone {device} at {clip.frequency} Hz x{clip.channels}");
             return true;
         }
@@ -45,7 +56,7 @@ namespace Dogpatch.Operator.Voice
         // Hands every frame recorded since the last call to sink(samples, frames, channels).
         public void Poll(Action<float[], int, int> sink)
         {
-            if (clip == null) return;
+            if (!listening) return;
             int at = Microphone.GetPosition(device);
             if (at < 0 || at == readAt) return;
             int frames = (at - readAt + clip.samples) % clip.samples;
@@ -62,6 +73,13 @@ namespace Dogpatch.Operator.Voice
 
         public void Stop()
         {
+            listening = false;
+            Level = 0f;
+        }
+
+        public void Release()
+        {
+            listening = false;
             if (clip == null) return;
             Microphone.End(device);
             Level = 0f;

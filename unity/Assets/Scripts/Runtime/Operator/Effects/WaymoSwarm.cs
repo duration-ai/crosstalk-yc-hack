@@ -78,7 +78,7 @@ namespace Dogpatch.Operator
                     spot = new Vector3(p.x, around.y, p.y);
                 }
                 spot.y = Mathf.Max(spot.y, 0f) + 0.1f;
-                var car = VehicleRoster.Spawn(VehicleTypes.WaymoSuv, spot, heading, root);
+                var car = VehicleRoster.Spawn(i % 3 == 2 ? VehicleTypes.WaymoOjai : VehicleTypes.WaymoSuv, spot, heading, root);
                 car.name = "Swarm Waymo " + i + " for " + id;
                 car.Enterable = false;
                 if (car.GetComponent<VehicleDamage>() == null) car.gameObject.AddComponent<VehicleDamage>();

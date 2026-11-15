@@ -87,6 +87,7 @@ namespace Dogpatch.Gameplay
             world = WorldBuilder.Build(data, models, material);
             PerfReadout.WorldBuildSeconds = Time.realtimeSinceStartup - t0;
             gameObject.AddComponent<PerfReadout>().Game = this;
+            gameObject.AddComponent<HitchLogger>();
             Debug.Log($"[Dogpatch] world built in {Time.realtimeSinceStartup - t0:F1}s: {data.roads.Length} roads, {data.buildings.Length} buildings, {world.ParkedCars.Count + 1} cars");
             PedestrianSystem.Create(world, data);
 
