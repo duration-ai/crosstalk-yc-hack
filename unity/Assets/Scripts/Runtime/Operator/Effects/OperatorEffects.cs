@@ -140,7 +140,7 @@ namespace Dogpatch.Operator
 
         // SELF effects that only touch the owner's car and avatar models, so other devices can draw them
         // on that racer; the rest also turn this device's own knobs and run on the caller's device only.
-        static readonly HashSet<string> RemoteVisible = new HashSet<string> { "chunky", "skinny", "bigger", "smaller", "cars_fly", "change_vehicle" };
+        static readonly HashSet<string> RemoteVisible = new HashSet<string> { "chunky", "skinny", "bigger", "smaller", "cars_fly", "change_vehicle", "grip_down" };
 
         static bool Skips(ActiveEffect row, EffectTarget target) => !target.IncludesMe && !RemoteVisible.Contains(row.effect);
 
