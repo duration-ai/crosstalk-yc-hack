@@ -161,7 +161,7 @@ namespace Dogpatch.Race
                 if (bump != null && bump.target == Race.MyId && bump.at > remote.LastBumpAt)
                 {
                     remote.LastBumpAt = bump.at;
-                    if (world.serverTime - bump.at < 1500) Bumped(remote, new Vector3(bump.x, 0f, bump.z), world.serverTime - bump.at);
+                    if (serverTime - bump.at < 1500) Bumped(remote, new Vector3(bump.x, 0f, bump.z), serverTime - bump.at);
                 }
                 remote.SeenAt = Time.time;
                 if (player.updatedAt > remote.WorldUpdatedAt)
