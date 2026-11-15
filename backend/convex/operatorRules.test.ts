@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { OBJECT_EFFECTS, PLAYABLE, PLAYER_EFFECTS, WORLD_EFFECTS } from "./operatorCatalogue";
 import { decide, route, type ActiveSummary, type Answers, type ChoiceAnswer, type View, type ViewEntity } from "./operatorRules";
+
+// These tests cover the routing rules for the whole catalogue; operatorPlayable.test.ts covers the
+// built-effects gate with the real shared list.
+for (const id of Object.keys({ ...PLAYER_EFFECTS, ...WORLD_EFFECTS, ...OBJECT_EFFECTS })) (PLAYABLE as Set<string>).add(id);
 
 type Spec = {
   scope?: string | Record<string, number>;
@@ -144,9 +149,9 @@ describe("rule 1: routing", () => {
     expect(decide(a, onFoot, [])).toEqual(refused("not_a_request"));
   });
 
-  it("treats world undo as an effect", () => {
-    const a = answers({ scope: "world", world_group: "undo" });
-    expect(decide(a, onFoot, [rain])).toEqual(effect({ effect: "undo_last" }));
+  it("refuses a generic undo in character and never turns it into an effect", () => {
+    expect(decide(answers({ scope: "reject", reject_reason: "undo" }), onFoot, [rain])).toEqual(refused("undo"));
+    expect(decide(answers({ scope: "world", world_group: "undo" }), onFoot, [rain])).toEqual(refused("vague"));
   });
 });
 
@@ -232,11 +237,6 @@ describe("rule 8: world", () => {
     const a = answers({ scope: "world", world_group: "sky", sky_effect: "clear_weather" });
     expect(decide(a, onFoot, [])).toEqual(refused("no_op"));
     expect(decide(a, onFoot, [rain])).toEqual(effect({ effect: "clear_weather", strength: "" }));
-  });
-
-  it("refuses undo with nothing lasting active", () => {
-    const a = answers({ scope: "world", world_group: "undo" });
-    expect(decide(a, onFoot, [{ ...rain, effect: "recolor", instant: true }])).toEqual(refused("no_op"));
   });
 
   it("carries a pedestrian theme", () => {
