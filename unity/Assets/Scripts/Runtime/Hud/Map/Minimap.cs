@@ -63,7 +63,6 @@ namespace Dogpatch.Map
         Material marks;
         Material mapMaterial;
         MapGeometry geometry;
-        bool routePlaces;
         Task<MapGeometry> build;
         float buildStarted;
         RenderTexture target;
@@ -161,7 +160,6 @@ namespace Dogpatch.Map
                 {
                     built[buildLook] = build.Result;
                     build.Result.Upload();
-                    routePlaces = false;
                     Debug.Log($"[Minimap] built the {MapLook.All[buildLook].Name} map: {build.Result.TriangleCount} triangles, {build.Result.Streets.Count} street labels, {build.Result.Places.Count} places in {(Time.realtimeSinceStartup - buildStarted) * 1000f:F0} ms");
                 }
                 build = null;
@@ -171,11 +169,6 @@ namespace Dogpatch.Map
 
             if (Game == null || !Game.IsReady) return;
             var director = RaceDirector.Instance;
-            if (geometry != null && !routePlaces && director != null && director.Setup)
-            {
-                routePlaces = true;
-                foreach (var (name, at) in director.RouteRingSpots()) geometry.Places.Add(new MapGeometry.Label { Text = "RACE: " + name, Position = new Vector2(at.x, at.z) });
-            }
             if (travelStart >= 0f)
             {
                 float t = Time.unscaledTime - travelStart;
@@ -361,18 +354,25 @@ namespace Dogpatch.Map
         // other players on its next tick (every 125 ms).
         public void StartTravel()
         {
+            var race = RaceDirector.Instance;
+            if (race != null && race.Setup) StartTravel(CourseRing(race));
+        }
+
+        public void StartTravel(MapTarget t)
+        {
+            travelTarget = t;
             SetFull(false);
             travelStart = Time.unscaledTime;
             travelDone = false;
         }
 
-        // The mission's spawn spot from #83: 32 to 40 m from the ring, facing it, staggered by
-        // player id. In a car the car goes there with you.
+        MapTarget travelTarget;
+
+        // Lands on the travel target's spot (see Landing). In a car the car goes there with you.
         void Travel()
         {
             var race = RaceDirector.Instance;
-            if (!CanTravel(race)) return;
-            var spot = race.SpawnSpot(out float facing);
+            if (!CanTravel(race) || !Landing(travelTarget, out var spot, out float facing)) return;
             var car = Game.CurrentCar;
             if (car != null)
             {
@@ -384,7 +384,7 @@ namespace Dogpatch.Map
                 Game.Player.Teleport(spot, facing);
                 Game.Follow.Snap(Game.Player.transform, false);
             }
-            Debug.Log($"[Minimap] fast travel to the race ring {(car != null ? "by car" : "on foot")}, {Vector3.Distance(spot, race.Course.RingCenter):F0} m out");
+            Debug.Log($"[Minimap] fast travel to {travelTarget.Kind} {travelTarget.Name} {(car != null ? "by car" : "on foot")}, landing {Vector2.Distance(new Vector2(spot.x, spot.z), travelTarget.World):F0} m from it");
         }
 
         void OnGUI()
@@ -594,8 +594,9 @@ namespace Dogpatch.Map
                     else if (!raceUp || race.Gridded || (race.Course.RingCenter - target.position).sqrMagnitude > 1f) Ring(p, 5f * s, 1.6f * s, Pink);
                     continue;
                 }
-                if (Inside(p, 4f * s)) Diamond(p, 4.8f * s, 3.4f * s);
-                else Pin(p, 3.6f * s, White);
+                if (race == null || !race.Started || race.ResultsIn) continue;
+                if (Inside(p, 4f * s)) Phone(p, 7f * s);
+                else Pin(p, 3.6f * s, Pink);
             }
 
             if (raceUp)
@@ -793,6 +794,16 @@ namespace Dogpatch.Map
                 Quad(c + (r * w + dir * l), c + (r * w - dir * l), c + (-r * w - dir * l), c + (-r * w + dir * l), col);
             Box(4.4f * s * scale, 7.4f * s * scale, Ink);
             Box(3.2f * s * scale, 6.2f * s * scale, color);
+        }
+
+        // A pink phone: an ink-edged handset with a white screen, for the ask pickups.
+        void Phone(Vector2 c, float half)
+        {
+            float w = half * 0.62f, e = 1.4f * s;
+            Quad(c + new Vector2(-w - e, -half - e), c + new Vector2(-w - e, half + e), c + new Vector2(w + e, half + e), c + new Vector2(w + e, -half - e), Ink);
+            Quad(c + new Vector2(-w, -half), c + new Vector2(-w, half), c + new Vector2(w, half), c + new Vector2(w, -half), Pink);
+            Quad(c + new Vector2(-w * 0.62f, -half * 0.5f), c + new Vector2(-w * 0.62f, half * 0.72f), c + new Vector2(w * 0.62f, half * 0.72f), c + new Vector2(w * 0.62f, -half * 0.5f), White);
+            Disc(c + new Vector2(0f, -half * 0.76f), half * 0.13f, Ink, 8);
         }
 
         void Diamond(Vector2 c, float outer, float inner)

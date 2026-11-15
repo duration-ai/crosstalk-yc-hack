@@ -63,7 +63,12 @@ namespace Dogpatch.Nav
             if (Instance == this) Instance = null;
         }
 
-        public void SetWaypoint(Vector3 position) => Target = new NavPoint(position);
+        public void SetWaypoint(Vector3 position)
+        {
+            var race = RaceDirector.Instance;
+            if (race != null && race.Joined) return;
+            Target = new NavPoint(position);
+        }
 
         public void ClearWaypoint() => Target = null;
 
@@ -71,6 +76,12 @@ namespace Dogpatch.Nav
 
         void Update()
         {
+            var joined = RaceDirector.Instance;
+            if (Target != null && Target.Kind == NavKind.Waypoint && joined != null && joined.Joined)
+            {
+                Target = null;
+                Debug.Log("[Nav] the race took over from your waypoint");
+            }
             var focus = Game != null && Game.IsReady ? Game.Focus : null;
             if (focus == null || !Resolve(out var objective, out var kind))
             {
