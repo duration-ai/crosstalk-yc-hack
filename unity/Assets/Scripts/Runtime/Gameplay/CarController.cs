@@ -10,18 +10,23 @@ namespace Dogpatch.Gameplay
     [RequireComponent(typeof(Rigidbody))]
     public sealed class CarController : MonoBehaviour
     {
-        const float MaxSpeed = 22f;
-        const float MaxReverse = 7f;
-        const float Acceleration = 8f;
-        const float Braking = 16f;
-        const float Coasting = 5f;
-        const float TurnRate = 75f;
-
         public string VehicleId;
         public string ModelId;
         public bool Driven { get; private set; }
         public float Speed => forwardSpeed;
         public Vector3 HalfExtents { get; private set; }
+
+        public HandlingProfile Handling
+        {
+            get => handling;
+            set
+            {
+                handling = value ?? HandlingProfile.Default;
+                if (body != null) body.mass = handling.Mass;
+            }
+        }
+
+        HandlingProfile handling = HandlingProfile.Default;
 
         Rigidbody body;
         Vector3 desired;
@@ -52,7 +57,7 @@ namespace Dogpatch.Gameplay
             wheel.sharedMaterial = box.sharedMaterial;
 
             var body = go.AddComponent<Rigidbody>();
-            body.mass = 1200f;
+            body.mass = HandlingProfile.Default.Mass;
             body.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
             body.interpolation = RigidbodyInterpolation.Interpolate;
             body.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
@@ -98,6 +103,7 @@ namespace Dogpatch.Gameplay
             if (body.isKinematic) return;
             float dt = Time.fixedDeltaTime;
             var forward = transform.forward;
+            var right = transform.right;
             forwardSpeed = Vector3.Dot(body.linearVelocity, forward);
 
             float target = 0f;
@@ -111,7 +117,7 @@ namespace Dogpatch.Gameplay
                 else if (reversing && Mathf.Abs(angle) < 70f) reversing = false;
                 if (reversing)
                 {
-                    target = -strength * MaxReverse;
+                    target = -strength * handling.ReverseSpeed;
                     steerAngle = Vector3.SignedAngle(-forward, desired, Vector3.up);
                 }
                 else if (pointingBack)
@@ -121,18 +127,21 @@ namespace Dogpatch.Gameplay
                 }
                 else
                 {
-                    target = strength * MaxSpeed;
+                    target = strength * handling.TopSpeed;
                     steerAngle = angle;
                 }
             }
 
             bool opposing = Mathf.Sign(target) != Mathf.Sign(forwardSpeed) && Mathf.Abs(forwardSpeed) > 0.5f;
-            float rate = braking ? Braking : target == 0f ? Coasting : opposing ? Braking : Acceleration;
+            float grip = Mathf.Clamp01(handling.Grip * RoadConditions.GripMultiplier);
+            float rate = braking ? handling.Braking : target == 0f ? handling.Coasting : opposing ? handling.Braking : handling.Acceleration;
+            rate *= Mathf.Lerp(0.5f, 1f, grip);
             forwardSpeed = Mathf.MoveTowards(forwardSpeed, target, rate * dt);
             steer = Mathf.MoveTowards(steer, Mathf.Clamp(steerAngle / 25f, -1f, 1f), 4f * dt);
-            float yaw = steer * TurnRate * Mathf.Clamp01(Mathf.Abs(forwardSpeed) / 3f) * dt;
+            float yaw = steer * handling.TurnRate * Mathf.Clamp01(Mathf.Abs(forwardSpeed) / 3f) * dt;
             body.MoveRotation(body.rotation * Quaternion.Euler(0f, yaw, 0f));
-            body.linearVelocity = forward * forwardSpeed + Vector3.up * Mathf.Min(body.linearVelocity.y, 0f);
+            var slide = grip >= 1f ? Vector3.zero : right * (Vector3.Dot(body.linearVelocity, right) * Mathf.Pow(1f - grip, dt * 10f));
+            body.linearVelocity = forward * forwardSpeed + slide + Vector3.up * Mathf.Min(body.linearVelocity.y, 0f);
 
             if (!Driven && Mathf.Abs(forwardSpeed) < 0.05f) body.isKinematic = true;
         }
