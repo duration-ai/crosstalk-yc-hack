@@ -80,6 +80,7 @@ namespace Dogpatch.Vehicles
                     case VehicleTypes.ShoppingCart: return ProceduralModels.ShoppingCart(material);
                     case VehicleTypes.FlyingCar: return ProceduralModels.FlyingCar(material);
                     case VehicleTypes.CableCar: return ProceduralModels.CableCar(material);
+                    case VehicleTypes.Lowrider: return ProceduralModels.Lowrider(material);
                 }
             }
 

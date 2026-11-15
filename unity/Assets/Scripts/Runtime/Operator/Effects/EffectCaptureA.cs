@@ -109,6 +109,11 @@ namespace Dogpatch.Operator
                 if (id == "cars_on_water") yield return ToWater();
                 if (id == "floaty_crashes") Obstacles();
                 yield return Frames(45);
+                if (id == "change_vehicle" && game.CurrentCar != null && game.CurrentCar.TryGetComponent<IVehicleAbility>(out var ability))
+                {
+                    ability.Use();
+                    yield return Frames(18);
+                }
                 var shape = game.Player.Visual != null ? game.Player.Visual.Find("Shape (operator)") : null;
                 Debug.Log($"[WorldEffectCapture] {id}: player at {game.Player.transform.position}, visual {game.Player.Visual?.name}, shape {(shape != null ? shape.localScale.ToString() : "none")}, car {(game.CurrentCar != null ? $"{game.CurrentCar.name} {game.CurrentCar.transform.position} speed {game.CurrentCar.Speed:F1} driven {game.CurrentCar.Driven} kinematic {game.CurrentCar.GetComponent<Rigidbody>().isKinematic} visual {Racers.CarVisual(game.CurrentCar)?.lossyScale}" : "none")}, camera {game.View.transform.position}");
                 yield return Shot(id + "-2-during");
