@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Dogpatch.Gameplay;
 using Dogpatch.Smash;
+using Dogpatch.WorldChanges;
 using UnityEngine;
 
 namespace Dogpatch.Vehicles
