@@ -18,14 +18,12 @@ namespace Dogpatch.Operator
         public string Theme;
         // A SELF row's caller ("self:<playerId>"): only that player's car and avatar change.
         public string Owner;
-        // An OTHERS row's caller ("others:<playerId>"): every racer but that player.
-        public string Except;
         public List<EntityTag> Entities = new List<EntityTag>();
 
         // Whether this device's own car and avatar are in the effect.
-        public bool IncludesMe => !string.IsNullOrEmpty(Owner) ? IsMe(Owner) : string.IsNullOrEmpty(Except) || !IsMe(Except);
+        public bool IncludesMe => string.IsNullOrEmpty(Owner) || IsMe(Owner);
 
-        public static bool IsMe(string playerId) => playerId == EntityTagger.MyPlayerId || (string.IsNullOrEmpty(EntityTagger.MyPlayerId) && playerId == Race.RaceDirector.Instance?.MyId);
+        static bool IsMe(string playerId) => playerId == EntityTagger.MyPlayerId || (string.IsNullOrEmpty(EntityTagger.MyPlayerId) && playerId == Race.RaceDirector.Instance?.MyId);
     }
 
     // The parts of the game an effect may touch.

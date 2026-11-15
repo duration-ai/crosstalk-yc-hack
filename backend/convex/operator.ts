@@ -4,7 +4,7 @@ import { internal } from "./_generated/api";
 import { action, internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { askJev, buildInput, buildQuestions, JevUnavailable } from "./jev";
 import { fail, getPlayer, movementMode } from "./model";
-import { COUNTERS, EXCLUSIVE, OTHERS_EFFECTS, SELF_EFFECTS, effectInfo, isA, rollDuration } from "./operatorCatalogue";
+import { COUNTERS, EXCLUSIVE, SELF_EFFECTS, effectInfo, isA, rollDuration } from "./operatorCatalogue";
 import { CAR_EFFECTS, decide, REFUSAL_MESSAGES, type Command, type EffectCommand, type RefusalReason, type View } from "./operatorRules";
 import { getMembership, getRoom, phase } from "./raceModel";
 
@@ -113,12 +113,11 @@ function activeRows(ctx: MutationCtx, roomId: Id<"rooms">) {
 const operatorSelfScope = () => process.env.OPERATOR_SELF_SCOPE !== "false";
 
 /**
- * OTHERS effects tag the caller to leave out ("others:<playerId>"); SELF effects tag the caller ("self:<playerId>"); car effects aimed at a whole class of vehicles or
+ * SELF effects tag the caller ("self:<playerId>"); car effects aimed at a whole class of vehicles or
  * at another racer's car go on the caller's own car instead, with no confirm.
  */
 export function selfScoped(command: EffectCommand, playerId: string): EffectCommand {
   const own = `car:${playerId}`;
-  if (OTHERS_EFFECTS.has(command.effect)) return { ...command, target: `others:${playerId}`, targetClass: "", confirm: false };
   if (SELF_EFFECTS.has(command.effect) && (command.scope === "players" || command.scope === "world")) {
     return { ...command, target: `self:${playerId}`, targetClass: "", confirm: false };
   }

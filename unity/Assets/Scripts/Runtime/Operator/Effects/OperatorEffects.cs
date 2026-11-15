@@ -108,7 +108,7 @@ namespace Dogpatch.Operator
         void Run(OperatorEffect effect, ActiveEffect row)
         {
             var target = Resolve(row);
-            if (!string.IsNullOrEmpty(target.Owner) && !target.IncludesMe && !RemoteVisible.Contains(row.effect))
+            if (!target.IncludesMe && !RemoteVisible.Contains(row.effect))
             {
                 Debug.Log($"[Operator] {row.effect} {row.id} is another racer's own change; their car shows it, ours stays as is");
                 Started?.Invoke(row);
@@ -136,18 +136,11 @@ namespace Dogpatch.Operator
         {
             var target = new EffectTarget { Scope = row.scope, Id = row.target, Class = row.targetClass, Color = row.color, Theme = row.theme };
             EntityTagger.TagDynamic(Context.Game, Context.Race);
-            if (row.target != null && (row.target.StartsWith("self:") || row.target.StartsWith("others:")))
+            if (row.target != null && row.target.StartsWith("self:"))
             {
-                bool self = row.target.StartsWith("self:");
-                var who = row.target.Substring(self ? 5 : 7);
-                if (self) target.Owner = who;
-                else target.Except = who;
+                var who = target.Owner = row.target.Substring(5);
                 foreach (var tag in EntityTag.All)
-                {
-                    if (tag.ControlledBy != "me" && tag.ControlledBy != "player") continue;
-                    bool caller = tag.Id == "car:" + who || tag.Id == "racer:" + who || (tag.ControlledBy == "me" && EffectTarget.IsMe(who));
-                    if (caller == self) target.Entities.Add(tag);
-                }
+                    if (tag.Id == "car:" + who || tag.Id == "racer:" + who || (tag.ControlledBy == "me" && target.IncludesMe)) target.Entities.Add(tag);
                 return target;
             }
             switch (row.scope)

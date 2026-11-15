@@ -178,9 +178,6 @@ export const PLAYABLE: ReadonlySet<string> = new Set([...builtEffects.built, ...
  */
 export const SELF_EFFECTS: ReadonlySet<string> = new Set([...Object.keys(PLAYER_EFFECTS), "cars_fly", "cars_on_water", "floaty_crashes"]);
 
-/** OTHERS effects hit every racer but the caller; the server tags the row's target "others:<playerId>". */
-export const OTHERS_EFFECTS: ReadonlySet<string> = new Set<string>([]);
-
 export const EXCLUSIVE: readonly (readonly string[])[] = [
   ["night", "day", "sunset", "fast_day_cycle"],
   ["gravity_lower", "gravity_higher"],
