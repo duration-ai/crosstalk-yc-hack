@@ -22,6 +22,7 @@ namespace Dogpatch.Gameplay
         public bool Driven { get; private set; }
         public float Speed => forwardSpeed;
         public Vector3 HalfExtents { get; private set; }
+        public bool Stunned => Time.time < stunnedUntil;
 
         Rigidbody body;
         Vector3 desired;
@@ -32,6 +33,7 @@ namespace Dogpatch.Gameplay
         readonly List<Transform> wheels = new List<Transform>();
         readonly List<Transform> steering = new List<Transform>();
         float wheelSpin;
+        float stunnedUntil;
 
         public static CarController Create(string vehicleId, GlbAsset model, Material material, Vector3 position, float heading)
         {
@@ -100,9 +102,17 @@ namespace Dogpatch.Gameplay
             forwardSpeed = 0f;
         }
 
+        // Hands the body to physics for a moment so knockback, launches and shoves play out
+        // instead of being overwritten by the next step's steering. A parked car becomes dynamic.
+        public void Stun(float seconds)
+        {
+            stunnedUntil = Mathf.Max(stunnedUntil, Time.time + seconds);
+            body.isKinematic = false;
+        }
+
         void FixedUpdate()
         {
-            if (body.isKinematic) return;
+            if (body.isKinematic || Stunned) return;
             float dt = Time.fixedDeltaTime;
             var forward = transform.forward;
             forwardSpeed = Vector3.Dot(body.linearVelocity, forward);

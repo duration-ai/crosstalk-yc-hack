@@ -8,6 +8,7 @@ using Dogpatch.Gameplay;
 using Dogpatch.Glb;
 using Dogpatch.Operator;
 using Dogpatch.Slipstream;
+using Dogpatch.Smash;
 using Dogpatch.WorldChanges;
 using UnityEngine;
 
@@ -52,7 +53,6 @@ namespace Dogpatch.Race
         public int MySlot { get; private set; }
 
         public event Action<RaceEvent> EventArrived;
-        public readonly SmashTally Smash = new SmashTally();
 
         sealed class Bot
         {
@@ -336,7 +336,7 @@ namespace Dogpatch.Race
         {
             Started = true;
             StartedAt = Time.time;
-            foreach (var car in RacerCars()) Smash.Reset(car);
+            foreach (var car in RacerCars()) SmashScore.ResetFor(car);
             botCallsAfter = Time.time + 4f;
             foreach (var bot in bots)
             {
@@ -364,11 +364,11 @@ namespace Dogpatch.Race
             while (true)
             {
                 var me = BodyOf(MyId);
-                if (me != null) yield return Wait(Session.UpdateAsync(MyId, RoomId, new Vec3(me.position.x, me.position.y, me.position.z), me.eulerAngles.y, Smash.Of(myCar)));
+                if (me != null) yield return Wait(Session.UpdateAsync(MyId, RoomId, new Vec3(me.position.x, me.position.y, me.position.z), me.eulerAngles.y, SmashScore.TotalFor(myCar)));
                 foreach (var bot in bots)
                 {
                     var t = BodyOf(bot.Id);
-                    var update = Session.UpdateAsync(bot.Id, RoomId, new Vec3(t.position.x, t.position.y, t.position.z), t.eulerAngles.y, Smash.Of(bot.Car));
+                    var update = Session.UpdateAsync(bot.Id, RoomId, new Vec3(t.position.x, t.position.y, t.position.z), t.eulerAngles.y, SmashScore.TotalFor(bot.Car));
                     yield return Wait(update);
                 }
                 yield return new WaitForSeconds(SendEvery);
