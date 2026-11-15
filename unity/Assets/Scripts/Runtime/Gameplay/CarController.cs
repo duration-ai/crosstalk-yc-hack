@@ -285,7 +285,8 @@ namespace Dogpatch.Gameplay
                 ? along * forwardSpeed + slide - groundNormal * (Mathf.Max(ground.distance - 0.5f, 0f) * 10f)
                 : forward * forwardSpeed + slide + Vector3.up * Mathf.Min(body.linearVelocity.y, 0f);
             if (hover) velocity.y = HoverVelocity(dt);
-            else if (floating) velocity.y = Mathf.Lerp(body.linearVelocity.y, Mathf.Clamp((WaterTop - body.position.y) * 4f, -4f, 3f), 1f - Mathf.Exp(-8f * dt));
+            else if (floating && body.linearVelocity.y <= 0.5f) velocity.y = Mathf.Lerp(body.linearVelocity.y, Mathf.Clamp((WaterTop - body.position.y) * 4f, -4f, 3f), 1f - Mathf.Exp(-8f * dt));
+            else if (Afloat) velocity.y = body.linearVelocity.y;
             body.linearVelocity = velocity;
 
             if (!Driven && Mathf.Abs(forwardSpeed) < 0.05f && (!hover || HoverAltitude < 0.2f)) body.isKinematic = true;

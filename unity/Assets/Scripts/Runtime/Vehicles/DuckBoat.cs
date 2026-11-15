@@ -21,7 +21,9 @@ namespace Dogpatch.Vehicles
             ready = Time.time + 1.2f;
             GetComponent<VehicleAudio>()?.Signal(0.5f);
             var body = GetComponent<Rigidbody>();
-            if (!body.isKinematic) body.linearVelocity += Vector3.up * (car.Afloat ? 6f : 4f);
+            if (body.isKinematic) return;
+            if (car.Afloat) body.linearVelocity += Vector3.up * 6f;
+            else WorldChanges.CarFx.On(car).Launch(4f);
             if (car.Afloat) MotionFx.Splash(transform.position, 1f);
             Debug.Log("[DuckBoat] quack hop, afloat " + car.Afloat);
         }

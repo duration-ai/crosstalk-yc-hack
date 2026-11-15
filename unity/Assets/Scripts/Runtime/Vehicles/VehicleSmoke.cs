@@ -93,10 +93,16 @@ namespace Dogpatch.Vehicles
             throttle = 1f;
             for (int s = 0; s < 6; s++)
             {
+                if (s == 3)
+                {
+                    float peak = car.transform.position.y;
+                    for (int k = 0; k < 30; k++) { peak = Mathf.Max(peak, car.transform.position.y); yield return null; }
+                    Debug.Log($"[VehicleSmoke] hop peak y={peak:F2}");
+                }
                 yield return Frames(30);
                 Log(s);
                 if (s == 4) yield return Shot("duck_boat-afloat");
-                if (s == 3) car.GetComponent<IVehicleAbility>()?.Use();
+                if (s == 2) car.GetComponent<IVehicleAbility>()?.Use();
             }
             heading = Vector3.left;
             for (int s = 6; s < 20; s++)
