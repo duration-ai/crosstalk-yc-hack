@@ -1,0 +1,90 @@
+{
+  "speed": {
+    "floor": 4,
+    "minTopSpeed": 14,
+    "rushStart": 0.35,
+    "rushFull": 0.85,
+    "boostRush": 1,
+    "downhillRush": 0.5,
+    "downhillFullDrop": 5,
+    "boostSeconds": 1.1,
+    "takeoffBoost": 0.6,
+    "raceStartBoost": 1
+  },
+  "speedLines": {
+    "count": 30,
+    "alpha": 0.8,
+    "width": 2.6,
+    "innerRadius": 0.62,
+    "lengthMin": 0.18,
+    "lengthMax": 0.42,
+    "flow": 2.4,
+    "bandShare": 0.2,
+    "bandAlpha": 0.25,
+    "bandWidth": 9,
+    "centerY": 0.06,
+    "fadeIn": 3,
+    "fadeOut": 2
+  },
+  "streaks": {
+    "rate": 18,
+    "alpha": 0.45,
+    "width": 0.03
+  },
+  "puffs": {
+    "alpha": 0.78,
+    "size": 0.3,
+    "life": 0.55,
+    "carry": 0.6,
+    "kick": 2,
+    "launchRate": 12,
+    "launchMaxSpeedShare": 0.45,
+    "launchAccelShare": 0.6,
+    "driftRate": 14,
+    "driftStart": 7,
+    "driftFull": 13,
+    "brakeRate": 10,
+    "brakeDecelShare": 0.6,
+    "brakeMinSpeed": 5,
+    "shardChance": 0.35,
+    "shardSize": 0.07,
+    "boostPuffs": 4,
+    "boostSize": 0.4
+  },
+  "landing": {
+    "minStrength": 0.2,
+    "puffs": 8,
+    "size": 0.4,
+    "spread": 3.5,
+    "life": 0.5,
+    "shards": 6,
+    "onFootScale": 0.35
+  },
+  "sparks": {
+    "countMin": 5,
+    "countMax": 18,
+    "lifeMin": 0.18,
+    "lifeMax": 0.42,
+    "width": 0.04,
+    "trail": 0.045
+  },
+  "squash": {
+    "takeoffStretch": 0.12,
+    "landSquash": 0.2,
+    "period": 0.32,
+    "damping": 0.35
+  },
+  "camera": {
+    "fovSpeed": 14,
+    "fovSpeedPower": 1.2,
+    "fovBoost": 8,
+    "fovPunch": 7,
+    "punchSeconds": 0.35,
+    "fovResponse": 6,
+    "leanMax": 3.5,
+    "leanPerLateral": 0.3,
+    "leanResponse": 5,
+    "boostShake": 0.25,
+    "scrapeShake": 0.05
+  }
+}

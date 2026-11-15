@@ -407,6 +407,11 @@ namespace Dogpatch.Ambient
 
         int AddCrossing(int road, Vector2 x, Vector2 roadDir, bool fromData)
         {
+            if (world.Surface != null && world.Surface.NearestCrosswalk(road, x, 8f, out var painted))
+            {
+                x = painted.Center;
+                roadDir = painted.Along;
+            }
             foreach (var c in Crossings)
                 if (c.Road == road && (c.Center - x).sqrMagnitude < 64f) return -1;
             float hw = RoadNetwork.HalfWidth(world.Roads.Roads[road]);

@@ -113,10 +113,11 @@ namespace Dogpatch.Gameplay
         void OnGUI()
         {
             if (!on) return;
-            style ??= new GUIStyle(GUI.skin.label) { fontSize = Mathf.RoundToInt(Screen.height * 0.016f), fontStyle = FontStyle.Bold, alignment = TextAnchor.UpperRight };
+            style ??= new GUIStyle(GUI.skin.label) { fontStyle = FontStyle.Bold, alignment = TextAnchor.UpperRight };
+            style.fontSize = Mathf.RoundToInt(Mathf.Min(Screen.width, Screen.height) * 0.03f);
             var safe = Screen.safeArea;
             float w = Screen.width * 0.5f, h = style.fontSize * 4.5f;
-            var rect = new Rect(safe.xMax - w - 12f, Screen.height - safe.yMax + Screen.height * 0.13f, w, h);
+            var rect = new Rect(safe.xMax - w - 12f, Screen.height - safe.yMax + Mathf.Max(Screen.width, Screen.height) * 0.08f, w, h);
             GUI.color = new Color(0f, 0f, 0f, 0.6f);
             GUI.Label(new Rect(rect.x + 1f, rect.y + 1f, rect.width, rect.height), text, style);
             GUI.color = Color.white;
