@@ -231,6 +231,12 @@ namespace Dogpatch.World
         }
 
         public const float ParapetHeight = 1.1f;
+
+        // Where a ramp foot is still at street level its open edges slope down into the street, so a car
+        // turning onto the ramp at an angle rolls up instead of hitting the deck edge.
+        const float ApronBelow = 0.6f;
+        const float ApronWidth = 1.5f;
+        const float ApronDrop = 0.45f;
         public const float SolidBelow = 6f;
 
         // Draws the deck into mb and, when given, its colliders: surface (the drivable top) and solid
@@ -290,10 +296,20 @@ namespace Dogpatch.World
                             solid.Quad(Pt(a, side * e.l0 / hw, e.v0), Pt(b, side * e.l0 / hw, e.v0), Pt(b, side * e.l1 / hw, e.v1), Pt(a, side * e.l1 / hw, e.v1), e.color, left * (side * e.nl) + Vector3.up * e.nv);
                         }
                     }
-                    else mb.Quad(Pt(a, side * deckF, 0f), Pt(b, side * deckF, 0f), Pt(b, side, 0f), Pt(a, side, 0f), Asphalt, Vector3.up);
+                    else
+                    {
+                        mb.Quad(Pt(a, side * deckF, 0f), Pt(b, side * deckF, 0f), Pt(b, side, 0f), Pt(a, side, 0f), Asphalt, Vector3.up);
+                        if (Mathf.Max(a.h, b.h) < ApronBelow)
+                        {
+                            float outF = 1f + ApronWidth / hw;
+                            mb.Quad(Pt(a, side, 0f), Pt(b, side, 0f), Pt(b, side * outF, -ApronDrop), Pt(a, side * outF, -ApronDrop), Asphalt, Vector3.up);
+                            surface.Quad(Pt(a, side, 0f), Pt(b, side, 0f), Pt(b, side * outF, -ApronDrop), Pt(a, side * outF, -ApronDrop), Asphalt, Vector3.up);
+                        }
+                    }
                     foreach (var e in slab)
                         mb.Quad(Pt(a, side * e.l0 / hw, e.v0), Pt(b, side * e.l0 / hw, e.v0), Pt(b, side * e.l1 / hw, e.v1), Pt(a, side * e.l1 / hw, e.v1), e.color, left * (side * e.nl) + Vector3.up * e.nv);
-                    solid.Quad(Pt(a, side, 0f), Pt(b, side, 0f), Pt(b, side, high ? -thick : -b.h), Pt(a, side, high ? -thick : -a.h), ConcreteMid, left * side);
+                    if (Mathf.Max(a.h, b.h) > 0f)
+                        solid.Quad(Pt(a, side, 0f), Pt(b, side, 0f), Pt(b, side, high ? -thick : -Mathf.Max(b.h, 0f)), Pt(a, side, high ? -thick : -Mathf.Max(a.h, 0f)), ConcreteMid, left * side);
                     if (Mathf.Min(a.h, b.h) < SolidBelow && Mathf.Max(a.h, b.h) > slabEdge)
                     {
                         mb.Quad(Pt(a, side, -Mathf.Min(slabEdge, a.h)), Pt(b, side, -Mathf.Min(slabEdge, b.h)), Pt(b, side, -b.h), Pt(a, side, -a.h), ConcreteMid, left * side);
@@ -307,11 +323,12 @@ namespace Dogpatch.World
                 var s = end == 0 ? secs[0] : secs[secs.Count - 1];
                 var facing = Dir3(end == 0 ? -SegDir(secs, 0) : SegDir(secs, secs.Count - 2));
                 float bottom = s.h > thick ? -thick : -s.h;
-                Fan(mb, new[]
-                {
-                    Pt(s, 1f, 0f), Pt(s, 1f, Mathf.Max(-slabEdge, bottom)), Pt(s, soffitF, bottom),
-                    Pt(s, -soffitF, bottom), Pt(s, -1f, Mathf.Max(-slabEdge, bottom)), Pt(s, -1f, 0f),
-                }, ConcreteMid, facing);
+                if (s.h > 0f)
+                    Fan(mb, new[]
+                    {
+                        Pt(s, 1f, 0f), Pt(s, 1f, Mathf.Max(-slabEdge, bottom)), Pt(s, soffitF, bottom),
+                        Pt(s, -soffitF, bottom), Pt(s, -1f, Mathf.Max(-slabEdge, bottom)), Pt(s, -1f, 0f),
+                    }, ConcreteMid, facing);
                 if (!(end == 0 ? spec.BarrierStart : spec.BarrierEnd)) continue;
                 var along = end == 0 ? SegDir(secs, 0) : SegDir(secs, secs.Count - 2);
                 var inward = s.p - along * (end == 0 ? -0.6f : 0.6f);

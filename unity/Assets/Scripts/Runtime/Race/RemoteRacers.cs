@@ -6,12 +6,12 @@ using UnityEngine;
 
 namespace Dogpatch.Race
 {
-    // Other players' racers, seen through the poll: a car in their slot color during the race, and
-    // on foot in the lobby (or in a car when they move at driving speed). Positions arrive at the
-    // poll rate stamped with the server time of each race/update, so each racer is drawn about
-    // 150 ms behind the newest sample, interpolating between samples and extrapolating briefly when
-    // one is late. Their cars are triggers, not solid: driving into one gives this device's car a
-    // light push apart instead of an authoritative collision.
+    // Other players, from two sources: the shared world's presence (everyone in this shard, on foot
+    // or in their vehicle, in their world colour) and the race room's poll (racers in their slot
+    // colour, in their car from the grid on). One Remote per player takes samples from both, stamped
+    // with the server time of each update, and is drawn about 150 ms behind the newest sample,
+    // interpolating between samples and extrapolating briefly when one is late. Their cars are
+    // triggers, not solid: driving into one gives this device's car a light push apart.
     public sealed class RemoteRacers : MonoBehaviour
     {
         public const float BufferMs = 150f;
@@ -19,6 +19,7 @@ namespace Dogpatch.Race
         const float TeleportMeters = 40f;
         const float DrivingSpeed = 8f;
         const float PushEvery = 0.2f;
+        const float ForgetAfter = 12f;
 
         public RaceDirector Race;
 
@@ -34,17 +35,24 @@ namespace Dogpatch.Race
             public string Id;
             public string Name;
             public string Color;
-            public int Slot;
+            public string ColorHex;
             public CarController Car;
             public RacerAvatar Avatar;
             public bool Driving;
             public bool Left;
+            public bool InRace;
             public float Speed;
             public Vector3 Position;
             public float Heading;
+            public string WorldMode;
+            public string RaceColorHex;
+            public string WorldColor;
+            public string WorldColorHex;
             internal readonly List<Sample> Samples = new List<Sample>();
             internal long LastUpdatedAt;
             internal float NextPush;
+            internal float SeenAt;
+            internal string PaintedHex;
 
             public Transform Body => Left ? null : Driving ? Car.transform : Avatar.transform;
         }
@@ -57,30 +65,68 @@ namespace Dogpatch.Race
 
         public Remote Get(string playerId) => playerId != null && remotes.TryGetValue(playerId, out var r) ? r : null;
 
-        // How far behind the server clock remote racers are drawn.
+        // How far behind the server clock remote players are drawn.
         public double DelayMs => lagMs + BufferMs;
 
+        // Race room: every racer this device does not drive.
         public void Sync(PollResponse poll)
         {
-            var seen = new HashSet<string>();
+            var racing = new HashSet<string>();
             foreach (var racer in poll.racers)
             {
                 if (!Race.IsRemote(racer.playerId)) continue;
-                seen.Add(racer.playerId);
-                var remote = Get(racer.playerId) ?? Spawn(racer);
+                racing.Add(racer.playerId);
+                var remote = Get(racer.playerId) ?? Spawn(racer.playerId, racer.displayName, racer.position);
+                remote.InRace = true;
                 remote.Left = racer.left;
                 remote.Name = racer.displayName;
-                if (racer.updatedAt <= remote.LastUpdatedAt || racer.position == null) continue;
-                remote.LastUpdatedAt = racer.updatedAt;
-                double lag = poll.serverTime - racer.updatedAt;
-                lagMs = lagKnown ? lagMs + (lag - lagMs) * 0.1 : lag;
-                lagKnown = true;
-                var p = new Vector3(racer.position.x, racer.position.y, racer.position.z);
-                if (remote.Samples.Count > 0 && Vector3.Distance(remote.Samples[remote.Samples.Count - 1].P, p) > TeleportMeters) remote.Samples.Clear();
-                remote.Samples.Add(new Sample { T = racer.updatedAt, P = p, H = racer.heading });
-                if (remote.Samples.Count > 24) remote.Samples.RemoveAt(0);
+                remote.RaceColorHex = racer.colorHex;
+                remote.Color = racer.color;
+                remote.SeenAt = Time.time;
+                AddSample(remote, racer.updatedAt, racer.position, racer.heading, poll.serverTime);
             }
-            foreach (var id in remotes.Keys.Where(id => !seen.Contains(id)).ToList()) Despawn(id);
+            foreach (var remote in remotes.Values)
+                if (!racing.Contains(remote.Id)) remote.InRace = false;
+        }
+
+        // Shared world: everyone else in this shard.
+        public void SyncWorld(WorldPresenceResponse world)
+        {
+            foreach (var player in world.players)
+            {
+                if (!Race.IsRemote(player.playerId)) continue;
+                var remote = Get(player.playerId) ?? Spawn(player.playerId, player.displayName, player.position);
+                remote.Name = player.displayName;
+                remote.WorldColor = player.color;
+                remote.WorldColorHex = player.colorHex;
+                remote.WorldMode = player.mode;
+                remote.SeenAt = Time.time;
+                if (!remote.InRace) remote.Left = false;
+                AddSample(remote, player.updatedAt, player.position, player.heading, world.serverTime);
+            }
+        }
+
+        void AddSample(Remote remote, long updatedAt, Dogpatch.Backend.Vec3 position, float heading, long serverTime)
+        {
+            if (updatedAt <= remote.LastUpdatedAt || position == null) return;
+            remote.LastUpdatedAt = updatedAt;
+            double lag = serverTime - updatedAt;
+            lagMs = lagKnown ? lagMs + (lag - lagMs) * 0.1 : lag;
+            lagKnown = true;
+            var p = new Vector3(position.x, position.y, position.z);
+            if (remote.Samples.Count > 0 && Vector3.Distance(remote.Samples[remote.Samples.Count - 1].P, p) > TeleportMeters) remote.Samples.Clear();
+            remote.Samples.Add(new Sample { T = updatedAt, P = p, H = heading });
+            if (remote.Samples.Count > 24) remote.Samples.RemoveAt(0);
+        }
+
+        // Back in free roam: everyone goes back to their world colour.
+        public void EndRace()
+        {
+            foreach (var remote in remotes.Values)
+            {
+                remote.InRace = false;
+                remote.Left = false;
+            }
         }
 
         public void Clear()
@@ -88,30 +134,26 @@ namespace Dogpatch.Race
             foreach (var id in remotes.Keys.ToList()) Despawn(id);
         }
 
-        Remote Spawn(Racer racer)
+        Remote Spawn(string playerId, string displayName, Dogpatch.Backend.Vec3 at)
         {
             var game = Race.Game;
-            var color = PaintJob.Linear(string.IsNullOrEmpty(racer.colorHex) ? RaceDirector.SlotHex[Mathf.Clamp(racer.slot, 0, 3)] : racer.colorHex);
-            var p = racer.position != null ? new Vector3(racer.position.x, racer.position.y, racer.position.z) : Race.Course.RingCenter;
+            var p = at != null ? new Vector3(at.x, at.y, at.z) : Race.Course.RingCenter;
             var carAsset = game.Models.Get(Race.MyCar.ModelId);
-            var car = CarController.Create("remote-" + racer.playerId, carAsset, game.SharedMaterial, p, racer.heading);
-            car.name = "Car " + racer.displayName;
+            var car = CarController.Create("remote-" + playerId, carAsset, game.SharedMaterial, p, 0f);
+            car.name = "Car " + displayName;
             car.Enterable = false;
             car.transform.SetParent(game.World.Root.transform, true);
             foreach (var c in car.GetComponents<Collider>()) c.isTrigger = true;
-            var body = car.GetComponent<Rigidbody>();
-            body.interpolation = RigidbodyInterpolation.None;
+            car.GetComponent<Rigidbody>().interpolation = RigidbodyInterpolation.None;
             CarFx.On(car);
-            PaintJob.For(car.gameObject, car.ModelId).SetBase(color);
-            Race.Changes.Paint(car);
 
-            var avatar = RacerAvatar.Create(game.Models.Get(game.Models.Role("player")[0].id), game.SharedMaterial, color, racer.displayName);
+            var avatar = RacerAvatar.Create(game.Models.Get(game.Models.Role("player")[0].id), game.SharedMaterial, Color.white, displayName);
             avatar.transform.SetParent(game.World.Root.transform, true);
-            avatar.Stand(p, racer.heading);
+            avatar.Stand(p, 0f);
 
-            var remote = new Remote { Id = racer.playerId, Name = racer.displayName, Color = racer.color, Slot = racer.slot, Car = car, Avatar = avatar, Position = p, Heading = racer.heading };
-            remotes[racer.playerId] = remote;
-            Debug.Log($"[SpeedDial] remote racer {racer.displayName} ({racer.color}) joined");
+            var remote = new Remote { Id = playerId, Name = displayName, Car = car, Avatar = avatar, Position = p, SeenAt = Time.time };
+            remotes[playerId] = remote;
+            Debug.Log($"[SpeedDial] remote player {displayName} appeared");
             return remote;
         }
 
@@ -121,7 +163,20 @@ namespace Dogpatch.Race
             remotes.Remove(id);
             if (remote.Car != null) Destroy(remote.Car.gameObject);
             if (remote.Avatar != null) Destroy(remote.Avatar.gameObject);
-            Debug.Log($"[SpeedDial] remote racer {remote.Name} left");
+            Debug.Log($"[SpeedDial] remote player {remote.Name} left");
+        }
+
+        // Slot colour while racing together, world colour otherwise.
+        static void Paint(Remote remote, RaceDirector race)
+        {
+            var hex = remote.InRace && !string.IsNullOrEmpty(remote.RaceColorHex) ? remote.RaceColorHex : remote.WorldColorHex;
+            if (string.IsNullOrEmpty(hex) || hex == remote.PaintedHex) return;
+            remote.PaintedHex = hex;
+            if (!remote.InRace) remote.Color = remote.WorldColor;
+            var color = PaintJob.Linear(hex);
+            PaintJob.For(remote.Car.gameObject, remote.Car.ModelId).SetBase(color);
+            race.Changes.Paint(remote.Car);
+            PaintJob.For(remote.Avatar.gameObject, race.Game.Models.Role("player")[0].id).SetBase(color);
         }
 
         // Interpolated pose at server time t, from the samples around it.
@@ -165,19 +220,25 @@ namespace Dogpatch.Race
         void Update()
         {
             if (Race == null || remotes.Count == 0) return;
+            if (!Race.Reconnecting)
+                foreach (var gone in remotes.Values.Where(r => Time.time - r.SeenAt > ForgetAfter).Select(r => r.Id).ToList()) Despawn(gone);
             double t = Race.NowMs - DelayMs;
             var mine = Race.Game.CurrentCar;
             foreach (var remote in remotes.Values)
             {
+                Paint(remote, Race);
                 if (!Pose(remote.Samples, t, out var p, out float h)) continue;
                 float dt = Mathf.Max(Time.deltaTime, 1e-3f);
                 float moved = Vector3.Distance(new Vector3(p.x, 0f, p.z), new Vector3(remote.Position.x, 0f, remote.Position.z)) / dt;
                 remote.Speed = Mathf.Lerp(remote.Speed, moved, 1f - Mathf.Exp(-4f * dt));
                 remote.Position = p;
                 remote.Heading = h;
-                remote.Driving = Race.Gridded || remote.Speed > DrivingSpeed || (remote.Driving && remote.Speed > DrivingSpeed * 0.4f);
+                bool raceCar = remote.InRace && Race.Gridded;
+                remote.Driving = raceCar || (remote.WorldMode != null
+                    ? remote.WorldMode == Dogpatch.Backend.PlayerModes.Driving
+                    : remote.Speed > DrivingSpeed || (remote.Driving && remote.Speed > DrivingSpeed * 0.4f));
 
-                remote.Car.gameObject.SetActive(!remote.Left && (remote.Driving || !Race.Gridded));
+                remote.Car.gameObject.SetActive(!remote.Left && remote.Driving);
                 remote.Avatar.gameObject.SetActive(!remote.Left && !remote.Driving);
                 if (remote.Driving)
                 {
