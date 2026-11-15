@@ -120,6 +120,7 @@ namespace Dogpatch.Traffic
         float nextParkedScan;
         float nextCandidates;
         float nextLog;
+        float nextOverlapLog = 60f;
         Vector3 lastFocus;
         int tick;
 
@@ -166,6 +167,7 @@ namespace Dogpatch.Traffic
             GameController.VehicleEntered += OnEntered;
             GameController.VehicleExited += OnExited;
             VehicleRoster.Swapped += OnSwapped;
+            LogOverlaps("startup", true);
             Debug.Log($"[Traffic] started with {Agents.Count} agents in {(Time.realtimeSinceStartup - t0) * 1000f:F0} ms");
         }
 
@@ -229,6 +231,7 @@ namespace Dogpatch.Traffic
                 for (int i = 0; i < 600 && Deficit(out _) > 0; i++) TrySpawn(true);
             }
             else if (tick % 2 == 0) TrySpawn(false);
+            if (tick % 25 == 0) Separate();
             lastFocus = focus;
             watch.Stop();
             frameAccumulator += (float)watch.Elapsed.TotalMilliseconds;
@@ -241,6 +244,11 @@ namespace Dogpatch.Traffic
             sumMs += FrameMs;
             sampleFrames++;
             MaxMs = Mathf.Max(MaxMs, FrameMs);
+            if (Time.time >= nextOverlapLog)
+            {
+                nextOverlapLog = Time.time + 60f;
+                if (Time.time > 1f) LogOverlaps($"after {Time.time / 60f:F0} min", false);
+            }
             if (Time.time < nextLog) return;
             nextLog = Time.time + 5f;
             AverageMs = sumMs / Mathf.Max(1, sampleFrames);
@@ -294,7 +302,7 @@ namespace Dogpatch.Traffic
                     var agent = car.GetComponent<TrafficAgent>();
                     if (agent != null && agent.enabled) continue;
                     var p = car.transform.position;
-                    if ((p - focus).sqrMagnitude < 260f * 260f && Graph.Nearest(new Vector2(p.x, p.z), Vector2.zero, 2.6f, out _, out _) != null) parked.Add(car);
+                    if ((p - focus).sqrMagnitude < 260f * 260f && Graph.Nearest(new Vector2(p.x, p.z), Vector2.zero, 1.4f + car.HalfExtents.z, out _, out _) != null) parked.Add(car);
                 }
             }
             foreach (var car in parked)
@@ -366,7 +374,70 @@ namespace Dogpatch.Traffic
                 if ((a.transform.position - world).sqrMagnitude < 14f * 14f) return;
             foreach (var car in parked)
                 if (car != null && (car.transform.position - world).sqrMagnitude < 6f * 6f) return;
-            Spawn(type, lane, s, Mathf.Min(spec.CruiseSpeed, lane.Speed) * 0.7f);
+            var agent = Spawn(type, lane, s, Mathf.Min(spec.CruiseSpeed, lane.Speed) * 0.7f);
+            if (Overlapping(agent.Car, 1f)) Despawn(agent);
+        }
+
+        static readonly Collider[] overlapHits = new Collider[16];
+        readonly List<CarController> agentCars = new List<CarController>();
+
+        // Kinematic traffic never pushes itself apart, so two AI cars that end up inside each other
+        // (a merge into the same lane) are parted by removing one, the hidden one when there is a choice.
+        void Separate()
+        {
+            agentCars.Clear();
+            foreach (var a in Agents)
+                if (a.gameObject.activeSelf && a.Car != game.Current) agentCars.Add(a.Car);
+            foreach (var (a, b) in VehicleSpacing.OverlappingPairs(agentCars, -0.1f))
+            {
+                var ta = a.GetComponent<TrafficAgent>();
+                var tb = b.GetComponent<TrafficAgent>();
+                bool fixedA = ta.OnRail || ta.Route != null, fixedB = tb.OnRail || tb.Route != null;
+                if (fixedA && fixedB) continue;
+                var drop = fixedB || (!fixedA && Visible(b.transform.position) && !Visible(a.transform.position)) ? ta : tb;
+                if (Agents.Contains(drop)) Despawn(drop);
+            }
+        }
+
+        // Whether a car's body overlaps another vehicle's, gap included: parked and player cars through
+        // physics (their colliders are on), traffic through footprints (far agents have colliders off).
+        bool Overlapping(CarController car, float gap)
+        {
+            var mine = VehicleSpacing.Of(car);
+            foreach (var a in Agents)
+                if (a.Car != car && VehicleSpacing.Overlap(mine, VehicleSpacing.Of(a.Car), gap)) return true;
+            var box = car.GetComponent<BoxCollider>();
+            var t = car.transform;
+            int n = Physics.OverlapBoxNonAlloc(t.TransformPoint(box.center), box.size * 0.5f + new Vector3(gap, 0f, gap), overlapHits, t.rotation, ~0, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < n; i++)
+            {
+                var body = overlapHits[i].attachedRigidbody;
+                var other = body != null ? body.GetComponent<CarController>() : null;
+                if (other != null && other != car) return true;
+            }
+            return false;
+        }
+
+        // Every pair of vehicles whose bodies are inside one another by more than a few centimetres.
+        void LogOverlaps(string when, bool includeInactive)
+        {
+            var cars = new List<CarController>(FindObjectsByType<CarController>(includeInactive ? FindObjectsInactive.Include : FindObjectsInactive.Exclude, FindObjectsSortMode.None));
+            var pairs = VehicleSpacing.OverlappingPairs(cars, -0.1f);
+            int traffic = 0, mixed = 0, parkedPairs = 0, player = 0;
+            foreach (var (a, b) in pairs)
+            {
+                if (a == game.Current || b == game.Current) player++;
+                else
+                {
+                    bool ta = a.Autopilot, tb = b.Autopilot;
+                    if (ta && tb) traffic++;
+                    else if (ta || tb) mixed++;
+                    else parkedPairs++;
+                }
+            }
+            Debug.Log($"[Overlap] {when}: {pairs.Count} overlapping pairs among {cars.Count} vehicles (traffic-traffic {traffic}, traffic-parked {mixed}, parked-parked {parkedPairs}, with the player {player})");
+            foreach (var (a, b) in pairs.GetRange(0, Mathf.Min(pairs.Count, 5)))
+                Debug.Log($"[Overlap]   {a.VehicleId} ({a.ModelId}) at {a.transform.position} with {b.VehicleId} ({b.ModelId}) at {b.transform.position}");
         }
 
         public TrafficAgent Spawn(string type, StreetGraph.Lane lane, float s, float speed)
@@ -627,7 +698,9 @@ namespace Dogpatch.Traffic
             void Park(string type, Vector3 at, float heading)
             {
                 if (game.World.Buildings.Blocked(new Vector2(at.x, at.z), 0.6f)) return;
-                VehicleRoster.Spawn(type, at, heading, root);
+                var car = VehicleRoster.Spawn(type, at, heading, root);
+                Physics.SyncTransforms();
+                if (Overlapping(car, 0.4f)) Destroy(car.gameObject);
             }
             Park(VehicleTypes.RaceCar, hero.Position - fwd * 8.5f, hero.Heading);
             Park(VehicleTypes.Cybertruck, hero.Position + fwd * 9.5f, hero.Heading);
