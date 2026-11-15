@@ -1,0 +1,9 @@
+{
+  "topSpeedScale": 1.22,
+  "accelerationScale": 1.22,
+  "trafficSpeedScale": 1.22,
+  "parkedKeepShare": 0.55,
+  "robotaxiQuota": 8,
+  "everydayQuota": 8,
+  "riderQuota": 4
+}

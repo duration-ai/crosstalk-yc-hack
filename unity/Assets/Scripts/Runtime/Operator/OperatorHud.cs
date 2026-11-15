@@ -107,6 +107,7 @@ namespace Dogpatch.Operator
             float top = Screen.height - safe.yMax + 14f * s;
             float bottom = Screen.height - safe.yMin - 20f * s;
             live.Clear();
+            if (Dogpatch.Map.Minimap.FullOpen) return;
 
             Hearing(right, bottom);
             Chips(left, top + (right - left < 700f * s ? 124f : 92f) * s);

@@ -345,11 +345,11 @@ namespace Dogpatch.Operator
             int seed = Racers.Seed(Row?.id);
             void Sweep()
             {
-                foreach (var car in Racers.Cars(Context, target)) Fly(car, fly);
+                foreach (var car in Racers.Cars(Context, target)) Fly(car, fly, true);
                 var eye = Context.Game.View.transform.position;
                 foreach (var car in Racers.Nearby(eye, 220f, 90))
                 {
-                    if (Racers.Physical(car) || Racers.IsRacer(car)) Fly(car, fly);
+                    if (Racers.Physical(car) || Racers.IsRacer(car)) Fly(car, fly, Racers.IsRacer(car));
                     else if (done.Add(car))
                     {
                         var layers = Racers.Layers(Racers.CarShape(car));
@@ -373,10 +373,10 @@ namespace Dogpatch.Operator
             });
         }
 
-        void Fly(CarController car, float height)
+        void Fly(CarController car, float height, bool withWings)
         {
             if (!done.Add(car)) return;
-            var shape = Racers.CarShape(car);
+            var shape = withWings ? Racers.CarShape(car) : null;
             if (shape != null)
             {
                 var wings = PropMeshes.Attach(shape, "Wings (operator)", PropMeshes.Wings(Racers.Box(car)), Context.Material, Vector3.zero);

@@ -120,6 +120,8 @@ namespace Dogpatch.Smash.Demo
                 case "crash20": return Crash20();
                 case "parked": return Parked();
                 case "durability": return Durability();
+                case "speeds": return Speeds();
+                case "shove": return Shove();
                 default: throw new ArgumentException("unknown smash demo " + name);
             }
         }
@@ -461,6 +463,91 @@ namespace Dogpatch.Smash.Demo
             Debug.Log($"[Durability] done: health {damage.Health01 * 100f:F0}%, wrecked={damage.IsWrecked}");
             drivers.Remove(car);
             yield return Capture(1.5f);
+        }
+
+        // The roster hatchback, driven as the player's, plows along a row of six parked roster cars at
+        // the curb. Logs its speed going into and 0.4 s after each hit, and how far and how high each
+        // parked car went.
+        IEnumerator Shove()
+        {
+            BuildStreet();
+            string[] row = { Vehicles.VehicleTypes.Sedan, Vehicles.VehicleTypes.YellowCab, Vehicles.VehicleTypes.Hatchback, Vehicles.VehicleTypes.WaymoSuv, Vehicles.VehicleTypes.Sedan, Vehicles.VehicleTypes.YellowCab };
+            var parked = new List<(CarController car, Vector3 start)>();
+            for (int i = 0; i < row.Length; i++)
+            {
+                var c = Vehicles.VehicleRoster.Spawn(row[i], new Vector3(5.4f, 0.05f, 10f + i * 7f), 0f, root);
+                parked.Add((c, c.transform.position));
+            }
+            var car = Vehicles.VehicleRoster.Spawn(Vehicles.VehicleTypes.Hatchback, new Vector3(1.5f, 0.05f, -45f), 0f, root);
+            Finish(car);
+            car.SetDriven(true);
+            var body = car.GetComponent<Rigidbody>();
+            var hits = new List<(float into, float time)>();
+            void OnHit(VehicleHit hit)
+            {
+                if (hit.Car == car && hit.OtherCar != null) hits.Add((hit.ImpactSpeed, Time.time));
+            }
+            VehicleImpacts.Hit += OnHit;
+            Chase(car.transform, 12f, 5f, -4f);
+            yield return Capture(0.3f);
+            Drive(car, Vector3.forward, 1f);
+            yield return Capture(2.4f);
+            Drive(car, new Vector3(0.09f, 0f, 1f), 1f);
+            float maxHeight = 0f, maxVy = 0f, t0 = Time.time;
+            var speeds = new List<(float t, float v)>();
+            while (Time.time - t0 < 6f)
+            {
+                yield return new WaitForFixedUpdate();
+                speeds.Add((Time.time, new Vector3(body.linearVelocity.x, 0f, body.linearVelocity.z).magnitude));
+                foreach (var (c, _) in parked)
+                {
+                    var b = c.GetComponent<Rigidbody>();
+                    maxHeight = Mathf.Max(maxHeight, c.transform.position.y);
+                    if (!b.isKinematic) maxVy = Mathf.Max(maxVy, b.linearVelocity.y);
+                }
+            }
+            Drive(car, Vector3.forward, 0f);
+            yield return Capture(3f);
+            VehicleImpacts.Hit -= OnHit;
+            foreach (var (into, time) in hits)
+            {
+                float after = speeds.FindLast(s => s.t <= time + 0.4f).v;
+                Debug.Log($"[Shove] hit at {into:F1} m/s closing; player {after:F1} m/s 0.4 s later");
+            }
+            int asleep = 0;
+            foreach (var (c, start) in parked)
+            {
+                bool sleeping = c.GetComponent<Rigidbody>().isKinematic;
+                if (sleeping) asleep++;
+                Debug.Log($"[Shove] {Vehicles.VehicleRoster.TypeOf(c)} moved {Vector3.Distance(c.transform.position, start):F1} m, turned {Mathf.Abs(Mathf.DeltaAngle(c.transform.eulerAngles.y, 0f)):F0} deg, {(sleeping ? "asleep" : "awake")}");
+            }
+            Debug.Log($"[Shove] done: {hits.Count} car hits, player at {speeds[speeds.Count - 1].v:F1} m/s after 6 s of plowing, max parked height {maxHeight:F2} m, max parked vy {maxVy:F2} m/s, {asleep}/{parked.Count} back asleep 3 s later");
+        }
+
+        // Top speed and 0-20 m/s time of every drivable roster type, flat out down the demo street.
+        IEnumerator Speeds()
+        {
+            foreach (var type in Vehicles.VehicleTypes.All)
+            {
+                if (type == Vehicles.VehicleTypes.TThird) continue;
+                BuildStreet();
+                var car = Vehicles.VehicleRoster.Spawn(type, new Vector3(2f, 0.05f, -280f), 0f, root);
+                Finish(car);
+                Chase(car.transform, 11f, 4.6f, 0f);
+                yield return null;
+                Drive(car, Vector3.forward, 1f);
+                var body = car.GetComponent<Rigidbody>();
+                float top = 0f, to20 = -1f, t0 = Time.time;
+                while (Time.time - t0 < 9f)
+                {
+                    yield return new WaitForFixedUpdate();
+                    float v = new Vector3(body.linearVelocity.x, 0f, body.linearVelocity.z).magnitude;
+                    top = Mathf.Max(top, v);
+                    if (to20 < 0f && v >= 20f) to20 = Time.time - t0;
+                }
+                Debug.Log($"[Speeds] {type}: top {top:F1} m/s ({top * 3.6f:F0} km/h), profile {car.Handling.TopSpeed:F1} m/s, 0-20 m/s {(to20 < 0f ? "n/a" : to20.ToString("F1") + " s")}");
+                drivers.Remove(car);
+            }
         }
 
         // A car drives at two people standing in the road; they dive out of the way.

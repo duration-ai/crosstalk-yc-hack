@@ -2,26 +2,27 @@ using UnityEngine;
 
 namespace Dogpatch.Audio
 {
-    // Three synced stems of one 140 BPM arcade track: a calm free-roam layer, a driving drums and
-    // bass layer, and the lead hook. The mood picks the blend; free roam lifts a little when you
-    // drive fast, and races bring in the full band.
+    // Three looping tracks crossfaded by mood: a free-roam bed (also the lobby and results bed), the
+    // race track, and its hotter final-stretch version. A track starts from its top when it fades in
+    // and stops once it has faded out. Free roam lifts a little when you drive fast; pause muffles
+    // and softens whatever is playing.
     public sealed class MusicDirector : MonoBehaviour
     {
-        static readonly string[] Stems = { "music_roam", "music_drive", "music_lead" };
-        static readonly float[] StemGain = { 0.55f, 0.6f, 0.5f };
+        static readonly string[] Tracks = { "music_roam", "music_race", "music_final" };
+        static readonly float[] TrackGain = { 0.5f, 0.75f, 0.75f };
 
         readonly AudioSource[] sources = new AudioSource[3];
         readonly float[] level = new float[3];
+        AudioLowPassFilter muffle;
 
         void Start()
         {
-            double start = AudioSettings.dspTime + 0.2;
-            for (int i = 0; i < Stems.Length; i++)
+            for (int i = 0; i < Tracks.Length; i++)
             {
-                var clip = Resources.Load<AudioClip>("Audio/Music/" + Stems[i]);
+                var clip = Resources.Load<AudioClip>("Audio/Music/" + Tracks[i]);
                 if (clip == null)
                 {
-                    Debug.LogWarning("[Audio] missing music stem " + Stems[i]);
+                    Debug.LogWarning("[Audio] missing music track " + Tracks[i]);
                     continue;
                 }
                 var s = gameObject.AddComponent<AudioSource>();
@@ -32,9 +33,10 @@ namespace Dogpatch.Audio
                 s.priority = 0;
                 s.ignoreListenerPause = true;
                 s.volume = 0f;
-                s.PlayScheduled(start);
                 sources[i] = s;
             }
+            muffle = gameObject.AddComponent<AudioLowPassFilter>();
+            muffle.cutoffFrequency = 22000f;
             GameEvents.Results += _ => SoundSystem.Play2D("results_sting", Bus.Music, 1f, 1f, 255);
         }
 
@@ -50,19 +52,27 @@ namespace Dogpatch.Audio
             Vector3 target;
             switch (GameEvents.CurrentMood)
             {
-                case MusicMood.Lobby: target = new Vector3(1f, 0.45f, 0f); break;
-                case MusicMood.Countdown: target = new Vector3(0.7f, 0.85f, 0f); break;
-                case MusicMood.Racing: target = new Vector3(0.35f, 1f, 0.85f); break;
-                case MusicMood.FinalStretch: target = new Vector3(0.6f, 1f, 1f); break;
-                case MusicMood.Results: target = new Vector3(0.5f, 0f, 0f); break;
-                default: target = new Vector3(1f, 0.4f * driveBoost, 0f); break;
+                case MusicMood.Lobby: target = new Vector3(0.8f, 0f, 0f); break;
+                case MusicMood.Countdown: target = new Vector3(0f, 0.7f, 0f); break;
+                case MusicMood.Racing: target = new Vector3(0f, 1f, 0f); break;
+                case MusicMood.FinalStretch: target = new Vector3(0f, 0f, 1f); break;
+                case MusicMood.Results: target = new Vector3(0.6f, 0f, 0f); break;
+                default: target = new Vector3(0.8f + 0.2f * driveBoost, 0f, 0f); break;
             }
-            float paused = AudioListener.pause ? 0.45f : 1f;
+            bool paused = AudioListener.pause;
+            if (muffle != null) muffle.cutoffFrequency = Mathf.MoveTowards(muffle.cutoffFrequency, paused ? 900f : 22000f, Time.unscaledDeltaTime * 60000f);
             for (int i = 0; i < 3; i++)
             {
-                if (sources[i] == null) continue;
-                level[i] = Mathf.MoveTowards(level[i], target[i], Time.unscaledDeltaTime * (target[i] > level[i] ? 0.6f : 0.9f));
-                sources[i].volume = level[i] * StemGain[i] * SoundSystem.BusGain(Bus.Music) * paused;
+                var s = sources[i];
+                if (s == null) continue;
+                level[i] = Mathf.MoveTowards(level[i], target[i], Time.unscaledDeltaTime * (target[i] > level[i] ? 1.5f : 0.8f));
+                if (level[i] > 0f && !s.isPlaying)
+                {
+                    s.time = 0f;
+                    s.Play();
+                }
+                else if (level[i] <= 0f && s.isPlaying) s.Stop();
+                s.volume = level[i] * TrackGain[i] * SoundSystem.BusGain(Bus.Music) * (paused ? 0.45f : 1f);
             }
         }
     }

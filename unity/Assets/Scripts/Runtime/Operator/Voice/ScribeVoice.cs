@@ -77,6 +77,7 @@ namespace Dogpatch.Operator.Voice
             try
             {
                 var token = await MintToken();
+                if (s != session) return;
                 using (var cancel = new CancellationTokenSource(TimeSpan.FromSeconds(8)))
                     await s.OpenAsync(Config, token, cancel.Token);
                 Debug.Log($"[Operator] scribe socket open in {clock.ElapsedMilliseconds} ms ({Config.commitStrategy})");

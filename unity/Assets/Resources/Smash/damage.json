@@ -6,5 +6,10 @@
   "carDamageScale": 1.0,
   "breakableDamageScale": 0.25,
   "lightSmokeBelowHealth": 0.85,
-  "greySmokeBelowHealth": 0.45
+  "greySmokeBelowHealth": 0.45,
+  "maxRiseSpeed": 3.5,
+  "maxTumbleSpin": 3.0,
+  "airborneGravity": 2.5,
+  "maxDepenetration": 1.0,
+  "parkedShoveKeep": 0.7
 }

@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
-"""Synthesizes every sound in the game from code (no samples), so all audio is original and CC0.
+"""Synthesizes the game's fallback sounds from code (no samples), CC0.
+
+Most clips are now real recordings built by tools/AudioGen/recorded/process.py from
+tools/AudioGen/recorded/specs.json; this script skips every clip that file builds (and the music),
+so it only writes the synthesized fallbacks listed in tools/AudioGen/CREDITS.md.
 
 Run: python3 tools/AudioGen/generate.py  (needs numpy and scipy). Writes 16-bit WAVs into
 unity/Assets/Resources/Audio/<Folder>/; the Unity importer rules in Editor/AudioImportRules.cs pick
 ADPCM or Vorbis per folder. Every output is deterministic (fixed seeds).
 """
+import json
 import os
 import sys
 import numpy as np
@@ -16,6 +21,7 @@ SR = 22050
 MSR = 44100
 rng = np.random.default_rng(1977)
 written = []
+RECORDED = {s["out"] for s in json.load(open(os.path.join(os.path.dirname(__file__), "recorded", "specs.json")))}
 
 
 class Sig(np.ndarray):
@@ -142,6 +148,8 @@ def loopify(x, xf=0.25, sr=SR):
 
 
 def write(folder, name, x, sr=SR, peak=0.89, stereo=False):
+    if folder == "Music" or f"{folder}/{name}" in RECORDED:
+        return
     path = os.path.join(ROOT, folder)
     os.makedirs(path, exist_ok=True)
     if stereo:

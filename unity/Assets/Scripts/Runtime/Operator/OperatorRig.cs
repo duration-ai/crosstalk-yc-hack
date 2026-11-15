@@ -213,12 +213,14 @@ namespace Dogpatch.Operator
 
         void Update()
         {
-            if (Convex == null || !RaceOnline || string.IsNullOrEmpty(race.RoomId) || race.RoomId == RoomId) return;
+            bool racing = RaceOnline && !string.IsNullOrEmpty(race.RoomId);
+            var wanted = racing ? race.RoomId : race.WorldRoomId;
+            if (Convex == null || string.IsNullOrEmpty(wanted) || (wanted == RoomId && race.MyId == PlayerId)) return;
             PlayerId = race.MyId;
             EntityTagger.MyPlayerId = PlayerId;
             Effects.ResetAll();
-            UseRoom(race.RoomId, race.Room?.code ?? "");
-            Debug.Log($"[Operator] following the race room {RoomCode} ({RoomId}) as {PlayerId}");
+            UseRoom(wanted, racing ? race.Room?.code ?? "" : "world");
+            Debug.Log($"[Operator] following the {(racing ? "race" : "world")} room {RoomCode} ({RoomId}) as {PlayerId}");
         }
 
         // Every voice effect, from any racer, reaches the news bar once: Started fires once per row id,

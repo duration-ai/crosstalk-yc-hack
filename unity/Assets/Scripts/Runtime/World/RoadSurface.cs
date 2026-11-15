@@ -70,6 +70,7 @@ namespace Dogpatch.World
         readonly List<(int idx, float clear)>[] nodes;
         readonly List<(float from, float to)>[] quiet;
         readonly HashSet<Vector2Int> sharedVertices = new HashSet<Vector2Int>();
+        readonly HashSet<Vector2Int> flushJoins = new HashSet<Vector2Int>();
         readonly ChunkedMeshBuilder visual = new ChunkedMeshBuilder(ChunkSize);
         readonly ChunkedMeshBuilder asphaltColliders = new ChunkedMeshBuilder(ChunkSize);
         readonly ChunkedMeshBuilder sidewalkColliders = new ChunkedMeshBuilder(ChunkSize);
@@ -204,7 +205,7 @@ namespace Dogpatch.World
                 var road = net.Roads[r];
                 if (RoadNetwork.IsCurbed(road) || road.kind == "path") continue;
                 foreach (var p in net.Points[r])
-                    if (refs.ContainsKey(Key(p))) sharedVertices.Add(Key(p));
+                    if (refs.ContainsKey(Key(p))) flushJoins.Add(Key(p));
             }
 
             foreach (var pair in refs)
@@ -710,12 +711,34 @@ namespace Dogpatch.World
             cb.Quad(a0, b0, b, a, CurbFace, (Vector3.up * CurbRun + facing * rise).normalized);
         }
 
+        // Where a street carries on as a flush road (a bridge or service road), its recessed asphalt
+        // rises to grade over the round cap and a little past it, 1.75 m wider than the carriageway on
+        // each side, covering the gap to the land collider.
+        void RampToGrade(Vector2 end, Vector2 outward, float hw)
+        {
+            var n = new Vector2(-outward.y, outward.x);
+            var far = end + outward * (hw + 1.5f);
+            float side = hw + 1.75f;
+            var a = MeshBuilder.At(end - n * side, RoadY);
+            var b = MeshBuilder.At(end + n * side, RoadY);
+            var c = MeshBuilder.At(far + n * side, 0f);
+            var d = MeshBuilder.At(far - n * side, 0f);
+            visual.At(end).Quad(a, b, c, d, Asphalt, Vector3.up);
+            asphaltColliders.At(end).Quad(a, b, c, d, Asphalt, Vector3.up);
+        }
+
         // A street that stops short of any other street ends in a round turnaround: the asphalt already
         // has a round cap, so ring it with curb and sidewalk. A street carried on by a bridge or a service
         // road doesn't end there.
         void DeadEnd(int r, Vector2 end, Vector2 outward, float hw)
         {
-            if (sharedVertices.Contains(Key(end)) || net.OnCurbedCarriageway(end, -0.5f, r)) return;
+            if (sharedVertices.Contains(Key(end))) return;
+            if (flushJoins.Contains(Key(end)))
+            {
+                RampToGrade(end, outward, hw);
+                return;
+            }
+            if (net.OnCurbedCarriageway(end, -0.5f, r)) return;
             var n = new Vector2(-outward.y, outward.x);
             var mb = visual.At(end);
             var cb = sidewalkColliders.At(end);
