@@ -172,6 +172,15 @@ export const COUNTERS: Record<string, readonly string[]> = {
 export const PLAYABLE: ReadonlySet<string> = new Set([...builtEffects.built, ...Object.keys(COUNTERS), "extinguish"]);
 
 /** Effects in one set contradict each other, so a new one ends the others. */
+/**
+ * SELF effects change only the caller's own car or avatar (Sudhir: player-directed changes no longer
+ * affect everyone); everything else is WORLD. The server tags a SELF row's target "self:<playerId>".
+ */
+export const SELF_EFFECTS: ReadonlySet<string> = new Set([...Object.keys(PLAYER_EFFECTS), "cars_fly", "cars_on_water", "floaty_crashes"]);
+
+/** OTHERS effects hit every racer but the caller; the server tags the row's target "others:<playerId>". */
+export const OTHERS_EFFECTS: ReadonlySet<string> = new Set<string>([]);
+
 export const EXCLUSIVE: readonly (readonly string[])[] = [
   ["night", "day", "sunset", "fast_day_cycle"],
   ["gravity_lower", "gravity_higher"],

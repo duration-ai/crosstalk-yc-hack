@@ -346,6 +346,7 @@ namespace Dogpatch.Operator
             void Sweep()
             {
                 foreach (var car in Racers.Cars(Context, target)) Fly(car, fly, true);
+                if (!string.IsNullOrEmpty(target.Owner)) return;
                 var eye = Context.Game.View.transform.position;
                 foreach (var car in Racers.Nearby(eye, 220f, 90))
                 {
