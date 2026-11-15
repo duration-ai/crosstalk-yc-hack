@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Dogpatch.Ambient;
 using Dogpatch.Backend;
 using Dogpatch.Data;
 using Dogpatch.Glb;
@@ -88,6 +89,7 @@ namespace Dogpatch.Gameplay
             PerfReadout.WorldBuildSeconds = Time.realtimeSinceStartup - t0;
             gameObject.AddComponent<PerfReadout>().Game = this;
             Debug.Log($"[Dogpatch] world built in {Time.realtimeSinceStartup - t0:F1}s: {data.roads.Length} roads, {data.buildings.Length} buildings, {world.ParkedCars.Count + 1} cars");
+            PedestrianSystem.Create(world, data);
 
             input = gameObject.AddComponent<DragInput>();
             input.Tapped += OnTap;
