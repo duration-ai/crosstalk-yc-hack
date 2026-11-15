@@ -182,19 +182,20 @@ namespace Dogpatch.Smash
             return Faceted("puff", v, f);
         }
 
-        // Unshared vertices per triangle, white vertex colour: the particle colour tints it.
+        // Unshared vertices per triangle, white vertex colour: the particle colour tints it. The colours
+    // must be 8-bit: a mesh with float colours garbles particle colours in the mesh render path.
         static Mesh Faceted(string name, Vector3[] v, int[] f)
         {
             var verts = new Vector3[f.Length];
             var tris = new int[f.Length];
-            var colors = new Color[f.Length];
+            var colors = new Color32[f.Length];
             for (int i = 0; i < f.Length; i++)
             {
                 verts[i] = v[f[i]];
                 tris[i] = i;
-                colors[i] = Color.white;
+                colors[i] = new Color32(255, 255, 255, 255);
             }
-            var mesh = new Mesh { name = name, vertices = verts, triangles = tris, colors = colors };
+            var mesh = new Mesh { name = name, vertices = verts, triangles = tris, colors32 = colors };
             mesh.RecalculateNormals();
             mesh.RecalculateBounds();
             return mesh;

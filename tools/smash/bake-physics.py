@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-"""Bakes unity/Assets/Resources/Smash/physics.json: one physics entry per Polyfork model in the catalog.
+"""Bakes unity/Assets/Resources/Smash/physics.json.
 
-Mass, material and body come from Polyfork's own physics block (polyfork.dev/api/assets/{id}); the
-convex hull comes from polyfork.dev/cdn/{id}-colliders.json, mirrored on X like our GLB reader. The
-gameplay columns (class, label, points, break speed) are ours, keyed by catalog role.
+vehicles: each catalog car's mass from Polyfork's own physics block (polyfork.dev/api/assets/{id}).
+roles: how each breakable role in the world (variants.json roles, plus generated "billboard") smashes.
+Which instances are breakable, their real mass, body and convex hulls come from CROS-19's
+StaticInstanceIndex at runtime; this file only adds the gameplay side: label, points, break speed,
+a gameplay mass cap (so a 70 t shade tree doesn't act as a wall) and how it goes over.
 
     python3 tools/smash/bake-physics.py
 """
@@ -15,24 +17,38 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 CATALOG = os.path.join(ROOT, "unity/Assets/Resources/Polyfork/catalog.json")
 OUT = os.path.join(ROOT, "unity/Assets/Resources/Smash/physics.json")
 
-# class: static | breakable (snaps at the base and topples) | loose (knocked over whole) | dynamic (vehicles, people)
-# breakSpeed: impact speed in m/s a 1300 kg car needs to break it. points: base smash score.
-# gameplayMassKg caps Polyfork's real mass where it would make the object an unbreakable wall.
-ROLES = {
-    "tree":         dict(cls="breakable", label="TREE",     points=150, breakSpeed=7.0, gameplayMassKg=900, snapHeight=0.22),
-    "streetlight":  dict(cls="breakable", label="LAMP",     points=50,  breakSpeed=4.0, gameplayMassKg=250, snapHeight=0.03),
-    "trafficlight": dict(cls="breakable", label="SIGNAL",   points=75,  breakSpeed=4.5, gameplayMassKg=300, snapHeight=0.03),
-    "hydrant":      dict(cls="breakable", label="HYDRANT",  points=100, breakSpeed=3.0, gameplayMassKg=120, snapHeight=0.0),
-    "meter":        dict(cls="breakable", label="METER",    points=30,  breakSpeed=2.5, gameplayMassKg=30,  snapHeight=0.0),
-    "busshelter":   dict(cls="breakable", label="SHELTER",  points=200, breakSpeed=6.0, gameplayMassKg=500, snapHeight=0.0),
-    "bench":        dict(cls="loose",     label="BENCH",    points=40,  breakSpeed=2.0, gameplayMassKg=70,  snapHeight=0.0),
-    "bin":          dict(cls="loose",     label="TRASH",    points=25,  breakSpeed=1.5, gameplayMassKg=15,  snapHeight=0.0),
-    "newsbox":      dict(cls="loose",     label="NEWS BOX", points=30,  breakSpeed=2.0, gameplayMassKg=80,  snapHeight=0.0),
-    "rooftop":      dict(cls="static",    label="",         points=0,   breakSpeed=0.0, gameplayMassKg=0,   snapHeight=0.0),
-    "car":          dict(cls="dynamic",   label="SMASH",    points=0,   breakSpeed=0.0, gameplayMassKg=0,   snapHeight=0.0),
-    "player":       dict(cls="dynamic",   label="",         points=0,   breakSpeed=0.0, gameplayMassKg=0,   snapHeight=0.0),
-    "npc":          dict(cls="dynamic",   label="",         points=0,   breakSpeed=0.0, gameplayMassKg=0,   snapHeight=0.0),
-}
+# style: topple (pivots over its base, away from the car), fly (knocked loose, tumbling with spin),
+# snap (a tree: the stump stays, the crown topples from the cut at snapHeight of its height).
+# breakSpeed: impact speed in m/s a 1300 kg car needs. maxMassKg caps the instance's Polyfork mass.
+ROLES = [
+    ("tree:street",           "TREE",      150, 6.5, 900,  "snap",   0.22, False),
+    ("tree:ornamental",       "TREE",      150, 6.0, 700,  "snap",   0.25, False),
+    ("tree:shade",            "BIG TREE",  300, 9.0, 1600, "snap",   0.18, False),
+    ("tree:palm",             "PALM",      200, 8.0, 1200, "snap",   0.20, False),
+    ("tree:conifer",          "PINE",      250, 9.0, 1500, "snap",   0.15, False),
+    ("tree",                  "TREE",      150, 7.0, 900,  "snap",   0.22, False),
+    ("prop:street_lamp",      "LAMP",      50,  3.5, 250,  "topple", 0.0,  False),
+    ("prop:traffic_signal",   "SIGNAL",    75,  4.0, 300,  "topple", 0.0,  False),
+    ("prop:stop",             "STOP SIGN", 40,  2.0, 40,   "topple", 0.0,  False),
+    ("prop:give_way",         "SIGN",      40,  2.0, 40,   "topple", 0.0,  False),
+    ("prop:bus_stop",         "BUS STOP",  40,  2.0, 70,   "topple", 0.0,  False),
+    ("prop:power_pole",       "POLE",      120, 6.0, 700,  "topple", 0.0,  False),
+    ("prop:flagpole",         "FLAGPOLE",  60,  3.0, 100,  "topple", 0.0,  False),
+    ("prop:parking_meter",    "METER",     30,  2.0, 30,   "topple", 0.0,  False),
+    ("prop:charging_station", "CHARGER",   80,  3.0, 100,  "topple", 0.0,  False),
+    ("prop:bus_shelter",      "SHELTER",   200, 5.5, 500,  "topple", 0.0,  False),
+    ("prop:fire_hydrant",     "HYDRANT",   100, 2.5, 120,  "fly",    0.0,  True),
+    ("prop:drinking_water",   "FOUNTAIN",  60,  4.0, 300,  "fly",    0.0,  True),
+    ("prop:bench",            "BENCH",     40,  1.5, 70,   "fly",    0.0,  False),
+    ("prop:trash_can",        "TRASH",     25,  1.0, 15,   "fly",    0.0,  False),
+    ("prop:vending",          "NEWS BOX",  30,  1.5, 80,   "fly",    0.0,  False),
+    ("prop:picnic_table",     "PICNIC",    40,  1.5, 130,  "fly",    0.0,  False),
+    ("prop:post_box",         "MAILBOX",   60,  2.5, 120,  "fly",    0.0,  False),
+    ("prop:bike_rack",        "BIKE RACK", 30,  2.0, 70,   "fly",    0.0,  False),
+    ("prop",                  "SMASH",     25,  2.0, 100,  "fly",    0.0,  False),
+    ("billboard",             "BILLBOARD", 300, 6.5, 900,  "topple", 0.0,  False),
+    ("landmark",              "SMASH",     100, 6.0, 500,  "topple", 0.0,  False),
+]
 
 # Polyfork's estimate for the police cruiser is 20 t, which would make it a wall; use a sedan's mass.
 MASS_FIX = {"police-cruiser-a2d25e": 1800}
@@ -45,28 +61,20 @@ def fetch(url):
 
 
 def main():
-    models = json.load(open(CATALOG))["models"]
-    entries = []
-    for m in models:
+    vehicles = []
+    for m in json.load(open(CATALOG))["models"]:
+        if m["role"] != "car":
+            continue
         asset = fetch(f"https://polyfork.dev/api/assets/{m['id']}")
-        physics = asset.get("physics") or {}
-        colliders = fetch(f"https://polyfork.dev/cdn/{m['id']}-colliders.json")
-        hull = []
-        for x, y, z in colliders.get("hull", []):
-            hull += [round(-x, 3), round(y, 3), round(z, 3)]
-        role = ROLES[m["role"]]
-        entries.append(dict(
-            id=m["id"], role=m["role"], physicsClass=role["cls"], label=role["label"], points=role["points"],
-            breakSpeed=role["breakSpeed"], snapHeight=role["snapHeight"],
-            massKg=float(MASS_FIX.get(m["id"], physics.get("mass_kg") or asset.get("mass_kg") or 0)),
-            gameplayMassKg=float(role["gameplayMassKg"]),
-            material=physics.get("material", ""), body=physics.get("body", ""), hull=hull,
-        ))
+        mass = MASS_FIX.get(m["id"], (asset.get("physics") or {}).get("mass_kg") or asset.get("mass_kg") or 1300)
+        vehicles.append(dict(id=m["id"], massKg=float(mass)))
+    roles = [dict(role=r, label=l, points=p, breakSpeed=b, maxMassKg=float(mm), style=s, snapHeight=h, spout=sp)
+             for r, l, p, b, mm, s, h, sp in ROLES]
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     with open(OUT, "w") as f:
-        json.dump({"source": "https://polyfork.dev", "entries": entries}, f, separators=(",", ":"))
+        json.dump({"source": "https://polyfork.dev", "vehicles": vehicles, "roles": roles}, f, indent=1)
         f.write("\n")
-    print(f"wrote {len(entries)} entries to {OUT}")
+    print(f"wrote {len(vehicles)} vehicles and {len(roles)} roles to {OUT}")
 
 
 if __name__ == "__main__":

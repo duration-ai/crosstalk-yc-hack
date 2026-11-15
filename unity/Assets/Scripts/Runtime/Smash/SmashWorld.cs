@@ -1,12 +1,16 @@
 using System.Collections.Generic;
 using Dogpatch.Gameplay;
+using Dogpatch.Glb;
+using Dogpatch.World;
 using UnityEngine;
 
 namespace Dogpatch.Smash
 {
-    // Owns everything that breaks: turns a breakable that a car hits hard enough into pooled dynamic
-    // pieces, scores it, puts it back out of view later, wakes parked cars near moving ones, and
-    // repairs wrecks nobody is looking at. Only things near a moving car are ever dynamic.
+    // Owns everything that breaks. A breakable instance in the world's merged chunks (CROS-19's
+    // StaticInstanceIndex) that a car hits hard enough is detached and replaced by a pooled dynamic
+    // copy: poles topple over their base, loose props fly with spin, trees snap at the trunk. It
+    // scores, puts things back out of view later, wakes parked cars near moving ones, and repairs
+    // wrecks nobody is looking at. Only things near a moving car are ever dynamic.
     public sealed class SmashWorld : MonoBehaviour
     {
         public const int MaxPieces = 28;
@@ -16,18 +20,20 @@ namespace Dogpatch.Smash
 
         public static SmashWorld Instance { get; private set; }
 
-        public IBreakableIndex Index { get; private set; }
+        public StaticInstanceIndex Index { get; private set; }
         public SmashFx Fx { get; private set; }
         public Camera View { get; set; }
         public int ActivePieces => active.Count;
         public int BrokenCount { get; private set; }
 
+        ModelLibrary models;
         Material material;
         Plane[] frustum = new Plane[6];
         readonly List<Piece> active = new List<Piece>();
         readonly Stack<Piece> pool = new Stack<Piece>();
         readonly List<(int id, float at, GameObject stump)> broken = new List<(int, float, GameObject)>();
         readonly Dictionary<string, (Mesh stump, Mesh crown)> splits = new Dictionary<string, (Mesh, Mesh)>();
+        readonly Dictionary<string, Mesh> hulls = new Dictionary<string, Mesh>();
         float nextWake;
         float nextScan;
 
@@ -45,10 +51,11 @@ namespace Dogpatch.Smash
             public Collider[] Ignoring;
         }
 
-        public static SmashWorld Install(GameObject host, IBreakableIndex index, Material material, Camera view)
+        public static SmashWorld Install(GameObject host, StaticInstanceIndex index, ModelLibrary models, Material material, Camera view)
         {
             var world = host.AddComponent<SmashWorld>();
             world.Index = index;
+            world.models = models;
             world.material = material;
             world.View = view;
             world.Fx = new SmashFx(host.transform, material);
@@ -71,57 +78,100 @@ namespace Dogpatch.Smash
             if (Instance == this) Instance = null;
         }
 
+        public SmashTuning TuningOf(StaticInstance instance) =>
+            PhysicsCatalog.Tuning(models?.Entry(instance.Variant)?.role ?? instance.Variant, instance.Kind);
+
         // Called by a car that hit a breakable's collider. Returns false when the hit was too soft,
-        // so the car bounces off as from a wall. massShare is how much of the car's speed it costs.
-        public bool TryBreak(int id, CarController car, CarController scorer, Vector3 point, Vector3 carVelocity, float impactSpeed, float carMass, out float massShare)
+        // so the car stops as at a wall. massShare is how much of the car's speed it costs.
+        public bool TryBreak(StaticInstance instance, CarController car, CarController scorer, Vector3 point, Vector3 carVelocity, float impactSpeed, float carMass, out float massShare)
         {
             massShare = 0f;
-            if (Index.IsDetached(id)) return false;
-            var info = Index.Info(id);
-            var physics = info.Physics;
-            var cls = PhysicsCatalog.ClassOf(physics);
-            if (cls != PhysicsClass.Breakable && cls != PhysicsClass.Loose) return false;
-            float threshold = physics.breakSpeed * Mathf.Clamp(1300f / Mathf.Max(carMass, 1f), 0.4f, 1.6f);
+            if (instance.Class != World.PhysicsClass.Breakable || Index.IsDetached(instance.Id)) return false;
+            var tuning = TuningOf(instance);
+            float threshold = tuning.breakSpeed * Mathf.Clamp(1300f / Mathf.Max(carMass, 1f), 0.4f, 1.6f);
             if (impactSpeed < threshold) return false;
 
-            var mesh = Index.Detach(id);
-            float mass = Mathf.Max(physics.gameplayMassKg, 5f);
-            massShare = mass / (mass + carMass) * (cls == PhysicsClass.Loose ? 0.6f : 1.1f);
+            var mesh = Index.Detach(instance.Id);
+            if (mesh == null) return false;
+            float mass = Mathf.Clamp(instance.MassKg > 0f ? instance.MassKg : tuning.maxMassKg, 5f, tuning.maxMassKg);
+            var style = tuning.Style;
+            massShare = mass / (mass + carMass) * (style == SmashStyle.Fly ? 0.6f : 1.1f);
             var flat = new Vector3(carVelocity.x, 0f, carVelocity.z);
-            var m = info.Transform;
+            float speed = flat.magnitude;
+            var dir = speed > 0.1f ? flat / speed : car.transform.forward;
+            var m = instance.Transform;
+            var basePos = (Vector3)m.GetColumn(3);
             GameObject stump = null;
-            bool tree = physics.role == "tree";
 
-            if (tree)
+            if (style == SmashStyle.Snap)
             {
-                float cut = mesh.bounds.min.y + mesh.bounds.size.y * physics.snapHeight;
-                var (stumpMesh, crownMesh) = Split(info.AssetId, mesh, cut);
+                float cut = mesh.bounds.min.y + mesh.bounds.size.y * tuning.snapHeight;
+                var (stumpMesh, crownMesh) = Split(instance.Variant + "@" + tuning.snapHeight, mesh, cut);
                 stump = Stump(stumpMesh, m);
-                var piece = Spawn(crownMesh, PhysicsCatalog.Hull(info.AssetId, cut), m, mass, flat * 0.35f + Vector3.up * 0.5f, 12f);
+                var piece = Spawn(crownMesh, HullOf(instance, cut), m, mass, Vector3.zero, 12f);
                 IgnoreCar(piece, car);
-                var hitHeight = new Vector3(point.x, m.GetColumn(3).y + cut + 1.2f, point.z);
-                piece?.Body.AddForceAtPosition(flat.normalized * mass * Mathf.Min(flat.magnitude, 18f) * 0.45f, hitHeight, ForceMode.Impulse);
-                Fx.Debris(hitHeight + Vector3.up * 2f, flat * 0.4f, SmashFx.PaletteOf(crownMesh), 18, 0.42f);
+                if (piece != null) Topple(piece, dir, speed * 0.8f, m.MultiplyPoint3x4(new Vector3(0f, cut, 0f)), crownMesh);
+                Fx.Debris(basePos + Vector3.up * (cut * m.lossyScale.y + 3f), flat * 0.4f, SmashFx.PaletteOf(crownMesh), 18, 0.42f);
                 Fx.Poof(point, 1.4f, SmashFx.SmokeLight, 7);
             }
             else
             {
-                bool loose = cls == PhysicsClass.Loose;
-                var kick = loose ? flat * 1.15f + Vector3.up * (2.5f + flat.magnitude * 0.25f) : flat * 0.55f + Vector3.up * 1.2f;
-                var piece = Spawn(mesh, PhysicsCatalog.Hull(info.AssetId), m, mass, kick, loose ? 9f : 10f);
+                var piece = Spawn(mesh, HullOf(instance, float.NegativeInfinity), m, mass, Vector3.zero, style == SmashStyle.Fly ? 9f : 10f);
                 IgnoreCar(piece, car);
-                if (piece != null && !loose)
-                    piece.Body.AddForceAtPosition(flat.normalized * mass * Mathf.Min(flat.magnitude, 20f) * 0.6f, point + Vector3.up * 0.6f, ForceMode.Impulse);
-                if (piece != null) piece.Body.angularVelocity = Random.insideUnitSphere * (loose ? 9f : 3f);
-                Fx.Debris(point + Vector3.up * 0.5f, flat * 0.6f, SmashFx.PaletteOf(mesh), loose ? 8 : 12);
+                if (piece != null && style == SmashStyle.Topple) Topple(piece, dir, speed, basePos, mesh);
+                if (piece != null && style == SmashStyle.Fly)
+                {
+                    piece.Body.linearVelocity = flat * 1.1f + Vector3.up * (3f + speed * 0.3f) + Vector3.Cross(Vector3.up, dir) * Random.Range(-2f, 2f);
+                    piece.Body.angularVelocity = Random.onUnitSphere * Random.Range(7f, 12f);
+                }
+                Fx.Debris(point + Vector3.up * 0.5f, flat * 0.6f, SmashFx.PaletteOf(mesh), style == SmashStyle.Fly ? 8 : 12);
                 Fx.Poof(point, 0.9f, SmashFx.SmokeLight, 6);
-                if (physics.role == "hydrant") Fx.Spout(m.GetColumn(3) + new Vector4(0f, 0.15f, 0f, 0f), 9f);
             }
+            if (tuning.spout) Fx.Spout(basePos + Vector3.up * 0.15f, 9f);
 
-            broken.Add((id, Time.time, stump));
+            broken.Add((instance.Id, Time.time, stump));
             BrokenCount++;
-            if (scorer != null) SmashScore.Add(scorer, SmashKind.Break, physics.label, physics.points, point + Vector3.up * 1.2f);
+            if (scorer != null) SmashScore.Add(scorer, SmashKind.Break, tuning.label, tuning.points, point + Vector3.up * 1.2f);
             return true;
+        }
+
+        // Tips a piece over its base, away from the car: it spins about the horizontal axis across
+        // the car's path, and its centre moves as if hinged at the base, which slides a little.
+        static void Topple(Piece piece, Vector3 dir, float speed, Vector3 basePos, Mesh mesh)
+        {
+            var com = piece.Go.transform.TransformPoint(mesh.bounds.center);
+            float h = Mathf.Max(com.y - basePos.y, 0.4f);
+            var axis = Vector3.Cross(Vector3.up, dir).normalized;
+            var omega = axis * Mathf.Clamp(speed * 0.5f / h, 0.9f, 4.5f) + Vector3.up * Random.Range(-0.8f, 0.8f);
+            piece.Body.angularVelocity = omega;
+            piece.Body.linearVelocity = Vector3.Cross(omega, com - basePos) + dir * speed * 0.3f + Vector3.up * 0.6f;
+        }
+
+        // The instance's Polyfork hull (union of its parts) as a convex collider mesh, optionally only
+        // the points above a height: a snapped tree's crown.
+        Mesh HullOf(StaticInstance instance, float above)
+        {
+            var key = instance.Variant + "@" + above;
+            if (hulls.TryGetValue(key, out var mesh)) return mesh;
+            var parts = Index.HullsOf(instance)?.parts;
+            var pts = new List<Vector3>();
+            if (parts != null)
+                foreach (var part in parts)
+                    for (int i = 0; i + 2 < part.pts.Length; i += 3)
+                    {
+                        var p = new Vector3(part.pts[i], part.pts[i + 1], part.pts[i + 2]);
+                        if (p.y >= above) pts.Add(p);
+                    }
+            if (pts.Count >= 4)
+            {
+                var tris = new List<int>();
+                for (int i = 1; i + 1 < pts.Count; i++) { tris.Add(0); tris.Add(i); tris.Add(i + 1); }
+                mesh = new Mesh { name = key + " hull", indexFormat = UnityEngine.Rendering.IndexFormat.UInt32 };
+                mesh.SetVertices(pts);
+                mesh.SetTriangles(tris, 0);
+            }
+            hulls[key] = mesh;
+            return mesh;
         }
 
         // A freshly detached piece starts inside the car that broke it; without this, depenetration
@@ -149,9 +199,9 @@ namespace Dogpatch.Smash
             p.Ignoring = null;
         }
 
-        (Mesh stump, Mesh crown) Split(string assetId, Mesh mesh, float cut)
+        (Mesh stump, Mesh crown) Split(string key, Mesh mesh, float cut)
         {
-            if (splits.TryGetValue(assetId, out var cached)) return cached;
+            if (splits.TryGetValue(key, out var cached)) return cached;
             var verts = mesh.vertices;
             var colors = mesh.colors32;
             var tris = mesh.triangles;
@@ -165,8 +215,8 @@ namespace Dogpatch.Smash
                 list.Add(tris[i + 1]);
                 list.Add(tris[i + 2]);
             }
-            cached = (Sub(assetId + "/stump", verts, colors, below), Sub(assetId + "/crown", verts, colors, above));
-            splits[assetId] = cached;
+            cached = (Sub(key + "/stump", verts, colors, below), Sub(key + "/crown", verts, colors, above));
+            splits[key] = cached;
             return cached;
         }
 
@@ -207,7 +257,9 @@ namespace Dogpatch.Smash
         }
 
         // A free-flying copy of a mesh with a convex collider (Polyfork's hull when there is one,
-        // else its bounds), drawn from a pool. Past MaxPieces the oldest piece is recycled.
+        // else its bounds), drawn from a pool. Past MaxPieces the oldest piece is recycled. Its body
+        // is lighter than the real thing (the car already paid the real mass as a speed penalty), so
+        // driving over a fallen pole nudges it aside instead of deflecting the car.
         // round: collide with the mesh's own convex hull (a wheel that should roll) instead of its bounds.
         public GameObject SpawnPiece(Mesh mesh, Matrix4x4 m, float mass, Vector3 velocity, Vector3 angular, float life, bool round = false) =>
             Spawn(mesh, round ? mesh : null, m, mass, velocity, life, angular)?.Go;
@@ -235,7 +287,7 @@ namespace Dogpatch.Smash
                 p.Box.size = Vector3.Max(mesh.bounds.size, Vector3.one * 0.1f);
                 p.Box.enabled = true;
             }
-            p.Body.mass = mass;
+            p.Body.mass = Mathf.Min(mass * 0.25f, 80f);
             p.Body.linearVelocity = velocity;
             p.Body.angularVelocity = angular ?? Vector3.zero;
             p.Body.WakeUp();
@@ -332,7 +384,7 @@ namespace Dogpatch.Smash
             {
                 var (id, at, stump) = broken[i];
                 if (Time.time - at < RespawnSeconds) continue;
-                var bounds = Index.Info(id).WorldBounds;
+                var bounds = Index.Get(id).WorldBounds;
                 if ((bounds.center - eye).sqrMagnitude < RespawnDistance * RespawnDistance) continue;
                 if (View != null && GeometryUtility.TestPlanesAABB(frustum, bounds)) continue;
                 Index.Restore(id);

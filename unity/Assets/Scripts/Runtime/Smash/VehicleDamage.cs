@@ -83,6 +83,8 @@ namespace Dogpatch.Smash
                 Body.linearDamping = 0f;
 
             if (tumbling) Recover();
+            else if (Car.Driven && !Car.Stunned && !Body.isKinematic)
+                Body.angularVelocity *= 0.7f;
         }
 
         // A parked car near a moving one stops being kinematic for a moment.
@@ -140,12 +142,12 @@ namespace Dogpatch.Smash
             }
 
             var world = SmashWorld.Instance;
-            if (world != null && world.Index != null && world.Index.TryFromCollider(other, out int id))
+            if (world != null && world.Index != null && world.Index.TryFromCollider(other, out var instance))
             {
                 var flat = new Vector3(lastVelocity.x, 0f, lastVelocity.z);
                 float impact = Mathf.Max(Mathf.Abs(Vector3.Dot(flat, normal)), flat.magnitude * 0.75f);
                 var scorer = Scorer();
-                if (world.TryBreak(id, Car, scorer, point, lastVelocity, impact, Spec.Mass, out float share))
+                if (world.TryBreak(instance, Car, scorer, point, lastVelocity, impact, Spec.Mass, out float share))
                 {
                     var v = lastVelocity * (1f - Mathf.Clamp(share, 0f, 0.85f) * (1f - Spec.BargeStrength * 0.7f));
                     Body.linearVelocity = new Vector3(v.x, Body.linearVelocity.y, v.z);

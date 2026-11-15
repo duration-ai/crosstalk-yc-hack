@@ -134,14 +134,17 @@ namespace Dogpatch.Smash
             var dim = style.CalcSize(content);
             var r = new Rect(centered ? pos.x - dim.x * 0.5f : pos.x, pos.y - dim.y * 0.5f, dim.x + 4f, dim.y);
             float o = Mathf.Max(1.5f, size * 0.06f);
-            style.normal.textColor = Ink;
+            style.normal.textColor = Display(Ink);
             for (int k = 0; k < 8; k++)
             {
                 float a = k * Mathf.PI / 4f;
                 GUI.Label(new Rect(r.x + Mathf.Cos(a) * o, r.y + Mathf.Sin(a) * o, r.width, r.height), content, style);
             }
-            style.normal.textColor = color;
+            style.normal.textColor = Display(color);
             GUI.Label(r, content, style);
         }
+
+        // IMGUI in a linear-space project darkens text colours, so hand it the gamma-encoded colour.
+        static Color Display(Color c) => QualitySettings.activeColorSpace == ColorSpace.Linear ? c.gamma : c;
     }
 }

@@ -21,7 +21,7 @@ namespace Dogpatch.Smash
         {
             var spec = Provider?.Invoke(car);
             if (spec.HasValue) return spec.Value;
-            float mass = PhysicsCatalog.Get(car.ModelId)?.massKg ?? 0f;
+            float mass = PhysicsCatalog.VehicleMassKg(car.ModelId);
             if (mass <= 0f) mass = 1300f;
             return new VehicleSpec
             {

@@ -14,6 +14,6 @@ args=(-smashDemo "$scene" -capture "$work" -screen-width 1280 -screen-height 720
 xvfb-run -a -s "-screen 0 1280x720x24" "$player" "${args[@]}" || true
 grep '\[SmashDemo\]\|\[Smash\]\|Exception' "$work/player.log" || true
 size="$(cat "$work/size.txt")"
-ffmpeg -loglevel error -y -f rawvideo -pix_fmt rgb24 -s "$size" -r 30 -i "$work/frames.rgb" -vf vflip \
+ffmpeg -nostdin -loglevel error -y -f rawvideo -pix_fmt rgb24 -s "$size" -r 30 -i "$work/frames.rgb" -vf vflip \
   -c:v libx264 -pix_fmt yuv420p -crf 20 -movflags +faststart "$out"
 echo "wrote $out"

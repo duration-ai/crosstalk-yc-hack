@@ -134,7 +134,7 @@ namespace Dogpatch.Gameplay
             if (current == null) follow.Snap(player.transform, false);
             lastSafe = player.transform.position;
 
-            SmashWorld.Install(gameObject, world.Breakables, material, view);
+            SmashWorld.Install(gameObject, world.Instances, models, material, view);
             var smashHud = gameObject.AddComponent<SmashHud>();
             smashHud.View = view;
             smashHud.Focus = () => current;

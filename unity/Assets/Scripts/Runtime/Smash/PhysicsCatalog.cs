@@ -4,90 +4,70 @@ using UnityEngine;
 
 namespace Dogpatch.Smash
 {
-    public enum PhysicsClass { Static, Breakable, Loose, Dynamic }
+    public enum SmashStyle { Topple, Fly, Snap }
 
     [Serializable]
-    public sealed class PhysicsEntry
+    public sealed class SmashTuning
     {
-        public string id;
         public string role;
-        public string physicsClass;
         public string label;
         public int points;
         public float breakSpeed;
+        public float maxMassKg;
+        public string style;
         public float snapHeight;
+        public bool spout;
+
+        public SmashStyle Style => style == "snap" ? SmashStyle.Snap : style == "fly" ? SmashStyle.Fly : SmashStyle.Topple;
+    }
+
+    [Serializable]
+    public sealed class VehicleMass
+    {
+        public string id;
         public float massKg;
-        public float gameplayMassKg;
-        public string material;
-        public string body;
-        public float[] hull;
     }
 
     [Serializable]
     sealed class PhysicsFile
     {
-        public PhysicsEntry[] entries;
+        public VehicleMass[] vehicles;
+        public SmashTuning[] roles;
     }
 
-    // One physics model for every Polyfork asset, read from Resources/Smash/physics.json, which
-    // tools/smash/bake-physics.py builds from Polyfork's own mass, body and convex-hull data.
+    // The gameplay side of the physics model, read from Resources/Smash/physics.json (baked by
+    // tools/smash/bake-physics.py): vehicle masses from Polyfork, and how each breakable role smashes.
+    // Which instances are breakable, and their mass and hulls, come from the world's StaticInstanceIndex.
     public static class PhysicsCatalog
     {
-        static Dictionary<string, PhysicsEntry> byId;
-        static readonly Dictionary<string, Mesh> hulls = new Dictionary<string, Mesh>();
+        static Dictionary<string, float> vehicles;
+        static Dictionary<string, SmashTuning> roles;
 
-        static Dictionary<string, PhysicsEntry> Entries
+        static void Load()
         {
-            get
-            {
-                if (byId != null) return byId;
-                byId = new Dictionary<string, PhysicsEntry>();
-                var file = JsonUtility.FromJson<PhysicsFile>(Resources.Load<TextAsset>("Smash/physics").text);
-                foreach (var e in file.entries) byId[e.id] = e;
-                return byId;
-            }
+            if (roles != null) return;
+            var file = JsonUtility.FromJson<PhysicsFile>(Resources.Load<TextAsset>("Smash/physics").text);
+            vehicles = new Dictionary<string, float>();
+            roles = new Dictionary<string, SmashTuning>();
+            foreach (var v in file.vehicles) vehicles[v.id] = v.massKg;
+            foreach (var r in file.roles) roles[r.role] = r;
         }
 
-        public static PhysicsEntry Get(string assetId) =>
-            assetId != null && Entries.TryGetValue(assetId, out var e) ? e : null;
-
-        public static PhysicsClass ClassOf(PhysicsEntry e)
+        public static float VehicleMassKg(string modelId)
         {
-            if (e == null) return PhysicsClass.Static;
-            switch (e.physicsClass)
-            {
-                case "breakable": return PhysicsClass.Breakable;
-                case "loose": return PhysicsClass.Loose;
-                case "dynamic": return PhysicsClass.Dynamic;
-                default: return PhysicsClass.Static;
-            }
+            Load();
+            return modelId != null && vehicles.TryGetValue(modelId, out var m) ? m : 0f;
         }
 
-        // Polyfork's convex hull as a mesh for a convex MeshCollider, optionally only the points
-        // above a height (the crown of a snapped tree).
-        public static Mesh Hull(string assetId, float above = float.NegativeInfinity)
+        // An exact role ("prop:street_lamp"), else its family ("prop"), else the instance kind.
+        public static SmashTuning Tuning(string role, string kind)
         {
-            string key = float.IsNegativeInfinity(above) ? assetId : assetId + "@" + above.ToString("F2");
-            if (hulls.TryGetValue(key, out var mesh)) return mesh;
-            var e = Get(assetId);
-            var points = new List<Vector3>();
-            if (e?.hull != null)
-                for (int i = 0; i + 2 < e.hull.Length; i += 3)
-                {
-                    var p = new Vector3(e.hull[i], e.hull[i + 1], e.hull[i + 2]);
-                    if (p.y >= above) points.Add(p);
-                }
-            if (points.Count < 4) mesh = null;
-            else
-            {
-                var tris = new List<int>();
-                for (int i = 1; i + 1 < points.Count; i++) { tris.Add(0); tris.Add(i); tris.Add(i + 1); }
-                mesh = new Mesh { name = key + "/hull" };
-                mesh.SetVertices(points);
-                mesh.SetTriangles(tris, 0);
-            }
-            hulls[key] = mesh;
-            return mesh;
+            Load();
+            if (role != null && roles.TryGetValue(role, out var t)) return t;
+            int colon = role?.IndexOf(':') ?? -1;
+            if (colon > 0 && roles.TryGetValue(role.Substring(0, colon), out t)) return t;
+            if (kind != null && roles.TryGetValue(kind, out t)) return t;
+            return roles["prop"];
         }
     }
 }

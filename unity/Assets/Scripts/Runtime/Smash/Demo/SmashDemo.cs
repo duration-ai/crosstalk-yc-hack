@@ -14,7 +14,7 @@ namespace Dogpatch.Smash.Demo
 {
     // Scripted smash sequences on a small street set, for recordings, perf numbers and the iOS
     // showcase build. Not part of the game: it only runs when asked for.
-    //   Dogpatch.x86_64 -smashDemo lamps|barge|wreck|dive|crash20|all [-capture <dir>] [-perf <file>]
+    //   Dogpatch.x86_64 -smashDemo lamps|parked|barge|wreck|dive|crash20|all [-capture <dir>] [-perf <file>]
     // Built with the SMASH_DEMO define (BUILD_DEFINES=SMASH_DEMO), the player loops all of them.
     public sealed class SmashDemo : MonoBehaviour
     {
@@ -36,7 +36,7 @@ namespace Dogpatch.Smash.Demo
         Material material;
         Camera view;
         Transform root;
-        PropBatch props;
+        StaticModels statics;
         SmashHud hud;
         CarController hero;
         readonly Dictionary<CarController, (Vector3 dir, float strength)> drivers = new Dictionary<CarController, (Vector3, float)>();
@@ -94,7 +94,7 @@ namespace Dogpatch.Smash.Demo
             SetupRendering();
 
             loop = Scene == "showcase";
-            string[] all = { "lamps", "barge", "wreck", "dive", "crash20" };
+            string[] all = { "lamps", "parked", "barge", "wreck", "dive", "crash20" };
             do
             {
                 foreach (var name in Scene == "all" || loop ? all : new[] { Scene })
@@ -118,7 +118,7 @@ namespace Dogpatch.Smash.Demo
                 case "wreck": return Wreck();
                 case "dive": return Dive();
                 case "crash20": return Crash20();
-                case "fxtest": return FxTest();
+                case "parked": return Parked();
                 default: throw new ArgumentException("unknown smash demo " + name);
             }
         }
@@ -187,20 +187,20 @@ namespace Dogpatch.Smash.Demo
             ground.transform.SetParent(root, false);
             ground.center = new Vector3(0f, -0.5f, 0f);
             ground.size = new Vector3(600f, 1f, 600f);
-            props = new PropBatch(200f);
+            statics = new StaticModels(models);
         }
 
-        void Prop(string assetId, float x, float z, float yaw = 0f, float colliderRadius = 0f, float scale = 1f)
+        // Places a world variant (variants.json) exactly as StreetFurniture does in the city.
+        void Prop(string variant, float x, float z, float yaw = 0f, float capsuleRadius = 0f, float capsuleHeight = 2.5f)
         {
-            var asset = models.Get(assetId);
-            var mesh = asset.BakeStatic();
-            props.Add(assetId, mesh, Matrix4x4.TRS(new Vector3(x, 0.03f, z), Quaternion.Euler(0f, yaw, 0f), Vector3.one * scale), colliderRadius, Mathf.Min(mesh.bounds.size.y * scale, 4f));
+            var layer = variant.StartsWith("t-") ? StaticModels.Layer.Trees : StaticModels.Layer.Props;
+            statics.PlaceAtOrigin(layer, variant, new Vector2(x, z), Matrix4x4.TRS(new Vector3(x, 0.03f, z), Quaternion.Euler(0f, yaw, 0f), Vector3.one), null, capsuleRadius, capsuleHeight);
         }
 
         void Finish(CarController focus)
         {
-            props.Emit(root, material);
-            var world = SmashWorld.Install(root.gameObject, props, material, view);
+            statics.Emit(root, material, root.gameObject.AddComponent<DistanceLod>());
+            SmashWorld.Install(root.gameObject, statics.Index, models, material, view);
             hud = root.gameObject.AddComponent<SmashHud>();
             hud.View = view;
             hud.Focus = () => hero;
@@ -305,42 +305,41 @@ namespace Dogpatch.Smash.Demo
             }
         }
 
-        IEnumerator FxTest()
-        {
-            BuildStreet();
-            var car = Car("compact-hatchback-386417", "hero", 0f, 0f, 0f);
-            Finish(car);
-            Watch(car.transform, new Vector3(0f, 3f, -8f));
-            yield return Capture(0.2f);
-            var fx = SmashWorld.Instance.Fx;
-            fx.Smoke(new Vector3(-1.5f, 2f, 2f), SmashFx.SmokeLight, 1.2f, 1, 0f);
-            fx.Smoke(new Vector3(1.5f, 2f, 2f), Color.red, 1.2f, 1, 0f);
-            yield return Capture(0.2f);
-            foreach (var r in root.GetComponentsInChildren<ParticleSystemRenderer>())
-            {
-                var m = new Mesh();
-                r.BakeMesh(m, view, ParticleSystemBakeMeshOptions.Default);
-                var cols = m.colors32;
-                Debug.Log($"[SmashDemo] fx {r.name} verts={m.vertexCount} colors={cols.Length} first={(cols.Length > 0 ? cols[0].ToString() : "-")} last={(cols.Length > 0 ? cols[cols.Length - 1].ToString() : "-")} streams={r.activeVertexStreamsCount}");
-            }
-            yield return Capture(0.5f);
-        }
-
         // A row of five lamps and a tree on the curb, driven straight through at full drag.
         IEnumerator Lamps()
         {
             BuildStreet();
-            for (int i = 0; i < 5; i++) Prop("cobra-head-street-light-3e25b8", 5.6f, i * 9f, -90f, 0.2f);
-            Prop("street-tree-0d33f3", 5.6f, 52f, 30f, 0.35f);
-            Prop("fire-hydrant-b68b17", 5.2f, 64f, 0f, 0.25f);
-            Prop("metal-trash-can-f57043", 6.2f, 70f);
-            Prop("parking-meter-e9cf71", 5.4f, 76f, -90f, 0.3f);
+            for (int i = 0; i < 5; i++) Prop("p-lamp", 5.6f, i * 9f, -90f, 0.2f, 3f);
+            Prop("t-street-round-tree", 5.6f, 52f, 30f, 0.3f, 3f);
+            Prop("p-hydrant", 5.2f, 62f);
+            Prop("p-bin", 6.0f, 68f);
+            Prop("p-stop", 5.4f, 73f, -90f);
+            Prop("p-bench", 6.2f, 79f, -90f);
+            Prop("p-pole", 5.6f, 86f, 0f, 0.15f, 3f);
             var car = Car("compact-hatchback-386417", "hero", 5.6f, -45f, 0f);
             Finish(car);
             Chase(car.transform, 11f, 4.6f, -2.5f);
             yield return Capture(0.5f);
             Drive(car, Vector3.forward, 1f);
             yield return Capture(7.5f);
+            Drive(car, Vector3.forward, 0f);
+            yield return Capture(2f);
+        }
+
+        // A hatchback swerves into a row of cars parked along the curb and shoves them aside.
+        IEnumerator Parked()
+        {
+            BuildStreet();
+            string[] parked = { "town-car-56eeb6", "yellow-cab-8df4a0", "family-minivan-924de0", "compact-hatchback-386417", "police-cruiser-a2d25e" };
+            for (int i = 0; i < parked.Length; i++) Car(parked[i], "parked-" + i, 5.4f, 10f + i * 7f, i % 2 == 0 ? 0f : 180f);
+            var car = Car("family-crossover-suv-42027f", "hero", 2f, -40f, 0f);
+            Finish(car);
+            Chase(car.transform, 12f, 5f, -4f);
+            yield return Capture(0.4f);
+            Drive(car, Vector3.forward, 1f);
+            yield return Capture(2.2f);
+            Drive(car, new Vector3(0.12f, 0f, 1f), 1f);
+            yield return Capture(4.5f);
             Drive(car, Vector3.forward, 0f);
             yield return Capture(2f);
         }
@@ -431,13 +430,13 @@ namespace Dogpatch.Smash.Demo
         IEnumerator Crash20()
         {
             BuildStreet();
-            string[] kinds = { "cobra-head-street-light-3e25b8", "metal-trash-can-f57043", "park-bench-dc8b62", "fire-hydrant-b68b17", "newspaper-box-3f2c0e", "parking-meter-e9cf71" };
+            string[] kinds = { "p-lamp", "p-bin", "p-bench", "p-hydrant", "p-newsbox", "p-meter" };
             int n = 0;
             for (int row = 0; row < 5; row++)
                 for (int col = 0; col < 4 && n < 18; col++, n++)
-                    Prop(kinds[n % kinds.Length], -3.5f + col * 2.4f, 20f + row * 4f, n * 37f, kinds[n % kinds.Length].StartsWith("cobra") ? 0.2f : 0.25f);
-            Prop("street-tree-0d33f3", -1f, 42f, 0f, 0.35f);
-            Prop("ornamental-front-yard-tree-c6781a", 2.2f, 44f, 0f, 0.35f);
+                    Prop(kinds[n % kinds.Length], -3.5f + col * 2.4f, 20f + row * 4f, n * 37f, kinds[n % kinds.Length] == "p-lamp" ? 0.2f : 0f, 3f);
+            Prop("t-street-egg-tree", -1f, 42f, 0f, 0.3f, 3f);
+            Prop("t-ornamental", 2.2f, 44f, 0f, 0.3f, 3f);
             Car("town-car-56eeb6", "parked-1", -1.5f, 52f, 90f);
             Car("family-minivan-924de0", "parked-2", 2.5f, 57f, 80f);
             var truck = Car("delivery-truck-a9537e", "truck", 0f, -35f, 0f);
