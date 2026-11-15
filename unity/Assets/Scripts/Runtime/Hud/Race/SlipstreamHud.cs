@@ -473,6 +473,7 @@ namespace Dogpatch.Slipstream
             if (cam == null) return;
             foreach (var (name, at) in Race.RouteRingSpots())
             {
+                if (Race.Joined && !Race.IsCourseRing(at)) continue;
                 var sp = cam.WorldToScreenPoint(at + Vector3.up * 3.2f);
                 if (sp.z < 1f || sp.z > 140f) continue;
                 var size = Measure(name, 20f);

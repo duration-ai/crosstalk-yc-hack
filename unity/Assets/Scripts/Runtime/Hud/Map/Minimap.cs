@@ -590,6 +590,7 @@ namespace Dogpatch.Map
                 var p = ToMap(target.position);
                 if (kind == MapMarkerKind.Race)
                 {
+                    if (raceUp && race.Joined && !race.IsCourseRing(target.position)) continue;
                     if (!Inside(p, 6f * s)) Pin(p, 4f * s, Pink);
                     else if (!raceUp || race.Gridded || (race.Course.RingCenter - target.position).sqrMagnitude > 1f) Ring(p, 5f * s, 1.6f * s, Pink);
                     continue;
