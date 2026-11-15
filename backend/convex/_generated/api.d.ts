@@ -13,6 +13,7 @@ import type * as avatarDecision from "../avatarDecision.js";
 import type * as avatarModel from "../avatarModel.js";
 import type * as avatarPhoto from "../avatarPhoto.js";
 import type * as avatars from "../avatars.js";
+import type * as crons from "../crons.js";
 import type * as events from "../events.js";
 import type * as http from "../http.js";
 import type * as jev from "../jev.js";
@@ -43,6 +44,7 @@ declare const fullApi: ApiFromModules<{
   avatarModel: typeof avatarModel;
   avatarPhoto: typeof avatarPhoto;
   avatars: typeof avatars;
+  crons: typeof crons;
   events: typeof events;
   http: typeof http;
   jev: typeof jev;
