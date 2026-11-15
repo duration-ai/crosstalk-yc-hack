@@ -118,7 +118,7 @@ Shader "Dogpatch/FlatVertexColor"
                 float shadow = SHADOW_ATTENUATION(i);
                 float3 ambient = _SideAmbient.rgb * (1 - abs(n.y)) + _SkyAmbient.rgb * saturate(n.y) + _GroundAmbient.rgb * saturate(-n.y);
                 float3 lit = albedo * (ambient + _LightColor0.rgb * ndl * shadow);
-                lit += i.color.rgb * saturate(1 - i.color.a) * _DogpatchNight * 1.8;
+                lit += i.color.rgb * saturate(1 - i.color.a) * _DogpatchNight * 3.6;
                 fixed4 col = fixed4(lit, 1);
                 fixed4 fogged = col;
                 UNITY_APPLY_FOG(i.fogCoord, fogged);
