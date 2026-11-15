@@ -51,7 +51,7 @@ namespace Dogpatch.Audio
             id = (id ?? "").ToLowerInvariant();
             if (id.Contains("cyber") || id.Contains("wedge")) return EngineClass.Cybertruck;
             if (id.Contains("race") || id.Contains("gt3") || id.Contains("sports")) return EngineClass.RaceCar;
-            if (id.Contains("t-third") || id.Contains("lrv") || id.Contains("tram") || id.Contains("streetcar")) return EngineClass.Tram;
+            if (id.Contains("t-third") || id.Contains("lrv") || id.Contains("tram") || id.Contains("streetcar") || id.Contains("cable")) return EngineClass.Tram;
             if (id.Contains("muni") || (id.Contains("bus") && !id.Contains("shelter"))) return EngineClass.Bus;
             if (id.Contains("cart")) return EngineClass.Cart;
             if (id.Contains("scooter")) return EngineClass.Scooter;
