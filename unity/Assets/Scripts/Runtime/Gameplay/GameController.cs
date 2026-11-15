@@ -28,6 +28,7 @@ namespace Dogpatch.Gameplay
         Material material;
         DragInput input;
         FollowCamera follow;
+        float? reverseYaw;
         Camera view;
         Hud hud;
         PlayerController player;
@@ -217,7 +218,9 @@ namespace Dogpatch.Gameplay
             var look = input.TakeLook();
             if (current == null) follow.Orbit(look);
             var dir2 = input.Direction;
-            var dir = dir2 == Vector2.zero ? Vector3.zero : Quaternion.Euler(0f, follow.Yaw, 0f) * new Vector3(dir2.x, 0f, dir2.y);
+            if (current == null || !current.Reversing || !input.Dragging) reverseYaw = null;
+            else reverseYaw ??= follow.Yaw;
+            var dir = dir2 == Vector2.zero ? Vector3.zero : Quaternion.Euler(0f, reverseYaw ?? follow.Yaw, 0f) * new Vector3(dir2.x, 0f, dir2.y);
             if (ExternalInput) { }
             else if (current != null) current.SetInput(dir, input.Strength);
             else player.SetInput(dir, input.Strength);
