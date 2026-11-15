@@ -72,8 +72,8 @@ namespace Dogpatch.Look
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Linear;
             RenderSettings.fogColor = SkyHorizon.gamma;
-            RenderSettings.fogStartDistance = 450f;
-            RenderSettings.fogEndDistance = 3600f;
+            RenderSettings.fogStartDistance = 220f;
+            RenderSettings.fogEndDistance = 1900f;
             Shader.SetGlobalColor("_SkyAmbient", SkyFill);
             Shader.SetGlobalColor("_SideAmbient", SideFill);
             Shader.SetGlobalColor("_GroundAmbient", Bounce);
