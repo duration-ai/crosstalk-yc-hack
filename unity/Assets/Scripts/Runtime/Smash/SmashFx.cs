@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Dogpatch.Look;
 using UnityEngine;
 
 namespace Dogpatch.Smash
@@ -6,6 +7,8 @@ namespace Dogpatch.Smash
     // Cheap pooled effects in the world's style: faceted debris chips, faceted smoke puffs that grow
     // and shrink away (no transparency), and a playful hydrant water spout. Each is one particle
     // system drawing low-poly meshes with the shared flat vertex-colour material: one draw call each.
+    // Tuned as accents (fewer, smaller, shorter-lived) and scaled by EffectsSettings.Intensity:
+    // counts by the intensity, sizes by its square root.
     public sealed class SmashFx
     {
         public static readonly Color SmokeLight = new Color(0.96f, 0.96f, 0.97f);
@@ -83,6 +86,8 @@ namespace Dogpatch.Smash
 
         public void Debris(Vector3 point, Vector3 velocity, IReadOnlyList<Color> colors, int count, float size = 0.28f)
         {
+            count = EffectsSettings.Count(count * 0.5f);
+            size *= 0.6f * EffectsSettings.Scale;
             for (int i = 0; i < count; i++)
             {
                 var v = velocity * Random.Range(0.3f, 0.9f) + Random.insideUnitSphere * 4f + Vector3.up * Random.Range(2.5f, 6.5f);
@@ -92,7 +97,7 @@ namespace Dogpatch.Smash
                     velocity = v,
                     startColor = colors.Count == 0 ? Color.white : colors[Random.Range(0, colors.Count)],
                     startSize = size * Random.Range(0.5f, 1.3f),
-                    startLifetime = Random.Range(1.6f, 2.6f),
+                    startLifetime = Random.Range(0.9f, 1.4f),
                     rotation3D = RandomRotation(),
                     angularVelocity3D = Random.insideUnitSphere * 540f,
                 }, 1);
@@ -101,6 +106,8 @@ namespace Dogpatch.Smash
 
         public void Smoke(Vector3 point, Color color, float size, int count = 1, float rise = 1.2f, Vector3 drift = default)
         {
+            count = EffectsSettings.Count(count);
+            size *= 0.55f * EffectsSettings.Scale;
             for (int i = 0; i < count; i++)
             {
                 var tint = Color.Lerp(color, Color.white, Random.Range(0f, 0.12f));
@@ -110,7 +117,7 @@ namespace Dogpatch.Smash
                     velocity = drift + Vector3.up * rise * Random.Range(0.7f, 1.3f) + Random.insideUnitSphere * 0.5f,
                     startColor = tint,
                     startSize = size * Random.Range(0.75f, 1.25f),
-                    startLifetime = Random.Range(0.9f, 1.5f),
+                    startLifetime = Random.Range(0.5f, 0.9f),
                     rotation3D = RandomRotation(),
                     angularVelocity3D = Random.insideUnitSphere * 60f,
                 }, 1);
@@ -120,6 +127,8 @@ namespace Dogpatch.Smash
         // A puff ring for a big hit or a piece vanishing.
         public void Poof(Vector3 point, float radius, Color color, int count = 8)
         {
+            count = EffectsSettings.Count(count * 0.5f);
+            radius *= 0.6f;
             for (int i = 0; i < count; i++)
             {
                 float a = i * Mathf.PI * 2f / count;
@@ -141,7 +150,7 @@ namespace Dogpatch.Smash
                     continue;
                 }
                 float strength = Mathf.Clamp01((until - Time.time) / 2f);
-                int n = Mathf.CeilToInt(5 * strength);
+                int n = Mathf.CeilToInt(3f * strength * EffectsSettings.Intensity);
                 for (int k = 0; k < n; k++)
                 {
                     water.Emit(new ParticleSystem.EmitParams
@@ -149,8 +158,8 @@ namespace Dogpatch.Smash
                         position = position + Random.insideUnitSphere * 0.08f,
                         velocity = new Vector3(Random.Range(-0.9f, 0.9f), Random.Range(8.5f, 11f) * (0.5f + 0.5f * strength), Random.Range(-0.9f, 0.9f)),
                         startColor = Random.value < 0.3f ? WaterFoam : WaterBlue,
-                        startSize = Random.Range(0.12f, 0.24f),
-                        startLifetime = Random.Range(1.4f, 2f),
+                        startSize = Random.Range(0.08f, 0.15f) * EffectsSettings.Scale,
+                        startLifetime = Random.Range(0.9f, 1.3f),
                         rotation3D = RandomRotation(),
                         angularVelocity3D = Random.insideUnitSphere * 360f,
                     }, 1);
