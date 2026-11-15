@@ -62,6 +62,16 @@ namespace Dogpatch.Gameplay
             if (Input != null) Input.IgnoreAt = p => Paused || PauseRect().Contains(p);
         }
 
+        void OnEnable() => ScreenShape.Changed += CancelPress;
+
+        void OnDisable() => ScreenShape.Changed -= CancelPress;
+
+        void CancelPress()
+        {
+            pressing = false;
+            pressFinger = -1;
+        }
+
         float Scale => Mathf.Min(Screen.width, Screen.height) / 720f;
 
         // Pause button rect in screen pixels with the origin bottom-left, inside the safe area.

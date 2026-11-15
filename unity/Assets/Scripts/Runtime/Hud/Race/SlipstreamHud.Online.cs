@@ -155,12 +155,13 @@ namespace Dogpatch.Slipstream
             NameTab(block, bar, SlotColor("blue"), naming ? entry + (Mathf.Repeat(Time.time, 1f) < 0.5f ? "_" : "") : (Race.MyName ?? "").ToUpperInvariant(), true, "dash");
             buttons.Add(new Hit { Rect = new Rect(block.x, block.y, bar.xMax - block.x, bar.height), Act = () => { if (entryKind == null) StartEntry("name"); } });
 
-            if (entryKind == "code") CodeBoxes(entry, true);
+            if (entryKind == "code") CodeBoxes(entry, true, bar);
             else if (ErrorFresh && Race.LastError != null)
             {
                 var label = Race.LastError == "NOT_FOUND" ? "NO SUCH ROOM" : Race.LastError == "CONFLICT" ? "ROOM CLOSED" : "NO SIGNAL";
                 var size = Measure(label, 16f);
-                var r = new Rect(Screen.width * 0.5f - size.x * 0.5f - 16f * s, top + 2f * s, size.x + 32f * s, 30f * s);
+                float x = Screen.width * 0.5f - size.x * 0.5f - 16f * s;
+                var r = new Rect(x, x < bar.xMax + 8f * s ? bar.yMax + 10f * s : top + 2f * s, size.x + 32f * s, 30f * s);
                 Panel(r, Ink);
                 Text(r, label, 16f, Sun, TextAnchor.MiddleCenter);
             }
@@ -177,16 +178,18 @@ namespace Dogpatch.Slipstream
             Plate(host, "HOST", Sun, Ink, () => { EndEntry(); Race.Host(); }, 24f);
         }
 
-        // Four big letter boxes, top centre: the code being typed, or the room's code.
-        void CodeBoxes(string code, bool typing)
+        // Four big letter boxes, top centre (under the name tab when the screen is too narrow for
+        // both): the code being typed, or the room's code.
+        void CodeBoxes(string code, bool typing, Rect nameTab)
         {
             float box = 46f * s;
             float gap = 8f * s;
             float x0 = Screen.width * 0.5f - (4f * box + 3f * gap) * 0.5f;
+            float y = x0 < nameTab.xMax + 8f * s ? nameTab.yMax + 10f * s : top + 2f * s;
             float shake = ErrorFresh && Time.time - Race.LastErrorAt < 0.4f ? Mathf.Sin(Time.time * 70f) * 6f * s : 0f;
             for (int i = 0; i < 4; i++)
             {
-                var r = new Rect(x0 + i * (box + gap) + shake, top + 2f * s, box, box * 1.1f);
+                var r = new Rect(x0 + i * (box + gap) + shake, y, box, box * 1.1f);
                 bool caret = typing && i == code.Length && Mathf.Repeat(Time.time, 1f) < 0.5f;
                 Framed(r, i < code.Length ? Ink : new Color(Ink.r, Ink.g, Ink.b, 0.55f), caret ? Sun : Ink, 2.4f * s);
                 if (i < code.Length) Text(r, code[i].ToString(), 34f, Sun, TextAnchor.MiddleCenter, 0f);
