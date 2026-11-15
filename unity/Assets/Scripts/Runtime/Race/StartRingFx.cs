@@ -10,8 +10,8 @@ namespace Dogpatch.Race
     // The start ring's look, in the spirit of the old Need for Speed race markers and GTA's coronas:
     // a tall see-through yellow light pillar with glowing edges and a soft outer haze that reads from
     // 200 m+ over the rooftops, halos climbing it, and faceted motes spiralling up. The floor is an
-    // overlay, not a disc: thin glowing lines (outer ring, inner ring, a chevron ring and a six-point
-    // glyph spinning against each other) drawn additively over the road so asphalt, paint and
+    // overlay, not a disc: thin glowing lines (outer ring, inner ring, a chevron ring and a checkered
+    // racing band spinning against each other) drawn additively over the road so asphalt, paint and
     // crosswalks show through. Close up the pillar fades so the middle of the screen stays clear.
     // Around the rim, ten segments are a lobby meter: a chaser in free roam, filled by the players
     // waiting, then dropping one a second through the countdown while the ring builds energy (spin,
@@ -40,11 +40,11 @@ namespace Dogpatch.Race
         const float FlagsUp = 2.6f;
 
         float radius;
-        Renderer pillar, haze, core, floor, chevrons, glyph;
+        Renderer pillar, haze, core, floor, chevrons, band;
         readonly Renderer[] halos = new Renderer[3];
         MaterialPropertyBlock block;
         ParticleSystem motes;
-        float spin, glyphSpin, climb, moteDebt;
+        float spin, bandSpin, climb, moteDebt, beatPhase;
 
         Mesh meter;
         Color[] meterColors;
@@ -111,15 +111,14 @@ namespace Dogpatch.Race
             chevrons = Part(g, "Chevrons", lines);
 
             g = new Strip();
-            for (int k = 0; k < 2; k++)
-                for (int i = 0; i < 3; i++)
-                {
-                    float a = (i * 2f / 3f + k / 3f) * Mathf.PI, b = a + Mathf.PI * 2f / 3f;
-                    var p = new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * r * 0.48f + Vector3.up * FloorY;
-                    var q = new Vector3(Mathf.Cos(b), 0f, Mathf.Sin(b)) * r * 0.48f + Vector3.up * FloorY;
-                    g.Line(p, q, 0.14f, WithAlpha(k == 0 ? Yellow : White, 0.85f));
-                }
-            glyph = Part(g, "Glyph", lines);
+            const int cells = 28;
+            float inner = r * 0.36f, middle = r * 0.43f, outer = r * 0.5f;
+            for (int i = 0; i < cells; i++)
+            {
+                float a0 = i * Mathf.PI * 2f / cells, a1 = (i + 1) * Mathf.PI * 2f / cells;
+                g.Arc(i % 2 == 0 ? inner : middle, i % 2 == 0 ? middle : outer, FloorY, a0, a1, WithAlpha(Yellow, 0.85f), 1);
+            }
+            band = Part(g, "Band", lines);
 
             g = new Strip();
             for (int i = 0; i < Segments; i++)
@@ -257,8 +256,8 @@ namespace Dogpatch.Race
             punch = Mathf.Max(0f, punch - dt * 3f);
             Pop(t - goAt);
 
-            float beatRate = 0.8f + energy * 2.4f;
-            float pulse = 1f + Mathf.Sin(t * Mathf.PI * 2f * beatRate) * (0.05f + energy * 0.06f);
+            beatPhase = Mathf.Repeat(beatPhase + dt * (0.8f + energy * 2.4f) * Mathf.PI * 2f, Mathf.PI * 2f);
+            float pulse = 1f + Mathf.Sin(beatPhase) * (0.05f + energy * 0.06f);
             pillar.transform.localScale = new Vector3(pulse, 1f, pulse);
             float swollen = pulse * (1f + energy * 0.6f);
             core.transform.localScale = new Vector3(swollen, 1f + energy * 0.4f, swollen);
@@ -279,15 +278,15 @@ namespace Dogpatch.Race
             }
 
             spin += dt * (25f + near * 40f + energy * energy * 500f);
-            glyphSpin -= dt * (15f + near * 20f + energy * 200f);
+            bandSpin -= dt * (15f + near * 20f + energy * 200f);
             chevrons.transform.localRotation = Quaternion.Euler(0f, spin, 0f);
-            glyph.transform.localRotation = Quaternion.Euler(0f, glyphSpin, 0f);
+            band.transform.localRotation = Quaternion.Euler(0f, bandSpin, 0f);
             float swell = 1f + near * 0.04f + Mathf.Sin(t * Mathf.PI * 1.6f) * 0.015f + punch * punch * 0.25f;
-            glyph.transform.localScale = new Vector3(swell, 1f, swell);
-            float beat = Mathf.Min(1f, 0.75f + 0.25f * Mathf.Sin(t * Mathf.PI * 2f * beatRate) + punch * 0.5f);
+            band.transform.localScale = new Vector3(swell, 1f, swell);
+            float beat = Mathf.Min(1f, 0.75f + 0.25f * Mathf.Sin(beatPhase) + punch * 0.5f);
             SetAlpha(floor, beat);
             SetAlpha(chevrons, 0.85f + near * 0.15f);
-            SetAlpha(glyph, beat);
+            SetAlpha(band, beat);
 
             if (distance > MotesWithin) return;
             moteDebt += dt * (4f + near * 10f + energy * 40f);
