@@ -75,11 +75,7 @@ namespace Dogpatch.Gameplay
         async void Start()
         {
             Application.targetFrameRate = 60;
-            if (Application.isMobilePlatform && Screen.height > 1400)
-            {
-                float scale = 1400f / Screen.height;
-                Screen.SetResolution(Mathf.RoundToInt(Screen.width * scale), 1400, true);
-            }
+            gameObject.AddComponent<ScreenShape>();
             material = new Material(Resources.Load<Shader>("Shaders/FlatVertexColor")) { name = "FlatVertexColor" };
             SetupRendering();
 
