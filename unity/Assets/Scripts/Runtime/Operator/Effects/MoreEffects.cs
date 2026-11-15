@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Dogpatch.Gameplay;
 using Dogpatch.Look;
 using Dogpatch.WorldChanges;
@@ -155,11 +156,13 @@ namespace Dogpatch.Operator
         }
     }
 
-    // Grow or shrink each target that is its own object; merged city meshes stay as built.
+    // Grow or shrink each target that is its own object; merged city meshes stay as built. A resized
+    // car's top speed scales with its size, held to 0.6-1.6x so races stay fair.
     public sealed class ResizeEffect : OperatorEffect
     {
         readonly bool grow;
-        readonly System.Collections.Generic.List<(Transform t, Vector3 scale)> resized = new System.Collections.Generic.List<(Transform, Vector3)>();
+        readonly List<(Transform t, Vector3 scale)> resized = new List<(Transform, Vector3)>();
+        readonly List<(CarController car, float k)> sped = new List<(CarController, float)>();
 
         public ResizeEffect(bool grow) => this.grow = grow;
 
@@ -171,6 +174,10 @@ namespace Dogpatch.Operator
                 if (tag.Span != null) continue;
                 resized.Add((tag.transform, tag.transform.localScale));
                 tag.transform.localScale *= k;
+                if (!tag.TryGetComponent<CarController>(out var car)) continue;
+                float speed = Mathf.Clamp(k, 0.6f, 1.6f);
+                car.SpeedMul *= speed;
+                sped.Add((car, speed));
             }
         }
 
@@ -178,24 +185,55 @@ namespace Dogpatch.Operator
         {
             foreach (var (t, scale) in resized) if (t != null) t.localScale = scale;
             resized.Clear();
+            foreach (var (car, speed) in sped) if (car != null) car.SpeedMul /= speed;
+            sped.Clear();
+        }
+    }
+
+    // Giants and Tiny: people only, never cars. Resizes the target's on-foot bodies (this device's avatar
+    // when the target includes me) and scales my walking and running speed with my size.
+    public sealed class SizeEffect : OperatorEffect
+    {
+        readonly float low, medium, high;
+        readonly List<(Transform t, Vector3 scale)> resized = new List<(Transform, Vector3)>();
+        GuardedKnob run;
+
+        public SizeEffect(float low, float medium, float high)
+        {
+            this.low = low;
+            this.medium = medium;
+            this.high = high;
+        }
+
+        public override void Apply(string strength, EffectTarget target)
+        {
+            float k = Scale(strength, low, medium, high);
+            var bodies = new HashSet<Transform>();
+            foreach (var tag in target.Entities)
+                if (tag != null && tag.Span == null && !tag.TryGetComponent<CarController>(out _)) bodies.Add(tag.transform);
+            if (target.IncludesMe && Context.Game.Player != null)
+            {
+                bodies.Add(Context.Game.Player.transform);
+                run = GuardedKnob.Times(() => PlayerController.RunScale, v => PlayerController.RunScale = v, Mathf.Max(0.5f, k));
+            }
+            foreach (var body in bodies)
+            {
+                resized.Add((body, body.localScale));
+                body.localScale *= k;
+            }
+        }
+
+        public override void Revert()
+        {
+            foreach (var (t, scale) in resized) if (t != null) t.localScale = scale;
+            resized.Clear();
+            run?.Undo();
+            run = null;
         }
     }
 
     public static class MoreEffects
     {
-        static Action Racers(OperatorEffect e, float k)
-        {
-            CarFx.SizeTarget = k;
-            var player = e.Context.Game.Player;
-            var before = player != null ? player.transform.localScale : Vector3.one;
-            if (player != null) player.transform.localScale = before * k;
-            return () =>
-            {
-                CarFx.SizeTarget = 1f;
-                if (player != null) player.transform.localScale = before;
-            };
-        }
-
         static Action Gravity(float k)
         {
             Physics.gravity = new Vector3(0f, -9.81f * k, 0f);
@@ -215,8 +253,8 @@ namespace Dogpatch.Operator
             r.Register("run_slower", () => new KnobEffect((e, s) => { PlayerController.RunScale = OperatorEffect.Scale(s, 0.4f, 0.25f, 0.15f); return () => PlayerController.RunScale = 1f; }));
             r.Register("jump_higher", () => new KnobEffect((e, s) => { PlayerController.JumpScale = OperatorEffect.Scale(s, 2f, 3f, 4.5f); return () => PlayerController.JumpScale = 1f; }));
             r.Register("slow_fall", () => new KnobEffect((e, s) => { PlayerController.GravityScale = OperatorEffect.Scale(s, 0.35f, 0.2f, 0.1f); return () => PlayerController.GravityScale = 1f; }));
-            r.Register("bigger", () => new KnobEffect((e, s) => Racers(e, OperatorEffect.Scale(s, 1.8f, 2.5f, 3.5f))));
-            r.Register("smaller", () => new KnobEffect((e, s) => Racers(e, OperatorEffect.Scale(s, 0.5f, 0.35f, 0.25f))));
+            r.Register("bigger", () => new SizeEffect(1.8f, 2.5f, 3.5f));
+            r.Register("smaller", () => new SizeEffect(0.5f, 0.35f, 0.25f));
             r.Register("grip_down", () => new KnobEffect((e, s) => { CarFx.Traction = OperatorEffect.Scale(s, 0.1f, 0.05f, 0.025f); return () => CarFx.Traction = 1f; }));
             r.Register("slippery_ground", () => new KnobEffect((e, s) => { CarFx.Traction = OperatorEffect.Scale(s, 0.06f, 0.03f, 0.015f); return () => CarFx.Traction = 1f; }));
             r.Register("gravity_higher", () => new KnobEffect((e, s) => Gravity(OperatorEffect.Scale(s, 2f, 3f, 4f))));
