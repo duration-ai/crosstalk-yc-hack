@@ -47,15 +47,12 @@ namespace Dogpatch.Audio
             switch (e.Kind)
             {
                 case SmashKind.Break:
-                    GameEvents.RaiseSmash(e.Position, e.Label, 6f + e.BasePoints / 15f, mine);
+                    GameEvents.RaiseSmash(e.Position, e.Label, 10f, mine);
                     break;
                 case SmashKind.NearMiss:
                     GameEvents.RaisePedestrianDive(e.Position, Random.Range(0, 1000));
                     break;
             }
-            if (!mine) return;
-            GameEvents.RaisePoints(e.Points);
-            if (e.Multiplier > 1) GameEvents.RaiseCombo(e.Multiplier);
         }
 
         void OnWrecked(CarController car) => GameEvents.RaiseWreck(car.transform.position, car.Driven);

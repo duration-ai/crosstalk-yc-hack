@@ -69,12 +69,10 @@ namespace Dogpatch.Audio
             return cam.position + fwd * (10f + metres) + Vector3.down * cam.position.y + Vector3.up * 0.5f;
         }
 
-        void Smash(string kind, float force, int points, int combo)
+        void Smash(string kind, float force)
         {
-            Mark($"smash {kind} (+{points}, combo x{combo})");
+            Mark($"smash {kind}");
             GameEvents.RaiseSmash(CarAhead(2f), kind, force);
-            GameEvents.RaisePoints(points);
-            GameEvents.RaiseCombo(combo);
         }
 
         IEnumerator Start()
@@ -127,15 +125,15 @@ namespace Dogpatch.Audio
             Mark("GO: full throttle");
             Drag(Vector2.up, 1f);
             yield return Wait(2.5f);
-            Smash("hydrant", 14f, 150, 1);
+            Smash("hydrant", 14f);
             yield return Wait(1.3f);
-            Smash("trash_can", 8f, 50, 2);
+            Smash("trash_can", 8f);
             yield return Wait(1.1f);
-            Smash("newspaper_box", 9f, 75, 3);
+            Smash("newspaper_box", 9f);
             yield return Wait(1.0f);
-            Smash("parking_meter", 9f, 75, 4);
+            Smash("parking_meter", 9f);
             yield return Wait(1.0f);
-            Smash("bench", 10f, 100, 5);
+            Smash("bench", 10f);
             yield return Wait(0.8f);
             Mark("boost");
             GameEvents.SetBoost(true);
@@ -154,9 +152,9 @@ namespace Dogpatch.Audio
             yield return Wait(1.2f);
             Drag(Vector2.up, 1f);
             yield return Wait(1.8f);
-            Smash("bus_shelter", 16f, 250, 6);
+            Smash("bus_shelter", 16f);
             yield return Wait(1.2f);
-            Smash("street_light", 12f, 150, 7);
+            Smash("street_light", 12f);
             yield return Wait(1.0f);
 
             Mark("the Operator calls (CROS-17 events): ring, pick up, she talks (ducking)");
@@ -173,9 +171,9 @@ namespace Dogpatch.Audio
             GameEvents.SetMood(MusicMood.FinalStretch);
             Drag(new Vector2(-0.6f, 1f), 1f);
             yield return Wait(2.5f);
-            Smash("fence", 10f, 100, 8);
+            Smash("fence", 10f);
             yield return Wait(1.0f);
-            Smash("storefront_glass", 18f, 400, 9);
+            Smash("storefront_glass", 18f);
             yield return Wait(1.0f);
             Mark("wreck (CROS-23 event)");
             GameEvents.RaiseWreck(CarAhead(0f), true);
