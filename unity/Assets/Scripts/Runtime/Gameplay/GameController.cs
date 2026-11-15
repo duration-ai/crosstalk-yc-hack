@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Dogpatch.Backend;
 using Dogpatch.Data;
 using Dogpatch.Glb;
+using Dogpatch.Smash;
 using Dogpatch.World;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -38,9 +39,9 @@ namespace Dogpatch.Gameplay
         Vector3 lastSafe;
 
         public bool Driving => current != null;
+        public CarController CurrentCar => current;
         public CarController NearestCar { get; private set; }
         public Camera View => view;
-        public CarController CurrentCar => current;
         public PlayerController Player => player;
         public string StreetName { get; private set; } = "";
         public string StatusLine { get; private set; } = "Loading Dogpatch…";
@@ -134,6 +135,21 @@ namespace Dogpatch.Gameplay
             }
             if (current == null) follow.Snap(player.transform, false);
             lastSafe = player.transform.position;
+
+            SmashWorld.Install(gameObject, world.Instances, models, material, view);
+            var smashHud = gameObject.AddComponent<SmashHud>();
+            smashHud.View = view;
+            smashHud.Focus = () => current;
+            VehicleDamage.Wrecked += OnWrecked;
+        }
+
+        void OnDestroy() => VehicleDamage.Wrecked -= OnWrecked;
+
+        void OnWrecked(CarController car)
+        {
+            if (car != current) return;
+            hud.Toast("WRECKED! Hop out.");
+            _ = RunAsync(ExitCarAsync);
         }
 
         void SetupRendering()
@@ -215,6 +231,11 @@ namespace Dogpatch.Gameplay
             if (tapped == null)
             {
                 player.Jump();
+                return;
+            }
+            if (tapped.GetComponent<VehicleDamage>()?.IsWrecked == true)
+            {
+                hud.Toast("That one's wrecked");
                 return;
             }
             var closest = tapped.GetComponent<BoxCollider>().ClosestPoint(player.transform.position);
