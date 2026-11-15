@@ -52,6 +52,7 @@ namespace Dogpatch.Race
         public bool Setup { get; private set; }
         public bool Gridded { get; private set; }
         public bool Started { get; private set; }
+        public bool CrossedFinish { get; private set; }
         public bool ResultsIn { get; private set; }
         public float StartedAt { get; private set; }
         public float ResultsAt { get; private set; }
@@ -399,6 +400,7 @@ namespace Dogpatch.Race
             {
                 if (!Gridded) yield return ToGrid();
                 if (!Started) Go();
+                if (!CrossedFinish && Me != null && Me.finished) CrossedLine();
             }
             else if (room.status == RoomStatus.Finished && !ResultsIn)
             {
@@ -454,6 +456,7 @@ namespace Dogpatch.Race
         void Go()
         {
             Started = true;
+            CrossedFinish = false;
             StartedAt = Time.time;
             botCallsAfter = Time.time + 4f;
             foreach (var bot in bots)
@@ -474,6 +477,19 @@ namespace Dogpatch.Race
             Calls.Buzz();
             if (myPilot != null) myPilot.Active = Autopilot;
             Debug.Log("[SpeedDial] GO");
+        }
+
+        // Over the line: your race is done, so the car rolls to a stop while the others finish or the
+        // room closes (30 s after the first finisher), and then the results come up.
+        void CrossedLine()
+        {
+            CrossedFinish = true;
+            if (myPilot != null) myPilot.Active = false;
+            Game.ExternalInput = true;
+            if (Game.CurrentCar != null) Game.CurrentCar.SetInput(Vector3.zero, 0f);
+            else Game.Player.SetInput(Vector3.zero, 0f);
+            float closesIn = Room.closesAt > 0 ? (Room.closesAt - NowMs) / 1000f : 0f;
+            Debug.Log($"[SpeedDial] you finished {Me.place} in {Me.finishMs / 1000f:F1} s, results in {closesIn:F0} s at most");
         }
 
         // For the first seconds after GO the racers pass through each other, so a bunched launch can't
