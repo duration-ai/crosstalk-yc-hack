@@ -14,12 +14,16 @@ namespace Dogpatch.Race
     // triggers, not solid: driving into one gives this device's car a light push apart.
     public sealed class RemoteRacers : MonoBehaviour
     {
-        public const float BufferMs = 150f;
+        public const float BufferMs = 120f;
         const float MaxExtrapolateMs = 250f;
+        const float MaxDeadReckonMs = 1000f;
+        const float MaxYawRate = 120f;
+        const float SnapMeters = 5f;
+        const float CorrectRate = 10f;
         const float TeleportMeters = 40f;
         const float DrivingSpeed = 8f;
         const float PushEvery = 0.2f;
-        const float ForgetAfter = 12f;
+        const float ForgetAfter = 15f;
 
         public RaceDirector Race;
 
@@ -28,6 +32,8 @@ namespace Dogpatch.Race
             public double T;
             public Vector3 P;
             public float H;
+            public Vector3 V;
+            public float W;
         }
 
         public sealed class Remote
@@ -52,6 +58,8 @@ namespace Dogpatch.Race
             internal long LastUpdatedAt;
             internal float NextPush;
             internal float SeenAt;
+            internal bool Placed;
+            internal Vector3 Velocity;
             internal string PaintedHex;
 
             public Transform Body => Left ? null : Driving ? Car.transform : Avatar.transform;
@@ -102,7 +110,7 @@ namespace Dogpatch.Race
                 remote.WorldMode = player.mode;
                 remote.SeenAt = Time.time;
                 if (!remote.InRace) remote.Left = false;
-                AddSample(remote, player.updatedAt, player.position, player.heading, world.serverTime);
+                if (!remote.InRace) AddSample(remote, player.updatedAt, player.position, player.heading, world.serverTime);
             }
         }
 
@@ -115,7 +123,23 @@ namespace Dogpatch.Race
             lagKnown = true;
             var p = new Vector3(position.x, position.y, position.z);
             if (remote.Samples.Count > 0 && Vector3.Distance(remote.Samples[remote.Samples.Count - 1].P, p) > TeleportMeters) remote.Samples.Clear();
-            remote.Samples.Add(new Sample { T = updatedAt, P = p, H = heading });
+            var sample = new Sample { T = updatedAt, P = p, H = heading };
+            if (remote.Samples.Count > 0)
+            {
+                var prev = remote.Samples[remote.Samples.Count - 1];
+                float span = (float)(updatedAt - prev.T) / 1000f;
+                if (span > 0.02f)
+                {
+                    sample.V = Vector3.Lerp(prev.V, (p - prev.P) / span, 0.6f);
+                    sample.W = Mathf.Lerp(prev.W, Mathf.Clamp(Mathf.DeltaAngle(prev.H, heading) / span, -MaxYawRate, MaxYawRate), 0.6f);
+                }
+                else
+                {
+                    sample.V = prev.V;
+                    sample.W = prev.W;
+                }
+            }
+            remote.Samples.Add(sample);
             if (remote.Samples.Count > 24) remote.Samples.RemoveAt(0);
         }
 
@@ -163,7 +187,7 @@ namespace Dogpatch.Race
             remotes.Remove(id);
             if (remote.Car != null) Destroy(remote.Car.gameObject);
             if (remote.Avatar != null) Destroy(remote.Avatar.gameObject);
-            Debug.Log($"[SpeedDial] remote player {remote.Name} left");
+            Debug.Log($"[SpeedDial] remote player {remote.Name} left after {Time.time - remote.SeenAt:F0} s unseen");
         }
 
         // Slot colour while racing together, world colour otherwise.
@@ -177,6 +201,26 @@ namespace Dogpatch.Race
             PaintJob.For(remote.Car.gameObject, remote.Car.ModelId).SetBase(color);
             race.Changes.Paint(remote.Car);
             PaintJob.For(remote.Avatar.gameObject, race.Game.Models.Role("player")[0].id).SetBase(color);
+        }
+
+        // Pose at server time t: interpolated between samples, and past the newest one dead-reckoned
+        // from its velocity and turn rate for up to a second.
+        public static bool Predict(List<Sample> samples, double t, out Vector3 p, out float h, out Vector3 v)
+        {
+            v = Vector3.zero;
+            if (samples.Count == 0)
+            {
+                p = default;
+                h = 0f;
+                return false;
+            }
+            var last = samples[samples.Count - 1];
+            if (t <= last.T || samples.Count < 2) return Pose(samples, t, out p, out h);
+            float ahead = (float)System.Math.Min(t - last.T, MaxDeadReckonMs) / 1000f;
+            v = Quaternion.Euler(0f, last.W * ahead, 0f) * last.V;
+            p = last.P + Quaternion.Euler(0f, last.W * ahead * 0.5f, 0f) * last.V * ahead;
+            h = last.H + last.W * ahead;
+            return true;
         }
 
         // Interpolated pose at server time t, from the samples around it.
@@ -227,12 +271,24 @@ namespace Dogpatch.Race
             foreach (var remote in remotes.Values)
             {
                 Paint(remote, Race);
-                if (!Pose(remote.Samples, t, out var p, out float h)) continue;
+                if (!Predict(remote.Samples, t, out var target, out float targetH, out var velocity)) continue;
                 float dt = Mathf.Max(Time.deltaTime, 1e-3f);
-                float moved = Vector3.Distance(new Vector3(p.x, 0f, p.z), new Vector3(remote.Position.x, 0f, remote.Position.z)) / dt;
-                remote.Speed = Mathf.Lerp(remote.Speed, moved, 1f - Mathf.Exp(-4f * dt));
-                remote.Position = p;
-                remote.Heading = h;
+                remote.Velocity = velocity;
+                if (!remote.Placed || Vector3.Distance(remote.Position, target) > SnapMeters)
+                {
+                    remote.Placed = true;
+                    remote.Position = target;
+                    remote.Heading = targetH;
+                }
+                else
+                {
+                    float k = 1f - Mathf.Exp(-CorrectRate * dt);
+                    remote.Position = Vector3.Lerp(remote.Position + velocity * dt, target, k);
+                    remote.Heading = Mathf.LerpAngle(remote.Heading, targetH, k);
+                }
+                var p = remote.Position;
+                float h = remote.Heading;
+                remote.Speed = Mathf.Lerp(remote.Speed, new Vector2(velocity.x, velocity.z).magnitude, 1f - Mathf.Exp(-6f * dt));
                 bool raceCar = remote.InRace && Race.Gridded;
                 remote.Driving = raceCar || (remote.WorldMode != null
                     ? remote.WorldMode == Dogpatch.Backend.PlayerModes.Driving
