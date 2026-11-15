@@ -165,8 +165,13 @@ namespace Dogpatch.Race
             CourseDressing.TurnChevrons(courseRoot, Course.Route, Course.RouteWorld, material);
         }
 
-        // The other routes' start rings, each with a map pin named after its route. Online only:
-        // offline races its one local room.
+        public RaceCourse CourseOf(string route) => courses.TryGetValue(route, out var c) ? c : null;
+
+        // True while an offline route switch rebuilds the local room.
+        public bool Switching { get; private set; }
+
+        // Every other route's start ring, beacon and all, the same as the race course's own, and a map
+        // pin per route, online and offline.
         void RouteRings()
         {
             if (ringsRoot != null) Destroy(ringsRoot.gameObject);
@@ -174,21 +179,24 @@ namespace Dogpatch.Race
             ringsRoot.SetParent(Game.World.Root.transform, false);
             foreach (var kv in courses)
             {
-                if (!Online && kv.Key != RouteId) continue;
                 var pin = new GameObject(RouteName(kv.Key)).transform;
                 pin.SetParent(ringsRoot, false);
                 pin.position = kv.Value.RingCenter;
                 Dogpatch.Map.MapMarkers.Track(pin, Dogpatch.Map.MapMarkerKind.Race);
-                if (kv.Key != RouteId && Online) CourseDressing.StartRing(ringsRoot, kv.Value.RingCenter, kv.Value.RingRadius, Game.SharedMaterial);
+                if (kv.Key != RouteId) CourseDressing.StartRing(ringsRoot, kv.Value.RingCenter, kv.Value.RingRadius, Game.SharedMaterial);
             }
         }
 
-        // Driving into another route's ring in free roam makes it the race course; the mission ring
-        // then enters its lobby as usual.
+        // Driving or walking into another route's ring makes it the race course: online from free roam,
+        // where the mission ring then enters its lobby as usual; offline whenever the local room isn't
+        // counting down or racing, and the local room is rebuilt on the new route with its bots.
         void PickRouteByRing()
         {
-            if (!Online || RoomId != null || Busy) return;
-            var me = RoutePath.Flat(BodyOf(MyId).position);
+            if (Busy || Switching) return;
+            if (Online ? RoomId != null : Gridded || (Started && !ResultsIn) || Room?.status == RoomStatus.Countdown) return;
+            var body = BodyOf(MyId);
+            if (body == null) return;
+            var me = RoutePath.Flat(body.position);
             foreach (var kv in courses)
             {
                 if (kv.Key == RouteId || Vector2.Distance(me, RoutePath.Flat(kv.Value.RingCenter)) > kv.Value.RingRadius) continue;
@@ -204,8 +212,28 @@ namespace Dogpatch.Race
                 RouteRings();
                 RoomChanged?.Invoke();
                 Debug.Log($"[SpeedDial] route {RouteName(RouteId)}: {Course.Data.startName} -> {Course.Data.finishName}, {Course.Route.Length:F0} m, mission {ConvexRaceSession.Mission}");
+                if (!Online) StartCoroutine(NewLocalRoom());
                 return;
             }
+        }
+
+        IEnumerator NewLocalRoom()
+        {
+            Switching = true;
+            yield return Wait(RemoveBotsAsync());
+            RoomId = null;
+            var created = Session.CreateRoomAsync(MyId, RouteWire(), Course.Data.finishRadius, 2, AskTuning.startAsks, PickupWire(), AskTuning.pickupRadius);
+            yield return Wait(created);
+            EnterRoom(created.Result, true);
+            yield return Wait(AddBotsAsync());
+            Changes.ResetAll();
+            Gridded = Started = ResultsIn = false;
+            Game.ExternalInput = false;
+            if (myPilot != null) myPilot.Active = false;
+            if (Game.CurrentCar != null) yield return Wait(Game.ExitCar());
+            PlaceForLobby(true);
+            Switching = false;
+            Debug.Log($"[SpeedDial] local room {created.Result.room.code} on {RouteName(RouteId)} with bots {string.Join("/", BotNames)}");
         }
 
         IEnumerator Start()
