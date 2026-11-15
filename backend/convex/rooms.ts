@@ -94,6 +94,7 @@ export const create = mutation({
     asks: v.optional(v.number()),
     pickups: v.optional(v.array(vec3)),
     pickupRadius: v.optional(v.number()),
+    freeAsks: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const player = await getPlayer(ctx, args.playerId);
@@ -133,6 +134,7 @@ export const create = mutation({
       asks,
       pickups,
       pickupRadius,
+      ...(args.freeAsks ? { freeAsks: true } : {}),
     });
     await addRacer(ctx, (await ctx.db.get(roomId))!, player, 0, now);
     return joinedResponse(ctx, roomId, player._id, now);

@@ -66,6 +66,13 @@ namespace Dogpatch.Operator
         }
 
         [Serializable]
+        class SoloRoomArgs
+        {
+            public string playerId;
+            public bool freeAsks;
+        }
+
+        [Serializable]
         class JoinArgs
         {
             public string playerId;
@@ -151,7 +158,7 @@ namespace Dogpatch.Operator
             {
                 PlayerId = await EnsurePlayerAsync(client);
                 var json = string.IsNullOrEmpty(Config.roomCode)
-                    ? await client.MutationAsync("rooms:create", JsonUtility.ToJson(new PlayerArgs { playerId = PlayerId }))
+                    ? await client.MutationAsync("rooms:create", JsonUtility.ToJson(new SoloRoomArgs { playerId = PlayerId, freeAsks = true }))
                     : await client.MutationAsync("rooms:join", JsonUtility.ToJson(new JoinArgs { playerId = PlayerId, code = Config.roomCode }));
                 var room = JsonUtility.FromJson<RoomResult>(json).room;
                 UseRoom(room.id, room.code);
@@ -223,7 +230,9 @@ namespace Dogpatch.Operator
             var racer = race.Last?.racers?.FirstOrDefault(r => r.playerId == row.requestedBy);
             var who = row.requestedBy == PlayerId ? "YOU" : racer != null ? WorldChangeCatalog.ShortName(racer.displayName) : "SOMEONE";
             var words = $"{who} CALLED {(row.label ?? row.effect).Replace('_', ' ')}".ToUpperInvariant().Split(' ');
-            hud.PushNews(string.Join(" ", words.Take(4)), NewsPicto(row.effect), racer?.color ?? "blue");
+            var news = string.Join(" ", words.Take(4));
+            hud.PushNews(news, NewsPicto(row.effect), racer?.color ?? "blue");
+            Debug.Log($"[Operator] news \"{news}\" for {row.effect} {row.id}");
         }
 
         static string NewsPicto(string effect)
@@ -289,7 +298,11 @@ namespace Dogpatch.Operator
         void OnAnswered(OperatorResponse reply)
         {
             if (reply.outcome == null) return;
-            if (reply.outcome == "applied" && reply.effect != null) Effects.Optimistic(reply.effect);
+            if (reply.outcome == "applied" && reply.effect != null)
+            {
+                Effects.Optimistic(reply.effect);
+                SpendLocalAsk();
+            }
             else if (reply.outcome == "pending" && reply.effect != null) Hud.Confirm(reply.effect);
             else if (reply.outcome == "refused") Hud.Toast(reply.refusal?.message ?? reply.line);
         }
@@ -297,11 +310,31 @@ namespace Dogpatch.Operator
         async void OnConfirm(ActiveEffect row, bool yes)
         {
             if (!yes || Convex == null) return;
-            try { Effects.Optimistic(await Convex.ConfirmAsync(PlayerId, row.id)); }
+            try
+            {
+                Effects.Optimistic(await Convex.ConfirmAsync(PlayerId, row.id));
+                SpendLocalAsk();
+            }
             catch (ConvexException e)
             {
                 Debug.LogWarning($"[Operator] confirm {row.id} failed {e.Code}: {e.Message}");
-                Hud.Toast("Too late, sugar.");
+                Hud.Toast(e.Message == CallController.NoAsksLine ? e.Message : "Too late, sugar.");
+            }
+        }
+
+        // Online, operator:call spends the caller's ask on the race server and the poll brings the new
+        // balance. In the solo room (a free-asks room) the local race session keeps the count instead.
+        async void SpendLocalAsk()
+        {
+            if (RaceOnline) return;
+            try
+            {
+                var spent = await race.Session.SpendAskAsync(race.MyId, race.RoomId);
+                Debug.Log($"[Operator] spent a local ask, {spent.asks} left");
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[Operator] local ask spend failed: " + e.Message);
             }
         }
 
