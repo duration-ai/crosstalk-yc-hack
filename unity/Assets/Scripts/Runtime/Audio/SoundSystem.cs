@@ -101,6 +101,7 @@ namespace Dogpatch.Audio
             {
                 if (message.StartsWith("[Audio]") || message.StartsWith("[Feel]")) DogpatchNativeLog(message);
             };
+            DogpatchAudioSessionSpeaker();
 #endif
             float t0 = Time.realtimeSinceStartup;
             SoundBank.Load();
@@ -114,6 +115,20 @@ namespace Dogpatch.Audio
 
 #if UNITY_IOS && !UNITY_EDITOR
         [DllImport("__Internal")] static extern void DogpatchNativeLog(string message);
+        [DllImport("__Internal")] static extern void DogpatchAudioSessionSpeaker();
+
+        bool micWasRecording;
+
+        // Unity reconfigures the audio session when the Operator's microphone starts and stops, which
+        // can route game audio to the earpiece; put it back on the speaker after every change.
+        void LateUpdate()
+        {
+            bool recording = Microphone.IsRecording(null);
+            if (recording == micWasRecording) return;
+            micWasRecording = recording;
+            DogpatchAudioSessionSpeaker();
+            Debug.Log($"[Audio] microphone {(recording ? "opened" : "closed")}: speaker route restored");
+        }
 #endif
 
         void Start() => Invoke(nameof(LogRunning), 10f);
