@@ -151,7 +151,7 @@ namespace Dogpatch.Operator
                 Voice?.BeginTalk();
                 return;
             }
-            greetingLead = greeting.clip.length + 0.25f;
+            greetingLead = greeting.clip.length + 0.55f;
             listenAt = Time.time + greetingLead;
         }
 
