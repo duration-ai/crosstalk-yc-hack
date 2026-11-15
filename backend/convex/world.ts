@@ -129,6 +129,7 @@ async function worldRoom(ctx: MutationCtx, shard: number, now: number) {
   const existing = await ctx.db
     .query("rooms")
     .withIndex("by_world_shard", (q) => q.eq("worldShard", shard))
+    .filter((q) => q.eq(q.field("kind"), "world"))
     .first();
   if (existing) return existing;
   const id = await ctx.db.insert("rooms", {

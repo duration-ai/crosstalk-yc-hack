@@ -177,4 +177,37 @@ namespace Dogpatch.Race
         public double serverNow;
         public string transcript;
     }
+
+    // POST /api/world/presence: everyone else in this device's world shard.
+    [Serializable]
+    public class WorldPlayer
+    {
+        public string playerId;
+        public string displayName;
+        public string color;
+        public string colorHex;
+        public Vec3 position;
+        public float heading;
+        public float speed;
+        public string mode;
+        public string vehicleType;
+        public long updatedAt;
+    }
+
+    [Serializable]
+    public class WorldColor
+    {
+        public string color;
+        public string colorHex;
+    }
+
+    [Serializable]
+    public class WorldPresenceResponse
+    {
+        public long serverTime;
+        public int shard;
+        public string worldRoomId;
+        public WorldColor you;
+        public List<WorldPlayer> players = new List<WorldPlayer>();
+    }
 }
