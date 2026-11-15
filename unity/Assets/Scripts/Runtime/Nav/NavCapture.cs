@@ -133,6 +133,12 @@ namespace Dogpatch.Nav
             nav.SetWaypoint(new Vector3(anchor.x + 300f, 0f, anchor.y + 200f));
             yield return null;
             Log($"on the ring: waypoint {(nav.Target == null ? "cleared" : "kept")}, objective {nav.Kind}");
+            map.SetFull(true);
+            map.Preview(0.5f, false);
+            yield return Seconds(0.3f);
+            Log($"in the lobby: joined {race.Joined}");
+            yield return Shot("full-map-in-lobby");
+            map.SetFull(false);
             race.Hud.PressReady();
             yield return Until(() => race.Started, 40f, "race started");
             race.EnableAutopilot();

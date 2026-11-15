@@ -343,6 +343,8 @@ namespace Dogpatch.Map
 
         void Pick(MapTarget t)
         {
+            var race = RaceDirector.Instance;
+            if (race != null && race.Joined) return;
             picked = t;
             selectedAt = Time.unscaledTime;
         }
@@ -360,7 +362,8 @@ namespace Dogpatch.Map
             var pins = new List<MapTarget>();
             var race = RaceDirector.Instance;
             if (race != null && race.Setup)
-                foreach (var (name, at) in race.RouteRingSpots()) pins.Add(new MapTarget { Kind = TargetKind.Ring, Name = name, World = new Vector2(at.x, at.z) });
+                foreach (var (name, at) in race.RouteRingSpots())
+                    if (!race.Joined || race.IsCourseRing(at)) pins.Add(new MapTarget { Kind = TargetKind.Ring, Name = name, World = new Vector2(at.x, at.z) });
             foreach (var place in geometry.Places) pins.Add(new MapTarget { Kind = TargetKind.Place, Name = place.Text, World = place.Position });
             return pins;
         }
@@ -499,6 +502,7 @@ namespace Dogpatch.Map
                     });
                     if (!string.IsNullOrEmpty(r.displayName)) Label(p, r.displayName.Substring(0, 1).ToUpperInvariant(), 10.5f, White);
                 }
+            if (race != null && race.Joined) picked = default;
             bool named = fullZoom / BaseZoom >= 1.45f;
             foreach (var c in Clusters()) DrawPin(c.Pin, c.At, c.Count, named, false);
             if (picked.Kind != TargetKind.None)
