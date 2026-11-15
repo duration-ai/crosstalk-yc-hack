@@ -40,16 +40,17 @@ namespace Dogpatch.World
             return c.linear;
         }
 
-        static readonly Color Land = C("#cdc6b2");
-        static readonly Color Water = C("#4d86b0");
-        static readonly Color Park = C("#86b866");
-        static readonly Color Sidewalk = C("#c9c5bd");
-        static readonly Color Asphalt = C("#4b4e56");
-        static readonly Color ServiceAsphalt = C("#5d6068");
-        static readonly Color PathColor = C("#d8d1c1");
-        static readonly Color LaneYellow = C("#e9c440");
-        static readonly Color RailBed = C("#7c7468");
-        static readonly Color Rail = C("#a7a9ad");
+        static readonly Color Land = Look.SpeedDial.Land;
+        static readonly Color Water = Look.SpeedDial.Bay;
+        static readonly Color Park = Look.SpeedDial.Park;
+        static readonly Color Sidewalk = Look.SpeedDial.Sidewalk;
+        static readonly Color Asphalt = Look.SpeedDial.Asphalt;
+        static readonly Color ServiceAsphalt = Look.SpeedDial.Asphalt;
+        static readonly Color PathColor = Look.SpeedDial.Sidewalk;
+        static readonly Color LaneYellow = Look.SpeedDial.DoubleYellow;
+        static readonly Color LaneWhite = Look.SpeedDial.LaneWhite;
+        static readonly Color RailBed = Look.SpeedDial.RailBed;
+        static readonly Color Rail = Look.SpeedDial.Rail;
         static readonly Color WindowTint = C("#33465c");
 
         static readonly Color[] HousePalette =
@@ -143,8 +144,16 @@ namespace Dogpatch.World
                 bool major = road.kind != "service" && road.kind != "track";
                 if (major) mb.Ribbon(pts, hw + SidewalkWidth, 0.025f, Sidewalk, true);
                 mb.Ribbon(pts, hw, 0.04f, major ? Asphalt : ServiceAsphalt, true);
-                if (road.kind == "primary" || road.kind == "secondary" || road.kind == "tertiary")
-                    CenterLine(mb, pts, net, 0.055f);
+                if (road.kind == "primary" || road.kind == "secondary" || road.kind == "tertiary" || (road.kind == "residential" && hw >= 4.5f))
+                {
+                    Stripe(mb, pts, net, 0.17f, 0.065f, LaneYellow, 0f, 0f);
+                    Stripe(mb, pts, net, -0.17f, 0.065f, LaneYellow, 0f, 0f);
+                }
+                if (hw >= 7f)
+                {
+                    Stripe(mb, pts, net, hw * 0.5f, 0.08f, LaneWhite, 3f, 6f);
+                    Stripe(mb, pts, net, -hw * 0.5f, 0.08f, LaneWhite, 3f, 6f);
+                }
             }
 
             foreach (var rail in data.rails)
@@ -161,22 +170,28 @@ namespace Dogpatch.World
                 Emit(ctx.Root.transform, "Streets " + key, builder.ToMesh("streets " + key), material, false);
         }
 
-        static void CenterLine(MeshBuilder mb, Vector2[] pts, RoadNetwork net, float y)
+        // A road marking along the polyline at a lateral offset: solid when dash is 0, else dashed.
+        // Markings stop short of intersections.
+        static void Stripe(MeshBuilder mb, Vector2[] pts, RoadNetwork net, float offset, float halfWidth, Color color, float dash, float gap)
         {
-            const float dash = 3f, gap = 4f;
-            for (int i = 0; i < pts.Length - 1; i++)
+            const float y = 0.055f;
+            const float step = 4f;
+            var line = Offset(pts, offset);
+            for (int i = 0; i < line.Length - 1; i++)
             {
-                var a = pts[i];
-                var b = pts[i + 1];
+                var a = line[i];
+                var b = line[i + 1];
                 float len = Vector2.Distance(a, b);
                 var dir = (b - a) / Mathf.Max(len, 1e-3f);
-                var n = new Vector2(-dir.y, dir.x) * 0.08f;
-                for (float t = 0f; t + dash < len; t += dash + gap)
+                var n = new Vector2(-dir.y, dir.x) * halfWidth;
+                float piece = dash > 0f ? dash : step;
+                float stride = dash > 0f ? dash + gap : step;
+                for (float t = 0f; t < len; t += stride)
                 {
                     var p0 = a + dir * t;
-                    var p1 = a + dir * (t + dash);
+                    var p1 = a + dir * Mathf.Min(t + piece, len);
                     if (net.DistanceToIntersection((p0 + p1) * 0.5f, 12f) < 11f) continue;
-                    mb.Quad(MeshBuilder.At(p0 + n, y), MeshBuilder.At(p1 + n, y), MeshBuilder.At(p1 - n, y), MeshBuilder.At(p0 - n, y), LaneYellow, Vector3.up);
+                    mb.Quad(MeshBuilder.At(p0 + n, y), MeshBuilder.At(p1 + n, y), MeshBuilder.At(p1 - n, y), MeshBuilder.At(p0 - n, y), color, Vector3.up);
                 }
             }
         }
