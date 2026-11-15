@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Dogpatch.Backend;
 using Dogpatch.Data;
 using Dogpatch.Glb;
+using Dogpatch.Smash;
 using Dogpatch.World;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -38,8 +39,10 @@ namespace Dogpatch.Gameplay
         Vector3 lastSafe;
 
         public bool Driving => current != null;
+        public CarController CurrentCar => current;
         public CarController NearestCar { get; private set; }
         public Camera View => view;
+        public PlayerController Player => player;
         public string StreetName { get; private set; } = "";
         public string StatusLine { get; private set; } = "Loading Dogpatch…";
 
@@ -65,6 +68,7 @@ namespace Dogpatch.Gameplay
             hud = gameObject.AddComponent<Hud>();
             hud.Game = this;
             hud.Input = input;
+            gameObject.AddComponent<Look.MotionFx>().Game = this;
 
             var local = new InMemoryGameBackend();
             var seed = new List<(string, Vec3, float)> { (models.Role("car")[0].id, ToVec(world.HeroCar.Position), world.HeroCar.Heading) };
@@ -131,6 +135,21 @@ namespace Dogpatch.Gameplay
             }
             if (current == null) follow.Snap(player.transform, false);
             lastSafe = player.transform.position;
+
+            SmashWorld.Install(gameObject, world.Instances, models, material, view);
+            var smashHud = gameObject.AddComponent<SmashHud>();
+            smashHud.View = view;
+            smashHud.Focus = () => current;
+            VehicleDamage.Wrecked += OnWrecked;
+        }
+
+        void OnDestroy() => VehicleDamage.Wrecked -= OnWrecked;
+
+        void OnWrecked(CarController car)
+        {
+            if (car != current) return;
+            hud.Toast("WRECKED! Hop out.");
+            _ = RunAsync(ExitCarAsync);
         }
 
         void SetupRendering()
@@ -141,33 +160,7 @@ namespace Dogpatch.Gameplay
                 var go = new GameObject("Main Camera") { tag = "MainCamera" };
                 view = go.AddComponent<Camera>();
             }
-            var sky = new Color(0.66f, 0.81f, 0.92f);
-            view.clearFlags = CameraClearFlags.SolidColor;
-            view.backgroundColor = sky;
-            view.nearClipPlane = 0.3f;
-            view.farClipPlane = 1400f;
-
-            var sun = new GameObject("Sun").AddComponent<Light>();
-            sun.type = LightType.Directional;
-            sun.transform.rotation = Quaternion.Euler(48f, -35f, 0f);
-            sun.color = new Color(1f, 0.95f, 0.86f);
-            sun.intensity = 1.05f;
-            sun.shadows = LightShadows.Hard;
-            sun.shadowStrength = 0.55f;
-            sun.shadowBias = 0.08f;
-            sun.shadowNormalBias = 0.6f;
-
-            QualitySettings.shadowDistance = 90f;
-            QualitySettings.shadowCascades = 1;
-            QualitySettings.shadowResolution = UnityEngine.ShadowResolution.Medium;
-            RenderSettings.ambientMode = AmbientMode.Flat;
-            RenderSettings.fog = true;
-            RenderSettings.fogMode = FogMode.Linear;
-            RenderSettings.fogColor = sky;
-            RenderSettings.fogStartDistance = 260f;
-            RenderSettings.fogEndDistance = 1100f;
-            Shader.SetGlobalColor("_SkyAmbient", new Color(0.36f, 0.4f, 0.47f));
-            Shader.SetGlobalColor("_GroundAmbient", new Color(0.27f, 0.25f, 0.22f));
+            Look.SpeedDial.Setup(view);
         }
 
         void Update()
@@ -238,6 +231,11 @@ namespace Dogpatch.Gameplay
             if (tapped == null)
             {
                 player.Jump();
+                return;
+            }
+            if (tapped.GetComponent<VehicleDamage>()?.IsWrecked == true)
+            {
+                hud.Toast("That one's wrecked");
                 return;
             }
             var closest = tapped.GetComponent<BoxCollider>().ClosestPoint(player.transform.position);
