@@ -23,7 +23,7 @@ type Spec = {
   color?: string;
   theme?: string;
   vehicle?: string;
-  reject_reason?: string;
+  reject_reason?: string | Record<string, number>;
   nearest?: string;
   nearest_vehicle?: string;
   stretch?: number;
