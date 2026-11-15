@@ -209,7 +209,7 @@ namespace Dogpatch.Backend
                         if (socket != ws) return;
                         Dogpatch.Gameplay.HitchLogger.NetMessages++;
                         try { Handle(text); }
-                        catch (Exception e) { Debug.LogWarning("[ConvexSocket] bad message: " + e.Message); }
+                        catch (Exception e) { BadMessage(e); }
                     }, null);
                 }
             }
@@ -263,6 +263,16 @@ namespace Dogpatch.Backend
                     ws?.Abort();
                     break;
             }
+        }
+
+        int badMessages;
+
+        // A message the game cannot handle is logged in full the first few times, then only every
+        // thousandth: one broken push repeats with every push (~30/s), and each log costs a frame.
+        void BadMessage(Exception e)
+        {
+            badMessages++;
+            if (badMessages <= 3 || badMessages % 1000 == 0) Debug.LogWarning($"[ConvexSocket] bad message ({badMessages} so far): {e}");
         }
 
         void Transition(string text)

@@ -54,6 +54,7 @@ namespace Dogpatch.Race
             public float Heading;
             public string WorldMode;
             public int Protocol;
+            internal string SwapType;
             internal float WorldSeenAt = -1000f;
             internal long ModeSince;
             internal long WorldUpdatedAt;
@@ -125,6 +126,20 @@ namespace Dogpatch.Race
             foreach (var player in world.players)
             {
                 if (!Race.IsRemote(player.playerId)) continue;
+                try { SyncWorld(player, world.serverTime); }
+                catch (System.Exception e)
+                {
+                    if (broken.Add(player.playerId)) Debug.LogWarning($"[SpeedDial] remote player {player.displayName} could not be updated: {e}");
+                }
+            }
+        }
+
+        // Players whose update threw, each logged once so one bad row neither spams nor stops the rest.
+        readonly HashSet<string> broken = new HashSet<string>();
+
+        void SyncWorld(WorldPlayer player, long serverTime)
+        {
+            {
                 var remote = Get(player.playerId) ?? Spawn(player.playerId, player.displayName, player.position);
                 remote.Name = player.displayName;
                 remote.WorldColor = player.color;
@@ -139,13 +154,17 @@ namespace Dogpatch.Race
                     remote.WorldSeenAt = Time.time;
                     remote.Left = false;
                 }
-                if (Vehicles.VehicleCatalog.Has(player.vehicleType) && player.vehicleType != Vehicles.VehicleRoster.TypeOf(remote.Car))
+                if (player.vehicleType != remote.SwapType)
                 {
-                    Vehicles.VehicleRoster.SwapInto(remote.Car, player.vehicleType);
-                    foreach (var c in remote.Car.GetComponents<Collider>()) c.isTrigger = true;
-                    remote.PaintedHex = null;
+                    remote.SwapType = player.vehicleType;
+                    if (Vehicles.VehicleCatalog.Has(player.vehicleType) && player.vehicleType != Vehicles.VehicleRoster.TypeOf(remote.Car))
+                    {
+                        Vehicles.VehicleRoster.SwapInto(remote.Car, player.vehicleType);
+                        foreach (var c in remote.Car.GetComponents<Collider>()) c.isTrigger = true;
+                        remote.PaintedHex = null;
+                    }
                 }
-                if (!remote.InRace) AddSample(remote, player.updatedAt, player.position, player.heading, world.serverTime);
+                if (!remote.InRace) AddSample(remote, player.updatedAt, player.position, player.heading, serverTime);
             }
         }
 
