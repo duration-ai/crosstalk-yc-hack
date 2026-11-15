@@ -11,6 +11,9 @@ Shader "Dogpatch/FlatVertexColor"
     Properties
     {
         _Tint ("Tint", Color) = (1, 1, 1, 1)
+        _FogAmount ("Fog Amount", Range(0, 1)) = 1
+        _OffsetFactor ("Depth Offset Factor", Float) = 0
+        _OffsetUnits ("Depth Offset Units", Float) = 0
         [IntRange] _StencilRef ("Stencil Ref", Range(0, 255)) = 0
         [Enum(UnityEngine.Rendering.CompareFunction)] _StencilComp ("Stencil Comparison", Float) = 8
         [Enum(UnityEngine.Rendering.StencilOp)] _StencilOp ("Stencil Pass", Float) = 0
@@ -20,6 +23,7 @@ Shader "Dogpatch/FlatVertexColor"
     #include "UnityCG.cginc"
 
     fixed4 _Tint;
+    float _FogAmount;
     float4 _SkyAmbient;
     float4 _SideAmbient;
     float4 _GroundAmbient;
@@ -65,6 +69,7 @@ Shader "Dogpatch/FlatVertexColor"
         Pass
         {
             Tags { "LightMode" = "ForwardBase" }
+            Offset [_OffsetFactor], [_OffsetUnits]
             Stencil
             {
                 Ref [_StencilRef]
@@ -115,8 +120,9 @@ Shader "Dogpatch/FlatVertexColor"
                 float3 lit = albedo * (ambient + _LightColor0.rgb * ndl * shadow);
                 lit += i.color.rgb * saturate(1 - i.color.a) * _DogpatchNight * 1.8;
                 fixed4 col = fixed4(lit, 1);
-                UNITY_APPLY_FOG(i.fogCoord, col);
-                return col;
+                fixed4 fogged = col;
+                UNITY_APPLY_FOG(i.fogCoord, fogged);
+                return lerp(col, fogged, _FogAmount);
             }
             ENDCG
         }
@@ -127,6 +133,7 @@ Shader "Dogpatch/FlatVertexColor"
             Tags { "LightMode" = "ForwardAdd" }
             Blend One One
             ZWrite Off
+            Offset [_OffsetFactor], [_OffsetUnits]
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag

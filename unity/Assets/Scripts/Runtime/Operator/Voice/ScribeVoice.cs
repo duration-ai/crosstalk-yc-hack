@@ -33,6 +33,8 @@ namespace Dogpatch.Operator.Voice
 
         public string Partial { get; private set; } = "";
 
+        public bool MicBlocked => askedPermission && !Application.HasUserAuthorization(UserAuthorization.Microphone);
+
         public void Open()
         {
             if (open) return;

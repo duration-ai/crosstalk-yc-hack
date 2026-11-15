@@ -7,6 +7,7 @@
 import { writeFileSync } from "node:fs";
 import { ConvexClient } from "convex/browser";
 import { api } from "../convex/_generated/api.js";
+import { PLAYABLE } from "../convex/operatorCatalogue.js";
 
 type Expect = { effect?: string; refuse?: string | string[]; target?: string; targetClass?: string; color?: string; theme?: string; outcome?: string };
 type Case = [string, Expect, string, typeof view?];
@@ -86,8 +87,17 @@ const CASES: Case[] = [
   ["hey how's it going", { refuse: "not_a_request" }, "refusal"],
   ["set everything on fire", { refuse: "too_broad" }, "refusal"],
   ["um do the thing", { refuse: ["vague", "not_a_request"] }, "refusal"],
-  ["undo that", { effect: "undo_last" }, "world"],
+  ["undo that", { refuse: "undo" }, "refusal"],
+  ["take it back", { refuse: "undo" }, "refusal"],
+  ["never mind, cancel that", { refuse: "undo" }, "refusal"],
 ];
+
+// Effects the client has not built yet are refused (built-effects.json); a counter for one of them has
+// nothing to counter.
+for (const c of CASES) {
+  if (c[1].effect && !PLAYABLE.has(c[1].effect)) c[1] = { refuse: "not_built" };
+  if (c[1].effect === "lights_on" && !PLAYABLE.has("blackout")) c[1] = { refuse: "no_op" };
+}
 
 let latest: { effects: { id: string; endsAt: number }[] } = { effects: [] };
 const waiters: { id: string; endsAt?: number; resolve: (t: number) => void }[] = [];
