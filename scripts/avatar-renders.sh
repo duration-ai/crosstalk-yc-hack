@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Renders avatars headless: one PNG per avatar JSON (stock model left, avatar right, and the
+# Renders avatars headless: one PNG per avatar JSON (avatar left, stock model right, and the
 # source photo first when a .jpg/.jpeg/.png with the same name sits next to the JSON).
 #   AVATAR_DIR  folder of avatar JSONs (default Builds/avatars)
 #   RENDER_DIR  output folder (default Builds/avatar-renders)

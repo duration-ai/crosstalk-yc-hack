@@ -12,8 +12,8 @@ using UnityEngine.Rendering;
 namespace Dogpatch.EditorTools
 {
     // Headless avatar renders: for every avatar JSON in AVATAR_DIR (a bare avatar, {"avatar": …}
-    // or a full upload response) writes RENDER_DIR/<name>.png showing the stock model on the left
-    // and the avatar (remix GLB, recoloured, retargeted Idle) on the right, lit like the game.
+    // or a full upload response) writes RENDER_DIR/<name>.png showing the avatar (remix GLB,
+    // recoloured, retargeted Idle) on the left and the stock model on the right, lit like the game.
     // A photo next to the JSON with the same name (.jpg/.jpeg/.png) is placed to the left of both.
     // Run under a virtual display (xvfb-run), not -nographics; see scripts/avatar-renders.sh.
     public static class AvatarRenders
