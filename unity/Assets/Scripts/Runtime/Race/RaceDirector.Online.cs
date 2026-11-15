@@ -3,30 +3,35 @@ using System.Collections;
 using System.Linq;
 using System.Threading.Tasks;
 using Dogpatch.Backend;
+using Dogpatch.Vehicles;
 using UnityEngine;
 
 namespace Dogpatch.Race
 {
-    // The online half of the race: when the Convex race backend answers at startup the race runs
-    // on ConvexRaceSession, and the player hosts a room (its 4-letter code goes up big) or joins one
-    // by typing a code. Bots fill empty slots only when the host turns them on. When the backend is
-    // unreachable, or the game starts with -offline, nothing here runs and the race stays local with
-    // Maya, Jun and Rosa as before.
+    // The online half: when the Convex backend answers at startup, this device joins the shared
+    // world (POST /api/world/presence about 8 times a second) and sees everyone else in its shard.
+    // The start ring is the mission: stepping into it joins the shard's open race room for the YC
+    // mission (the server opens one when none is open), leaving the ring before the grid leaves it,
+    // and about ten seconds after the results the player is back in free roam where they stopped.
+    // When the backend is unreachable, or the game starts with -offline, nothing here runs and the
+    // race stays local with Maya, Jun and Rosa.
     //
     // Command line, for headless checks: -convex-url <url>, -offline, -name <name>,
-    // -speeddial-host (host on launch), -speeddial-join <code>, -speeddial-bots (host fills slots),
-    // -speeddial-min <n> (minPlayers for the hosted room), -speeddial-code-file <path> (write the code).
+    // -speeddial-mission (walk into the ring on launch), -speeddial-autopilot.
     public sealed partial class RaceDirector
     {
         const string NameKey = "speeddial.name";
         const int ConnectTimeoutSeconds = 6;
+        const int RequestTimeoutSeconds = 3;
+        const float WorldEvery = 0.125f;
+        const float BackToWorldAfter = 10f;
+        const float RingExitMargin = 3f;
 
         ConvexRaceSession convex;
+        float nextMissionTry;
 
         public bool Online => convex != null;
         public string RoomCode { get; private set; }
-        public bool IsHost { get; private set; }
-        public bool BotsOn => bots.Count > 0;
         public bool Busy { get; private set; }
         public string LastError { get; private set; }
         public float LastErrorAt { get; private set; } = -10f;
@@ -34,12 +39,23 @@ namespace Dogpatch.Race
         public string MyName { get; private set; }
         public string ServerUrl => convex?.BaseUrl;
 
-        // Raised when this device creates, joins, leaves or rematches a room: MyId and RoomId (null
-        // when not in a room) are already current. OperatorRig follows it to watch the room's
-        // activeEffects.
+        // This shard's world room: everyone in the shard is a member, so voice effects called in
+        // free roam reach the whole shard. Null until the first presence answer.
+        public string WorldRoomId { get; private set; }
+        public int WorldShard { get; private set; }
+        public int WorldCount { get; private set; }
+
+        // Requests have been failing for a moment; the HUD shows RECONNECTING and everything keeps
+        // its last known state until the server answers again.
+        public bool Reconnecting => convex != null && convex.Reconnecting;
+
+        // Raised when this device enters or leaves a race room, or its world room changes: MyId,
+        // RoomId and WorldRoomId are already current. OperatorRig follows it.
         public event Action RoomChanged;
 
         object Pause(float seconds) => Online ? (object)new WaitForSecondsRealtime(seconds) : new WaitForSeconds(seconds);
+
+        static float Backoff(int failures) => Mathf.Min(0.25f * Mathf.Pow(2f, failures - 1), 2f) * UnityEngine.Random.Range(0.6f, 1.4f);
 
         static string Arg(string name)
         {
@@ -75,6 +91,8 @@ namespace Dogpatch.Race
                     try { await session.PollAsync("probe", null); }
                     catch (BackendException e) when (e.Code != ConvexRaceSession.Unavailable) { }
                 }
+                session.TimeoutSeconds = RequestTimeoutSeconds;
+                session.Reconnected += () => Debug.Log("[SpeedDial] reconnected: resyncing room and world from the server");
                 convex = session;
                 Session = session;
                 MyId = id;
@@ -100,31 +118,9 @@ namespace Dogpatch.Race
             }
         }
 
-        public void Host(bool withBots = false) => Run(HostAsync(withBots, Flag("-speeddial-min") ? int.Parse(Arg("-speeddial-min")) : 2));
-
-        public void Join(string code) => Run(JoinAsync(code));
+        public void EnterMission() => Run(EnterMissionAsync());
 
         public void Leave() => Run(LeaveAsync());
-
-        public void SetBots(bool on) => Run(on ? AddBotsAsync() : RemoveBotsAsync());
-
-        public void Rename(string name)
-        {
-            name = (name ?? "").Trim();
-            if (name.Length == 0 || name == MyName || !Online || RoomId != null) return;
-            if (name.Length > 12) name = name.Substring(0, 12);
-            Run(RenameAsync(name));
-        }
-
-        async Task RenameAsync(string name)
-        {
-            var player = await convex.CreatePlayerAsync(name);
-            MyName = name;
-            MyId = player.id;
-            PlayerPrefs.SetString(NameKey, name);
-            PlayerPrefs.SetString(PlayerKey(convex.BaseUrl), MyId);
-            PlayerPrefs.Save();
-        }
 
         void Run(Task task) => StartCoroutine(Guard(task));
 
@@ -140,64 +136,113 @@ namespace Dogpatch.Race
             Debug.LogWarning("[SpeedDial] " + e.Message);
         }
 
-        async Task HostAsync(bool withBots, int minPlayers)
+        async Task EnterMissionAsync()
         {
             if (RoomId != null) return;
-            var created = await AsPlayer(() => Session.CreateRoomAsync(MyId, RouteWire(), Course.Data.finishRadius, minPlayers, AskTuning.startAsks, PickupWire(), AskTuning.pickupRadius));
-            EnterRoom(created, true);
-            Debug.Log($"[SpeedDial] hosting room {created.room.code} ({created.room.id}), route {created.room.routeLength:F0} m, min {created.room.minPlayers}");
-            var file = Arg("-speeddial-code-file");
-            if (file != null) System.IO.File.WriteAllText(file, created.room.code + "\n");
-            if (withBots) await AddBotsAsync();
-            PlaceForLobby(false);
-        }
-
-        async Task JoinAsync(string code)
-        {
-            if (RoomId != null) return;
-            var joined = await AsPlayer(() => Session.JoinRoomAsync(MyId, code));
+            var joined = await AsPlayer(() => convex.EnterMissionAsync(MyId, RouteWire(), Course.Data.finishRadius, AskTuning.startAsks, PickupWire(), AskTuning.pickupRadius));
             EnterRoom(joined, false);
-            Debug.Log($"[SpeedDial] joined room {joined.room.code} as {joined.you.color} (slot {joined.you.slot})");
-            PlaceForLobby(false);
+            Debug.Log($"[SpeedDial] mission lobby {joined.room.code} ({joined.room.id}): {joined.room.playerCount} in the ring, {joined.room.status}, you are {joined.you.color} (slot {joined.you.slot})");
         }
 
         async Task LeaveAsync()
         {
             if (RoomId == null) return;
             string room = RoomId;
-            await RemoveBotsAsync();
             RoomId = null;
             RoomCode = null;
-            IsHost = false;
             Last = null;
             cursor = null;
-            Remotes.Clear();
             Changes.ResetAll();
+            Remotes.EndRace();
             Gridded = Started = ResultsIn = false;
             Game.ExternalInput = false;
             if (myPilot != null) myPilot.Active = false;
             if (Game.CurrentCar != null) await Game.ExitCar();
-            PlaceForLobby(false);
+            Game.Follow.enabled = true;
+            Game.Follow.Snap(Game.Player.transform, false);
+            lobbyCam = false;
             RoomChanged?.Invoke();
             try { await Session.LeaveRoomAsync(MyId, room); }
             catch (BackendException e) { Debug.LogWarning($"[SpeedDial] leave: {e.Code}"); }
-            Debug.Log("[SpeedDial] left the room");
+            Debug.Log("[SpeedDial] back in the world");
         }
 
-        // Headless checks host or join from the command line once the course is set up.
+        // Stepping into the start ring enters the mission; walking out of it before the grid, or
+        // the results being up for a while, takes the player back to free roam.
+        void MissionRing()
+        {
+            if (Busy || Reconnecting) return;
+            var me = BodyOf(MyId).position;
+            float d = Vector2.Distance(RoutePath.Flat(me), RoutePath.Flat(Course.RingCenter));
+            if (RoomId == null)
+            {
+                if (d < Course.RingRadius && Time.time >= nextMissionTry)
+                {
+                    nextMissionTry = Time.time + 2f;
+                    EnterMission();
+                }
+                return;
+            }
+            if (Room == null) return;
+            if (ResultsIn && Time.time - ResultsAt > BackToWorldAfter) Leave();
+            else if (!Gridded && d > Course.RingRadius + RingExitMargin && (Room.status == RoomStatus.Lobby || (Room.status == RoomStatus.Countdown && MsToStart > LockMs + 500f))) Leave();
+        }
+
+        // Presence: one request in flight, retried with backoff while the link is down.
+        IEnumerator WorldLoop()
+        {
+            int failures = 0;
+            var last = Game.Player.transform.position;
+            float lastAt = Time.realtimeSinceStartup;
+            while (true)
+            {
+                var car = Game.CurrentCar;
+                var body = car != null ? car.transform : Game.Player.transform;
+                float dt = Mathf.Max(Time.realtimeSinceStartup - lastAt, 1e-3f);
+                float speed = car != null ? Mathf.Abs(car.Speed) : Vector3.Distance(body.position, last) / dt;
+                last = body.position;
+                lastAt = Time.realtimeSinceStartup;
+                var position = new Vec3(body.position.x, body.position.y, body.position.z);
+                var mode = car != null ? PlayerModes.Driving : PlayerModes.OnFoot;
+                var type = car != null ? VehicleRoster.TypeOf(car) : "";
+                var call = AsPlayer(() => convex.PresenceAsync(MyId, position, body.eulerAngles.y, speed, mode, type));
+                while (!call.IsCompleted) yield return null;
+                if (call.Status != TaskStatus.RanToCompletion)
+                {
+                    if (++failures == 1) Debug.LogWarning("[SpeedDial] presence: " + call.Exception?.GetBaseException().Message);
+                    yield return Pause(Backoff(failures));
+                    continue;
+                }
+                if (failures > 0) Debug.Log($"[SpeedDial] presence back after {failures} failures");
+                failures = 0;
+                var world = call.Result;
+                WorldShard = world.shard;
+                WorldCount = world.players.Count + 1;
+                if (world.worldRoomId != WorldRoomId)
+                {
+                    WorldRoomId = world.worldRoomId;
+                    Debug.Log($"[SpeedDial] in the world: shard {world.shard}, room {WorldRoomId}, {WorldCount} online, you are {world.you?.color}");
+                    RoomChanged?.Invoke();
+                }
+                Remotes.SyncWorld(world);
+                yield return Pause(WorldEvery);
+            }
+        }
+
+        // Headless checks walk into the ring from the command line once the course is set up.
         void AutoRoom()
         {
             if (!Online) return;
-            var join = Arg("-speeddial-join");
-            if (join != null) Join(join);
-            else if (Flag("-speeddial-host")) Host(Flag("-speeddial-bots"));
+            StartCoroutine(WorldLoop());
+            if (Flag("-speeddial-mission")) Game.Player.Teleport(RingSpot(0), LobbyHeading);
             if (Flag("-speeddial-autopilot")) EnableAutopilot();
         }
 
         void OnApplicationQuit()
         {
-            if (!Online || RoomId == null) return;
-            _ = Session.LeaveRoomAsync(MyId, RoomId);
+            if (!Online) return;
+            if (RoomId != null) _ = Session.LeaveRoomAsync(MyId, RoomId);
+            _ = convex.LeaveWorldAsync(MyId);
         }
 
         // Racers this device does not drive, for the HUD's floating name tabs.

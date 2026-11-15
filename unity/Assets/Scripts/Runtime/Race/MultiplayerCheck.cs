@@ -47,6 +47,13 @@ namespace Dogpatch.Race
             public Vec3[] route;
         }
 
+        static string Arg(string name)
+        {
+            var args = Environment.GetCommandLineArgs();
+            int at = Array.IndexOf(args, name);
+            return at >= 0 && at + 1 < args.Length ? args[at + 1] : null;
+        }
+
         IEnumerator Start()
         {
             Directory.CreateDirectory(output);
@@ -60,16 +67,22 @@ namespace Dogpatch.Race
                 yield break;
             }
             File.WriteAllText(Path.Combine(output, "route.json"), JsonUtility.ToJson(new RouteFile { route = race.Course.RouteWorld.Select(v => new Vec3((float)Math.Round(v.x, 2), (float)Math.Round(v.y, 2), (float)Math.Round(v.z, 2))).ToArray() }));
-            while (race.Last == null) yield return null;
-            Log($"in room {race.RoomCode} as {race.MyName} ({race.MyId}), slot {race.MySlot}");
-            race.EventArrived += e => StartCoroutine(OnChange(e));
+            int want = int.TryParse(Arg("-speeddial-remotes"), out var n) ? n : 1;
+            while (race.WorldRoomId == null || race.Remotes.All.Count() < want) yield return null;
+            Log($"in the world: shard {race.WorldShard}, {race.WorldCount} online, world room {race.WorldRoomId}; others: " + string.Join(", ", race.Remotes.All.Select(r => $"{r.Name} ({r.WorldColor}, {r.WorldMode})")));
+            yield return new WaitForSecondsRealtime(1.5f);
+            yield return Shot("world");
 
-            while (race.Remotes.All.Count() < 2) yield return null;
-            Log("remote racers: " + string.Join(", ", race.Remotes.All.Select(r => $"{r.Name} ({r.Color})")));
-            race.Game.Player.Teleport(race.RingSpot(race.MySlot), 0f);
-            yield return new WaitForSecondsRealtime(2.5f);
+            race.Game.Player.Teleport(race.RingSpot(0), 0f);
+            while (race.Last == null) yield return null;
+            Log($"entered the ring: mission room {race.RoomCode} as {race.MyName} ({race.MyId}), slot {race.MySlot}, {race.Room.playerCount} in the lobby, {race.Room.status}");
+            race.EventArrived += e => StartCoroutine(OnChange(e));
+            yield return new WaitForSecondsRealtime(1f);
             yield return Shot("lobby");
-            race.SetReady(true);
+            while (race.Room == null || race.Room.status != RoomStatus.Countdown) yield return null;
+            Log($"countdown: {race.MsToStart / 1000f:F1} s to go, {race.Room.playerCount} racers");
+            yield return new WaitForSecondsRealtime(2f);
+            yield return Shot("countdown");
 
             while (!race.Started) yield return null;
             Log("GO");
@@ -89,8 +102,12 @@ namespace Dogpatch.Race
             yield return new WaitForSecondsRealtime(2f);
             Log("results: " + string.Join(", ", race.Last.results.Select(r => $"{r.place}. {r.displayName} {(r.finished ? (r.finishMs / 1000f).ToString("F1") + " s" : "DNF")} {r.award}")));
             yield return Shot("results");
-            yield return new WaitForSecondsRealtime(2f);
-            Log($"PASS: {race.Remotes.All.Count()} remote racers, {changes} world changes, {race.Last.results.Count} results");
+            int results = race.Last.results.Count;
+            while (race.RoomId != null) yield return null;
+            yield return new WaitForSecondsRealtime(3f);
+            Log($"back in the world at ({race.Game.Player.transform.position.x:F0},{race.Game.Player.transform.position.z:F0}), {race.WorldCount} online");
+            yield return Shot("back-in-world");
+            Log($"PASS: {race.Remotes.All.Count()} remote players, {changes} world changes, {results} results, back in the world");
             Application.Quit(0);
         }
 
