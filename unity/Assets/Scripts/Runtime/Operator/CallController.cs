@@ -65,17 +65,21 @@ namespace Dogpatch.Operator
         bool latched;
         string lastPartial = "";
         float partialAt;
+        float listenAt;
+        float greetingLead;
 
         public event Action<OperatorResponse> Answered;
-
-        // The microphone just opened on a pickup: the hook for the Operator's spoken greeting.
-        public event Action MicOpened;
 
         void Set(CallState state)
         {
             State = state;
             StateSince = Time.time;
-            if (state != CallState.Talking) latched = false;
+            if (state != CallState.Talking)
+            {
+                latched = false;
+                listenAt = 0f;
+                greetingLead = 0f;
+            }
             if (state == CallState.None) Voice?.Close();
         }
 
@@ -128,20 +132,27 @@ namespace Dogpatch.Operator
         {
             if (State == CallState.Talking || State == CallState.Waiting) return;
             BuzzedAt = Time.time;
-            SoundSystem.Play2D("call_ring", Bus.Ui, 0.6f, 1f, 250);
             Haptics.Notify(HapticNotice.Warning);
             snapshot = View?.Invoke();
             Debug.Log("[SpeedDial] phone grabbed: the mic is open for one call");
             if (!string.IsNullOrEmpty(PickupSay))
             {
+                SoundSystem.Play2D("call_ring", Bus.Ui, 0.6f, 1f, 250);
                 _ = SendAsync(PickupSay);
                 return;
             }
             Voice?.Open();
-            Voice?.BeginTalk();
             Set(CallState.Talking);
             Latch();
-            MicOpened?.Invoke();
+            var greeting = SoundSystem.Play2D("operator_greeting", Bus.Ui, 1f, 1f, 255);
+            if (greeting == null || greeting.clip == null)
+            {
+                SoundSystem.Play2D("call_ring", Bus.Ui, 0.6f, 1f, 250);
+                Voice?.BeginTalk();
+                return;
+            }
+            greetingLead = greeting.clip.length + 0.55f;
+            listenAt = Time.time + greetingLead;
         }
 
         void Latch()
@@ -193,7 +204,13 @@ namespace Dogpatch.Operator
         {
             if (Game == null || !Game.IsReady) return;
             if (State == CallState.Answered && Time.time - StateSince > AnswerShown) Set(CallState.None);
-            if (State == CallState.Talking && latched)
+            if (State == CallState.Talking && listenAt > 0f && Time.time >= listenAt)
+            {
+                listenAt = 0f;
+                Voice?.BeginTalk();
+                partialAt = Time.time;
+            }
+            if (State == CallState.Talking && latched && listenAt == 0f)
             {
                 var partial = Voice?.Partial ?? "";
                 if (partial != lastPartial)
@@ -202,7 +219,7 @@ namespace Dogpatch.Operator
                     partialAt = Time.time;
                 }
                 bool quiet = partial.Trim().Length > 0 && Time.time - partialAt >= LatchSilence;
-                if (quiet || Time.time - StateSince >= LatchWindow)
+                if (quiet || Time.time - StateSince >= LatchWindow + greetingLead)
                 {
                     latched = false;
                     _ = SendAsync(null);
