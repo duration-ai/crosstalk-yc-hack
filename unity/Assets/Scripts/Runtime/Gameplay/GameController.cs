@@ -85,6 +85,8 @@ namespace Dogpatch.Gameplay
             models = new ModelLibrary();
             float t0 = Time.realtimeSinceStartup;
             world = WorldBuilder.Build(data, models, material);
+            PerfReadout.WorldBuildSeconds = Time.realtimeSinceStartup - t0;
+            gameObject.AddComponent<PerfReadout>().Game = this;
             Debug.Log($"[Dogpatch] world built in {Time.realtimeSinceStartup - t0:F1}s: {data.roads.Length} roads, {data.buildings.Length} buildings, {world.ParkedCars.Count + 1} cars");
 
             input = gameObject.AddComponent<DragInput>();
