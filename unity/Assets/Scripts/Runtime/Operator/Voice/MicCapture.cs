@@ -14,6 +14,9 @@ namespace Dogpatch.Operator.Voice
         float[] scratch = new float[0];
 
         public bool Running => clip != null;
+
+        // Peak of the latest block read, 0 to 1; 0 while stopped. Read-only, for the call card's waveform.
+        public static float Level { get; private set; }
         public int Rate => clip != null ? clip.frequency : 0;
         public int Channels => clip != null ? clip.channels : 1;
 
@@ -51,6 +54,9 @@ namespace Dogpatch.Operator.Voice
             var block = scratch.Length == needed ? scratch : new float[needed];
             clip.GetData(block, readAt);
             readAt = at;
+            float peak = 0f;
+            for (int i = 0; i < needed; i++) peak = Mathf.Max(peak, Mathf.Abs(block[i]));
+            Level = peak;
             sink(block, frames, clip.channels);
         }
 
@@ -58,6 +64,7 @@ namespace Dogpatch.Operator.Voice
         {
             if (clip == null) return;
             Microphone.End(device);
+            Level = 0f;
             UnityEngine.Object.Destroy(clip);
             clip = null;
         }
