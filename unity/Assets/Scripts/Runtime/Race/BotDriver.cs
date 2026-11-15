@@ -73,6 +73,7 @@ namespace Dogpatch.Race
                 if (other == null || other == Car) continue;
                 var side = Vector3.Dot(other.transform.position - t.position, t.right);
                 sidestep = side > 0f ? -3f : 3f;
+                if (Mathf.Abs(Lane + sidestep) > MaxOffset) sidestep = -sidestep;
                 sidestepUntil = Time.time + 1.2f;
                 break;
             }
