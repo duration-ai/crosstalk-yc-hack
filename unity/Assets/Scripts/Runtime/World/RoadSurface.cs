@@ -199,6 +199,14 @@ namespace Dogpatch.World
                 }
             }
 
+            for (int r = 0; r < net.Roads.Length; r++)
+            {
+                var road = net.Roads[r];
+                if (RoadNetwork.IsCurbed(road) || road.kind == "path") continue;
+                foreach (var p in net.Points[r])
+                    if (refs.ContainsKey(Key(p))) sharedVertices.Add(Key(p));
+            }
+
             foreach (var pair in refs)
             {
                 var list = pair.Value;
@@ -456,8 +464,10 @@ namespace Dogpatch.World
             {
                 if (!net.OnCurbedCarriageway(c + d * (side * (h + 0.4f)) - o * (w * 0.5f), 0f, r)) continue;
                 var facing = new Vector3(d.x, 0f, d.y) * side;
-                Both(P(inner, side, RoadY), P(mid, side, RoadY), P(mid, side, SidewalkY), P(inner, side, RoadY + Lip), CurbFace, facing);
-                Both(P(mid, side, RoadY), P(outer, side, RoadY), P(outer, side, SidewalkY), P(mid, side, SidewalkY), CurbFace, facing);
+                mb.Quad(P(inner, side, RoadY), P(mid, side, RoadY), P(mid, side, SidewalkY), P(inner, side, RoadY + Lip), CurbFace, facing);
+                mb.Quad(P(mid, side, RoadY), P(outer, side, RoadY), P(outer, side, SidewalkY), P(mid, side, SidewalkY), CurbFace, facing);
+                Bevel(cb, P(inner, side, RoadY + Lip), P(mid, side, SidewalkY), facing);
+                Bevel(cb, P(mid, side, SidewalkY), P(outer, side, SidewalkY), facing);
             }
         }
 
@@ -679,19 +689,30 @@ namespace Dogpatch.World
             Wall(visual.At(p), colliders.At(p), a, b, top, facing);
         }
 
-        // Vertical curb face between two ground points, from the asphalt up to 'top'.
+        // Vertical curb face between two ground points, from the asphalt up to 'top'. Its collider is a
+        // bevel instead, so a car bumps up onto the sidewalk at any angle rather than hitting a wall.
         static void Wall(MeshBuilder mb, MeshBuilder cb, Vector3 a, Vector3 b, float top, Vector3 facing)
         {
-            var a0 = new Vector3(a.x, RoadY, a.z);
-            var b0 = new Vector3(b.x, RoadY, b.z);
             var a1 = new Vector3(a.x, top, a.z);
             var b1 = new Vector3(b.x, top, b.z);
-            mb.Quad(a0, b0, b1, a1, CurbFace, facing);
-            cb.Quad(a0, b0, b1, a1, CurbFace, facing);
+            mb.Quad(new Vector3(a.x, RoadY, a.z), new Vector3(b.x, RoadY, b.z), b1, a1, CurbFace, facing);
+            Bevel(cb, a1, b1, facing);
         }
 
-        // A street that stops short of any other curbed street ends in a round turnaround: the asphalt
-        // already has a round cap, so ring it with curb and sidewalk.
+        // A collider slope from a curb's top edge (a, b) down to the asphalt CurbRun out in front of it.
+        const float CurbRun = 0.5f;
+        static void Bevel(MeshBuilder cb, Vector3 a, Vector3 b, Vector3 facing)
+        {
+            var run = facing * CurbRun;
+            var a0 = new Vector3(a.x + run.x, RoadY, a.z + run.z);
+            var b0 = new Vector3(b.x + run.x, RoadY, b.z + run.z);
+            float rise = Mathf.Max(a.y, b.y) - RoadY;
+            cb.Quad(a0, b0, b, a, CurbFace, (Vector3.up * CurbRun + facing * rise).normalized);
+        }
+
+        // A street that stops short of any other street ends in a round turnaround: the asphalt already
+        // has a round cap, so ring it with curb and sidewalk. A street carried on by a bridge or a service
+        // road doesn't end there.
         void DeadEnd(int r, Vector2 end, Vector2 outward, float hw)
         {
             if (sharedVertices.Contains(Key(end)) || net.OnCurbedCarriageway(end, -0.5f, r)) return;
