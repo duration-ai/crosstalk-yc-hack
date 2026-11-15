@@ -37,6 +37,7 @@ namespace Dogpatch.Operator
             r.Register("earthquake", () => new EarthquakeEffect());
             r.Register("cars_on_water", () => new BoatCarsEffect());
             r.Register("floaty_crashes", () => new FloatyCrashesEffect());
+            r.Register("storm", () => new StormEffect());
         }
 
         static float S(string s, float small, float medium, float large) => OperatorEffect.Scale(s, small, medium, large);
@@ -435,6 +436,8 @@ namespace Dogpatch.Operator
         Swarm swarm;
         Light lamp;
         EffectTicker ticker;
+        bool signalsOff;
+        readonly List<CarController> windy = new List<CarController>();
 
         public SkyEffect(Kind kind) => this.kind = kind;
 
@@ -472,7 +475,19 @@ namespace Dogpatch.Operator
                         p.y = Racers.GroundY(p) + 0.7f + Mathf.Abs(Mathf.Sin(t * 3f)) * 1.2f;
                         return Matrix4x4.TRS(p, Quaternion.Euler(0f, 20f * i, -t * 260f), Vector3.one * (0.8f + 0.4f * Racers.Hash(i, 3)));
                     }, true);
-                    ticker = EffectTicker.On(Context, () => sand.SetFloat("_Amount", grade.Weight * k));
+                    var gustDir = new Vector3(16f, 0f, 5f).normalized;
+                    float gustSpeed = Scale(strength, 1.8f, 2.5f, 3.5f);
+                    ticker = EffectTicker.On(Context, () =>
+                    {
+                        sand.SetFloat("_Amount", grade.Weight * k);
+                        float gust = Mathf.Clamp01(Mathf.Sin(Time.time * Mathf.PI * 0.4f) * 1.6f - 0.3f) * grade.Weight;
+                        foreach (var car in Racers.Cars(Context, target))
+                        {
+                            if (!Racers.Physical(car)) continue;
+                            CarFx.On(car).Wind = gustDir * (gustSpeed * gust);
+                            if (!windy.Contains(car)) windy.Add(car);
+                        }
+                    });
                     break;
                 case Kind.Heatwave:
                     grade = SkyGrade.Add(new SkyGrade.Grade
@@ -499,6 +514,8 @@ namespace Dogpatch.Operator
                     });
                     break;
                 case Kind.Blackout:
+                    Dogpatch.Traffic.StreetGraph.SignalsDead++;
+                    signalsOff = true;
                     float start = Time.unscaledTime;
                     grade = SkyGrade.Add(new SkyGrade.Grade
                     {
@@ -547,6 +564,10 @@ namespace Dogpatch.Operator
         {
             SkyGrade.Remove(grade);
             if (ticker != null) Object.Destroy(ticker);
+            foreach (var car in windy) if (car != null) CarFx.On(car).Wind = Vector3.zero;
+            windy.Clear();
+            if (signalsOff) Dogpatch.Traffic.StreetGraph.SignalsDead = Mathf.Max(0, Dogpatch.Traffic.StreetGraph.SignalsDead - 1);
+            signalsOff = false;
             if (lamp != null) Object.Destroy(lamp.gameObject);
             if (swarm != null) Object.Destroy(swarm.gameObject);
             if (sandGo != null) Object.Destroy(sandGo);
@@ -668,6 +689,9 @@ namespace Dogpatch.Operator
         readonly List<ShapeLayers> floated = new List<ShapeLayers>();
         readonly List<Syrup> syrups = new List<Syrup>();
         readonly HashSet<CarController> seen = new HashSet<CarController>();
+        readonly HashSet<CarController> wet = new HashSet<CarController>();
+        readonly Dictionary<CarController, float> nextStall = new Dictionary<CarController, float>();
+        const float WadeDepth = 0.3f, StallDepth = 0.9f, WaterSpeed = 0.6f, WaterGrip = 0.5f;
         Sheet sheet;
         GuardedKnob wade;
         EffectTicker ticker;
@@ -705,7 +729,33 @@ namespace Dogpatch.Operator
                 float level = sheet.Level;
                 foreach (var car in Racers.Cars(Context, target))
                 {
-                    if (!Racers.Physical(car) || car.transform.position.y > level) continue;
+                    if (!Racers.Physical(car)) continue;
+                    float depth = level - car.transform.position.y;
+                    bool wading = depth > WadeDepth;
+                    if (wading != wet.Contains(car))
+                    {
+                        var fx = CarFx.On(car);
+                        if (wading)
+                        {
+                            wet.Add(car);
+                            car.SpeedMul *= WaterSpeed;
+                            fx.Grip *= WaterGrip;
+                        }
+                        else
+                        {
+                            wet.Remove(car);
+                            car.SpeedMul /= WaterSpeed;
+                            fx.Grip /= WaterGrip;
+                        }
+                    }
+                    if (depth > StallDepth && (!nextStall.TryGetValue(car, out var stallAt) || Time.time >= stallAt))
+                    {
+                        nextStall[car] = Time.time + 4f;
+                        car.Stun(1f);
+                        MotionFx.Splash(car.transform.position, 1f);
+                        Haptics.Impact(HapticStyle.Heavy, 0.7f);
+                    }
+                    if (depth < 0f) continue;
                     float speed = Mathf.Abs(car.Speed);
                     if (speed > 2f) MotionFx.Splash(car.transform.position - car.transform.forward * car.HalfExtents.z, Mathf.Clamp01(speed / 18f));
                 }
@@ -744,6 +794,14 @@ namespace Dogpatch.Operator
             floods.Remove(sheet);
             foreach (var l in floated) if (l != null) l.Remove(this);
             foreach (var s in syrups) if (s != null) s.Remove(this);
+            foreach (var car in wet)
+            {
+                if (car == null) continue;
+                car.SpeedMul /= WaterSpeed;
+                CarFx.On(car).Grip /= WaterGrip;
+            }
+            wet.Clear();
+            nextStall.Clear();
             wade?.Undo();
             floated.Clear();
             syrups.Clear();
@@ -776,6 +834,7 @@ namespace Dogpatch.Operator
             sheet.FadeEdges = true;
             jump = GuardedKnob.Times(() => PlayerController.JumpScale, v => PlayerController.JumpScale = v, Scale(strength, 1.15f, 1.35f, 1.6f));
             float bounce = Scale(strength, 2.5f, 3.5f, 5f);
+            float burn = Scale(strength, 0.03f, 0.04f, 0.06f);
             ticker = EffectTicker.On(Context, () =>
             {
                 float level = sheet.Level;
@@ -794,6 +853,7 @@ namespace Dogpatch.Operator
                     if (!Physics.Raycast(p + Vector3.up * 0.3f, Vector3.down, 0.7f, ~0, QueryTriggerInteraction.Ignore)) continue;
                     nextHop[car] = Time.time + 0.6f;
                     CarFx.On(car).Launch(bounce);
+                    if (car.TryGetComponent<VehicleDamage>(out var damage)) damage.Burn(burn);
                     MotionFx.Land(p, 0.7f);
                 }
             });
@@ -1105,4 +1165,142 @@ namespace Dogpatch.Operator
             if (body != null) body.useGravity = gravity;
         }
     }
+
+    // storm: rain and fog, a wetter road, and lightning. Every few seconds a ring flares on the road
+    // where your car is heading; a second later the bolt lands, and a car still inside the ring is
+    // stunned and scorched.
+    public sealed class StormEffect : OperatorEffect
+    {
+        const float Radius = 4f;
+        readonly WeatherEffect weather = new WeatherEffect(WeatherKind.Rain, 0.75f);
+        readonly List<GameObject> bolts = new List<GameObject>();
+        GuardedKnob grip;
+        EffectTicker ticker;
+
+        public override void Apply(string strength, EffectTarget target)
+        {
+            weather.Id = Id;
+            weather.Row = Row;
+            weather.Context = Context;
+            weather.Apply(strength, target);
+            grip = GuardedKnob.Times(() => WorldEnvironment.StormGrip, v => WorldEnvironment.StormGrip = v, Scale(strength, 0.9f, 0.8f, 0.7f));
+            var rng = new System.Random(Racers.Seed(Row?.id));
+            float R() => (float)rng.NextDouble();
+            float every = Scale(strength, 7f, 5f, 3.5f);
+            float scorch = Scale(strength, 0.03f, 0.05f, 0.08f);
+            float next = Time.time + 2.5f;
+            ticker = EffectTicker.On(Context, () =>
+            {
+                if (Time.time < next) return;
+                next = Time.time + every * (0.7f + 0.6f * R());
+                var car = Context.Game.CurrentCar;
+                var focus = Context.Game.Focus;
+                if (focus == null) return;
+                var at = focus.position;
+                if (car != null && car.TryGetComponent<Rigidbody>(out var body)) at += new Vector3(body.linearVelocity.x, 0f, body.linearVelocity.z);
+                float a = R() * Mathf.PI * 2f, r = R() * 5f;
+                at += new Vector3(Mathf.Cos(a) * r, 0f, Mathf.Sin(a) * r);
+                at.y = Racers.GroundY(at);
+                var bolt = Lightning.Create(Context.Material, at, Radius, scorch);
+                bolts.Add(bolt.gameObject);
+            });
+        }
+
+        public override void Revert()
+        {
+            if (ticker != null) Object.Destroy(ticker);
+            grip?.Undo();
+            weather.Revert();
+            foreach (var b in bolts) if (b != null) Object.Destroy(b);
+            bolts.Clear();
+        }
+    }
+
+    // One lightning strike: a pulsing warning ring for a second, then a white zigzag bolt with a flash,
+    // a shake and a bang. Your own car inside the ring when it lands is stunned and scorched.
+    public sealed class Lightning : MonoBehaviour
+    {
+        const float Warn = 1f;
+        float radius, scorch, born;
+        bool struck;
+        Material material;
+        GameObject ring;
+
+        public static Lightning Create(Material material, Vector3 at, float radius, float scorch)
+        {
+            var go = new GameObject("Lightning (operator)");
+            go.transform.position = at;
+            var l = go.AddComponent<Lightning>();
+            l.material = material;
+            l.radius = radius;
+            l.scorch = scorch;
+            l.born = Time.time;
+            var mb = new World.MeshBuilder();
+            var glow = PropMeshes.C("#FFF6B0");
+            for (int i = 0; i < 16; i++)
+            {
+                float a = i * Mathf.PI * 2f / 16f;
+                mb.Box(new Vector3(Mathf.Cos(a) * radius, 0.06f, Mathf.Sin(a) * radius), new Vector3(0.35f, 0.08f, radius * 0.42f), Quaternion.Euler(0f, -a * Mathf.Rad2Deg, 0f), glow);
+            }
+            l.ring = PropMeshes.Attach(go.transform, "Warning ring", mb.ToMesh("lightning ring"), material, Vector3.zero, false);
+            return l;
+        }
+
+        void Update()
+        {
+            float t = Time.time - born;
+            if (!struck)
+            {
+                float pulse = 1f + Mathf.Sin(t * 30f) * 0.08f;
+                ring.transform.localScale = new Vector3(pulse, 1f, pulse);
+                if (t >= Warn) Strike();
+                return;
+            }
+            if (t > Warn + 0.3f) Destroy(gameObject);
+        }
+
+        void Strike()
+        {
+            struck = true;
+            ring.SetActive(false);
+            var at = transform.position;
+            var mb = new World.MeshBuilder();
+            var white = PropMeshes.C("#F4F8FF");
+            var p = at + Vector3.up * 70f;
+            var rng = new System.Random(GetInstanceID());
+            for (int i = 0; i < 9; i++)
+            {
+                var q = i == 8 ? at : new Vector3(at.x + ((float)rng.NextDouble() - 0.5f) * 6f, p.y - 70f / 9f, at.z + ((float)rng.NextDouble() - 0.5f) * 6f);
+                var mid = (p + q) * 0.5f;
+                var dir = q - p;
+                mb.Box(mid - at, new Vector3(0.45f, dir.magnitude, 0.45f), Quaternion.FromToRotation(Vector3.up, dir), white);
+                p = q;
+            }
+            PropMeshes.Attach(transform, "Bolt", mb.ToMesh("lightning bolt"), material, Vector3.zero, false);
+            var flash = new GameObject("Flash").AddComponent<Light>();
+            flash.transform.SetParent(transform, false);
+            flash.transform.localPosition = Vector3.up * 6f;
+            flash.type = LightType.Point;
+            flash.range = 60f;
+            flash.intensity = 8f;
+            flash.color = PropMeshes.C("#DDE8FF");
+            flash.shadows = LightShadows.None;
+            MotionFx.Land(at, 1f);
+            Dogpatch.Audio.SoundSystem.Play("wreck", at, Dogpatch.Audio.Bus.Sfx, 1f, 0.5f, 220, 200f);
+            var cam = Camera.main;
+            if (cam != null) CameraFeel.Instance?.AddTrauma(Mathf.Lerp(0.6f, 0.1f, Vector3.Distance(cam.transform.position, at) / 80f));
+            foreach (var damage in VehicleDamage.All)
+            {
+                if (damage == null || !damage.Car.Driven || !Racers.Physical(damage.Car)) continue;
+                var d = damage.Car.transform.position - at;
+                d.y = 0f;
+                if (d.sqrMagnitude > radius * radius) continue;
+                damage.Car.Stun(0.6f);
+                damage.Burn(scorch);
+                CarFx.On(damage.Car).Launch(3f);
+                Haptics.Impact(HapticStyle.Heavy, 1f);
+            }
+        }
+    }
 }
+

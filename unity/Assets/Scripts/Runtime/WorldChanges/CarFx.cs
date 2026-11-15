@@ -15,6 +15,9 @@ namespace Dogpatch.WorldChanges
         public static float SizeTarget = 1f;
         public static float Float;
 
+        public float Grip = 1f;
+        public Vector3 Wind;
+
         Rigidbody body;
         float vy;
         bool airborne;
@@ -66,8 +69,9 @@ namespace Dogpatch.WorldChanges
             }
             var v = body.linearVelocity;
             var planar = new Vector3(v.x, 0f, v.z);
-            if (Traction < 0.999f) planar = Vector3.Lerp(lastPlanar, planar, Traction);
-            planar += push;
+            float traction = Traction * Grip;
+            if (traction < 0.999f) planar = Vector3.Lerp(lastPlanar, planar, traction);
+            planar += push + Wind;
             push = Vector3.MoveTowards(push, Vector3.zero, 14f * dt);
 
             float y = v.y;

@@ -22,7 +22,7 @@ namespace Dogpatch.WorldChanges
         void FixedUpdate()
         {
             if (Route == null) return;
-            Distance += (Oncoming ? -Speed : Speed) * CarController.SpeedScale * Time.fixedDeltaTime;
+            Distance += (Oncoming ? -Speed : Speed) * Time.fixedDeltaTime;
             if (Distance < 0f || Distance > Route.Length)
             {
                 Destroy(gameObject);
