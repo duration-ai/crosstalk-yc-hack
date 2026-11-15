@@ -126,7 +126,7 @@ namespace Dogpatch.Audio
             foreach (var l in loops) if (l.Audible) loopsAudible++;
             int music = 0;
             foreach (var s in GetComponents<AudioSource>()) if (s.isPlaying) music++;
-            Debug.Log($"[Audio] running: {music} music stems playing, {loopsAudible}/{loops.Count} loops audible, {voicesPlaying} one-shots playing, listener={(listener != null ? listener.name : "none")}, culled={Culled} stolen={Stolen}, dsp time {AudioSettings.dspTime:F1}s");
+            Debug.Log($"[Audio] running: {music} music tracks playing, {loopsAudible}/{loops.Count} loops audible, {voicesPlaying} one-shots playing, listener={(listener != null ? listener.name : "none")}, culled={Culled} stolen={Stolen}, dsp time {AudioSettings.dspTime:F1}s");
         }
 
         static string DspBuffer()
