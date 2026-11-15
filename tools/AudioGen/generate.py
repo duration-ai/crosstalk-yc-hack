@@ -614,11 +614,6 @@ def tone(f, d, shape="sin", a=0.005, r=0.1, sr=SR):
 
 def ui():
     F = "Ui"
-    n = int(0.2 * SR)
-    pop = osc(np.linspace(500, 1400, n)) * env_exp(n, 18) + 0.4 * osc(np.linspace(1000, 2800, n), shape="tri") * env_exp(n, 25)
-    write(F, "points_pop", pop)
-    c = tone(1318.5, 0.35, "tri") + 0.5 * tone(2637, 0.3) + 0.25 * tone(1975.5, 0.3)
-    write(F, "combo_chime", c * env_exp(len(c), 5))
     write(F, "countdown_beep", tone(880, 0.22, "sq", r=0.05) * 0.5 + tone(1760, 0.22) * 0.3)
     slam = thump(70, 30, 0.9, 5) * 1.3 + 0.8 * tone(1760, 0.6, "sq") * env_exp(int(0.6 * SR), 4) * 0.5 + crunch(0.4, 4000, 120) * 0.5
     write(F, "countdown_go", mix(slam, at(bp(pink(int(0.6 * SR)), 500, 6000) * adsr(int(0.6 * SR), 0.01, 0.1, 0.4, 0.4) * 0.7, 0.02)))

@@ -1,0 +1,15 @@
+{
+  "convexUrl": "https://rapid-gnat-965.convex.cloud",
+  "transport": "auto",
+  "roomCode": "",
+  "connectTimeoutS": 6,
+  "sttModel": "scribe_v2_realtime",
+  "language": "en",
+  "commitStrategy": "manual",
+  "keyterms": ["Waymo", "Zoox", "Lyft", "YC", "nitro"],
+  "chunkMs": 150,
+  "preRollMs": 500,
+  "silencePadMs": 0,
+  "finalWaitMs": 1500,
+  "debugInput": true
+}

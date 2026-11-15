@@ -29,5 +29,13 @@ namespace Dogpatch.Backend
 
         // Moves the vehicle and its driver's state in one write; only the driver may call it.
         Task<VehicleResult> UpdateVehicleAsync(string playerId, string vehicleId, Vec3 position, float heading);
+
+        // POST /api/avatar/photo: jpeg is the raw photo (at most 8 MB, about 1024 px). Throws
+        // BackendException RETAKE when nobody is in the shot, DECISION_UNAVAILABLE when the
+        // server could not decide in time.
+        Task<AvatarResult> AnalyzeAvatarPhotoAsync(string playerId, byte[] jpeg);
+
+        // GET /api/avatar: null when the player has never taken a photo.
+        Task<Avatar> GetAvatarAsync(string playerId);
     }
 }
