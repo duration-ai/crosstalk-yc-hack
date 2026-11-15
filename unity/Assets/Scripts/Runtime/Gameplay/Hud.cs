@@ -138,6 +138,7 @@ namespace Dogpatch.Gameplay
         {
             Paused = paused;
             Time.timeScale = paused ? 0f : 1f;
+            Audio.GameEvents.RaisePaused(paused);
             if (paused && Input != null) Input.Cancel();
             Debug.Log("[Hud] " + (paused ? "paused" : "resumed"));
         }

@@ -109,7 +109,7 @@ namespace Dogpatch.Vehicles
                 Id = VehicleTypes.RaceCar, Title = "Race car", Source = ModelSource.Glb, Resource = "Vehicles/race-car", PolyforkId = "model-of-a-gt3-32b70d",
                 Recolor = { ["#e4e5e1"] = "#ffcb1f", ["#33a3c8"] = "#1c2347", ["#3a4247"] = "#2c4fa3" },
                 Lamps = { ["#3d454b"] = 0.8f, ["#6b1d1f"] = 0.6f },
-                Handling = H(36f, 15f, 22f, 95f, 1f, 1250f, 18f, 0.1f), CruiseSpeed = 14f,
+                Handling = H(36f, 15f, 22f, 95f, 1f, 1250f, 30f, 0.1f), CruiseSpeed = 14f,
             });
             Add(new VehicleSpec
             {

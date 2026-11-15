@@ -54,7 +54,6 @@ namespace Dogpatch.Race
         public bool finished;
         public long finishMs;
         public bool left;
-        public int smash;
         public long updatedAt;
     }
 
@@ -103,7 +102,6 @@ namespace Dogpatch.Race
         public bool finished;
         public long finishMs;
         public int calls;
-        public int smash;
         public string award;
     }
 
@@ -161,5 +159,10 @@ namespace Dogpatch.Race
         public WorldChangeCommand command;
         public RaceEvent @event;
         public string provider;
+        public string outcome;
+        public Operator.ActiveEffect effect;
+        public Operator.OperatorRefusal refusal;
+        public double serverNow;
+        public string transcript;
     }
 }

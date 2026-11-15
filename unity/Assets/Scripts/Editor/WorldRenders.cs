@@ -30,7 +30,9 @@ namespace Dogpatch.EditorTools
             {
                 var material = Material();
                 var data = JsonUtility.FromJson<WorldData>(Resources.Load<TextAsset>("World/dogpatch").text);
-                var ctx = WorldBuilder.Build(data, new ModelLibrary(), material);
+                var models = new ModelLibrary();
+                var ctx = WorldBuilder.Build(data, models, material);
+                Park(ctx, models, material);
                 Render(ctx, data, Environment.GetEnvironmentVariable("RENDER_DIR") ?? "../Builds/renders");
                 EditorApplication.Exit(0);
             }
@@ -38,6 +40,21 @@ namespace Dogpatch.EditorTools
             {
                 Debug.LogError("[WorldRenders] " + e);
                 EditorApplication.Exit(1);
+            }
+        }
+
+        // The parked cars the game spawns, with the same mix: mostly roster types, the rest GLB cars.
+        static void Park(WorldContext ctx, ModelLibrary models, Material material)
+        {
+            Vehicles.VehicleRoster.Configure(material, null);
+            string[] curbside = { Vehicles.VehicleTypes.Sedan, Vehicles.VehicleTypes.Hatchback, Vehicles.VehicleTypes.YellowCab };
+            var glb = models.Role("car");
+            var random = new System.Random(7);
+            for (int i = 0; i < ctx.ParkedCars.Count; i++)
+            {
+                var spot = ctx.ParkedCars[i];
+                if (random.NextDouble() < 0.7) Vehicles.VehicleRoster.Spawn(curbside[random.Next(curbside.Length)], spot.Position, spot.Heading, ctx.Root.transform, id: "parked-" + i);
+                else Gameplay.CarController.Create("parked-" + i, models.Get(glb[random.Next(glb.Count)].id), material, spot.Position, spot.Heading).transform.SetParent(ctx.Root.transform, true);
             }
         }
 

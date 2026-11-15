@@ -68,6 +68,7 @@ namespace Dogpatch.WorldChanges
 
         public void ResetAll()
         {
+            lastSeq = 0;
             foreach (var type in new List<string>(wearsOff.Keys)) Revert(type);
             wearsOff.Clear();
             Gravity("normal");

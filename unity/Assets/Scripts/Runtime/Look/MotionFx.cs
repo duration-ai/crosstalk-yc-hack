@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Dogpatch.Gameplay;
+using Dogpatch.Vehicles;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -148,11 +149,24 @@ namespace Dogpatch.Look
 
         float R(float a, float b) => a + (float)random.NextDouble() * (b - a);
 
-        void Awake() => instance = this;
+        void Awake()
+        {
+            instance = this;
+            VehicleRoster.Swapped += Retrack;
+        }
 
         void OnDestroy()
         {
+            VehicleRoster.Swapped -= Retrack;
             if (instance == this) instance = null;
+        }
+
+        // SwapInto rebuilds the same car with new wheels, so the cached rear wheels are gone.
+        void Retrack(CarController swapped)
+        {
+            if (swapped != car) return;
+            TrackCar(null);
+            TrackCar(swapped);
         }
 
         void Start()
