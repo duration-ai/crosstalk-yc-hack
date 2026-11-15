@@ -59,6 +59,7 @@ const THEME_DESCRIPTIONS: Record<string, string> = {
 const VEHICLE_DESCRIPTIONS: Record<string, string> = {
   sports_car: "a sports car or supercar (fast, modern)",
   race_car: "a race car (GT racer)",
+  flying_car: "a flying car or hover car",
   hatchback: "a hatchback or small everyday car",
   sedan: "a sedan or family car",
   taxi: "a taxi or yellow cab",

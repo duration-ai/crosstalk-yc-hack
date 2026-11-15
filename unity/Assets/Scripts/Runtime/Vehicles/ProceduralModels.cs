@@ -144,6 +144,48 @@ namespace Dogpatch.Vehicles
             return (root, new Bounds(new Vector3(0f, 0.97f, 0f), new Vector3(1.96f, 1.94f, 3.63f)));
         }
 
+        // Flying car after the Alef Model A / Xpeng X2 concepts: a sleek 4.6 m wedge with a dark glass
+        // canopy, a cyan light line along each flank, and four ducted fans on short arms with glowing
+        // cyan downwash discs underneath. No wheels; it hovers (HandlingProfile.HoverHeight).
+        public static (GameObject, Bounds) FlyingCar(Material material)
+        {
+            var body = Cached("flying car body", () =>
+            {
+                var lp = new LowPoly();
+                var white = C("#eef1f4");
+                var roof = C("#d9e0e8");
+                var glass = C("#1f2a44");
+                var dark = C("#2b2f36");
+                var cyan = C("#5ff2ff", 1f);
+                var profile = new[]
+                {
+                    new Vector2(-2.3f, 0.45f), new Vector2(-2.3f, 0.95f), new Vector2(-1.6f, 1.15f), new Vector2(-0.8f, 1.4f),
+                    new Vector2(0.4f, 1.4f), new Vector2(1.3f, 1.0f), new Vector2(2.3f, 0.72f), new Vector2(2.3f, 0.45f),
+                };
+                lp.Prism(profile, 0.85f, white, roof);
+                lp.Quad(new Vector3(-0.8f, 1.0f, 1.2f), new Vector3(-0.72f, 1.37f, 0.42f), new Vector3(0.72f, 1.37f, 0.42f), new Vector3(0.8f, 1.0f, 1.2f), glass);
+                lp.Quad(new Vector3(0.78f, 1.13f, -1.55f), new Vector3(0.7f, 1.37f, -0.85f), new Vector3(-0.7f, 1.37f, -0.85f), new Vector3(-0.78f, 1.13f, -1.55f), glass);
+                foreach (float s in new[] { 1f, -1f })
+                {
+                    Side(lp, s * 0.855f, new[] { new Vector2(-1.45f, 1.08f), new Vector2(-0.78f, 1.35f), new Vector2(0.38f, 1.35f), new Vector2(1.15f, 1.0f) }, glass);
+                    Side(lp, s * 0.856f, new[] { new Vector2(-2.25f, 0.62f), new Vector2(-2.25f, 0.68f), new Vector2(2.25f, 0.68f), new Vector2(2.25f, 0.62f) }, cyan);
+                    foreach (float f in new[] { 1.55f, -1.55f })
+                    {
+                        lp.Box(new Vector3(s * 0.98f, 0.5f, f), new Vector3(0.35f, 0.08f, 0.24f), dark);
+                        lp.CylinderY(new Vector3(s * 1.2f, 0.3f, f), 0.46f, 0.5f, 0.32f, 12, dark, dark);
+                        lp.CylinderY(new Vector3(s * 1.2f, 0.25f, f), 0.38f, 0.38f, 0.05f, 12, cyan, cyan);
+                    }
+                }
+                lp.Box(new Vector3(0f, 0.8f, 2.31f), new Vector3(1.4f, 0.06f, 0.03f), C("#f7f8f9", 0.85f));
+                lp.Box(new Vector3(0f, 0.85f, -2.31f), new Vector3(1.4f, 0.06f, 0.03f), C("#e8352c", 0.6f));
+                lp.Box(new Vector3(0f, 0.42f, 0f), new Vector3(1.5f, 0.08f, 4.2f), cyan);
+                return lp;
+            });
+            var root = new GameObject("flying-car");
+            Part(root.transform, "body", body, material, Vector3.zero);
+            return (root, new Bounds(new Vector3(0f, 0.8f, 0f), new Vector3(3.2f, 1.2f, 4.62f)));
+        }
+
         // Supermarket shopping cart: tapered wire basket, red handle, child seat flap, four casters.
         public static (GameObject, Bounds) ShoppingCart(Material material)
         {

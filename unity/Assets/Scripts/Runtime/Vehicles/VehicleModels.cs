@@ -78,6 +78,7 @@ namespace Dogpatch.Vehicles
                     case VehicleTypes.Cybertruck: return ProceduralModels.Cybertruck(material);
                     case VehicleTypes.Zoox: return ProceduralModels.Zoox(material);
                     case VehicleTypes.ShoppingCart: return ProceduralModels.ShoppingCart(material);
+                    case VehicleTypes.FlyingCar: return ProceduralModels.FlyingCar(material);
                 }
             }
 

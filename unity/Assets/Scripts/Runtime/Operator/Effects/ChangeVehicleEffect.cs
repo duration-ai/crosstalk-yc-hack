@@ -15,6 +15,7 @@ namespace Dogpatch.Operator
             {
                 case "sports_car": return VehicleTypes.SportsCar;
                 case "race_car": return VehicleTypes.RaceCar;
+                case "flying_car": return VehicleTypes.FlyingCar;
                 case "hatchback": return VehicleTypes.Hatchback;
                 case "sedan": return VehicleTypes.Sedan;
                 case "taxi": return VehicleTypes.YellowCab;
