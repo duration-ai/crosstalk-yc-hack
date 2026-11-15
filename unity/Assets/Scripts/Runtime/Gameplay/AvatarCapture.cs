@@ -361,7 +361,7 @@ namespace Dogpatch.Gameplay
         {
             float s = Scale;
             var safe = HudLayout.Safe;
-            float w = 220f * s, h = 40f * s, top = 92f * s + 2f * (40f + 12f) * s;
+            float w = 220f * s, h = 40f * s, top = 92f * s + 3f * (40f + 12f) * s;
             return new Rect(safe.xMin + 24f * s - 0.5f * h * Lean, safe.yMax - top - h, w, h);
         }
 
