@@ -196,7 +196,9 @@ namespace Dogpatch.Gameplay
         {
             if (!ready) return;
 
-            follow.Hold = input.Dragging && current == null;
+            input.Split = current == null;
+            var look = input.TakeLook();
+            if (current == null) follow.Orbit(look);
             var dir2 = input.Direction;
             var dir = dir2 == Vector2.zero ? Vector3.zero : Quaternion.Euler(0f, follow.Yaw, 0f) * new Vector3(dir2.x, 0f, dir2.y);
             if (ExternalInput) { }
