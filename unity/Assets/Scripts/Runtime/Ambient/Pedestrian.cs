@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace Dogpatch.Ambient
 {
-    public enum PedState : byte { Walk, Approach, Idle, WaitCurb, Sit, BusWait, Dive, Startled, Stumble, Tumble, Down, GetUp }
+    public enum PedState : byte { Walk, Approach, Idle, WaitCurb, Sit, BusWait, Dive, Startled, Stumble, Tumble, Down, GetUp, Dazed }
 
     public enum PedRole : byte { Walker, Skater, Cart }
 
@@ -41,14 +41,25 @@ namespace Dogpatch.Ambient
         internal float ClipTime;
         internal float PrevClipTime;
         internal float Fade = 1f;
+        internal float FadeSpeed = 1f / 0.22f;
+        internal float FadeCap = 1f;
         internal Vector2 Slide;
         internal Vector2 FallDir;
-        internal float Tip;
-        internal float Roll;
         internal float Lean;
-        internal float Lift;
-        internal float LiftSpeed;
         internal float Hurry;
+        // While Posed the body is drawn from Orient, rotating about the hip pivot held Height above
+        // the ground, instead of standing upright on Heading. Knock-downs, dives and get-ups use it.
+        internal bool Posed;
+        internal Quaternion Orient = Quaternion.identity;
+        internal Quaternion LieOrient = Quaternion.identity;
+        internal float Height;
+        internal float Climb;
+        internal Vector3 Spin;
+        internal float Pitch;
+        internal float Mark;
+        internal byte Phase;
+        internal bool Launched;
+        internal float Impact;
         internal Vector2 ThreatFrom;
         internal float Pending;
         internal bool Registered;
@@ -67,8 +78,11 @@ namespace Dogpatch.Ambient
             Owner.Threat(this, new Vector2(p.x, p.z), new Vector2(vehicleVelocity.x, vehicleVelocity.z), timeToImpact);
         }
 
-        public void OnVehicleImpact(GameObject vehicle, Vector3 point, Vector3 relativeVelocity) =>
-            Owner.Hit(this, new Vector2(relativeVelocity.x, relativeVelocity.z));
+        public void OnVehicleImpact(GameObject vehicle, Vector3 point, Vector3 relativeVelocity)
+        {
+            var p = vehicle.transform.position;
+            Owner.Hit(this, new Vector2(relativeVelocity.x, relativeVelocity.z), new Vector2(p.x, p.z));
+        }
 
         void OnTriggerEnter(Collider other) => Owner.Contact(this, other);
     }
