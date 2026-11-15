@@ -105,6 +105,15 @@ namespace Dogpatch.World
             for (int i = 0; i < land.Length; i++) land[i] = Geometry.ToPoints(data.land[i].pts);
             GroundCover.Build(ctx.Root.transform, land, ground);
 
+            float coastNorthX = b.xMax, coastEastZ = b.yMin;
+            foreach (var line in data.coastline)
+                foreach (var p in Geometry.ToPoints(line.pts))
+                {
+                    if (Mathf.Abs(p.y - b.yMax) < 1f) coastNorthX = Mathf.Min(coastNorthX, p.x);
+                    if (Mathf.Abs(p.x - b.xMax) < 1f) coastEastZ = Mathf.Max(coastEastZ, p.y);
+                }
+            Outskirts.Build(ctx.Root.transform, b, coastNorthX, coastEastZ, ground, material);
+
             var parks = new MeshBuilder();
             foreach (var poly in data.parks) parks.Polygon(Geometry.ToPoints(poly.pts), 0f, Park);
             Emit(ctx.Root.transform, "Parks", parks.ToMesh("parks"), GroundCover.Layer(ground, GroundCover.ParkLayer), false);
