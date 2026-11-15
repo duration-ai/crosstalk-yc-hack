@@ -79,8 +79,7 @@ namespace Dogpatch.Operator
             foreach (var tag in target.Entities)
             {
                 if (n++ >= MaxBlasts) break;
-                var fire = FireFx.Create(Context.Material, tag.WorldBounds, Scale(strength, 1.8f, 2.4f, 3.2f), n <= 3);
-                Object.Destroy(fire.gameObject, 3.5f);
+                Dogpatch.Smash.BlastFx.Spawn(tag.WorldBounds, Scale(strength, 1.1f, 1.4f, 1.8f));
                 var car = tag.GetComponent<CarController>();
                 if (car != null && car.Driven && !car.GetComponent<Rigidbody>().isKinematic) CarFx.On(car).Launch(up * 0.6f);
                 else if (tag.Span == null) Launched.Start(tag.transform, up, null);
@@ -247,8 +246,7 @@ namespace Dogpatch.Operator
                 var foot = new Vector3(b.center.x, b.min.y, b.center.z);
                 float size = Mathf.Clamp(Mathf.Max(b.extents.x, b.extents.z), 4f, 30f);
 
-                var fire = FireFx.Create(Context.Material, b, 2.4f, true);
-                Object.Destroy(fire.gameObject, 3f);
+                Dogpatch.Smash.BlastFx.Spawn(foot, size * 0.6f, false);
                 for (int i = 0; i < 8; i++)
                 {
                     var from = foot + Vector3.up * (b.size.y * UnityEngine.Random.Range(0.1f, 0.7f));
