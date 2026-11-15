@@ -60,6 +60,7 @@ namespace Dogpatch.Race
 
         readonly WorldContext world;
         readonly WorldData data;
+        Func<Vector2, bool> occupied;
 
         RaceCourse(WorldContext world, WorldData data, CourseData course)
         {
@@ -68,10 +69,12 @@ namespace Dogpatch.Race
             Data = course;
         }
 
-        public static RaceCourse Build(WorldContext world, WorldData data, string json)
+        // occupied: true where something already stands on the street (a parked bike, a showroom car),
+        // so the start grid avoids it.
+        public static RaceCourse Build(WorldContext world, WorldData data, string json, Func<Vector2, bool> occupied = null)
         {
             Physics.SyncTransforms();
-            var course = new RaceCourse(world, data, JsonUtility.FromJson<CourseData>(json));
+            var course = new RaceCourse(world, data, JsonUtility.FromJson<CourseData>(json)) { occupied = occupied };
             course.Plan();
             return course;
         }
@@ -219,9 +222,15 @@ namespace Dogpatch.Race
             for (int slot = 0; slot < 4; slot++)
             {
                 var p = GridPoint(front, slot);
-                if (!world.Roads.OnCurbedCarriageway(p, -1.4f) || world.Buildings.Blocked(p, 1.5f)) return false;
-                foreach (var car in world.ParkedCars)
-                    if ((new Vector2(car.Position.x, car.Position.z) - p).sqrMagnitude < 4.5f * 4.5f) return false;
+                if (world.Buildings.Blocked(p, 1.5f)) return false;
+                for (float ahead = 0f; ahead <= 20f; ahead += 5f)
+                {
+                    var q = GridPoint(front + ahead, slot);
+                    float clearance = ahead == 0f ? 4.5f : 3f;
+                    if (!world.Roads.OnCurbedCarriageway(q, -1.4f) || (occupied != null && occupied(q))) return false;
+                    foreach (var car in world.ParkedCars)
+                        if ((new Vector2(car.Position.x, car.Position.z) - q).sqrMagnitude < clearance * clearance) return false;
+                }
             }
             return true;
         }

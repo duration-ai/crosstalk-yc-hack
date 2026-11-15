@@ -129,7 +129,17 @@ namespace Dogpatch.Race
         {
             var material = Game.SharedMaterial;
             Catalog = WorldChangeCatalog.Load();
-            Course = RaceCourse.Build(Game.World, Game.Data, Resources.Load<TextAsset>("SpeedDial/course").text);
+            var hero = Game.Cars.Values.First();
+            bool Occupied(Vector2 p)
+            {
+                foreach (var hit in Physics.OverlapSphere(new Vector3(p.x, Dogpatch.World.RoadSurface.GroundY(p) + 1f, p.y), 2.6f, ~0, QueryTriggerInteraction.Ignore))
+                {
+                    var car = hit.GetComponentInParent<CarController>();
+                    if (car != null && car != hero) return true;
+                }
+                return false;
+            }
+            Course = RaceCourse.Build(Game.World, Game.Data, Resources.Load<TextAsset>("SpeedDial/course").text, Occupied);
 
             var root = new GameObject("SpeedDialCourse").transform;
             root.SetParent(Game.World.Root.transform, false);
@@ -162,6 +172,7 @@ namespace Dogpatch.Race
             Remotes.Race = this;
 
             Game.Player.gameObject.AddComponent<PlayerShoveable>();
+            Dogpatch.Smash.VehicleDamage.Wrecked += OnWrecked;
             Changes = gameObject.AddComponent<WorldChangeDirector>();
             Changes.Game = Game;
             Changes.Race = this;
@@ -440,6 +451,45 @@ namespace Dogpatch.Race
             var points = new List<Vector2>();
             for (float d = 0f; d <= Mathf.Min(ClearRoadMeters, Course.Route.Length); d += 8f) points.Add(Course.Route.PointAt(d));
             traffic.KeepClear(points, 16f);
+        }
+
+        void OnDestroy() => Dogpatch.Smash.VehicleDamage.Wrecked -= OnWrecked;
+
+        // A wreck doesn't end anyone's race: a moment later the car is repaired and back on the route
+        // where it was, and the player is back in it.
+        void OnWrecked(CarController car)
+        {
+            if (!Started || ResultsIn || !IsRacerCar(car)) return;
+            StartCoroutine(Recover(car));
+        }
+
+        IEnumerator Recover(CarController car)
+        {
+            yield return new WaitForSeconds(1.5f);
+            if (ResultsIn) yield break;
+            var damage = car.GetComponent<Dogpatch.Smash.VehicleDamage>();
+            if (damage != null && damage.IsWrecked) damage.Repair();
+            var bot = bots.FirstOrDefault(b => b.Car == car);
+            float d = Mathf.Clamp(Course.Route.Project(RoutePath.Flat(car.transform.position)), 2f, Course.Route.Length - 3f);
+            var p = Course.Route.PointAt(d) + Course.Route.RightAt(d) * RaceCourse.GridLane(bot != null ? bot.Slot : MySlot);
+            var spot = new Vector3(p.x, Dogpatch.World.RoadSurface.GroundY(p) + 0.4f, p.y);
+            float heading = RoutePath.Heading(Course.Route.DirectionAt(d));
+            if (bot != null)
+            {
+                MoveBody(bot.Id, spot, heading);
+            }
+            else
+            {
+                if (Game.CurrentCar != myCar)
+                {
+                    Game.Player.Teleport(spot + Quaternion.Euler(0f, heading, 0f) * Vector3.left * 2.2f, heading);
+                    myCar.Place(spot, heading);
+                    yield return Wait(Game.EnterCar(myCar));
+                }
+                MoveBody(MyId, spot, heading);
+                Game.Follow.Snap(myCar.transform, true);
+            }
+            Debug.Log($"[SpeedDial] {(bot != null ? bot.Name : "You")} wrecked, back on the route at {d:F0} m");
         }
 
         public bool IsRacerCar(CarController car) => RacerCars().Contains(car);
