@@ -230,6 +230,13 @@ export const poll = internalQuery({
         .collect();
       const calls = new Map<Id<"players">, number>();
       for (const event of raceEvents) calls.set(event.playerId, (calls.get(event.playerId) ?? 0) + 1);
+      const operatorCalls = await ctx.db
+        .query("operatorCalls")
+        .withIndex("by_room_race", (q) => q.eq("roomId", room._id).eq("raceNumber", room.raceNumber))
+        .collect();
+      for (const call of operatorCalls) {
+        if (call.outcome !== "refused") calls.set(call.playerId, (calls.get(call.playerId) ?? 0) + 1);
+      }
       standings = results(room, rows, calls);
     }
 

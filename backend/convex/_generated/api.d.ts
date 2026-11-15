@@ -10,9 +10,11 @@
 
 import type * as events from "../events.js";
 import type * as http from "../http.js";
+import type * as jev from "../jev.js";
 import type * as model from "../model.js";
 import type * as operator from "../operator.js";
-import type * as operatorProviders from "../operatorProviders.js";
+import type * as operatorCatalogue from "../operatorCatalogue.js";
+import type * as operatorRules from "../operatorRules.js";
 import type * as playerState from "../playerState.js";
 import type * as players from "../players.js";
 import type * as race from "../race.js";
@@ -30,9 +32,11 @@ import type {
 declare const fullApi: ApiFromModules<{
   events: typeof events;
   http: typeof http;
+  jev: typeof jev;
   model: typeof model;
   operator: typeof operator;
-  operatorProviders: typeof operatorProviders;
+  operatorCatalogue: typeof operatorCatalogue;
+  operatorRules: typeof operatorRules;
   playerState: typeof playerState;
   players: typeof players;
   race: typeof race;
