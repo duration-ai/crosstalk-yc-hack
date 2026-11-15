@@ -390,17 +390,36 @@ namespace Dogpatch.Operator
             return mb.ToMesh("helmet");
         }
 
+        // A superhero cape hung from the top edge (the shoulders) at the origin, falling down -y and
+        // flaring from shoulder width to a wide hem, its sides curling forward round the body. Bold
+        // red outside, deeper red inside, gold clasps on both shoulders.
         public static Mesh Cape()
         {
             var mb = new MeshBuilder();
-            var top = C("#2D8CFF");
-            var hem = C("#1C2347");
-            Vector3 a = new Vector3(-0.22f, 0f, 0f), b = new Vector3(0.22f, 0f, 0f), c = new Vector3(0.34f, -0.9f, 0f), d = new Vector3(-0.34f, -0.9f, 0f);
-            var tail = new Vector3(0f, -1.02f, 0f);
-            mb.Quad(a, b, c, d, top, Vector3.back);
-            mb.Quad(a, d, c, b, top, Vector3.forward);
-            mb.Triangle(d, c, tail, hem, Vector3.back);
-            mb.Triangle(d, tail, c, hem, Vector3.forward);
+            var outside = C("#E0262E");
+            var inside = C("#9E1B22");
+            var gold = C("#FFCB1F");
+            const int cols = 4, rows = 4;
+            const float length = 1.05f;
+            Vector3 P(int i, int j)
+            {
+                float v = j / (float)rows;
+                float u = i / (float)cols * 2f - 1f;
+                float half = Mathf.Lerp(0.23f, 0.46f, v);
+                float wave = Mathf.Sin(u * Mathf.PI * 1.5f) * 0.025f * v;
+                return new Vector3(u * half, -v * length, 0.11f * u * u * (0.6f + 0.4f * v) - wave);
+            }
+            for (int j = 0; j < rows; j++)
+                for (int i = 0; i < cols; i++)
+                {
+                    Vector3 a = P(i, j), b = P(i + 1, j), c = P(i + 1, j + 1), d = P(i, j + 1);
+                    var back = Vector3.Cross(b - a, d - a).normalized;
+                    if (back.z > 0f) back = -back;
+                    mb.Quad(a, b, c, d, outside, back);
+                    mb.Quad(a, d, c, b, inside, -back);
+                }
+            foreach (float side in new[] { -1f, 1f })
+                mb.Box(new Vector3(side * 0.2f, -0.02f, 0.07f), new Vector3(0.09f, 0.09f, 0.05f), Quaternion.identity, gold);
             return mb.ToMesh("cape");
         }
 
