@@ -30,7 +30,7 @@ namespace Dogpatch.Traffic
     // rail track: lane-keeping on the lane centreline, following distance to whatever is ahead,
     // full stops at stop signs, signals, pedestrians at crossings, bus stops and platforms, and
     // reactions to the player (brake, swerve, honk) and to being hit.
-    public sealed class TrafficAgent : MonoBehaviour, ITrafficParticipant, IShoveable
+    public sealed partial class TrafficAgent : MonoBehaviour, ITrafficParticipant, IShoveable
     {
         public CarController Car;
         public VehicleSpec Spec;
@@ -240,7 +240,7 @@ namespace Dogpatch.Traffic
             float halfWidth = Car.HalfExtents.x;
             float now = Time.time;
 
-            float target = (OnRail ? Spec.CruiseSpeed : Mathf.Min(Spec.CruiseSpeed, Lane.Speed * (Spec.Robotaxi ? 0.8f : 1f))) * CarController.SpeedScale;
+            float target = (OnRail ? Spec.CruiseSpeed : Mathf.Min(Spec.CruiseSpeed, Lane.Speed * (Spec.Robotaxi ? 0.8f : 1f))) * CarController.SpeedScale * Pace * (1f + Rage * 0.6f);
             if (!OnRail && Link != null && Mathf.Abs(Link.Turn) > 30f) target = Mathf.Min(target, Spec.Robotaxi ? 4.5f : 6f);
             float rate = brake;
             State = "cruising";
@@ -253,7 +253,7 @@ namespace Dogpatch.Traffic
                 {
                     int signal = node.SignalState(Lane.EndDirection, now);
                     bool canStop = stopDistance > Speed * Speed / (2f * brake) * (Spec.Robotaxi ? 0.6f : 0.9f);
-                    if (signal == 2 || (signal == 1 && canStop))
+                    if ((signal == 2 && Rage < 0.75f) || (signal == 1 && canStop && Rage == 0f))
                     {
                         Limit(ref target, stopDistance, brake);
                         State = signal == 2 ? "red light" : "yellow light";
@@ -344,11 +344,12 @@ namespace Dogpatch.Traffic
                 if (Mathf.Abs(l) > halfWidth + obLat + 0.35f) continue;
                 float gap = f - halfLength - obLong;
                 float lead = Mathf.Max(0f, Vector2.Dot(ob.Velocity, forward));
-                float allowed = gap - minGap - headway * Mathf.Max(0f, Speed - lead) * 0.5f + lead * lead / (2f * brake);
+                float allowed = gap - minGap * (1f - Rage * 0.6f) - headway * (1f - Rage * 0.7f) * Mathf.Max(0f, Speed - lead) * 0.5f + lead * lead / (2f * brake);
                 float before = target;
                 Limit(ref target, allowed, Mathf.Max(brake, 4f));
                 if (target >= before) continue;
                 if (ob.Agent) blockedByAgent = true;
+                if (Rage > 0f && gap < 14f) audioSource?.Signal(2.5f - Rage * 1.5f);
                 State = ob.Player ? "braking for player" : "following";
                 if (!ob.Player) continue;
                 playerAhead = true;
@@ -432,7 +433,7 @@ namespace Dogpatch.Traffic
             var p = CurrentPath.Sample(S, out var t);
             var right = new Vector2(t.y, -t.x);
             bool dwelling = dwellUntil > 0f && !OnRail;
-            float wantLateral = baseLateral + swerve + (dwelling ? 0.8f : 0f);
+            float wantLateral = baseLateral + swerve + (dwelling ? 0.8f : 0f) + Weave;
             lateral = Mathf.MoveTowards(lateral, wantLateral, 1.5f * dt);
             p += right * lateral;
             float yaw = Mathf.Atan2(t.x, t.y) * Mathf.Rad2Deg;
