@@ -1,41 +1,49 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Dogpatch.Backend;
 using Dogpatch.Glb;
 using UnityEngine;
+using Avatar = Dogpatch.Backend.Avatar;
 
 namespace Dogpatch.Gameplay
 {
-    // Selfie-to-avatar. On first run (no avatar saved) a full-screen capture screen covers the
-    // world: live camera (back by default, with a flip), a head-to-feet framing guide and one
-    // shutter. The photo uploads to POST /api/avatar/photo, a short HOLD STILL plays while the
-    // avatar is decided and downloaded, and the avatar then replaces the player model. A refused
-    // photo (RETAKE, DECISION_UNAVAILABLE) asks for a retake. A small camera pictogram in the top
-    // right reopens the screen later; a new photo replaces the avatar.
-    // With no camera (simulator, Revyl, editor) the viewfinder shows a bundled test photo and the
-    // shutter uploads that; only on this debug path does an offline upload fall back to the
-    // in-memory canned avatar.
+    // Selfie-to-avatar, never in the way: the player starts as the stock commuter. While there is
+    // no avatar yet, a small card in the top-left corner offers one for a few seconds (camera or
+    // skip; skip is remembered). The pause menu carries an AVATAR chip that opens the camera any
+    // time. The camera screen shows the live feed with a head-to-feet guide, a shutter, a skip
+    // and a flip; the photo goes to IGameBackend.AnalyzeAvatarPhotoAsync under the game's own
+    // player id, SUITING UP plays while the server answers and the GLB loads, and the avatar then
+    // replaces the player model. RETAKE shows NO ONE IN SHOT, anything else TRY AGAIN, both with
+    // retake and skip.
+    //   -dogpatch-no-avatar-prompt / DOGPATCH_NO_AVATAR_PROMPT, and batchmode: no card at all.
+    //   -dogpatch-avatar-test-photo / DOGPATCH_AVATAR_TEST_PHOTO: the bundled test photo stands in
+    //   for the camera (also used automatically on a device with no camera, e.g. the simulator).
     public sealed class AvatarCapture : MonoBehaviour
     {
         const string AvatarKey = "dogpatch.avatar";
+        const string SkippedKey = "dogpatch.avatarPromptSkipped";
+        const float PromptSeconds = 20f;
+        const int MaxPhotoSide = 1024;
         const float Lean = 0.22f;
 
         static readonly Color Ink = new Color32(0x1C, 0x23, 0x47, 0xFF);
         static readonly Color Sunshine = new Color32(0xFF, 0xCB, 0x1F, 0xFF);
         static readonly Color White = Color.white;
 
-        enum Stage { Closed, Viewfinder, Uploading }
+        enum Stage { Closed, Prompt, Viewfinder, Uploading, Refused, Failed }
 
+        GameController game;
+        Hud hud;
         PlayerController player;
         GlbAsset clipSource;
         Material material;
-        readonly ConvexAvatarClient client = new ConvexAvatarClient();
         DragInput drag;
         Func<Vector2, bool> ignore;
         Stage stage = Stage.Closed;
-        bool refused;
-        bool hasAvatar;
+        string failure = "";
+        float promptUntil;
         int wearing;
 
         WebCamDevice[] devices = new WebCamDevice[0];
@@ -59,6 +67,17 @@ namespace Dogpatch.Gameplay
             return capture;
         }
 
+        static bool Flag(string arg, string env) =>
+            Environment.GetCommandLineArgs().Contains(arg) || !string.IsNullOrEmpty(Environment.GetEnvironmentVariable(env));
+
+        static bool PromptSuppressed => Application.isBatchMode || Flag("-dogpatch-no-avatar-prompt", "DOGPATCH_NO_AVATAR_PROMPT");
+
+        static bool ForceTestPhoto => Flag("-dogpatch-avatar-test-photo", "DOGPATCH_AVATAR_TEST_PHOTO");
+
+        bool FullScreen => stage == Stage.Viewfinder || stage == Stage.Uploading || stage == Stage.Refused || stage == Stage.Failed;
+
+        string PlayerId => game != null && game.Profile != null ? game.Profile.id : null;
+
         void Awake()
         {
             useGUILayout = false;
@@ -68,97 +87,112 @@ namespace Dogpatch.Gameplay
 
         async void Start()
         {
+            game = GetComponent<GameController>();
+            hud = GetComponent<Hud>();
             drag = GetComponent<DragInput>();
-            var saved = Parse(PlayerPrefs.GetString(AvatarKey, ""));
-            if (saved != null)
-            {
-                hasAvatar = true;
-                _ = WearAsync(saved);
-            }
 
-            string id = ConvexAvatarClient.StoredPlayerId;
-            if (!string.IsNullOrEmpty(id))
+            var saved = Parse(PlayerPrefs.GetString(AvatarKey, ""));
+            if (saved != null) _ = WearAsync(saved);
+            if (game != null && game.Backend != null && PlayerId != null)
             {
                 try
                 {
-                    var fresh = await client.GetAvatarAsync(id);
-                    if (fresh != null && (saved == null || fresh.updatedAt != saved.updatedAt))
+                    var fresh = await game.Backend.GetAvatarAsync(PlayerId);
+                    if (fresh != null && (saved == null || fresh.updatedAt != saved.updatedAt || fresh.glbUrl != saved.glbUrl))
                     {
                         Save(fresh);
-                        hasAvatar = true;
-                        await WearAsync(fresh);
+                        saved = fresh;
+                        _ = WearAsync(fresh);
                     }
                 }
-                catch (BackendException e)
+                catch (Exception e)
                 {
-                    Debug.LogWarning($"[Avatar] load failed {e.Code}: {e.Message}");
-                    if (e.Code == BackendErrorCodes.NotFound) ConvexAvatarClient.ForgetPlayer();
+                    Debug.LogWarning("[Avatar] load failed: " + (e is BackendException b ? b.Code + " " : "") + e.Message);
                 }
             }
-            if (!hasAvatar) Open();
+            if (saved != null || stage != Stage.Closed) return;
+            if (PromptSuppressed || PlayerPrefs.GetInt(SkippedKey, 0) == 1) return;
+            stage = Stage.Prompt;
+            promptUntil = Time.unscaledTime + PromptSeconds;
+            Debug.Log("[Avatar] offering the avatar card");
         }
 
         void OnDestroy() => StopFeed();
 
-        static PlayerAvatar Parse(string json)
+        static Avatar Parse(string json)
         {
             if (string.IsNullOrEmpty(json)) return null;
-            var avatar = JsonUtility.FromJson<PlayerAvatar>(json);
+            var avatar = JsonUtility.FromJson<Avatar>(json);
             return avatar == null || avatar.IsEmpty ? null : avatar;
         }
 
-        static void Save(PlayerAvatar avatar)
+        static void Save(Avatar avatar)
         {
             PlayerPrefs.SetString(AvatarKey, JsonUtility.ToJson(avatar));
             PlayerPrefs.Save();
         }
 
-        async Task<bool> WearAsync(PlayerAvatar avatar)
+        async Task<bool> WearAsync(Avatar avatar)
         {
             int version = ++wearing;
             GlbAsset glb = null;
             try { glb = await AvatarLoader.LoadAsync(avatar, clipSource); }
-            catch (Exception e) { Debug.LogWarning("[Avatar] load failed: " + e.Message); }
+            catch (Exception e) { Debug.LogWarning("[Avatar] model load failed: " + e.Message); }
             if (glb == null || version != wearing || player == null) return false;
             player.SetVisual(glb, material);
-            Debug.Log($"[Avatar] wearing {avatar.@base} ({glb.Clips.Length} clips)");
+            Debug.Log($"[Avatar] wearing {avatar.@base} ({glb.Clips.Length} clips, {avatar.recolor?.Length ?? 0} recolours)");
             return true;
         }
 
         void Open()
         {
             stage = Stage.Viewfinder;
-            refused = false;
             if (drag != null) drag.enabled = false;
             _ = StartFeedAsync();
         }
 
-        void Close()
+        void Close(bool skipped)
         {
+            if (skipped)
+            {
+                PlayerPrefs.SetInt(SkippedKey, 1);
+                PlayerPrefs.Save();
+            }
             stage = Stage.Closed;
             StopFeed();
             if (drag != null) drag.enabled = true;
         }
 
+        void Fail(string text)
+        {
+            StopFeed();
+            failure = text;
+            stage = Stage.Failed;
+        }
+
         async Task StartFeedAsync()
         {
+            if (ForceTestPhoto)
+            {
+                ShowTestPhoto();
+                return;
+            }
             if (!Application.HasUserAuthorization(UserAuthorization.WebCam))
             {
                 var asked = new TaskCompletionSource<bool>();
                 Application.RequestUserAuthorization(UserAuthorization.WebCam).completed += _ => asked.TrySetResult(true);
                 await asked.Task;
             }
-            devices = Application.HasUserAuthorization(UserAuthorization.WebCam) ? WebCamTexture.devices : new WebCamDevice[0];
             if (stage != Stage.Viewfinder) return;
+            if (!Application.HasUserAuthorization(UserAuthorization.WebCam))
+            {
+                Fail("CAMERA OFF");
+                return;
+            }
+            devices = WebCamTexture.devices;
             if (devices.Length == 0)
             {
-                if (testPhoto == null)
-                {
-                    testPhotoBytes = Resources.Load<TextAsset>("Avatar/test-photo").bytes;
-                    testPhoto = new Texture2D(2, 2);
-                    testPhoto.LoadImage(testPhotoBytes);
-                }
-                Debug.Log("[Avatar] no camera, showing the test photo");
+                ShowTestPhoto();
                 return;
             }
             if (deviceIndex < 0 || deviceIndex >= devices.Length)
@@ -172,6 +206,17 @@ namespace Dogpatch.Gameplay
             feed.Play();
         }
 
+        void ShowTestPhoto()
+        {
+            if (testPhoto == null)
+            {
+                testPhotoBytes = Resources.Load<TextAsset>("Avatar/test-photo").bytes;
+                testPhoto = new Texture2D(2, 2);
+                testPhoto.LoadImage(testPhotoBytes);
+            }
+            Debug.Log("[Avatar] no camera, the test photo stands in");
+        }
+
         void StopFeed()
         {
             if (feed == null) return;
@@ -182,7 +227,7 @@ namespace Dogpatch.Gameplay
 
         void Flip()
         {
-            if (devices.Length < 2) return;
+            if (feed == null || devices.Length < 2) return;
             bool front = devices[deviceIndex].isFrontFacing;
             for (int k = 1; k < devices.Length; k++)
             {
@@ -197,85 +242,81 @@ namespace Dogpatch.Gameplay
         void Shoot()
         {
             byte[] jpeg;
-            bool debugPhoto = feed == null;
-            if (feed != null && feed.isPlaying && feed.width > 16)
+            if (feed != null)
             {
+                if (!feed.isPlaying || feed.width <= 16) return;
                 if (still != null && still != testPhoto) Destroy(still);
-                still = Snapshot(feed);
+                still = Snapshot(feed, MaxPhotoSide);
                 jpeg = still.EncodeToJPG(85);
             }
-            else if (testPhotoBytes != null && feed == null)
+            else if (testPhotoBytes != null)
             {
                 still = testPhoto;
                 jpeg = testPhotoBytes;
             }
             else return;
-            stage = Stage.Uploading;
             StopFeed();
-            _ = UploadAsync(jpeg, debugPhoto);
+            _ = UploadAsync(jpeg);
         }
 
-        async Task UploadAsync(byte[] jpeg, bool debugPhoto)
+        async Task UploadAsync(byte[] jpeg)
         {
-            PlayerAvatar avatar;
+            stage = Stage.Uploading;
+            AvatarResult result;
             try
             {
-                avatar = await UploadForPlayerAsync(jpeg);
+                if (game == null || game.Backend == null || PlayerId == null) throw new BackendException(BackendErrorCodes.Internal, "no player yet");
+                result = await game.Backend.AnalyzeAvatarPhotoAsync(PlayerId, jpeg);
             }
-            catch (BackendException e) when (e.Code == AvatarErrorCodes.Offline && debugPhoto)
+            catch (BackendException e) when (e.Code == AvatarErrorCodes.Retake)
             {
-                Debug.LogWarning("[Avatar] offline, using the canned avatar: " + e.Message);
-                avatar = InMemoryGameBackend.CannedAvatar(ConvexAvatarClient.StoredPlayerId);
+                Debug.Log("[Avatar] retake: " + e.Message);
+                stage = Stage.Refused;
+                return;
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[Avatar] photo refused: " + (e is BackendException b ? b.Code + " " : "") + e.Message);
-                stage = Stage.Viewfinder;
-                refused = true;
-                _ = StartFeedAsync();
+                Debug.LogWarning("[Avatar] photo failed: " + (e is BackendException b ? b.Code + " " : "") + e.Message);
+                Fail("TRY AGAIN");
                 return;
             }
-            Save(avatar);
-            hasAvatar = true;
-            await WearAsync(avatar);
-            Close();
+            var d = result.decision;
+            Debug.Log($"[Avatar] decided by {d?.provider} in {d?.latencyMs}ms realPerson={d?.realPerson} costume={d?.costume}: {result.avatar.@base} {result.avatar.glbUrl}");
+            Save(result.avatar);
+            if (!await WearAsync(result.avatar))
+            {
+                Fail("TRY AGAIN");
+                return;
+            }
+            Close(false);
         }
 
-        async Task<PlayerAvatar> UploadForPlayerAsync(byte[] jpeg)
-        {
-            string id = await client.EnsurePlayerIdAsync();
-            try
-            {
-                return (await client.UploadAvatarPhotoAsync(id, jpeg)).avatar;
-            }
-            catch (BackendException e) when (e.Code == BackendErrorCodes.NotFound)
-            {
-                ConvexAvatarClient.ForgetPlayer();
-                id = await client.EnsurePlayerIdAsync();
-                return (await client.UploadAvatarPhotoAsync(id, jpeg)).avatar;
-            }
-        }
-
-        // The frame upright: the camera's vertical mirror undone, then its clockwise rotation.
-        static Texture2D Snapshot(WebCamTexture cam)
+        // The frame upright and at most maxSide pixels on its long side: the camera's vertical
+        // mirror undone, then its clockwise videoRotationAngle applied. The front camera's buffer
+        // is not mirrored (only the preview is, like a mirror), so the upload is never flipped
+        // sideways.
+        static Texture2D Snapshot(WebCamTexture cam, int maxSide)
         {
             int w = cam.width, h = cam.height;
             var src = cam.GetPixels32();
+            int step = Mathf.Max(1, Mathf.CeilToInt(Mathf.Max(w, h) / (float)maxSide));
+            int sw = w / step, sh = h / step;
             int angle = ((cam.videoRotationAngle % 360) + 360) % 360;
             bool flip = cam.videoVerticallyMirrored;
             bool sideways = angle == 90 || angle == 270;
-            int ow = sideways ? h : w, oh = sideways ? w : h;
-            var dst = new Color32[src.Length];
-            for (int y = 0; y < h; y++)
+            int ow = sideways ? sh : sw, oh = sideways ? sw : sh;
+            var dst = new Color32[ow * oh];
+            for (int y = 0; y < sh; y++)
             {
-                int row = (flip ? h - 1 - y : y) * w;
-                for (int x = 0; x < w; x++)
+                int sy = y * step;
+                int row = (flip ? h - 1 - sy : sy) * w;
+                for (int x = 0; x < sw; x++)
                 {
                     int nx = x, ny = y;
-                    if (angle == 90) { nx = y; ny = w - 1 - x; }
-                    else if (angle == 180) { nx = w - 1 - x; ny = h - 1 - y; }
-                    else if (angle == 270) { nx = h - 1 - y; ny = x; }
-                    dst[ny * ow + nx] = src[row + x];
+                    if (angle == 90) { nx = y; ny = sw - 1 - x; }
+                    else if (angle == 180) { nx = sw - 1 - x; ny = sh - 1 - y; }
+                    else if (angle == 270) { nx = sh - 1 - y; ny = x; }
+                    dst[ny * ow + nx] = src[row + x * step];
                 }
             }
             var tex = new Texture2D(ow, oh, TextureFormat.RGB24, false);
@@ -286,29 +327,60 @@ namespace Dogpatch.Gameplay
 
         float Scale => Mathf.Min(Screen.width, Screen.height) / 720f;
 
+        bool PromptVisible => stage == Stage.Prompt && (hud == null || !hud.Paused) && (game == null || !game.Driving);
+
+        // The label panel in the top-left corner, sized to its text; origin bottom-left.
+        Rect TagRect(string text)
+        {
+            float s = Scale;
+            var safe = Screen.safeArea;
+            float h = 58f * s;
+            float w = TextWidth(text, 34f * s) + h * Lean + 44f * s;
+            return new Rect(safe.xMin + 22f * s, safe.yMax - 22f * s - h, w, h);
+        }
+
+        // Pause menu chip, a row under the HUD's time and weather chips.
+        Rect PauseChipRect()
+        {
+            float s = Scale;
+            var safe = Screen.safeArea;
+            float w = 220f * s, h = 40f * s, top = 92f * s + 2f * (40f + 12f) * s;
+            return new Rect(safe.xMin + 24f * s - 0.5f * h * Lean, safe.yMax - top - h, w, h);
+        }
+
         // Button rects in screen pixels, origin bottom-left (the same space as touches).
         List<(string id, Rect rect)> Buttons()
         {
             float s = Scale;
             var safe = Screen.safeArea;
             var list = new List<(string, Rect)>();
-            if (stage == Stage.Closed)
+            switch (stage)
             {
-                if (player == null || !player.gameObject.activeInHierarchy) return list;
-                float w = 74f * s, h = 50f * s, m = 22f * s;
-                list.Add(("retake", new Rect(safe.xMax - m - w - 14f * s - w, safe.yMax - m - h, w, h)));
-                return list;
+                case Stage.Closed:
+                    if (hud != null && hud.Paused) list.Add(("open", PauseChipRect()));
+                    break;
+                case Stage.Prompt:
+                    if (!PromptVisible) break;
+                    var tag = TagRect("YOUR AVATAR");
+                    list.Add(("open", new Rect(tag.x + 10f * s, tag.y - 16f * s - 60f * s, 100f * s, 60f * s)));
+                    list.Add(("skip", new Rect(tag.x + 10f * s + 100f * s + 22f * s, tag.y - 16f * s - 50f * s, 74f * s, 50f * s)));
+                    break;
+                case Stage.Viewfinder:
+                case Stage.Refused:
+                case Stage.Failed:
+                    float sw = 170f * s, sh = 96f * s;
+                    list.Add((stage == Stage.Viewfinder ? "shutter" : "open", new Rect(safe.center.x - sw / 2f, safe.yMin + 40f * s, sw, sh)));
+                    list.Add(("skip", new Rect(safe.xMin + 28f * s, safe.yMin + 52f * s, 100f * s, 72f * s)));
+                    if (stage == Stage.Viewfinder && feed != null && devices.Length > 1)
+                        list.Add(("flip", new Rect(safe.xMax - 28f * s - 100f * s, safe.yMin + 52f * s, 100f * s, 72f * s)));
+                    break;
             }
-            if (stage != Stage.Viewfinder) return list;
-            float sw = 170f * s, sh = 96f * s;
-            list.Add(("shutter", new Rect(safe.center.x - sw / 2f, safe.yMin + 40f * s, sw, sh)));
-            if (devices.Length > 1) list.Add(("flip", new Rect(safe.xMax - 28f * s - 100f * s, safe.yMin + 52f * s, 100f * s, 72f * s)));
-            if (hasAvatar) list.Add(("close", new Rect(safe.xMax - 22f * s - 74f * s, safe.yMax - 22f * s - 50f * s, 74f * s, 50f * s)));
             return list;
         }
 
-        // Touches on these buttons never become a drag or a jump. The HUD owns DragInput.IgnoreAt
-        // and may set it after this component starts, so the hook re-chains whenever it changes.
+        // Touches on the card and the chip never become a drag or a jump. The HUD owns
+        // DragInput.IgnoreAt and may set it after this component starts, so the hook re-chains
+        // whenever it changes.
         void HookDrag()
         {
             if (drag == null || drag.IgnoreAt == ignore) return;
@@ -325,6 +397,8 @@ namespace Dogpatch.Gameplay
 
         void Update()
         {
+            if (stage == Stage.Prompt && PromptVisible && Time.unscaledTime > promptUntil) stage = Stage.Closed;
+
             Vector2 p;
             bool down, up;
             if (Input.touchCount > 0)
@@ -348,52 +422,90 @@ namespace Dogpatch.Gameplay
             string id = pressed;
             pressed = null;
             if (Hit(buttons, p) != id) return;
-            if (id == "retake") Open();
+            if (id == "open") Open();
             else if (id == "shutter") Shoot();
             else if (id == "flip") Flip();
-            else if (id == "close") Close();
+            else if (id == "skip") Close(true);
         }
 
         void OnGUI()
         {
-            if (Event.current.type != EventType.Repaint) return;
+            GUI.depth = -10;
+            var type = Event.current.type;
+            // Full screen, nothing underneath (the HUD's pause menu chips) may take a tap.
+            if (FullScreen && type != EventType.Repaint && type != EventType.Layout)
+            {
+                Event.current.Use();
+                return;
+            }
+            if (type != EventType.Repaint) return;
             float s = Scale;
+
             if (stage == Stage.Closed)
             {
+                if (hud == null || !hud.Paused) return;
+                var chip = PauseChipRect();
+                bool down = pressed == "open";
                 BeginShapes();
-                foreach (var (id, rect) in Buttons()) Plate(rect, Ink, White, pressed == id, r => CameraPictogram(r.center, r.height * 0.36f, White));
+                Para(chip, down ? White : Ink);
+                CameraPictogram(new Vector2(chip.x + chip.height * Lean * 0.5f + 34f * s, chip.center.y), chip.height * 0.2f, down ? Ink : White);
                 EndShapes();
+                Label(new Rect(chip.x + 52f * s, chip.y, chip.width, chip.height), "AVATAR", down ? Ink : White, 18f * s);
+                return;
+            }
+
+            if (stage == Stage.Prompt)
+            {
+                if (!PromptVisible) return;
+                var tag = TagRect("YOUR AVATAR");
+                BeginShapes();
+                Para(tag, Ink);
+                foreach (var (id, rect) in Buttons())
+                {
+                    bool down = pressed == id;
+                    if (id == "open") Plate(rect, Sunshine, Ink, down, r => CameraPictogram(r.center, r.height * 0.3f, down ? Sunshine : Ink));
+                    else Plate(rect, Ink, White, down, r => ClosePictogram(r.center, r.height * 0.24f, down ? Ink : White));
+                }
+                EndShapes();
+                Label(tag, "YOUR AVATAR", Sunshine, 34f * s);
                 return;
             }
 
             DrawPhoto();
-
+            bool refused = stage == Stage.Refused;
+            string text = stage == Stage.Uploading ? "SUITING UP" : refused ? "NO ONE IN SHOT" : stage == Stage.Failed ? failure : "FULL BODY";
+            var panel = TagRect(text);
             BeginShapes();
+            if (refused || stage == Stage.Failed) Dim();
             if (stage == Stage.Viewfinder) Silhouette(s);
-            var tag = new Rect(Screen.safeArea.xMin + 22f * s, Screen.safeArea.yMax - 22f * s - 58f * s, 300f * s, 58f * s);
-            Para(tag, refused ? Sunshine : Ink);
-            if (stage == Stage.Uploading) Segments(new Rect(tag.x + 10f * s, tag.y - 26f * s, tag.width, 14f * s));
+            Para(panel, refused ? Sunshine : Ink);
+            if (stage == Stage.Uploading) Segments(new Rect(panel.x + 10f * s, panel.y - 26f * s, panel.width, 14f * s));
             foreach (var (id, rect) in Buttons())
             {
                 bool down = pressed == id;
-                if (id == "shutter") Plate(rect, Sunshine, Ink, down, r => CameraPictogram(r.center, r.height * 0.3f, down ? Sunshine : Ink));
+                if (id == "shutter" || id == "open") Plate(rect, Sunshine, Ink, down, r => CameraPictogram(r.center, r.height * 0.3f, down ? Sunshine : Ink));
                 else if (id == "flip") Plate(rect, Ink, White, down, r => FlipPictogram(r.center, r.height * 0.26f, down ? Ink : White));
                 else Plate(rect, Ink, White, down, r => ClosePictogram(r.center, r.height * 0.24f, down ? Ink : White));
             }
             EndShapes();
+            Label(panel, text, refused ? Ink : Sunshine, 34f * s);
+        }
 
-            string text = stage == Stage.Uploading ? "HOLD STILL" : refused ? "RETAKE" : "FULL BODY";
-            Label(tag, text, refused ? Ink : Sunshine, s);
+        static void Dim()
+        {
+            var c = new Color(Ink.r, Ink.g, Ink.b, 0.55f);
+            Tri(new Vector2(0, 0), new Vector2(Screen.width, 0), new Vector2(Screen.width, Screen.height), c);
+            Tri(new Vector2(0, 0), new Vector2(Screen.width, Screen.height), new Vector2(0, Screen.height), c);
         }
 
         // Aspect-fill: the camera feed rotated upright (mirrored like a mirror for the front camera),
-        // or the frozen shot while uploading, or the test photo.
+        // or the frozen shot after the shutter, or the test photo.
         void DrawPhoto()
         {
             GUI.color = Ink;
             GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), Texture2D.whiteTexture);
             GUI.color = Color.white;
-            Texture tex = stage == Stage.Uploading ? still : feed != null ? feed : testPhoto;
+            Texture tex = stage != Stage.Viewfinder ? still : feed != null ? feed : testPhoto;
             if (tex == null || tex.width <= 16) return;
 
             int angle = 0;
@@ -402,7 +514,7 @@ namespace Dogpatch.Gameplay
             {
                 angle = ((feed.videoRotationAngle % 360) + 360) % 360;
                 mirrorY = feed.videoVerticallyMirrored;
-                mirrorX = devices.Length > deviceIndex && deviceIndex >= 0 && devices[deviceIndex].isFrontFacing;
+                mirrorX = deviceIndex >= 0 && deviceIndex < devices.Length && devices[deviceIndex].isFrontFacing;
             }
             bool sideways = angle == 90 || angle == 270;
             float tw = sideways ? tex.height : tex.width, th = sideways ? tex.width : tex.height;
@@ -417,13 +529,22 @@ namespace Dogpatch.Gameplay
             GUI.matrix = old;
         }
 
-        void Label(Rect rect, string text, Color color, float s)
+        GUIStyle Style(float size)
         {
             if (label == null) label = new GUIStyle { font = font, alignment = TextAnchor.MiddleLeft, wordWrap = false };
-            label.fontSize = Mathf.RoundToInt(34f * s);
-            label.normal.textColor = color;
-            var r = new Rect(rect.x + rect.height * Lean * 0.5f + 18f * s, Screen.height - rect.yMax, rect.width, rect.height);
-            GUI.Label(r, text, label);
+            label.fontSize = Mathf.RoundToInt(size);
+            return label;
+        }
+
+        float TextWidth(string text, float size) => Style(size).CalcSize(new GUIContent(text)).x;
+
+        // Text inside a panel given in bottom-left screen pixels.
+        void Label(Rect rect, string text, Color color, float size)
+        {
+            var style = Style(size);
+            style.normal.textColor = color;
+            var r = new Rect(rect.x + rect.height * Lean * 0.5f + 18f * Scale, Screen.height - rect.yMax, rect.width, rect.height);
+            GUI.Label(r, text, style);
         }
 
         void BeginShapes()

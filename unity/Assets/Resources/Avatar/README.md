@@ -1,7 +1,8 @@
 # Avatar test photo
 
 `test-photo.bytes` is a JPEG (renamed so Unity keeps the raw bytes as a TextAsset). It stands in for
-the camera when a device has none (simulator, Revyl, editor): the capture screen shows it in the
+the camera when a device has none (simulator, Revyl, editor) or when the game is launched with
+`-dogpatch-avatar-test-photo` (or `DOGPATCH_AVATAR_TEST_PHOTO=1`): the capture screen shows it in the
 viewfinder and the shutter uploads it.
 
 - Title: Young woman outdoors in marinière and leather jacket
