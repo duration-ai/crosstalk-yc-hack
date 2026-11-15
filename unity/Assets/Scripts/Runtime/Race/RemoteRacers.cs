@@ -391,12 +391,13 @@ namespace Dogpatch.Race
             if (away.sqrMagnitude < 1e-4f) away = other.right;
             away.Normalize();
             var before = Planar(mine);
-            float closing = Mathf.Abs(Vector3.Dot(new Vector3(remote.Velocity.x, 0f, remote.Velocity.z) - before, away));
+            bool first = Time.time - remote.ContactAt > BumpDedupe;
+            float closing = Vector3.Dot(new Vector3(remote.Velocity.x, 0f, remote.Velocity.z) - before, away);
+            closing = first ? Mathf.Abs(closing) : Mathf.Max(0f, closing);
             float shove = Mathf.Clamp(closing * BumpShare, MinShove, MaxShove);
             Shove(mine, away * shove);
             remote.NextPush = Time.time + PushEvery;
             remote.SnapHoldUntil = Time.time + BumpSnapHold;
-            bool first = Time.time - remote.ContactAt > BumpDedupe;
             remote.ContactAt = Time.time;
             if (first) Race.SendBump(remote.Id, -away * shove);
             Debug.Log($"[SpeedDial] bumped {remote.Name}'s car: closing {closing:F1} m/s, shove {shove:F1} m/s{(first ? ", sent them the bump" : "")}");
@@ -416,6 +417,7 @@ namespace Dogpatch.Race
                 return;
             }
             remote.BumpedAt = Time.time;
+            impulse = Vector3.ClampMagnitude(impulse, MaxShove);
             var before = Planar(mine);
             Shove(mine, impulse);
             Debug.Log($"[SpeedDial] {remote.Name} bumped us: shove {impulse.magnitude:F1} m/s, {ageMs} ms after their hit");

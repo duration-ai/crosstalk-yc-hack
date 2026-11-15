@@ -25,6 +25,15 @@ export const presenceArgs = {
   bump: v.optional(v.object({ target: v.string(), x: v.number(), z: v.number(), at: v.number() })),
 };
 
+// A bump is another phone's say over this player's car, so only a sane one is passed on: a
+// finite velocity change of at most MAX_BUMP m/s.
+const MAX_BUMP = 10;
+function bounded(bump: { target: string; x: number; z: number; at: number } | undefined) {
+  if (!bump?.target || ![bump.x, bump.z, bump.at].every(Number.isFinite)) return undefined;
+  const k = Math.min(1, MAX_BUMP / Math.max(Math.hypot(bump.x, bump.z), 1e-6));
+  return { target: bump.target, x: bump.x * k, z: bump.z * k, at: bump.at };
+}
+
 function finite(value: number, name: string) {
   if (!Number.isFinite(value)) fail("INVALID_ARGUMENT", name + " must be a finite number");
 }
@@ -84,7 +93,7 @@ export async function beat(ctx: MutationCtx, args: ObjectType<typeof heartbeatAr
     mode: args.mode ?? ("onFoot" as const),
     vehicleType,
     protocol: args.protocol ?? 0,
-    bump: args.bump?.target ? args.bump : undefined,
+    bump: bounded(args.bump),
     updatedAt: args.now,
   };
   const row = await findPresence(ctx, player._id);

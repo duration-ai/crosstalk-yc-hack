@@ -240,7 +240,8 @@ namespace Dogpatch.Race
                     var mode = car != null ? PlayerModes.Driving : PlayerModes.OnFoot;
                     var type = car != null ? VehicleRoster.TypeOf(car) : "";
                     float heading = body.eulerAngles.y;
-                    var bump = now < outBumpUntil ? outBump : null;
+                    outBumps.RemoveAll(b => now > b.until);
+                    var bump = outBumps.Count > 0 ? outBumps[bumpTurn++ % outBumps.Count].bump : null;
                     presenceNow = false;
                     pending.Add(AsPlayer(() => convex.PresenceAsync(MyId, position, heading, speed, mode, type, bump)));
                     float every = Gridded && !ResultsIn ? WorldEveryRacing : WorldEvery;
@@ -255,16 +256,17 @@ namespace Dogpatch.Race
             }
         }
 
-        PresenceBump outBump;
-        float outBumpUntil;
+        readonly List<(PresenceBump bump, float until)> outBumps = new List<(PresenceBump, float)>();
+        int bumpTurn;
         bool presenceNow;
 
         // A hit this phone felt goes out at once and rides along with presence for a second, so the
-        // other phone sees it even if one update is lost; it applies each bump once, by its time.
+        // other phone sees it even if one update is lost (several at once take turns); it applies each
+        // bump once, by its time.
         public void SendBump(string target, Vector3 impulse)
         {
-            outBump = new PresenceBump { target = target, x = impulse.x, z = impulse.z, at = NowMs };
-            outBumpUntil = Time.realtimeSinceStartup + 1f;
+            outBumps.RemoveAll(b => b.bump.target == target);
+            outBumps.Add((new PresenceBump { target = target, x = impulse.x, z = impulse.z, at = NowMs }, Time.realtimeSinceStartup + 1f));
             presenceNow = true;
         }
 
