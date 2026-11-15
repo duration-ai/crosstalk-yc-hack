@@ -71,6 +71,7 @@ namespace Dogpatch.Smash
         // centre of mass low in the body so a car that does tip lands on its wheels.
         void ApplySpec()
         {
+            if (specModel != null) ForgetBody();
             specModel = Car.ModelId;
             Spec = VehicleSpecs.For(Car);
             Body.mass = Spec.Mass;
@@ -301,6 +302,7 @@ namespace Dogpatch.Smash
         // Body meshes are shared between cars, so each car copies its own the first time it is hit.
         void EnsurePanels()
         {
+            if (panels != null && panels.Exists(p => p.Filter == null)) ForgetBody();
             if (panels != null) return;
             panels = new List<Panel>();
             foreach (var mf in GetComponentsInChildren<MeshFilter>())
@@ -468,16 +470,29 @@ namespace Dogpatch.Smash
             Wrecked?.Invoke(Car);
         }
 
+        // After an in-place swap the old visual is gone: drop the dented copies and popped parts that
+        // belonged to it, keeping the damage total.
+        void ForgetBody()
+        {
+            if (panels != null)
+                foreach (var p in panels)
+                    if (p.Mesh != null) Destroy(p.Mesh);
+            panels = null;
+            hiddenParts.Clear();
+            frontPopped = rearPopped = false;
+        }
+
         public void Repair()
         {
             if (panels != null)
                 foreach (var p in panels)
                 {
-                    p.Filter.sharedMesh = p.Original;
+                    if (p.Filter != null) p.Filter.sharedMesh = p.Original;
                     Destroy(p.Mesh);
                 }
             panels = null;
-            foreach (var (part, wasActive) in hiddenParts) part.gameObject.SetActive(wasActive);
+            foreach (var (part, wasActive) in hiddenParts)
+                if (part != null) part.gameObject.SetActive(wasActive);
             hiddenParts.Clear();
             foreach (var r in GetComponentsInChildren<Renderer>()) r.SetPropertyBlock(null);
             frontPopped = rearPopped = false;

@@ -106,6 +106,13 @@ namespace Dogpatch.Smash.Demo
                 }
                 var damage = ram.GetComponent<VehicleDamage>();
                 if (damage != null && damage.IsWrecked) damage.Repair();
+                if (game.Current != ram)
+                {
+                    game.Player.Teleport(ram.transform.position - ram.transform.right * (ram.HalfExtents.x + 1f), 0f);
+                    yield return null;
+                    var back = (Task)enter.Invoke(game, new object[] { ram });
+                    while (!back.IsCompleted) yield return null;
+                }
                 string kind = Kinds[attempt % Kinds.Length];
                 if (!Aim(kind)) continue;
                 attempts.TryGetValue(kind, out int count);
