@@ -44,7 +44,7 @@ const RULES: { pattern: RegExp; reply: Reply }[] = [
           : { line: "Gravity, off!", command: { type: "gravity", params: { level: "low" } } },
   },
   {
-    pattern: /\b(ice|icy|iced|slippery|slick|skat\w*|freeze|frozen|snow\w*|melt\w*|thaw\w*)\b/,
+    pattern: /\b(ice|icy|iced|slippery|slick|skat\w*|freeze|frozen|melt\w*|thaw\w*)\b/,
     reply: (_, text) =>
       /\b(melt\w*|thaw\w*)\b/.test(text)
         ? { line: "Ice melted.", command: { type: "ice", params: { level: "off" } } }
@@ -105,6 +105,20 @@ const RULES: { pattern: RegExp; reply: Reply }[] = [
         : { line: "Big cars!", command: { type: "resize", params: { size: "big" } } },
   },
   { pattern: /\b(ramp|ramps|jump|jumps|launch\w*|fly|flying)\b/, reply: () => ramp },
+  {
+    pattern: /\b(rain|rainy|raining|storm\w*|wet|drizzle)\b/,
+    reply: (_, text) =>
+      /\b(stop\w*|no|off|end|enough)\b/.test(text)
+        ? { line: "Rain's stopped.", command: { type: "rain", params: { level: "off" } } }
+        : { line: "Make it rain!", command: { type: "rain", params: { level: "on" } } },
+  },
+  {
+    pattern: /\b(snow|snowy|snowing|blizzard|flurries)\b/,
+    reply: (_, text) =>
+      /\b(stop\w*|no|off|end|enough)\b/.test(text)
+        ? { line: "Snow's done.", command: { type: "snow", params: { level: "off" } } }
+        : { line: "Let it snow!", command: { type: "snow", params: { level: "on" } } },
+  },
 ];
 
 const SURPRISES: OperatorReply[] = [

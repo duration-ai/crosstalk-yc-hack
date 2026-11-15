@@ -288,6 +288,17 @@ describe("world-change events", () => {
     expect((await poll(t, roomId, 3)).cursor).toBe(3);
   });
 
+  it("accepts JsonUtility's full params object and writes rain and snow news", async () => {
+    const { t, roomId, maya } = await fourPlayers();
+    const full = { level: "", timeOfDay: "", color: "", hex: "", playerId: "", targetPlayerId: "", size: "", count: 0 };
+    const rain = await t.mutation(api.events.fire, { playerId: maya.id, roomId, type: "rain", params: { ...full, level: "on" } });
+    expect(rain).toMatchObject({ params: { level: "on" }, news: "MAYA MADE IT RAIN" });
+    const snow = await t.mutation(api.events.fire, { playerId: maya.id, roomId, type: "snow", params: { ...full, level: "off" } });
+    expect(snow).toMatchObject({ params: { level: "off" }, news: "MAYA STOPPED THE SNOW" });
+    const ramp = await t.mutation(api.events.fire, { playerId: maya.id, roomId, type: "ramp", params: full });
+    expect(ramp.params).toEqual({ count: 3 });
+  });
+
   it("rejects unknown types, bad params and outsiders", async () => {
     const { t, roomId, maya } = await fourPlayers();
     const fire = (type: string, params: object, playerId = maya.id) =>
@@ -318,6 +329,9 @@ describe("world-change events", () => {
       { type: "swap", params: { targetPlayerId: "x" } },
       ...["small", "big", "normal"].map((size) => ({ type: "resize" as const, params: { size } })),
       { type: "ramp", params: { count: 3 } },
+      ...["rain", "snow"].flatMap((type) =>
+        ["on", "off"].map((level) => ({ type: type as "rain" | "snow", params: { level } })),
+      ),
     ];
     expect(new Set(changes.map((c) => c.type))).toEqual(new Set(WORLD_CHANGE_TYPES));
     for (const change of changes) {
@@ -339,6 +353,10 @@ describe("Operator", () => {
     ["rush hour traffic please", "traffic", { level: "heavy" }, "Rush hour!"],
     ["shrink everyone", "resize", { size: "small" }, "Tiny cars!"],
     ["give me ramps", "ramp", { count: 3 }, "Ramps ahead!"],
+    ["make it rain", "rain", { level: "on" }, "Make it rain!"],
+    ["stop the storm", "rain", { level: "off" }, "Rain's stopped."],
+    ["blizzard time", "snow", { level: "on" }, "Let it snow!"],
+    ["no more snow", "snow", { level: "off" }, "Snow's done."],
   ];
 
   it.each(cases)("maps %j to %s", async (text, type, params, line) => {

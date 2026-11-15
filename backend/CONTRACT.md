@@ -267,6 +267,8 @@ Players come from `POST /api/players`. A player is in at most one room: creating
 | `swap` | `{ "playerId": "<firer>", "targetPlayerId": "<racer>" }` | ROSA SWAPPED WITH TIM |
 | `resize` | `{ "size": "small" \| "big" \| "normal" }` | ROSA SHRANK ALL CARS |
 | `ramp` | `{ "count": 1–5 }` (default 3) | TIM DROPPED RAMPS |
+| `rain` | `{ "level": "on" \| "off" }` | MAYA MADE IT RAIN / MAYA STOPPED THE RAIN |
+| `snow` | `{ "level": "on" \| "off" }` | MAYA MADE IT SNOW / MAYA STOPPED THE SNOW |
 
 - **Recolor colors:** yellow #FFCB1F, pink #FF3E8E, blue #2D8CFF, purple #A35BFF, orange #FF8A1E, green #2EC27E, red #E2603F, white #F7F8F9, black #1C2347, mint #8CE3BF, lilac #BBA6F7. Send `color` only; the server fills `hex`.
 - **Swap:** send `targetPlayerId`, another racer still in the room; the server sets `playerId` to whoever fired it. Each client moves the two cars; the server picks up the new positions from each racer's next `race/update`.
@@ -421,7 +423,7 @@ The body is the raw recording with an `audio/*` `Content-Type` (for example `aud
 
 | `OPERATOR_PROVIDER` | What it does |
 | --- | --- |
-| unset or `keyword` | Deterministic keyword matching with no keys and no network. The earliest keyword in the utterance wins: a color word → recolor, "gravity" → gravity low ("more gravity" → high), "icy" → ice, "fog" → fog, "night"/"dusk"/"golden"/"morning" → time, "traffic" → traffic heavy, "swap" → swap with a named racer or the racer just ahead, "shrink"/"giant" → resize, "ramp"/"jump" → ramp. Anything else still gets a world change, picked deterministically from the text, with "Didn't catch that." in front of the line. |
+| unset or `keyword` | Deterministic keyword matching with no keys and no network. The earliest keyword in the utterance wins: a color word → recolor, "gravity" → gravity low ("more gravity" → high), "icy" → ice, "fog" → fog, "night"/"dusk"/"golden"/"morning" → time, "traffic" → traffic heavy, "swap" → swap with a named racer or the racer just ahead, "shrink"/"giant" → resize, "ramp"/"jump" → ramp, "rain"/"rainy"/"storm"/"wet"/"drizzle" → rain on, "snow"/"snowy"/"blizzard"/"flurries" → snow on (either with "stop"/"no"/"off" → off). Anything else still gets a world change, picked deterministically from the text, with "Didn't catch that." in front of the line. |
 | (open slot) | An LLM or voice provider. Which one is a pending team decision; none is wired up or called. |
 
 To add one, implement `OperatorProvider` (in `convex/operatorProviders.ts`: `respond({ text?, audio?, caller, racers })` returning `{ line, command }`, plus `acceptsAudio`) in its own module, read its key from its own env var, register it in `PROVIDERS`, and set `OPERATOR_PROVIDER` to its name. An unknown name, a provider that throws, or a provider that returns an invalid command falls back to the keyword provider for text calls, and `provider` then says `keyword`.

@@ -25,6 +25,8 @@ export const WORLD_CHANGE_TYPES = [
   "swap",
   "resize",
   "ramp",
+  "rain",
+  "snow",
 ] as const;
 
 export type WorldChangeType = (typeof WORLD_CHANGE_TYPES)[number];
@@ -47,6 +49,8 @@ export type WorldChange = { type: WorldChangeType; params: WorldChangeParams };
 const LEVELS: Partial<Record<WorldChangeType, readonly string[]>> = {
   gravity: ["low", "high", "normal"],
   ice: ["on", "off"],
+  rain: ["on", "off"],
+  snow: ["on", "off"],
   fog: ["thick", "clear"],
   traffic: ["heavy", "light"],
 };
@@ -69,6 +73,8 @@ export function normalizeWorldChange(
   switch (type) {
     case "gravity":
     case "ice":
+    case "rain":
+    case "snow":
     case "fog":
     case "traffic":
       return { type, params: { level: oneOf("level", params.level, LEVELS[type]!) } };
@@ -133,5 +139,8 @@ export function newsText(change: WorldChange, firerName: string, targetName?: st
       ]!;
     case "ramp":
       return `${who} DROPPED RAMPS`;
+    case "rain":
+    case "snow":
+      return p.level === "on" ? `${who} MADE IT ${change.type.toUpperCase()}` : `${who} STOPPED THE ${change.type.toUpperCase()}`;
   }
 }
