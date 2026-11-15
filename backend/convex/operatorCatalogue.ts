@@ -38,7 +38,7 @@ export const THEMES = ["beach_party", "tech_bros", "elvis", "delivery_riders"] a
 
 /** Rides change_vehicle can put the caller in; the Unity client maps each to a roster type. */
 export const VEHICLES = [
-  "sports_car", "race_car", "flying_car", "hatchback", "sedan", "taxi", "cybertruck", "waymo", "van", "zoox", "bus", "bike", "scooter",
+  "sports_car", "race_car", "flying_car", "cable_car", "hatchback", "sedan", "taxi", "cybertruck", "waymo", "van", "zoox", "bus", "bike", "scooter",
   "delivery_bike", "shopping_cart",
 ] as const;
 
@@ -49,8 +49,8 @@ export const PLAYER_EFFECTS: Record<string, Effect> = {
   run_slower: { label: "Slow feet", description: "players run slower", duration: [15, 23] },
   jump_higher: { label: "Big jumps", description: "players jump higher", duration: [15, 27] },
   slow_fall: { label: "Slow fall", description: "players fall slowly, like a feather", duration: [15, 27] },
-  bigger: { label: "Giants", description: "the racers' whole bodies and cars become bigger", duration: [15, 23] },
-  smaller: { label: "Tiny", description: "the racers' whole bodies and cars become smaller, tiny", duration: [15, 23] },
+  bigger: { label: "Giants", description: "people only: the caller's on-foot body becomes a giant and walks and runs faster to match; never cars (a bigger car is grow on the car)", duration: [15, 23] },
+  smaller: { label: "Tiny", description: "people only: the caller's on-foot body becomes tiny and walks and runs slower to match; never cars (a smaller car is shrink on the car)", duration: [15, 23] },
   chunky: { label: "Chunky", description: "players become wide and chunky", duration: [18, 34] },
   skinny: { label: "Skinny", description: "players become thin and skinny", duration: [18, 34] },
   flight: { label: "Flight", description: "players can fly", duration: [15, 18] },

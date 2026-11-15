@@ -6,7 +6,7 @@ namespace Dogpatch.Vehicles
     // Vehicles and parts Polyfork has no model for, built as flat-shaded vertex-coloured low poly at
     // real size, with the same node conventions as Polyfork's rigs: steer-fl/fr pivots holding
     // wheel-xx pivots holding the wheel meshes, so CarController spins and steers them. Front is +z.
-    public static class ProceduralModels
+    public static partial class ProceduralModels
     {
         static readonly Dictionary<string, Mesh> cache = new Dictionary<string, Mesh>();
 
