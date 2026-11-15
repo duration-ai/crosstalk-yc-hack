@@ -24,6 +24,7 @@ namespace Dogpatch.Race
         const float DrivingSpeed = 8f;
         const float PushEvery = 0.2f;
         const float ForgetAfter = 15f;
+        const float ModeFreshFor = 3f;
 
         public RaceDirector Race;
 
@@ -51,6 +52,8 @@ namespace Dogpatch.Race
             public Vector3 Position;
             public float Heading;
             public string WorldMode;
+            public int Protocol;
+            internal float WorldSeenAt = -1000f;
             public string RaceColorHex;
             public string WorldColor;
             public string WorldColorHex;
@@ -83,10 +86,16 @@ namespace Dogpatch.Race
             foreach (var racer in poll.racers)
             {
                 if (!Race.IsRemote(racer.playerId)) continue;
+                if (racer.left)
+                {
+                    var gone = Get(racer.playerId);
+                    if (gone != null) gone.Left = Time.time - gone.WorldSeenAt > 2f;
+                    continue;
+                }
                 racing.Add(racer.playerId);
                 var remote = Get(racer.playerId) ?? Spawn(racer.playerId, racer.displayName, racer.position);
                 remote.InRace = true;
-                remote.Left = racer.left;
+                remote.Left = false;
                 remote.Name = racer.displayName;
                 remote.RaceColorHex = racer.colorHex;
                 remote.Color = racer.color;
@@ -108,14 +117,16 @@ namespace Dogpatch.Race
                 remote.WorldColor = player.color;
                 remote.WorldColorHex = player.colorHex;
                 remote.WorldMode = player.mode;
+                remote.Protocol = player.protocol;
                 remote.SeenAt = Time.time;
+                remote.WorldSeenAt = Time.time;
+                remote.Left = false;
                 if (Vehicles.VehicleCatalog.Has(player.vehicleType) && player.vehicleType != Vehicles.VehicleRoster.TypeOf(remote.Car))
                 {
                     Vehicles.VehicleRoster.SwapInto(remote.Car, player.vehicleType);
                     foreach (var c in remote.Car.GetComponents<Collider>()) c.isTrigger = true;
                     remote.PaintedHex = null;
                 }
-                if (!remote.InRace) remote.Left = false;
                 if (!remote.InRace) AddSample(remote, player.updatedAt, player.position, player.heading, world.serverTime);
             }
         }
@@ -306,10 +317,12 @@ namespace Dogpatch.Race
                 var p = remote.Position;
                 float h = remote.Heading;
                 remote.Speed = Mathf.Lerp(remote.Speed, new Vector2(velocity.x, velocity.z).magnitude, 1f - Mathf.Exp(-6f * dt));
-                bool raceCar = remote.InRace && Race.Gridded;
-                remote.Driving = raceCar || (remote.WorldMode != null
+                bool modeKnown = !string.IsNullOrEmpty(remote.WorldMode) && Time.time - remote.WorldSeenAt < ModeFreshFor;
+                bool wasDriving = remote.Driving;
+                remote.Driving = modeKnown
                     ? remote.WorldMode == Dogpatch.Backend.PlayerModes.Driving
-                    : remote.Speed > DrivingSpeed || (remote.Driving && remote.Speed > DrivingSpeed * 0.4f));
+                    : (remote.InRace && Race.Gridded) || remote.Speed > DrivingSpeed || (remote.Driving && remote.Speed > DrivingSpeed * 0.4f);
+                if (remote.Driving != wasDriving) Debug.Log($"[SpeedDial] remote player {remote.Name} is {(remote.Driving ? "driving" : "on foot")}");
 
                 remote.Car.gameObject.SetActive(!remote.Left && remote.Driving);
                 remote.Avatar.gameObject.SetActive(!remote.Left && !remote.Driving);

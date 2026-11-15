@@ -24,7 +24,7 @@ namespace Dogpatch.Race
         const int ConnectTimeoutSeconds = 6;
         const int RequestTimeoutSeconds = 3;
         const float WorldEvery = 1f / 15f;
-        const float WorldEveryRacing = 0.5f;
+        const float WorldEveryRacing = 0.25f;
         const float TrafficLogEvery = 5f;
         const float BackToWorldAfter = 10f;
         const float RingExitMargin = 3f;
