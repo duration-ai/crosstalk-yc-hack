@@ -712,15 +712,17 @@ namespace Dogpatch.World
         }
 
         // Where a street carries on as a flush road (a bridge or service road), its recessed asphalt
-        // rises to grade over the round cap and a little past it, covering the gap to the land collider.
+        // rises to grade over the round cap and a little past it, 1.75 m wider than the carriageway on
+        // each side, covering the gap to the land collider.
         void RampToGrade(Vector2 end, Vector2 outward, float hw)
         {
             var n = new Vector2(-outward.y, outward.x);
             var far = end + outward * (hw + 1.5f);
-            var a = MeshBuilder.At(end - n * hw, RoadY);
-            var b = MeshBuilder.At(end + n * hw, RoadY);
-            var c = MeshBuilder.At(far + n * hw, 0f);
-            var d = MeshBuilder.At(far - n * hw, 0f);
+            float side = hw + 1.75f;
+            var a = MeshBuilder.At(end - n * side, RoadY);
+            var b = MeshBuilder.At(end + n * side, RoadY);
+            var c = MeshBuilder.At(far + n * side, 0f);
+            var d = MeshBuilder.At(far - n * side, 0f);
             visual.At(end).Quad(a, b, c, d, Asphalt, Vector3.up);
             asphaltColliders.At(end).Quad(a, b, c, d, Asphalt, Vector3.up);
         }

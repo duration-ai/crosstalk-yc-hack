@@ -166,14 +166,12 @@ namespace Dogpatch.Map
         }
 
         // Sized in points from the screen's dpi on a phone (about 11 mm across the radius at 460
-        // ppi), never more than 7% over what the safe area gives it, so portrait stays modest.
+        // ppi), never more than 7% over what the safe area gives it; placed by HudLayout.
         void Layout()
         {
-            var safe = Screen.safeArea;
-            float fit = Mathf.Min(safe.height / 402f, safe.width / 560f);
-            s = Application.isMobilePlatform && Screen.dpi > 0f ? Mathf.Min(Screen.dpi / 160f, fit * 1.07f) : fit;
-            dialRadius = 70f * s;
-            dialCenter = new Vector2(safe.xMin + 22f * s + dialRadius, safe.yMin + 18f * s + dialRadius);
+            s = HudLayout.MinimapUnit;
+            dialRadius = HudLayout.MinimapRadius;
+            dialCenter = HudLayout.MinimapScreen;
         }
 
         bool OnDial(Vector2 p)
@@ -840,7 +838,7 @@ namespace Dogpatch.Map
             style.fontSize = Mathf.RoundToInt(20f * s);
             var numSize = style.CalcSize(new GUIContent(num));
             float x = center.x + radius * 0.18f;
-            float baseline = Screen.height - (center.y + radius + 7f * s);
+            float baseline = HudLayout.MinimapReadoutBelow ? Screen.height - (center.y - radius - 9f * s) + numSize.y : Screen.height - (center.y + radius + 7f * s);
             Outlined(new Rect(x, baseline - numSize.y, numSize.x, numSize.y), num, 1.6f * s);
             style.fontSize = Mathf.RoundToInt(11f * s);
             var mSize = style.CalcSize(new GUIContent("M"));

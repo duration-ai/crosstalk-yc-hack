@@ -28,7 +28,7 @@ namespace Dogpatch.Race
             for (int i = 0; i < Input.touchCount; i++)
             {
                 var t = Input.GetTouch(i);
-                if (t.phase == TouchPhase.Began && (IgnoreTouch == null || !IgnoreTouch(t.position))) touches[t.fingerId] = (t.position, Time.unscaledTime);
+                if (t.phase == TouchPhase.Began && !HudLayout.InStick(t.position) && (IgnoreTouch == null || !IgnoreTouch(t.position))) touches[t.fingerId] = (t.position, Time.unscaledTime);
                 if ((t.phase == TouchPhase.Ended || t.phase == TouchPhase.Canceled) && touches.TryGetValue(t.fingerId, out var s))
                 {
                     touches.Remove(t.fingerId);
@@ -36,7 +36,7 @@ namespace Dogpatch.Race
                 }
             }
             if (Input.touchCount > 0) return;
-            if (Input.GetMouseButtonDown(0) && (IgnoreTouch == null || !IgnoreTouch(Input.mousePosition))) touches[-1] = (Input.mousePosition, Time.unscaledTime);
+            if (Input.GetMouseButtonDown(0) && !HudLayout.InStick(Input.mousePosition) && (IgnoreTouch == null || !IgnoreTouch(Input.mousePosition))) touches[-1] = (Input.mousePosition, Time.unscaledTime);
             if (Input.GetMouseButtonUp(0) && touches.TryGetValue(-1, out var m))
             {
                 touches.Remove(-1);

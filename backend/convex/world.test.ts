@@ -84,6 +84,7 @@ describe("world presence", () => {
     await expect(t.mutation(api.rooms.join, { playerId: b.id, code })).rejects.toThrow(/not a race/);
     await expect(t.mutation(api.rooms.setReady, { playerId: a.id, roomId: worldRoomId, ready: true })).rejects.toThrow(/not a race/);
     await beat(t, b.id, T0 + PRESENCE_TIMEOUT_MS + 1);
+    await t.mutation(internal.world.sweepStale, { now: T0 + PRESENCE_TIMEOUT_MS + 1 });
     expect(await members()).toEqual([b.id]);
     expect(await t.run((ctx) => ctx.db.query("worldPresence").collect())).toHaveLength(1);
     const back = await beat(t, a.id, T0 + PRESENCE_TIMEOUT_MS + 2);

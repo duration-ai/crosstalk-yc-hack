@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import schema from "./schema";
-import { AUTO_START_MS, CLOSE_AFTER_FIRST_FINISH_MS, COUNTDOWN_MS } from "./raceModel";
+import { AUTO_START_MS, CLOSE_AFTER_FIRST_FINISH_MS, COUNTDOWN_MS, DEFAULT_ASKS, MAX_ASKS } from "./raceModel";
 import { WORLD_CHANGE_TYPES, newsText, type WorldChange } from "./worldChanges";
 
 const modules = import.meta.glob("./**/*.*s");
@@ -473,18 +473,18 @@ describe("asks", () => {
 
   it("starts every racer with the room's asks and publishes the pickups", async () => {
     const { t, room, you } = await soloRace();
-    expect(room).toMatchObject({ asks: 2, pickups, pickupRadius: 4 });
-    expect(you).toMatchObject({ asks: 2, collected: [] });
+    expect(room).toMatchObject({ asks: DEFAULT_ASKS, pickups, pickupRadius: 4 });
+    expect(you).toMatchObject({ asks: DEFAULT_ASKS, collected: [] });
     const rosa = await t.mutation(api.players.create, { displayName: "Rosa" });
     const joined = await t.mutation(api.rooms.join, { playerId: rosa.id, code: room.code });
-    expect(joined.you).toMatchObject({ asks: 2, collected: [] });
+    expect(joined.you).toMatchObject({ asks: DEFAULT_ASKS, collected: [] });
     expect((await soloRace(3)).you.asks).toBe(3);
   });
 
   it("rejects bad ask settings", async () => {
     const t = convexTest(schema, modules);
     const tim = await t.mutation(api.players.create, { displayName: "Tim" });
-    await expect(t.mutation(api.rooms.create, { playerId: tim.id, asks: 12 })).rejects.toThrow(/asks/);
+    await expect(t.mutation(api.rooms.create, { playerId: tim.id, asks: MAX_ASKS + 1 })).rejects.toThrow(/asks/);
     await expect(t.mutation(api.rooms.create, { playerId: tim.id, pickupRadius: 50 })).rejects.toThrow(/pickupRadius/);
     const many = Array.from({ length: 65 }, (_, i) => at(i));
     await expect(t.mutation(api.rooms.create, { playerId: tim.id, pickups: many })).rejects.toThrow(/pickups/);
@@ -499,14 +499,14 @@ describe("asks", () => {
 
     await expect(collect(0, at(100, 40))).rejects.toThrow(/Too far/);
     await expect(collect(2, at(0))).rejects.toThrow(/pickup must index/);
-    expect(await collect(0, at(103, 63))).toEqual({ collected: true, asks: 3 });
-    expect(await collect(0)).toEqual({ collected: false, asks: 3 });
-    expect(await collect(1)).toEqual({ collected: true, asks: 4 });
-    expect((await poll(t, room.id)).racers[0]).toMatchObject({ asks: 4, collected: [0, 1] });
+    expect(await collect(0, at(103, 63))).toEqual({ collected: true, asks: DEFAULT_ASKS + 1 });
+    expect(await collect(0)).toEqual({ collected: false, asks: DEFAULT_ASKS + 1 });
+    expect(await collect(1)).toEqual({ collected: true, asks: DEFAULT_ASKS + 2 });
+    expect((await poll(t, room.id)).racers[0]).toMatchObject({ asks: DEFAULT_ASKS + 2, collected: [0, 1] });
   });
 
   it("spends asks for Operator requests until none are left", async () => {
-    const { t, tim, room } = await soloRace();
+    const { t, tim, room } = await soloRace(2);
     const spend = () => t.mutation(internal.race.spendAsk, { playerId: tim.id as Id<"players">, roomId: room.id as Id<"rooms"> });
     expect(await spend()).toEqual({ asks: 1 });
     expect(await spend()).toEqual({ asks: 0 });
@@ -515,7 +515,7 @@ describe("asks", () => {
   });
 
   it("gives everyone their asks back and clears pickups on the rematch", async () => {
-    const { t, tim, room } = await soloRace();
+    const { t, tim, room } = await soloRace(2);
     await go(t, tim.id, room.id);
     await t.mutation(api.race.collect, { playerId: tim.id, roomId: room.id, pickup: 0, position: pickups[0] });
     await t.mutation(internal.race.spendAsk, { playerId: tim.id as Id<"players">, roomId: room.id as Id<"rooms"> });

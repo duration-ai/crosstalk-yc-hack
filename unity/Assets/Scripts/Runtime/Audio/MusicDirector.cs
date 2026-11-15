@@ -9,7 +9,7 @@ namespace Dogpatch.Audio
     public sealed class MusicDirector : MonoBehaviour
     {
         static readonly string[] Tracks = { "music_roam", "music_race", "music_final" };
-        static readonly float[] TrackGain = { 0.5f, 0.6f, 0.6f };
+        static readonly float[] TrackGain = { 0.5f, 0.75f, 0.75f };
 
         readonly AudioSource[] sources = new AudioSource[3];
         readonly float[] level = new float[3];

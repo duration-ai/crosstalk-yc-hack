@@ -256,16 +256,16 @@ namespace Dogpatch.Slipstream
             }
             if (Race.Last == null && !Race.Online) return;
             GUI.depth = -5;
-            s = Mathf.Min(Screen.height / 402f, Screen.width / 560f);
-            var safe = Screen.safeArea;
-            left = safe.xMin + 22f * s;
-            right = safe.xMax - 22f * s;
-            top = Screen.height - safe.yMax + 14f * s;
-            bottom = Screen.height - safe.yMin - 20f * s;
-            narrow = right - left < 700f * s;
-            band = narrow ? top + 76f * s : top + 4f * s;
+            s = Gameplay.HudLayout.U;
+            left = Gameplay.HudLayout.Left;
+            right = Gameplay.HudLayout.Right;
+            top = Gameplay.HudLayout.Top;
+            bottom = Gameplay.HudLayout.Bottom;
+            narrow = Gameplay.HudLayout.Narrow;
+            band = Gameplay.HudLayout.Band;
             readyVisible = false;
             callVisible = false;
+            Gameplay.HudLayout.LobbyShowing = false;
             if (Race.Online)
             {
                 WorldTags();
@@ -274,7 +274,7 @@ namespace Dogpatch.Slipstream
             if (Race.Last == null) return;
 
             var room = Race.Room;
-            bool lobby = !Race.Gridded && (room.status == RoomStatus.Lobby || room.status == RoomStatus.Countdown);
+            bool lobby = !Race.Gridded && (room.status == RoomStatus.Lobby || room.status == RoomStatus.Countdown) && NearRing();
             bool racing = Race.Started && !Race.ResultsIn;
 
             if (!Race.ResultsIn) NameTags();
@@ -289,14 +289,26 @@ namespace Dogpatch.Slipstream
             PhoneButton(lobby || Race.ResultsIn);
         }
 
+        // The mission lobby only shows while you stand in or by the start ring.
+        bool NearRing()
+        {
+            var focus = Race.Game.Focus;
+            if (focus == null) return false;
+            var d = focus.position - Race.Course.RingCenter;
+            d.y = 0f;
+            return Race.Game.CurrentCar == null && d.magnitude < Race.Course.RingRadius * 1.5f;
+        }
+
         void Lobby(Room room)
         {
+            Gameplay.HudLayout.LobbyShowing = true;
             var racers = Race.Last.racers.OrderBy(r => r.slot).ToList();
-            float y = top + 2f * s;
+            var at = Gameplay.HudLayout.LobbyPanel;
+            float y = at.y;
             foreach (var r in racers)
             {
                 bool me = r.playerId == Race.MyId;
-                var block = new Rect(left, y, 30f * s, 24f * s);
+                var block = new Rect(at.x, y, 30f * s, 24f * s);
                 var bar = new Rect(block.xMax + 3f * s, y, 150f * s, 24f * s);
                 Panel(bar, me ? Ink : Paper);
                 Panel(block, SlotColor(r.color));
@@ -337,7 +349,7 @@ namespace Dogpatch.Slipstream
 
         void ReadyButton(bool pressed)
         {
-            var r = new Rect(right - 112f * s, bottom - 62f * s, 112f * s, 62f * s);
+            var r = Gameplay.HudLayout.Ready(112f * s, 62f * s);
             readyRect = r;
             readyVisible = true;
             bool held = readyFinger != int.MinValue;
@@ -447,15 +459,17 @@ namespace Dogpatch.Slipstream
 
             float length = Mathf.Max(Race.Room.routeLength, 1f);
             int meters = Mathf.Max(0, Mathf.RoundToInt(me.metersToFinish));
-            float edge = right - 64f * s;
+            var meterAt = Gameplay.HudLayout.Meters;
+            float edge = meterAt.x;
+            float mtop = meterAt.y;
             var mSize = Measure("M", 16f);
             var num = meters.ToString();
             var nSize = Measure(num, 40f);
-            var mRect = new Rect(edge - mSize.x, top + 20f * s, mSize.x, mSize.y);
+            var mRect = new Rect(edge - mSize.x, mtop + 20f * s, mSize.x, mSize.y);
             Text(mRect, "M", 16f, White, TextAnchor.UpperLeft, 1.4f * s);
-            var nRect = new Rect(mRect.x - nSize.x - 2f * s, top - 4f * s, nSize.x, nSize.y);
+            var nRect = new Rect(mRect.x - nSize.x - 2f * s, mtop - 4f * s, nSize.x, nSize.y);
             Text(nRect, num, 40f, White, TextAnchor.UpperLeft, 2.2f * s);
-            var flag = new Rect(nRect.x - 36f * s, top + 6f * s, 26f * s, 22f * s);
+            var flag = new Rect(nRect.x - 36f * s, mtop + 6f * s, 26f * s, 22f * s);
             Framed(flag, Sun, Ink, 1.6f * s);
             Icon(new Rect(flag.x + 4f * s, flag.y + 2f * s, 18f * s, 18f * s), "yc", Ink);
 
@@ -505,7 +519,7 @@ namespace Dogpatch.Slipstream
                 }
             }
 
-            float rowY = top + 2f * s;
+            float rowY = Gameplay.HudLayout.ResultsTop;
             foreach (var r in results.OrderBy(r => r.place))
             {
                 bool me = r.playerId == Race.MyId;
@@ -605,8 +619,9 @@ namespace Dogpatch.Slipstream
             bool hasAsks = calls.HasAsks;
             float size = 72f * s;
             float width = live ? 150f * s : size;
-            float x = right - width;
-            float y = bottom - size - (readyShowing ? 84f * s : 0f);
+            var slot = Gameplay.HudLayout.Call(width, size, readyShowing);
+            float x = slot.x;
+            float y = slot.y;
             float buzz = now - calls.BuzzedAt;
             if (buzz < 1.2f && !live) x += Mathf.Sin(buzz * 42f) * 4f * s * (1f - buzz / 1.2f);
             var r = new Rect(x, y, width, size);
@@ -655,7 +670,9 @@ namespace Dogpatch.Slipstream
                 float a = Mathf.Clamp01(refused / 0.1f) * Mathf.Clamp01((2.2f - refused) / 0.3f);
                 string line = CallController.NoAsksLine.ToUpperInvariant();
                 var m = Measure(line, 14f);
-                var bar = new Rect(r.x - m.x - 34f * s, r.center.y - 15f * s, m.x + 24f * s, 30f * s);
+                var bar = Gameplay.HudLayout.CallFromLeft
+                    ? new Rect(r.xMax + 10f * s, r.center.y - 15f * s, m.x + 24f * s, 30f * s)
+                    : new Rect(r.x - m.x - 34f * s, r.center.y - 15f * s, m.x + 24f * s, 30f * s);
                 Panel(bar, new Color(Ink.r, Ink.g, Ink.b, a));
                 Text(new Rect(bar.x + 12f * s, bar.y, bar.width, bar.height), line, 14f, new Color(1f, 1f, 1f, a));
             }

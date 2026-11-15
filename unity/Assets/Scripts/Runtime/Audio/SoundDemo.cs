@@ -51,15 +51,9 @@ namespace Dogpatch.Audio
 
         void Drag(Vector2 dir, float strength)
         {
-            var anchor = new Vector2(Screen.width * 0.5f, Screen.height * 0.35f);
-            bool on = strength > 0f;
-            Set("<Dragging>k__BackingField", on);
-            Set("<Anchor>k__BackingField", anchor);
-            float reach = input.TapSlop + strength * (input.Reach - input.TapSlop);
-            Set("<Current>k__BackingField", on ? anchor + dir.normalized * reach : anchor);
+            if (strength <= 0f) input.Release();
+            else input.Hold(dir.normalized * Mathf.Lerp(0.15f, 1f, strength));
         }
-
-        void Set(string field, object value) => typeof(DragInput).GetField(field, Private).SetValue(input, value);
 
         void Tap(Vector2 screen) => typeof(GameController).GetMethod("OnTap", Private).Invoke(game, new object[] { screen });
 

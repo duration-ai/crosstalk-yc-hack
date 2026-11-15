@@ -20,7 +20,8 @@ namespace Dogpatch.Race
         const long AutoStartMs = 10000;
         const long LockMs = 3000;
         const long CloseAfterFirstFinishMs = 30000;
-        const int DefaultAsks = 2;
+        const int DefaultAsks = 100;
+        const int MaxAsks = 100;
         const int MaxPickups = 64;
         const float DefaultPickupRadius = 4f;
         const float CollectSlack = 3f;
@@ -87,7 +88,7 @@ namespace Dogpatch.Race
             if (minPlayers < 1 || minPlayers > MaxPlayers) throw Error(BackendErrorCodes.InvalidArgument, "minPlayers must be 1 to 4");
             if (asks == 0) asks = DefaultAsks;
             if (pickupRadius == 0f) pickupRadius = DefaultPickupRadius;
-            if (asks < 1 || asks > 9) throw Error(BackendErrorCodes.InvalidArgument, "asks must be 1 to 9");
+            if (asks < 1 || asks > MaxAsks) throw Error(BackendErrorCodes.InvalidArgument, $"asks must be 1 to {MaxAsks}");
             if (pickups != null && pickups.Count > MaxPickups) throw Error(BackendErrorCodes.InvalidArgument, $"pickups must have at most {MaxPickups} points");
             if (pickupRadius < 1f || pickupRadius > 20f) throw Error(BackendErrorCodes.InvalidArgument, "pickupRadius must be 1 to 20");
             LeaveAll(playerId);
