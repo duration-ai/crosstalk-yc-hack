@@ -17,6 +17,7 @@ namespace Dogpatch.Race
         float hop;
         float hopVelocity;
         float stumbleUntil;
+        bool tracked;
 
         public Vector3 Position => transform.position;
         public bool CanBeShoved => gameObject.activeInHierarchy && Time.time > stumbleUntil;
@@ -44,6 +45,17 @@ namespace Dogpatch.Race
             hop = 0f;
         }
 
+        // Follows a pose from outside (a remote player), playing Idle, Walk or Run by speed.
+        public void Track(Vector3 position, float heading, float speed)
+        {
+            tracked = true;
+            if (Time.time < stumbleUntil) return;
+            Home = position;
+            HomeHeading = heading;
+            transform.SetPositionAndRotation(position, Quaternion.Euler(0f, heading, 0f));
+            animator?.Play(speed > 3.5f ? "Run" : speed > 0.4f ? "Walk" : "Idle");
+        }
+
         public void Shove(Vector3 impulse, GameObject by)
         {
             velocity = new Vector3(impulse.x, 0f, impulse.z);
@@ -69,6 +81,7 @@ namespace Dogpatch.Race
                 velocity = Vector3.MoveTowards(velocity, Vector3.zero, 9f * dt);
                 animator?.Play("Run");
             }
+            else if (tracked) return;
             else
             {
                 var flat = new Vector3(Home.x - pos.x, 0f, Home.z - pos.z);
