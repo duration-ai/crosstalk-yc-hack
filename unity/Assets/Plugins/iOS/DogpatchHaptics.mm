@@ -1,4 +1,5 @@
 #import <UIKit/UIKit.h>
+#import <AVFoundation/AVFoundation.h>
 
 // Haptics for Dogpatch.Feel.Haptics. Generators are created once and kept prepared so the first
 // tap of a smash chain has no latency.
@@ -37,6 +38,20 @@ extern "C"
     void DogpatchNativeLog(const char *message)
     {
         NSLog(@"%s", message);
+    }
+
+    // Game audio plays through the loud speaker and ignores the ring/silent switch, also while the
+    // Operator's microphone is open: PlayAndRecord with DefaultToSpeaker, mixed with other apps.
+    void DogpatchAudioSessionSpeaker()
+    {
+        AVAudioSession *session = [AVAudioSession sharedInstance];
+        NSError *error = nil;
+        AVAudioSessionCategoryOptions options = AVAudioSessionCategoryOptionDefaultToSpeaker | AVAudioSessionCategoryOptionMixWithOthers | AVAudioSessionCategoryOptionAllowBluetoothA2DP;
+        if (![session setCategory:AVAudioSessionCategoryPlayAndRecord mode:AVAudioSessionModeDefault options:options error:&error])
+            NSLog(@"[Audio] session category failed: %@", error);
+        if (![session setActive:YES error:&error])
+            NSLog(@"[Audio] session activate failed: %@", error);
+        NSLog(@"[Audio] session %@ options %lu route %@", session.category, (unsigned long)session.categoryOptions, session.currentRoute.outputs.firstObject.portType);
     }
 
     void DogpatchHapticSelection()
