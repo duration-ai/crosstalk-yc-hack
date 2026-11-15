@@ -1,5 +1,9 @@
 Shader "Dogpatch/FlatVertexColor"
 {
+    // The one shared material for the whole world (Speed Dial). Vertex color is the albedo and
+    // every triangle shades as a flat facet. Light is one warm sun with one shadow map plus a
+    // three-way ambient: a sky-blue fill from above, a periwinkle fill on the sides and a warm
+    // bounce from below, so shadows read periwinkle and never black. No specular, no reflections.
     Properties
     {
         _Tint ("Tint", Color) = (1, 1, 1, 1)
@@ -22,6 +26,7 @@ Shader "Dogpatch/FlatVertexColor"
 
             fixed4 _Tint;
             float4 _SkyAmbient;
+            float4 _SideAmbient;
             float4 _GroundAmbient;
 
             struct appdata
@@ -61,7 +66,7 @@ Shader "Dogpatch/FlatVertexColor"
 
                 float ndl = saturate(dot(n, _WorldSpaceLightPos0.xyz));
                 float shadow = SHADOW_ATTENUATION(i);
-                float3 ambient = lerp(_GroundAmbient.rgb, _SkyAmbient.rgb, n.y * 0.5 + 0.5);
+                float3 ambient = _SideAmbient.rgb * (1 - abs(n.y)) + _SkyAmbient.rgb * saturate(n.y) + _GroundAmbient.rgb * saturate(-n.y);
                 float3 lit = i.color.rgb * (ambient + _LightColor0.rgb * ndl * shadow);
                 fixed4 col = fixed4(lit, 1);
                 UNITY_APPLY_FOG(i.fogCoord, col);

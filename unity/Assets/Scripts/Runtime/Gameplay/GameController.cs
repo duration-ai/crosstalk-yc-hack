@@ -54,7 +54,6 @@ namespace Dogpatch.Gameplay
         public IReadOnlyDictionary<string, CarController> Cars => cars;
         public FollowCamera Follow => follow;
         public DragInput Drag => input;
-        public Hud BaseHud => hud;
 
         public Task EnterCar(CarController car) => RunAsync(() => EnterCarAsync(car));
 
@@ -85,6 +84,7 @@ namespace Dogpatch.Gameplay
             hud = gameObject.AddComponent<Hud>();
             hud.Game = this;
             hud.Input = input;
+            gameObject.AddComponent<Look.MotionFx>().Game = this;
 
             var local = new InMemoryGameBackend();
             var seed = new List<(string, Vec3, float)> { (models.Role("car")[0].id, ToVec(world.HeroCar.Position), world.HeroCar.Heading) };
@@ -176,33 +176,7 @@ namespace Dogpatch.Gameplay
                 var go = new GameObject("Main Camera") { tag = "MainCamera" };
                 view = go.AddComponent<Camera>();
             }
-            var sky = new Color(0.66f, 0.81f, 0.92f);
-            view.clearFlags = CameraClearFlags.SolidColor;
-            view.backgroundColor = sky;
-            view.nearClipPlane = 0.3f;
-            view.farClipPlane = 1400f;
-
-            var sun = new GameObject("Sun").AddComponent<Light>();
-            sun.type = LightType.Directional;
-            sun.transform.rotation = Quaternion.Euler(48f, -35f, 0f);
-            sun.color = new Color(1f, 0.95f, 0.86f);
-            sun.intensity = 1.05f;
-            sun.shadows = LightShadows.Hard;
-            sun.shadowStrength = 0.55f;
-            sun.shadowBias = 0.08f;
-            sun.shadowNormalBias = 0.6f;
-
-            QualitySettings.shadowDistance = 90f;
-            QualitySettings.shadowCascades = 1;
-            QualitySettings.shadowResolution = UnityEngine.ShadowResolution.Medium;
-            RenderSettings.ambientMode = AmbientMode.Flat;
-            RenderSettings.fog = true;
-            RenderSettings.fogMode = FogMode.Linear;
-            RenderSettings.fogColor = sky;
-            RenderSettings.fogStartDistance = 260f;
-            RenderSettings.fogEndDistance = 1100f;
-            Shader.SetGlobalColor("_SkyAmbient", new Color(0.36f, 0.4f, 0.47f));
-            Shader.SetGlobalColor("_GroundAmbient", new Color(0.27f, 0.25f, 0.22f));
+            Look.SpeedDial.Setup(view);
         }
 
         void Update()

@@ -206,7 +206,6 @@ namespace Dogpatch.Race
             Shove.Game = Game;
             Shove.IgnoreTouch = Hud.HitTest;
             Game.Drag.IgnoreTouch = Hud.HitTest;
-            Game.BaseHud.Minimal = true;
 
             PlaceForLobby(false);
             Setup = true;
