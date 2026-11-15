@@ -23,6 +23,12 @@ namespace Dogpatch.Operator
             r.Register("green_lights", () => new GreenLightsEffect());
             r.Register("speed_up", () => new PaceEffect(true));
             r.Register("slow_down", () => new PaceEffect(false));
+            r.Register("more_pedestrians", () => new CrowdDensityEffect(true));
+            r.Register("fewer_pedestrians", () => new CrowdDensityEffect(false));
+            r.Register("angry_npcs", () => new CrowdMoodEffect(CrowdMood.Angry));
+            r.Register("calm_npcs", () => new CrowdMoodEffect(CrowdMood.Calm));
+            r.Register("panic", () => new CrowdMoodEffect(CrowdMood.Panic));
+            r.Register("ped_theme", () => new PedThemeEffect());
         }
 
         public static Color Hex(string hex)
@@ -489,6 +495,79 @@ namespace Dogpatch.Operator
         {
             v /= k;
             return Mathf.Abs(v - 1f) < 1e-3f ? 1f : v;
+        }
+    }
+
+    // Crowds (more) or ghost town (fewer) on the streets.
+    public sealed class CrowdDensityEffect : OperatorEffect
+    {
+        readonly bool more;
+        float k;
+
+        public CrowdDensityEffect(bool more) => this.more = more;
+
+        public override void Apply(string strength, EffectTarget target)
+        {
+            k = more ? Scale(strength, 1.75f, 2.5f, 3.5f) : Scale(strength, 0.5f, 0.2f, 0.05f);
+            PedestrianSystem.Crowd.Add(k);
+            PedestrianSystem.Instance?.Recount();
+            CrowdFx.Ensure(Context);
+        }
+
+        public override void Revert()
+        {
+            PedestrianSystem.Crowd.Remove(k);
+            PedestrianSystem.Instance?.Recount();
+        }
+    }
+
+    public sealed class CrowdMoodEffect : OperatorEffect
+    {
+        readonly CrowdMood mood;
+        float k;
+
+        public CrowdMoodEffect(CrowdMood mood) => this.mood = mood;
+
+        public override void Apply(string strength, EffectTarget target)
+        {
+            k = Scale(strength, 0.5f, 0.75f, 1f);
+            PedestrianSystem.AddMood(mood, k);
+            CrowdFx.Ensure(Context);
+        }
+
+        public override void Revert() => PedestrianSystem.RemoveMood(mood, k);
+    }
+
+    public sealed class PedThemeEffect : OperatorEffect
+    {
+        string theme;
+
+        public override void Apply(string strength, EffectTarget target)
+        {
+            theme = string.IsNullOrEmpty(target.Theme) ? "beach_party" : target.Theme;
+            PedestrianSystem.AddTheme(theme);
+            CrowdFx.Ensure(Context);
+        }
+
+        public override void Revert() => PedestrianSystem.RemoveTheme(theme);
+    }
+
+    // Runs the crowd's per-frame dressing and mood marks while any crowd effect is on, and one
+    // more frame after the last one so the outfits go back.
+    public sealed class CrowdFx : MonoBehaviour
+    {
+        bool was;
+
+        public static void Ensure(EffectContext context)
+        {
+            if (context.Host.GetComponent<CrowdFx>() == null) context.Host.gameObject.AddComponent<CrowdFx>();
+        }
+
+        void Update()
+        {
+            bool busy = PedestrianSystem.Busy;
+            if ((busy || was) && PedestrianSystem.Instance != null) PedestrianSystem.Instance.OperatorFrame();
+            was = busy;
         }
     }
 
