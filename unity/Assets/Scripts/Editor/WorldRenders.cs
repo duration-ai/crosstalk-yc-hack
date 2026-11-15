@@ -44,7 +44,7 @@ namespace Dogpatch.EditorTools
         }
 
         // The parked cars the game spawns, with the same mix: mostly roster types, the rest GLB cars.
-        static void Park(WorldContext ctx, ModelLibrary models, Material material)
+        public static void Park(WorldContext ctx, ModelLibrary models, Material material)
         {
             Vehicles.VehicleRoster.Configure(material, null);
             string[] curbside = { Vehicles.VehicleTypes.Sedan, Vehicles.VehicleTypes.Hatchback, Vehicles.VehicleTypes.YellowCab };
@@ -105,7 +105,7 @@ namespace Dogpatch.EditorTools
             };
         }
 
-        public static void Render(WorldContext ctx, WorldData data, string dir)
+        public static void Render(WorldContext ctx, WorldData data, string dir, List<View> views = null)
         {
             Directory.CreateDirectory(dir);
             var cam = SetupScene();
@@ -113,7 +113,7 @@ namespace Dogpatch.EditorTools
             cam.targetTexture = rt;
             var lod = ctx.Root.GetComponent("DistanceLod");
             var apply = lod?.GetType().GetMethod("Apply");
-            foreach (var view in Views(ctx, data))
+            foreach (var view in views ?? Views(ctx, data))
             {
                 cam.transform.position = view.Eye;
                 cam.transform.LookAt(view.Target);
