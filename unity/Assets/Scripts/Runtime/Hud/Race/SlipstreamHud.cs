@@ -45,6 +45,9 @@ namespace Dogpatch.Slipstream
         Rect callRect;
         bool readyVisible;
         bool callVisible;
+
+        // Off while Chris tests with 100 asks; on, races are hands-free only (phone pickups).
+        public static bool HidePhoneInRaces = false;
         int readyFinger = int.MinValue;
         int callFinger = int.MinValue;
         bool paused;
@@ -285,7 +288,7 @@ namespace Dogpatch.Slipstream
             if (racing) RaceCorners();
             if (Race.ResultsIn) Results();
             OperatorAndNews();
-            if (!Race.Gridded) PhoneButton(lobby || Race.ResultsIn);
+            if (!(HidePhoneInRaces && Race.Gridded)) PhoneButton(lobby || Race.ResultsIn);
         }
 
         void Lobby(Room room)

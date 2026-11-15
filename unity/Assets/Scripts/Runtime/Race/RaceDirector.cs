@@ -182,6 +182,7 @@ namespace Dogpatch.Race
             Calls.Operator = Operator;
             Calls.PlayerId = () => MyId;
             Calls.RoomId = () => RoomId;
+            Calls.Asks = () => Me?.asks ?? 0;
 
             Pickups = gameObject.AddComponent<AskPickups>();
             Pickups.Race = this;

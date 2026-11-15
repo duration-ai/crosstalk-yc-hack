@@ -65,24 +65,18 @@ namespace Dogpatch.Race
             Annulus(ground, 1.9f, 2.4f, 0.05f, Pink, 24);
             var token = Emit(parent, "AskToken", ground, position, 0f, material);
 
-            var coin = new MeshBuilder();
-            const int sides = 8;
-            const float r = 1.1f;
-            const float half = 0.16f;
-            Vector3 Rim(int i, float z) => new Vector3(Mathf.Cos(i * Mathf.PI * 2f / sides + Mathf.PI / sides) * r, Mathf.Sin(i * Mathf.PI * 2f / sides + Mathf.PI / sides) * r, z);
-            for (int i = 0; i < sides; i++)
-            {
-                coin.Triangle(Vector3.forward * -half, Rim(i + 1, -half), Rim(i, -half), Pink, Vector3.back);
-                coin.Triangle(Vector3.forward * half, Rim(i, half), Rim(i + 1, half), Pink, Vector3.forward);
-                var mid = (Rim(i, 0f) + Rim(i + 1, 0f)).normalized;
-                coin.Quad(Rim(i, -half), Rim(i + 1, -half), Rim(i + 1, half), Rim(i, half), DeepPink, mid);
-            }
+            var phone = new MeshBuilder();
+            const float half = 0.2f;
+            phone.Box(Vector3.zero, new Vector3(1.3f, 2.3f, half * 2f), Quaternion.identity, Pink);
+            phone.Box(new Vector3(0.42f, 1.45f, 0f), new Vector3(0.18f, 0.6f, 0.18f), Quaternion.identity, DeepPink);
             foreach (float z in new[] { -half - 0.01f, half + 0.01f })
             {
-                coin.Box(new Vector3(0f, 0f, z), new Vector3(1.15f, 0.3f, 0.02f), Quaternion.identity, White);
-                coin.Box(new Vector3(0f, 0f, z), new Vector3(0.3f, 1.15f, 0.02f), Quaternion.identity, White);
+                phone.Box(new Vector3(0f, 0.2f, z), new Vector3(1.04f, 1.45f, 0.02f), Quaternion.identity, Ink);
+                phone.Box(new Vector3(0f, 0.2f, z * 1.05f), new Vector3(0.5f, 0.5f, 0.02f), Quaternion.identity, Pink);
+                phone.Box(new Vector3(0f, 0.86f, z * 1.05f), new Vector3(0.36f, 0.07f, 0.02f), Quaternion.identity, White);
+                phone.Box(new Vector3(0f, -0.78f, z), new Vector3(0.3f, 0.2f, 0.02f), Quaternion.identity, White);
             }
-            var c = Emit(token.transform, "Coin", coin, position + Vector3.up * 1.6f, 0f, material);
+            var c = Emit(token.transform, "Phone", phone, position + Vector3.up * 1.6f, 0f, material);
             c.transform.SetAsFirstSibling();
             return token;
         }
