@@ -35,6 +35,14 @@ namespace Dogpatch.Backend
             }
         }
 
+        // A vehicle that appears at runtime (traffic, dock bikes, a felled rider's bike) under the id
+        // the client already gave it. Not part of IGameBackend: the Convex contract only seeds server-side.
+        public void SeedVehicle(string id, string model, Vec3 position, float heading)
+        {
+            if (vehicles.ContainsKey(id)) return;
+            vehicles[id] = new Vehicle { id = id, model = model, position = position, heading = heading, occupiedBy = null, updatedAt = Now };
+        }
+
         public Task<Player> CreatePlayerAsync(string displayName)
         {
             string name = displayName?.Trim() ?? "";

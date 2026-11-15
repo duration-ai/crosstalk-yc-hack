@@ -1,0 +1,17 @@
+{
+  "startName": "22nd Street Caltrain",
+  "start": {
+    "lat": 37.757286,
+    "lon": -122.3924
+  },
+  "finishName": "YC (580 20th St)",
+  "finish": {
+    "lat": 37.760777,
+    "lon": -122.386636
+  },
+  "via": [],
+  "finishRadius": 15,
+  "ringRadius": 7.2,
+  "routePayphones": 3,
+  "payphones": []
+}

@@ -43,6 +43,7 @@ namespace Dogpatch.Glb
                 return null;
             }
             asset = GlbAsset.Load(id, bytes.bytes);
+            Look.PolyforkPalette.Apply(asset);
             cache[id] = asset;
             return asset;
         }
