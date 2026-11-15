@@ -37,6 +37,9 @@ export default defineSchema({
     finishRadius: v.number(),
     eventSeq: v.number(),
     createdAt: v.number(),
+    asks: v.optional(v.number()),
+    pickups: v.optional(v.array(vec3)),
+    pickupRadius: v.optional(v.number()),
   }).index("by_code", ["code"]),
   roomPlayers: defineTable({
     roomId: v.id("rooms"),
@@ -49,6 +52,8 @@ export default defineSchema({
     progress: v.number(),
     finishedAt: v.number(),
     smash: v.optional(v.number()),
+    asks: v.optional(v.number()),
+    collected: v.optional(v.array(v.number())),
     left: v.boolean(),
     updatedAt: v.number(),
   })

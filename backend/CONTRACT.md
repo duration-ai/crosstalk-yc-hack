@@ -279,7 +279,10 @@ Players come from `POST /api/players`. A player is in at most one room: creating
   "routeLength": 700,        // meters along the route
   "finish": { "x": 300, "y": 0, "z": 400 },   // the route's last point
   "finishRadius": 10,
-  "createdAt": 1794768818288
+  "createdAt": 1794768818288,
+  "asks": 2,                // asks every racer starts each race with
+  "pickups": [ { "x": 120, "y": 0, "z": 80 } ],   // ask pickups, indexed from 0 (see Asks)
+  "pickupRadius": 4
 }
 
 // Racer: one per player in the room
@@ -299,7 +302,9 @@ Players come from `POST /api/players`. A player is in at most one room: creating
   "finishMs": 0,             // race time in ms from startsAt, 0 until finished
   "smash": 0,                // smash points this race, the best value the racer has sent
   "left": false,             // true if the player left after the start (DNF)
-  "updatedAt": 1794768818366
+  "updatedAt": 1794768818366,
+  "asks": 2,                 // Operator requests this racer has left
+  "collected": [ 0 ]         // pickup indices this racer took this race
 }
 
 // Event: one world change in the room's append-only log
@@ -382,6 +387,7 @@ Players come from `POST /api/players`. A player is in at most one room: creating
 | Set ready, rematch | `POST /api/rooms/ready` | `rooms.setReady` |
 | Poll everything | `GET /api/rooms/poll?roomId=…&after=…` | `rooms.poll` (internal) |
 | Send my position | `POST /api/race/update` | `race.update` |
+| Collect an ask pickup | `POST /api/race/collect` | `race.collect` |
 | Fire a world change | `POST /api/rooms/events` | `events.fire` |
 | Call the Operator (text) | `POST /api/operator` | `operator.call` (action) |
 
@@ -394,7 +400,10 @@ A typical client loop: create or join, then poll at 5–10 Hz from the lobby onw
   "playerId": "jd7…",
   "route": [ { "x": 0, "y": 0, "z": 0 }, { "x": 0, "y": 0, "z": 400 }, { "x": 300, "y": 0, "z": 400 } ],
   "finishRadius": 10,   // optional, 1–100, default 15
-  "minPlayers": 2       // optional, integer 1–4, default 2 (1 lets one player test alone)
+  "minPlayers": 2,      // optional, integer 1–4, default 2 (1 lets one player test alone)
+  "asks": 2,            // optional, integer 1–9, default 2: asks each racer starts every race with
+  "pickups": [ { "x": 120, "y": 0, "z": 80 } ],   // optional, at most 64 ask pickups, default none
+  "pickupRadius": 4     // optional, 1–20 m, default 4
 }
 ```
 
@@ -460,6 +469,18 @@ Send at 5–10 Hz from the lobby onward and await each call before sending the n
 ```
 
 The update that reaches the finish returns `finished: true` and its `finishMs`, and the last finisher's update already returns `status: "finished"`. After finishing, or once the room is finished, updates still store the position but never change progress or the result. Errors: `400` (including a negative or fractional `smash`), `404`, `409` (not in the room, or left).
+
+#### Asks and pickups: `POST /api/race/collect`
+
+An **ask** is one Operator request. Every racer starts each race with `room.asks` (`Racer.asks`), and every Operator call that gets a change spends one through `internal.race.spendAsk`, which answers `409 "No asks left"` at zero, and the Operator then refuses with reason `no_asks`. Wiring `operator.call` to it is still to do; the voice Operator's owner has it. There is no public spend endpoint, so a client can't skip paying. More asks come from **pickups**, the points the client sent as `pickups` when it created the room: the client places them on side streets off the route so that taking one costs a detour.
+
+```json
+{ "playerId": "jd7…", "roomId": "k57…", "pickup": 0, "position": { "x": 121, "y": 0.5, "z": 82 } }
+```
+
+`pickup` indexes `room.pickups`, and `position` is where the racer is now; it must be within `pickupRadius` + 3 m (x/z) of the pickup. Each racer can take each pickup once a race. Pickups are per racer, so one racer taking it never hides it from the others. Response `200`: `{ "collected": true, "asks": 3 }`. Taking one you already have answers `{ "collected": false, "asks": … }` and changes nothing, so a retry is safe. Only while `racing`. The rematch gives everyone `room.asks` again and clears `collected`. Errors: `400` (pickup is not an index into `room.pickups`), `404`, `409` (not racing, too far, not in the room, left).
+
+World changes fired through `POST /api/rooms/events` cost no ask; they are for debug tools and scripted demos.
 
 #### Fire a world change: `POST /api/rooms/events`
 
@@ -561,3 +582,4 @@ The catalogue (effects, classes, durations, allowed classes) is `convex/operator
 - **Measured on rapid-gnat-965** from a cloud machine, with four racers updating and four clients polling in parallel: about 107 ms mean (151 ms p95) per update and 94 ms (126 ms p95) per poll, with no errors. The curl harness that awaited each call sustained 6.7 updates per second per racer, and a round trip that short leaves room for about 9 Hz, so the 5–10 Hz target holds on that link. Voice Operator calls take about 300 ms from `operator:call` to the effect showing up in the subscription (Jev about 140 ms of it).
 - **Trust:** there is no auth or anti-cheat. Positions, finishes and world changes are taken as sent; Operator calls are not rate-limited; Scribe tokens are.
 - **Rooms are never deleted.** Codes are unique across all rooms ever created, so a code always means the same room.
+- 2026-11-15: asks for CRO-22. Racers start each race with `room.asks` (default 2; `rooms.create` takes `asks`, `pickups` and `pickupRadius`). `Racer.asks` and `Racer.collected` are added. `POST /api/race/collect` (`race.collect`) takes a pickup for one more ask, and `internal.race.spendAsk` is what `operator.call` uses to pay for a request. The rematch restores asks and clears pickups. Not deployed yet.

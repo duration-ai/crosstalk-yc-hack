@@ -127,8 +127,8 @@ http.route({
   path: "/api/rooms",
   method: "POST",
   handler: endpoint(
-    (ctx, { playerId, route, finishRadius, minPlayers }) =>
-      ctx.runMutation(api.rooms.create, { playerId, route, finishRadius, minPlayers }),
+    (ctx, { playerId, route, finishRadius, minPlayers, asks, pickups, pickupRadius }) =>
+      ctx.runMutation(api.rooms.create, { playerId, route, finishRadius, minPlayers, asks, pickups, pickupRadius }),
     201,
   ),
 });
@@ -181,6 +181,14 @@ http.route({
   method: "POST",
   handler: endpoint((ctx, { playerId, roomId, position, heading, smash }) =>
     ctx.runMutation(api.race.update, { playerId, roomId, position, heading, smash }),
+  ),
+});
+
+http.route({
+  path: "/api/race/collect",
+  method: "POST",
+  handler: endpoint((ctx, { playerId, roomId, pickup, position }) =>
+    ctx.runMutation(api.race.collect, { playerId, roomId, pickup, position }),
   ),
 });
 
