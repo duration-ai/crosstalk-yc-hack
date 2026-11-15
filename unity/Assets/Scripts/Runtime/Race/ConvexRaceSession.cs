@@ -19,7 +19,7 @@ namespace Dogpatch.Race
         public const string DefaultUrl = "https://rapid-gnat-965.convex.site";
         public const string Unavailable = "UNAVAILABLE";
 
-        public const string Mission = "yc";
+        public static string Mission = "yc";
         const double ReconnectingAfterMs = 1500.0;
 
         readonly string baseUrl;

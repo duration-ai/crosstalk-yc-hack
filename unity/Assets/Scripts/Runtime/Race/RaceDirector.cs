@@ -55,6 +55,7 @@ namespace Dogpatch.Race
         public bool Gridded { get; private set; }
         public bool Started { get; private set; }
         public bool CrossedFinish { get; private set; }
+        public string RouteId { get; private set; } = "";
         public bool Wrecking { get; private set; }
         public float WreckedAt { get; private set; } = -10f;
         public float WreckFade { get; private set; }
@@ -127,6 +128,17 @@ namespace Dogpatch.Race
             if (task.IsFaulted) Debug.LogError("[SpeedDial] " + task.Exception?.GetBaseException());
         }
 
+        // Which course to race: "-speeddial-route b" on the command line, else Resources/SpeedDial/route
+        // (one word), else the classic course.json. Course "x" lives in Resources/SpeedDial/course-x.json,
+        // and each course is its own mission, so racers on different routes never share a lobby.
+        static string RouteChoice()
+        {
+            var args = Environment.GetCommandLineArgs();
+            int i = Array.IndexOf(args, "-speeddial-route");
+            if (i >= 0 && i + 1 < args.Length) return args[i + 1].Trim().ToLowerInvariant();
+            return Resources.Load<TextAsset>("SpeedDial/route")?.text.Trim().ToLowerInvariant() ?? "";
+        }
+
         IEnumerator Start()
         {
             while ((Game = FindAnyObjectByType<GameController>()) == null || !Game.IsReady) yield return null;
@@ -151,7 +163,10 @@ namespace Dogpatch.Race
                 }
                 return false;
             }
-            Course = RaceCourse.Build(Game.World, Game.Data, Resources.Load<TextAsset>("SpeedDial/course").text, Occupied);
+            RouteId = RouteChoice();
+            var course = (RouteId.Length > 0 ? Resources.Load<TextAsset>("SpeedDial/course-" + RouteId) : null) ?? Resources.Load<TextAsset>("SpeedDial/course");
+            ConvexRaceSession.Mission = RouteId.Length > 0 ? "yc-" + RouteId : "yc";
+            Course = RaceCourse.Build(Game.World, Game.Data, course.text, Occupied);
             AskTuning = JsonUtility.FromJson<AskTuning>(Resources.Load<TextAsset>("SpeedDial/asks").text);
             Course.PlaceAskPickups(AskTuning);
 
