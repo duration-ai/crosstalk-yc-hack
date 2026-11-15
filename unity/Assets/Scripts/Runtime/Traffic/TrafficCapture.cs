@@ -41,6 +41,7 @@ namespace Dogpatch.Traffic
             capture.output = Arg("-captureOut") ?? "capture";
             capture.frames = int.TryParse(Arg("-captureFrames"), out int n) ? n : scenario == "tthird" ? 900 : scenario == "perf" ? 1800 : 360;
             Time.captureFramerate = 30;
+            Application.runInBackground = true;
         }
 
         IEnumerator Start()
