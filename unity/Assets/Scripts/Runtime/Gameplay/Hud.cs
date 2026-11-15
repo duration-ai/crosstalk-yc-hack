@@ -250,6 +250,8 @@ namespace Dogpatch.Gameplay
                 Input?.Cancel();
                 Debug.Log("[Hud] controls " + (DragInput.DragAnywhere ? "drag anywhere" : "fixed stick"));
             }
+            if (Chip(new Rect(left, controls.y, 220f * s, h), "MAP STYLE: " + Minimap.StyleNames[Minimap.MapStyle], false, s))
+                Minimap.MapStyle = (Minimap.MapStyle + 1) % Minimap.StyleNames.Length;
             if (Chip(new Rect(controls.xMax + gap, controls.y, w, h), "SOCKET", Dogpatch.Race.ConvexRaceSession.SocketEnabled, s))
                 Dogpatch.Race.ConvexRaceSession.SocketEnabled = !Dogpatch.Race.ConvexRaceSession.SocketEnabled;
         }

@@ -52,7 +52,13 @@ namespace Dogpatch.Operator
         public string Partial => State == CallState.Talking || State == CallState.Waiting ? Voice?.Partial ?? "" : "";
         public float BuzzedAt { get; private set; } = -10f;
         public float TurnedDownAt { get; private set; } = -10f;
-        public bool HasAsks => Asks == null || Asks() > 0;
+        public bool HasAsks => !CountsAsks || Asks() > 0;
+
+        // OPERATOR_ANYWHERE (on while Chris tests asks): outside a running race every call is free
+        // and the badge hides. Racing says whether a race is running right now.
+        public static bool Anywhere = true;
+        public Func<bool> Racing;
+        public bool CountsAsks => Asks != null && !(Anywhere && Racing != null && !Racing());
 
         OperatorView snapshot;
         int lastAsks = -1;

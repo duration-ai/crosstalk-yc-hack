@@ -28,6 +28,9 @@ namespace Dogpatch.Race
         const float SendEvery = 0.1f;
         const float LockMs = 3000f;
         const float GhostFor = 4f;
+        public const float WreckHold = 2.5f;
+        public const float WreckSkipAfter = 1f;
+        const float WreckFadeTime = 0.25f;
         const float ContactWatch = 10f;
         const float ClearRoadFor = 10f;
         const float ClearRoadMeters = 150f;
@@ -53,6 +56,9 @@ namespace Dogpatch.Race
         public bool Gridded { get; private set; }
         public bool Started { get; private set; }
         public bool CrossedFinish { get; private set; }
+        public bool Wrecking { get; private set; }
+        public float WreckedAt { get; private set; } = -10f;
+        public float WreckFade { get; private set; }
         public bool ResultsIn { get; private set; }
         public float StartedAt { get; private set; }
         public float ResultsAt { get; private set; }
@@ -184,6 +190,7 @@ namespace Dogpatch.Race
             Calls.PlayerId = () => MyId;
             Calls.RoomId = () => RoomId;
             Calls.Asks = () => Me?.asks ?? 0;
+            Calls.Racing = () => Started && !ResultsIn;
 
             Pickups = gameObject.AddComponent<AskPickups>();
             Pickups.Race = this;
@@ -533,18 +540,59 @@ namespace Dogpatch.Race
             ClearRoad(false);
         }
 
-        // A wreck doesn't end anyone's race: a moment later the car is repaired and back on the route
-        // where it was, and the player is back in it.
+        // A wreck doesn't end anyone's race. A bot's car is repaired and back on the route a moment
+        // later. Yours is a beat: you're thrown out and roll, then stand by the smoking wreck with the
+        // camera on it and WRECKED up for 2.5 s (a tap skips it after 1 s), a quick fade, and you're
+        // back on the route where you were in the same car, repaired. Getting out on purpose is not a
+        // wreck, so it never respawns you.
         void OnWrecked(CarController car)
         {
             if (!Started || ResultsIn || !IsRacerCar(car)) return;
-            StartCoroutine(Recover(car));
+            StartCoroutine(car == myCar ? PlayerWreck(car) : Recover(car));
         }
 
         IEnumerator Recover(CarController car)
         {
             yield return new WaitForSeconds(1.5f);
-            if (ResultsIn) yield break;
+            if (!ResultsIn) yield return PutBack(car);
+        }
+
+        IEnumerator PlayerWreck(CarController car)
+        {
+            Wrecking = true;
+            WreckedAt = Time.time;
+            Game.ExternalInput = true;
+            Game.Follow.Target = car.transform;
+            while (!ResultsIn)
+            {
+                float since = Time.time - WreckedAt;
+                bool tapped = Input.GetMouseButtonDown(0) || (Input.touchCount > 0 && Input.GetTouch(0).phase == TouchPhase.Began);
+                if (since >= WreckHold || (since >= WreckSkipAfter && tapped)) break;
+                if (Game.CurrentCar == null && Game.Player.enabled) Game.Player.SetInput(Vector3.zero, 0f);
+                yield return null;
+            }
+            for (float t = 0f; t < WreckFadeTime && !ResultsIn; t += Time.deltaTime)
+            {
+                WreckFade = t / WreckFadeTime;
+                yield return null;
+            }
+            if (!ResultsIn)
+            {
+                WreckFade = 1f;
+                yield return PutBack(car);
+                Game.ExternalInput = Autopilot || CrossedFinish;
+            }
+            Wrecking = false;
+            for (float t = 0f; t < WreckFadeTime; t += Time.deltaTime)
+            {
+                WreckFade = Mathf.Min(WreckFade, 1f - t / WreckFadeTime);
+                yield return null;
+            }
+            WreckFade = 0f;
+        }
+
+        IEnumerator PutBack(CarController car)
+        {
             var damage = car.GetComponent<Dogpatch.Smash.VehicleDamage>();
             if (damage != null && damage.IsWrecked) damage.Repair();
             var bot = bots.FirstOrDefault(b => b.Car == car);

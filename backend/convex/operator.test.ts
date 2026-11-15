@@ -249,6 +249,7 @@ describe("operator.call", () => {
   });
 
   it("spends one ask per applied effect and refuses cleanly at zero", async () => {
+    vi.stubEnv("OPERATOR_ANYWHERE", "false");
     const { t, tim, maya, say, effects, asksOf } = await room({ asks: 2 });
     expect(await asksOf(tim.id)).toBe(2);
     await say("make it rain", RAIN);
@@ -267,6 +268,7 @@ describe("operator.call", () => {
   });
 
   it("charges a promoted effect when it is confirmed, not when it is asked for", async () => {
+    vi.stubEnv("OPERATOR_ANYWHERE", "false");
     const { t, tim, say, effects, asksOf } = await room({ asks: 1 });
     const slow = { scope: "object", object_effect: "slow_down", other_player: 0.95 };
     const first = await say("slow him down", slow, tim.id, "driving");
@@ -280,6 +282,13 @@ describe("operator.call", () => {
     expect((await effects()).map((e) => e.effect)).toEqual(["vehicle_slower"]);
   });
 
+  it("calls for free outside a running race while OPERATOR_ANYWHERE is on", async () => {
+    const { tim, say, asksOf } = await room({ asks: 1 });
+    await say("make it rain", RAIN);
+    expect(await say("night", { scope: "world", world_group: "sky", sky_effect: "night" })).toMatchObject({ outcome: "applied" });
+    expect(await asksOf(tim.id)).toBe(1);
+  });
+
   it("never runs a freeAsks room out of asks", async () => {
     const { tim, say, asksOf } = await room({ asks: 1, freeAsks: true });
     for (const effect of ["rain", "night", "fog"]) {
@@ -289,6 +298,7 @@ describe("operator.call", () => {
   });
 
   it("counts applied Operator calls toward the race's CHAOS CALLER", async () => {
+    vi.stubEnv("OPERATOR_ANYWHERE", "false");
     const { t, tim, maya, roomId, say } = await room();
     let started;
     for (const p of [tim, maya]) started = (await t.mutation(api.rooms.setReady, { playerId: p.id, roomId, ready: true })).room;
