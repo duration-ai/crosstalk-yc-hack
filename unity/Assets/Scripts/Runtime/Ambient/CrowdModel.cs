@@ -5,14 +5,16 @@ using UnityEngine.Rendering;
 
 namespace Dogpatch.Ambient
 {
-    public enum Clip { Idle, Walk, Run, Sit, Push }
+    public enum Clip { Idle, Walk, Run, Sit, Push, Brace, Leap, Tuck, Flail, Sprawl, Kneel }
 
     public enum Slot { Keep, Top, Under, Bottom, Hair, Skin }
 
     // A Polyfork character baked for GPU crowds. Polyfork binds rigidly (one bone per vertex), so
     // each vertex just names its bone, and a small texture holds every bone's skin matrix for every
-    // frame of Idle, Walk, Run, plus two poses built from them: sitting and pushing a cart. The
-    // crowd shader skins on the GPU, so every instance of a model shares one instanced draw call.
+    // frame of Idle, Walk, Run, plus poses built from them: sitting, pushing a cart, and the reaction
+    // poses (brace, leap, tuck, a flailing loop, sprawled and kneeling) that knock-downs and dives
+    // blend between. The crowd shader skins on the GPU, so every instance of a model shares one
+    // instanced draw call.
     // Outfit zones (Polyfork's colour knobs) are tagged per vertex so each instance wears its own
     // palette colours without a separate mesh.
     public sealed class CrowdModel
@@ -25,8 +27,39 @@ namespace Dogpatch.Ambient
         public Vector3 HeadPivot;
         public float WalkSpeed = 1.3f;
         public float RunSpeed = 3.4f;
-        public readonly int[] ClipStart = new int[5];
-        public readonly int[] ClipFrames = new int[5];
+        public const int ClipCount = 11;
+        public readonly int[] ClipStart = new int[ClipCount];
+        public readonly int[] ClipFrames = new int[ClipCount];
+
+        // Hip height in model space; reacting bodies rotate about the point this high above the origin.
+        public float HipHeight = 0.9f;
+        // Hip height above the ground when standing in the Idle pose, by the contact points below.
+        public float StandHeight = 0.9f;
+        // Per clip (first frame): head, hands, elbows, knees, feet, toes, hips and chest relative to
+        // the hip pivot, with w the body's thickness around that point. Enough to keep any rotated
+        // pose out of the ground.
+        readonly Vector4[][] contacts = new Vector4[ClipCount][];
+
+        static readonly (string name, float pad)[] ContactJoints =
+        {
+            ("Head", 0.17f), ("LeftHand", 0.06f), ("RightHand", 0.06f), ("LeftForeArm", 0.06f), ("RightForeArm", 0.06f),
+            ("LeftLeg", 0.07f), ("RightLeg", 0.07f), ("LeftFoot", 0.07f), ("RightFoot", 0.07f), ("LeftToeBase", 0.04f),
+            ("RightToeBase", 0.04f), ("Hips", 0.13f), ("Spine2", 0.14f),
+        };
+
+        // How high the hip pivot must sit above the ground so no part of the posed body is below it.
+        public float Clearance(Quaternion orientation, Clip clip)
+        {
+            var points = contacts[(int)clip];
+            if (points == null) return StandHeight;
+            float h = 0f;
+            foreach (var p in points)
+            {
+                var r = orientation * (Vector3)p;
+                h = Mathf.Max(h, p.w - r.y);
+            }
+            return h;
+        }
 
         struct Bone
         {
@@ -137,7 +170,7 @@ namespace Dogpatch.Ambient
             var pixels = new ushort[3 * 4];
             Write(pixels, 0, Matrix4x4.identity);
             model.Bones = MakeTexture(id, 3, 1, pixels);
-            for (int c = 0; c < 5; c++) model.ClipFrames[c] = 1;
+            for (int c = 0; c < ClipCount; c++) model.ClipFrames[c] = 1;
             return model;
         }
 
@@ -319,18 +352,136 @@ namespace Dogpatch.Ambient
                 Rotate(pose, "Spine1", Quaternion.Euler(8f, 0f, 0f));
             });
 
+            // Reaction poses. Polyfork's rig is T-posed with every local frame aligned to the body
+            // (+Z forward, the left arm along -X), so rotations are written for the left side and
+            // mirrored onto the right.
+            var idlePose = poses[ClipStart[(int)Clip.Idle]];
+            void AddPose(Clip id, int frames, System.Action<(Vector3 t, Quaternion r, Vector3 s)[], float> adjust)
+            {
+                ClipStart[(int)id] = poses.Count;
+                for (int f = 0; f < frames; f++)
+                {
+                    var pose = ((Vector3, Quaternion, Vector3)[])idlePose.Clone();
+                    adjust(pose, f * Mathf.PI * 2f / frames);
+                    poses.Add(pose);
+                }
+                ClipFrames[(int)id] = frames;
+            }
+            void Pair((Vector3 t, Quaternion r, Vector3 s)[] pose, string bone, Quaternion left, Quaternion? right = null)
+            {
+                Rotate(pose, "Left" + bone, left);
+                Rotate(pose, "Right" + bone, right ?? Mirror(left));
+            }
+            void Arms((Vector3 t, Quaternion r, Vector3 s)[] pose, Quaternion arm, Quaternion fore, Quaternion? rightArm = null, Quaternion? rightFore = null)
+            {
+                Pair(pose, "Shoulder", Quaternion.identity);
+                Pair(pose, "Arm", arm, rightArm);
+                Pair(pose, "ForeArm", fore, rightFore);
+            }
+            void Legs((Vector3 t, Quaternion r, Vector3 s)[] pose, Quaternion up, Quaternion knee, Quaternion foot)
+            {
+                Pair(pose, "UpLeg", up);
+                Pair(pose, "Leg", knee);
+                Pair(pose, "Foot", foot);
+            }
+            Quaternion X(float a) => Quaternion.AngleAxis(a, Vector3.right);
+            Quaternion Y(float a) => Quaternion.AngleAxis(a, Vector3.up);
+            Quaternion Z(float a) => Quaternion.AngleAxis(a, Vector3.forward);
+
+            // Startled crouch before a dive: knees bent, hunched, forearms up in front of the face.
+            AddPose(Clip.Brace, 1, (pose, _) =>
+            {
+                Legs(pose, Quaternion.Euler(-50f, 0f, -8f), X(75f), X(-25f));
+                Rotate(pose, "Spine", X(18f));
+                Rotate(pose, "Spine1", X(10f));
+                Rotate(pose, "Neck", X(-12f));
+                Arms(pose, X(-40f) * Z(65f), Y(110f));
+            });
+            // The dive itself: stretched out, arms reaching overhead, legs trailing.
+            AddPose(Clip.Leap, 1, (pose, _) =>
+            {
+                Legs(pose, Quaternion.Euler(18f, 0f, -5f), X(35f), X(30f));
+                Rotate(pose, "Spine", X(-12f));
+                Rotate(pose, "Spine1", X(-8f));
+                Rotate(pose, "Neck", X(-25f));
+                Arms(pose, X(20f) * Z(-78f), Y(10f));
+            });
+            // Curled into a ball for rolls: knees to the chest, arms round the shins, chin down.
+            AddPose(Clip.Tuck, 1, (pose, _) =>
+            {
+                Legs(pose, Quaternion.Euler(-125f, 0f, -10f), X(145f), X(-20f));
+                Rotate(pose, "Spine", X(25f));
+                Rotate(pose, "Spine1", X(25f));
+                Rotate(pose, "Spine2", X(15f));
+                Rotate(pose, "Neck", X(25f));
+                Arms(pose, X(50f) * Y(90f), Y(80f));
+            });
+            // Airborne: arms windmilling and legs kicking, left and right half a cycle apart.
+            AddPose(Clip.Flail, 18, (pose, phase) =>
+            {
+                float o = phase + Mathf.PI;
+                Arms(pose, X(25f * Mathf.Sin(phase)) * Z(-35f + 40f * Mathf.Sin(phase)), Y(25f + 25f * Mathf.Sin(phase + 1f)),
+                    Mirror(X(25f * Mathf.Sin(o)) * Z(-35f + 40f * Mathf.Sin(o))), Mirror(Y(25f + 25f * Mathf.Sin(o + 1f))));
+                Rotate(pose, "LeftUpLeg", Quaternion.Euler(-35f + 35f * Mathf.Sin(phase), 0f, -12f));
+                Rotate(pose, "RightUpLeg", Mirror(Quaternion.Euler(-35f + 35f * Mathf.Sin(o), 0f, -12f)));
+                Rotate(pose, "LeftLeg", X(45f + 30f * Mathf.Cos(phase)));
+                Rotate(pose, "RightLeg", X(45f + 30f * Mathf.Cos(o)));
+                Rotate(pose, "Spine", X(-12f));
+                Rotate(pose, "Neck", X(-15f));
+            });
+            // Lying where they landed: limbs splayed, one knee up, head turned.
+            AddPose(Clip.Sprawl, 1, (pose, _) =>
+            {
+                Arms(pose, Z(-25f), Y(35f), Mirror(Z(35f)), Mirror(Y(15f)));
+                Rotate(pose, "LeftUpLeg", Quaternion.Euler(-40f, 0f, -18f));
+                Rotate(pose, "LeftLeg", X(70f));
+                Rotate(pose, "LeftFoot", X(-30f));
+                Rotate(pose, "RightUpLeg", Mirror(Quaternion.Euler(5f, 0f, -10f)));
+                Rotate(pose, "RightLeg", X(10f));
+                Rotate(pose, "Spine", X(-5f));
+                Rotate(pose, "Head", Y(25f));
+            });
+            // Halfway up: down on the left knee, right foot planted, hand on the knee.
+            AddPose(Clip.Kneel, 1, (pose, _) =>
+            {
+                Rotate(pose, "LeftUpLeg", Quaternion.Euler(0f, 0f, -5f));
+                Rotate(pose, "LeftLeg", X(90f));
+                Rotate(pose, "LeftFoot", X(40f));
+                Rotate(pose, "RightUpLeg", Mirror(Quaternion.Euler(-85f, 0f, -8f)));
+                Rotate(pose, "RightLeg", X(85f));
+                Rotate(pose, "RightFoot", Quaternion.identity);
+                Rotate(pose, "Spine", X(25f));
+                Rotate(pose, "Spine1", X(10f));
+                Rotate(pose, "Neck", X(-15f));
+                Arms(pose, X(-10f) * Z(70f), Y(30f), Mirror(X(55f) * Y(90f)), Mirror(Y(20f)));
+            });
+
             int width = bones.Count * 3;
             var pixels = new ushort[width * poses.Count * 4];
             var globals = new Matrix4x4[shape.Nodes.Length];
             int foot = Node("LeftFoot");
             var footZ = new List<float>();
+            var joints = new int[ContactJoints.Length];
+            for (int j = 0; j < joints.Length; j++) joints[j] = Node(ContactJoints[j].name);
             for (int f = 0; f < poses.Count; f++)
             {
                 Globals(shape, poses[f], globals);
                 for (int b = 0; b < bones.Count; b++)
                     Write(pixels, (f * width + b * 3) * 4, globals[bones[b].Node] * bones[b].InverseBind);
                 if (foot >= 0) footZ.Add(globals[foot].m23);
+                if (f == 0 && hips >= 0) HipHeight = globals[hips].m13;
+                int clip = System.Array.IndexOf(ClipStart, f);
+                if (clip < 0 || clip == (int)Clip.Sit || clip == (int)Clip.Push) continue;
+                var points = new List<Vector4>();
+                for (int j = 0; j < joints.Length; j++)
+                {
+                    if (joints[j] < 0) continue;
+                    Vector3 p = globals[joints[j]].GetColumn(3);
+                    points.Add(new Vector4(p.x, p.y - HipHeight, p.z, ContactJoints[j].pad));
+                }
+                contacts[clip] = points.ToArray();
             }
+            StandHeight = Clearance(Quaternion.identity, Clip.Idle);
             Bones = MakeTexture(shape.Id, width, poses.Count, pixels);
 
             if (foot >= 0)
@@ -357,6 +508,8 @@ namespace Dogpatch.Ambient
         }
 
         public const float SeatHeight = 0.45f;
+
+        static Quaternion Mirror(Quaternion q) => new Quaternion(q.x, -q.y, -q.z, q.w);
         const float LeftArmForward = 90f;
 
         static void Write(ushort[] pixels, int offset, Matrix4x4 m)

@@ -40,7 +40,14 @@ export default defineSchema({
     asks: v.optional(v.number()),
     pickups: v.optional(v.array(vec3)),
     pickupRadius: v.optional(v.number()),
-  }).index("by_code", ["code"]),
+    // "world": a shard's always-open room that holds every player in free roam, so Operator calls
+    // work outside races. Players stay in it while they race; it never counts down or finishes.
+    kind: v.optional(v.literal("world")),
+    worldShard: v.optional(v.number()),
+    freeAsks: v.optional(v.boolean()),
+  })
+    .index("by_code", ["code"])
+    .index("by_world_shard", ["worldShard"]),
   roomPlayers: defineTable({
     roomId: v.id("rooms"),
     playerId: v.id("players"),
@@ -118,6 +125,22 @@ export default defineSchema({
     playerId: v.id("players"),
     at: v.number(),
   }).index("by_player_at", ["playerId", "at"]),
+  worldPresence: defineTable({
+    playerId: v.id("players"),
+    shard: v.number(),
+    slot: v.number(),
+    displayName: v.string(),
+    position: vec3,
+    heading: v.number(),
+    speed: v.number(),
+    mode: movementMode,
+    vehicleType: v.string(),
+    worldRoomId: v.id("rooms"),
+    joinedAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_player", ["playerId"])
+    .index("by_shard_updated", ["shard", "updatedAt"]),
   avatars: defineTable({
     playerId: v.string(),
     params: avatarParams,

@@ -76,6 +76,14 @@ namespace Dogpatch.Look
             if (missed > 0) Debug.LogWarning($"[Look] {asset.Id}: {missed} colors matched no knob and kept stock values");
         }
 
+        // What a stock knob color (linear) of this model looks like after Apply: its Speed Dial color,
+        // or the color itself for models outside the table. Alpha carries the night glow.
+        public static Color Mapped(string modelId, Color linear)
+        {
+            if (table == null) Load();
+            return table.TryGetValue(modelId ?? "", out var knobs) ? Remap(linear, knobs, out _) : linear;
+        }
+
         static Color Remap(Color linear, (Color from, Color to, float alpha)[] knobs, out bool hit)
         {
             var c = linear.gamma;

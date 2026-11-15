@@ -5,8 +5,9 @@ namespace Dogpatch.Operator
 {
     // Operator settings from Resources/Operator/operator.json, overridable on the command line
     // (-operator-convex <url>, -operator-local, -operator-transport auto|dotnet|http,
-    // -operator-room <code>, -operator-commit manual|vad, -operator-pad-ms <ms>) and by the
-    // CONVEX_URL environment variable. An empty convexUrl, -operator-local or the scripted
+    // -operator-room <code>, -operator-commit manual|vad, -operator-pad-ms <ms>, -operator-dev) and
+    // by the CONVEX_URL and OPERATOR_DEV=1 environment variables. The Operator is voice only; typed
+    // input (the debug text field and speeddial://operator?say=) is a dev flag for live tests. An empty convexUrl, -operator-local or the scripted
     // -speeddial-demo keep the on-device LocalOperator.
     [Serializable]
     public class OperatorConfig
@@ -23,7 +24,7 @@ namespace Dogpatch.Operator
         public int preRollMs = 500;
         public int silencePadMs = 0;
         public int finalWaitMs = 1500;
-        public bool debugInput = true;
+        public bool debugInput;
 
         public bool UseConvex => !string.IsNullOrWhiteSpace(convexUrl);
 
@@ -45,6 +46,7 @@ namespace Dogpatch.Operator
             config.roomCode = Arg("-operator-room") ?? config.roomCode;
             config.commitStrategy = Arg("-operator-commit") ?? config.commitStrategy;
             if (int.TryParse(Arg("-operator-pad-ms"), out int pad)) config.silencePadMs = pad;
+            config.debugInput |= Array.IndexOf(args, "-operator-dev") >= 0 || Environment.GetEnvironmentVariable("OPERATOR_DEV") == "1";
             return config;
         }
     }

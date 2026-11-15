@@ -55,16 +55,17 @@ namespace Dogpatch.Operator
         public override void Revert() => Debug.Log($"[Operator] effect {Id} wore off (stub)");
     }
 
-    // A counter or meta effect the server carries out by ending other rows (clear_weather ends
-    // rain, undo_last ends the last effect...); the client reverts those rows when they leave the
+    // A counter the server carries out by ending other rows (clear_weather ends rain, lights_on
+    // ends a blackout...); the client reverts those rows when they leave the
     // list, so the counter itself has nothing to do.
     public sealed class ServerSideEffect : OperatorEffect
     {
         public override void Apply(string strength, EffectTarget target) => Debug.Log($"[Operator] {Id}: the server ends the rows it counters");
     }
 
-    // Effect id -> implementation. Every id in the backend catalogue is registered; the ten in
-    // Built have real implementations, counters are server-side, the rest are logged stubs.
+    // Effect id -> implementation. Every id in the backend catalogue is registered; the ones in
+    // Built have real implementations, counters (and extinguish) are server-side, the rest are
+    // logged stubs the backend never applies.
     public sealed class EffectRegistry
     {
         public static readonly string[] Catalogue =
@@ -73,13 +74,21 @@ namespace Dogpatch.Operator
             "night", "day", "sunset", "fast_day_cycle", "rain", "snow", "fog", "storm", "sandstorm", "heatwave", "blackout", "clear_weather", "lights_on",
             "gravity_lower", "gravity_higher", "slippery_ground", "sticky_ground", "thick_air", "slow_motion", "fast_forward", "flood", "floor_is_lava", "earthquake", "cars_fly", "cars_on_water", "floaty_crashes", "gravity_normal", "normal_speed", "drain",
             "more_traffic", "less_traffic", "aggressive_traffic", "green_lights", "more_pedestrians", "fewer_pedestrians", "angry_npcs", "calm_npcs", "panic", "ped_theme", "big_heads",
-            "undo_last",
             "set_fire", "extinguish", "demolish", "explode", "launch", "stop", "speed_up", "slow_down", "grow", "shrink", "recolor", "see_through", "bouncy", "icy", "rock_solid", "soft", "ghost",
         };
 
-        public static readonly string[] Built = { "rain", "night", "gravity_lower", "run_faster", "vehicle_hop", "recolor", "set_fire", "launch", "stop", "big_heads" };
+        [Serializable]
+        class BuiltList
+        {
+            public string[] built;
+        }
 
-        public static readonly string[] Counters = { "clear_weather", "lights_on", "gravity_normal", "normal_speed", "drain", "undo_last" };
+        // Effects with a real implementation, shared with the backend: Jev only gets to apply these
+        // (plus the server-side counters), so building a stub means adding its id to
+        // Resources/Operator/built-effects.json and nothing else.
+        public static readonly string[] Built = JsonUtility.FromJson<BuiltList>(Resources.Load<TextAsset>("Operator/built-effects").text).built;
+
+        public static readonly string[] Counters = { "clear_weather", "lights_on", "gravity_normal", "normal_speed", "drain", "extinguish" };
 
         readonly Dictionary<string, Func<OperatorEffect>> factories = new Dictionary<string, Func<OperatorEffect>>();
 
@@ -115,6 +124,8 @@ namespace Dogpatch.Operator
             registry.Register("launch", () => new LaunchEffect());
             registry.Register("stop", () => new StopEffect());
             registry.Register("big_heads", () => new BigHeadsEffect());
+            MoreEffects.Register(registry);
+            WorldEffectsB.Register(registry);
             return registry;
         }
     }

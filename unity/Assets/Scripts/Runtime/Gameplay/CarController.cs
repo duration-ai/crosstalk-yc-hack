@@ -16,6 +16,10 @@ namespace Dogpatch.Gameplay
 
         // False while the vehicle can't be taken, such as a delivery bike with its rider still on.
         public bool Enterable = true;
+
+        // Scales every car's top speed; the voice Operator's faster/slower/nitro effects set it.
+        public static float SpeedScale = 1f;
+        public float SpeedMul = 1f;
         public float Speed => forwardSpeed;
         public bool Reversing => reversing;
         public Vector3 HalfExtents { get; private set; }
@@ -187,7 +191,7 @@ namespace Dogpatch.Gameplay
                 }
                 else
                 {
-                    target = strength * handling.TopSpeed;
+                    target = strength * handling.TopSpeed * SpeedScale * SpeedMul;
                     steerAngle = angle;
                 }
             }

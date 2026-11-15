@@ -1,7 +1,12 @@
 import { convexTest } from "convex-test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "./_generated/api";
+import { OBJECT_EFFECTS, PLAYABLE, PLAYER_EFFECTS, WORLD_EFFECTS } from "./operatorCatalogue";
 import schema from "./schema";
+
+// These tests cover the routing rules for the whole catalogue; operatorPlayable.test.ts covers the
+// built-effects gate with the real shared list.
+for (const id of Object.keys({ ...PLAYER_EFFECTS, ...WORLD_EFFECTS, ...OBJECT_EFFECTS })) (PLAYABLE as Set<string>).add(id);
 
 const modules = import.meta.glob("./**/*.*s");
 const T0 = Date.UTC(2026, 10, 15, 20, 0, 0);
@@ -146,18 +151,17 @@ describe("operator.call", () => {
     expect((await effects()).map((e) => e.effect)).toEqual([]);
   });
 
-  it("refuses a counter with nothing to counter and an undo with nothing to undo", async () => {
+  it("refuses a counter with nothing to counter, and any undo", async () => {
     const { say, effects } = await room();
     expect(await say("clear skies", { scope: "world", world_group: "sky", sky_effect: "clear_weather" })).toMatchObject({
       outcome: "refused",
       refusal: { reason: "no_op", message: "Nothing to change." },
     });
-    expect(await say("undo", { scope: "world", world_group: "undo" })).toMatchObject({ refusal: { reason: "no_op" } });
     await say("make it rain", RAIN);
     await say("low gravity", { scope: "world", world_group: "physics", physics_effect: "gravity_lower" });
-    const undo = await say("undo that", { scope: "world", world_group: "undo" });
-    expect(undo.outcome).toBe("applied");
-    expect((await effects()).map((e) => e.effect).sort()).toEqual(["rain", "undo_last"]);
+    const undo = await say("undo that", { scope: "reject", reject_reason: "undo" });
+    expect(undo).toMatchObject({ outcome: "refused", effect: null, refusal: { reason: "undo" }, line: "No take-backs, sugar." });
+    expect((await effects()).map((e) => e.effect).sort()).toEqual(["gravity_lower", "rain"]);
   });
 
   it("targets a visible Waymo and keeps your own car's recolor local", async () => {
