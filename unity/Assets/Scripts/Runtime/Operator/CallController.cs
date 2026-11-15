@@ -95,6 +95,25 @@ namespace Dogpatch.Operator
             _ = SendAsync(null);
         }
 
+        // Debug mic button: the first click opens the transcriber and starts talking without a
+        // payphone, the second sends what was heard.
+        public bool ToggleTalk()
+        {
+            if (Voice == null || State == CallState.Waiting) return false;
+            if (State == CallState.Talking)
+            {
+                _ = SendAsync(null);
+                return true;
+            }
+            if (State != CallState.Holding)
+            {
+                Set(CallState.Holding);
+                Voice.Open();
+            }
+            BeginTalk();
+            return true;
+        }
+
         // Typed words straight to the Operator (debug field, speeddial://operator?say=...): no
         // payphone or microphone needed.
         public bool Say(string text)

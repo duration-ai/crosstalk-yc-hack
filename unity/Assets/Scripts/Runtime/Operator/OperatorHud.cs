@@ -6,7 +6,8 @@ namespace Dogpatch.Operator
 {
     // The Operator's layer of the Slipstream HUD: what the transcriber hears while Call is held,
     // a countdown chip per active effect, refusal toasts, the confirm sheet for effects that hit
-    // everyone, and (debug) a text field that skips the microphone. IMGUI, same ink/sun/pink.
+    // everyone, and (debug) a text field that skips the microphone plus a TALK/SEND button that
+    // speaks without a payphone. IMGUI, same ink/sun/pink.
     public sealed class OperatorHud : MonoBehaviour
     {
         const float ConfirmWindow = 10f;
@@ -209,6 +210,12 @@ namespace Dogpatch.Operator
             {
                 typed = "";
                 GUI.FocusControl(null);
+            }
+            if (Calls.Voice != null)
+            {
+                bool listening = Calls.State == CallState.Talking;
+                var talk = new Rect(r.xMax + 64f * s, r.y, 64f * s, r.height);
+                if (Button(talk, listening ? "SEND" : "TALK", listening ? Pink : Sun, listening ? Color.white : Ink)) Calls.ToggleTalk();
             }
             string room = Room();
             if (!string.IsNullOrEmpty(room)) Text(new Rect(left, r.y - 20f * s, 260f * s, 18f * s), room, 11f, Color.white);

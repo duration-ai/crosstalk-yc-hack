@@ -184,7 +184,7 @@ namespace Dogpatch.EditorTools
             Check(EffectRegistry.Catalogue.Length == 74 && EffectRegistry.Catalogue.Distinct().Count() == 74, "74 catalogue ids, no duplicates");
             foreach (var id in EffectRegistry.Catalogue) Check(registry.Has(id), "registered: " + id);
             foreach (var id in EffectRegistry.Built) Check(!registry.IsStub(id), "built for real: " + id);
-            Check(registry.IsStub("snow") && registry.Create("snow", null, new ActiveEffect()) is StubEffect, "unbuilt ids are logged stubs");
+            Check(registry.IsStub("sandstorm") && registry.Create("sandstorm", null, new ActiveEffect()) is StubEffect, "unbuilt ids are logged stubs");
             Check(registry.Create("not_in_catalogue", null, new ActiveEffect()) is StubEffect, "unknown ids fall back to a stub");
         }
 
