@@ -69,7 +69,7 @@ namespace Dogpatch.Race
             File.WriteAllText(Path.Combine(output, "route.json"), JsonUtility.ToJson(new RouteFile { route = race.Course.RouteWorld.Select(v => new Vec3((float)Math.Round(v.x, 2), (float)Math.Round(v.y, 2), (float)Math.Round(v.z, 2))).ToArray() }));
             int want = int.TryParse(Arg("-speeddial-remotes"), out var n) ? n : 1;
             while (race.WorldRoomId == null || race.Remotes.All.Count() < want) yield return null;
-            Log($"in the world: shard {race.WorldShard}, {race.WorldCount} online, world room {race.WorldRoomId}; others: " + string.Join(", ", race.Remotes.All.Select(r => $"{r.Name} ({r.WorldColor}, {r.WorldMode})")));
+            Log($"in the world: shard {race.WorldShard}, {race.WorldCount} online, race room {race.RoomId ?? "none"}, {Vector3.Distance(race.Game.Player.transform.position, race.Course.RingCenter):F0} m from the ring, world room {race.WorldRoomId}; others: " + string.Join(", ", race.Remotes.All.Select(r => $"{r.Name} ({r.WorldColor}, {r.WorldMode})")));
             yield return new WaitForSecondsRealtime(1.5f);
             yield return Shot("world");
 

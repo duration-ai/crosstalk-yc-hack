@@ -223,6 +223,10 @@ namespace Dogpatch.Race
             return false;
         }
 
+        // Somewhere a player can stand: off buildings, rails, roads and water.
+        public bool StandFits(Vector2 p) =>
+            !world.Buildings.Blocked(p, 1.5f) && !NearRail(p, 3f) && !world.Roads.Nearest(p, 4f, out _) && OnLand(p);
+
         bool RingFits(Vector2 p)
         {
             if (world.Buildings.Blocked(p, RingRadius + 0.5f)) return false;
