@@ -204,8 +204,8 @@ namespace Dogpatch.Traffic
         float Weight(StreetGraph.Link link)
         {
             float turn = Mathf.Abs(link.Turn);
-            if (turn > 150f) return Lane.Next.Count == 1 ? 1f : 0.02f;
-            return turn < 30f ? 3f : 1f;
+            float weight = turn > 150f ? (Lane.Next.Count == 1 ? 1f : 0.02f) : turn < 30f ? 3f : 1f;
+            return TrafficSystem.Crosses(link.To, Car.HalfExtents.x) ? weight * 0.001f : weight;
         }
 
         public void Step(float dt, TrafficSystem system)
@@ -309,6 +309,18 @@ namespace Dogpatch.Traffic
                     if (!Yielding.PedestrianNear(new Vector3(p.x, 0f, p.y), radius)) continue;
                     Limit(ref target, d - 1.5f, brake * 1.4f);
                     State = "yielding to pedestrian";
+                    break;
+                }
+            }
+
+            if (TrafficSystem.HasZones)
+            {
+                if (!OnRail && Route == null && Link == null && nextLink != null && TrafficSystem.Crosses(nextLink.To, halfWidth)) nextLink = ChooseLink();
+                for (float d = 2f; d <= 26f; d += 3f)
+                {
+                    if (!TrafficSystem.InZone(Ahead(halfLength + d), halfWidth)) continue;
+                    Limit(ref target, d - 2f, brake * 1.4f);
+                    State = "holding for closed road";
                     break;
                 }
             }
@@ -426,7 +438,15 @@ namespace Dogpatch.Traffic
             float yaw = Mathf.Atan2(t.x, t.y) * Mathf.Rad2Deg;
             var position = new Vector3(p.x, Dogpatch.World.RoadSurface.GroundY(p) + 0.05f, p.y);
             var rotation = Quaternion.Euler(0f, yaw, 0f);
-            if (teleport || body == null) transform.SetPositionAndRotation(position, rotation);
+            if (teleport || body == null)
+            {
+                transform.SetPositionAndRotation(position, rotation);
+                if (body != null)
+                {
+                    body.position = position;
+                    body.rotation = rotation;
+                }
+            }
             else
             {
                 body.MovePosition(position);

@@ -266,7 +266,7 @@ namespace Dogpatch.Traffic
                 foreach (var next in node.Out)
                 {
                     if (next.Piece == lane.Piece && node.Pieces > 1) continue;
-                    if (next.Index != Mathf.Min(lane.Index, next.Count - 1)) continue;
+                    if (next.Index < Mathf.Min(lane.Index, next.Count - 1) || next.Index > Mathf.Max(lane.Index, next.Count - lane.Count + lane.Index)) continue;
                     next.Path.Sample(0f, out var d3);
                     var p3 = next.Path.Points[0];
                     lane.Next.Add(new Link { From = lane, To = next, Path = TrackPath.Curve(p0, d0, p3, d3, node.Radius > 0f ? 8 : 2), Turn = Vector2.SignedAngle(d3, d0) });
