@@ -79,8 +79,7 @@ namespace Dogpatch.Operator
             foreach (var tag in target.Entities)
             {
                 if (n++ >= MaxBlasts) break;
-                var fire = FireFx.Create(Context.Material, tag.WorldBounds, Scale(strength, 1.8f, 2.4f, 3.2f), n <= 3);
-                Object.Destroy(fire.gameObject, 3.5f);
+                Dogpatch.Smash.BlastFx.Spawn(tag.WorldBounds, Scale(strength, 1.1f, 1.4f, 1.8f));
                 var car = tag.GetComponent<CarController>();
                 if (car != null && car.Driven && !car.GetComponent<Rigidbody>().isKinematic) CarFx.On(car).Launch(up * 0.6f);
                 else if (tag.Span == null) Launched.Start(tag.transform, up, null);
@@ -247,8 +246,7 @@ namespace Dogpatch.Operator
                 var foot = new Vector3(b.center.x, b.min.y, b.center.z);
                 float size = Mathf.Clamp(Mathf.Max(b.extents.x, b.extents.z), 4f, 30f);
 
-                var fire = FireFx.Create(Context.Material, b, 2.4f, true);
-                Object.Destroy(fire.gameObject, 3f);
+                Dogpatch.Smash.BlastFx.Spawn(foot, size * 0.6f, false);
                 for (int i = 0; i < 8; i++)
                 {
                     var from = foot + Vector3.up * (b.size.y * UnityEngine.Random.Range(0.1f, 0.7f));
@@ -265,20 +263,50 @@ namespace Dogpatch.Operator
                     if (d < 150f) Dogpatch.Feel.CameraFeel.Instance.AddTrauma(Mathf.Lerp(0.9f, 0.2f, d / 150f));
                 }
 
+                var rubble = Rubble(tag.Id, foot, b.size);
                 if (tag.Span != null)
                 {
-                    var copy = tag.Span.Detach(tag.Id + " (demolished)", Context.Material);
+                    var span = tag.Span;
+                    var copy = span.Detach(tag.Id + " (demolished)", Context.Material);
                     if (copy != null) Object.Destroy(copy);
-                    foreach (var part in tag.Span.Parts)
+                    foreach (var part in span.Parts)
                         if (part.Collider != null) part.Collider.enabled = false;
-                    new GameObject(tag.Id + " (lot)").AddComponent<GhostZone>().Area = b;
+                    var lot = new GameObject(tag.Id + " (lot)");
+                    lot.AddComponent<GhostZone>().Area = b;
+                    Standing.Add(() =>
+                    {
+                        span.Show();
+                        foreach (var part in span.Parts)
+                            if (part.Collider != null) part.Collider.enabled = true;
+                        Object.Destroy(lot);
+                        Object.Destroy(rubble);
+                    });
                 }
-                else tag.gameObject.SetActive(false);
-                Rubble(tag.Id, foot, b.size);
+                else
+                {
+                    var building = tag.gameObject;
+                    building.SetActive(false);
+                    Standing.Add(() =>
+                    {
+                        if (building != null) building.SetActive(true);
+                        Object.Destroy(rubble);
+                    });
+                }
             }
         }
 
-        void Rubble(string id, Vector3 foot, Vector3 size)
+        // Every demolition on this device, as the step that puts the building back.
+        static readonly List<Action> Standing = new List<Action>();
+
+        // Puts every demolished building back on this device, for a racer starting a mission.
+        public static void RebuildAll()
+        {
+            foreach (var rebuild in Standing) rebuild();
+            if (Standing.Count > 0) Debug.Log($"[Operator] rebuilt {Standing.Count} demolished buildings for the race");
+            Standing.Clear();
+        }
+
+        GameObject Rubble(string id, Vector3 foot, Vector3 size)
         {
             var mb = new Dogpatch.World.MeshBuilder();
             var rng = new System.Random(id.GetHashCode());
@@ -295,6 +323,7 @@ namespace Dogpatch.Operator
             go.transform.position = foot;
             go.AddComponent<MeshFilter>().sharedMesh = mb.ToMesh(id + " rubble");
             go.AddComponent<MeshRenderer>().sharedMaterial = Context.Material;
+            return go;
         }
     }
 

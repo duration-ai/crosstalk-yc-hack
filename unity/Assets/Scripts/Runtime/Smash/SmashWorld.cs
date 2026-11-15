@@ -28,6 +28,7 @@ namespace Dogpatch.Smash
 
         ModelLibrary models;
         Material material;
+        public Material Material => material;
         Plane[] frustum = new Plane[6];
         readonly List<Piece> active = new List<Piece>();
         readonly Stack<Piece> pool = new Stack<Piece>();

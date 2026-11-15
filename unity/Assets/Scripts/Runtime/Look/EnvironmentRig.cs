@@ -8,7 +8,8 @@ namespace Dogpatch.Look
     // the sun (or moon), the three-way ambient, the sky gradient, distance fog, the fog bank on the
     // bay, cloud tint, rain and snow, the night glow and wet/snow surfaces in the shared shader, and
     // the driven car's headlights at night. Speed Dial stays bright: rain and snow lift the fill as
-    // they dim the sun, and night is deep blue, never black.
+    // they dim the sun. Night is near pitch black (a deep navy only at the horizon) and is lit by its
+    // own sources: headlights, glowing windows, lamps and the pooled lights in NightLights.
     [DefaultExecutionOrder(-50)]
     public sealed class EnvironmentRig : MonoBehaviour
     {
@@ -27,22 +28,24 @@ namespace Dogpatch.Look
             Fill = fill, Side = side, Bounce = bounce,
         };
 
-        static readonly Color NightFill = new Color(0.09f, 0.13f, 0.30f);
-        static readonly Color NightSide = new Color(0.12f, 0.16f, 0.34f);
-        static readonly Color NightBounce = new Color(0.08f, 0.09f, 0.18f);
+        static readonly Color NightFill = new Color(0.012f, 0.016f, 0.036f);
+        static readonly Color NightSide = new Color(0.016f, 0.02f, 0.042f);
+        static readonly Color NightBounce = new Color(0.008f, 0.009f, 0.016f);
+        const string NightTop = "#010204", NightMid = "#02050C", NightHorizon = "#0A1634", Moon = "#9DB4FF";
+        const float MoonIntensity = 0.04f;
 
         static readonly Key[] Keys =
         {
-            K(0f, "#081848", "#122C6A", "#24418A", "#9DB4FF", 0.34f, NightFill, NightSide, NightBounce),
-            K(4.8f, "#081848", "#122C6A", "#24418A", "#9DB4FF", 0.34f, NightFill, NightSide, NightBounce),
+            K(0f, NightTop, NightMid, NightHorizon, Moon, MoonIntensity, NightFill, NightSide, NightBounce),
+            K(4.8f, NightTop, NightMid, NightHorizon, Moon, MoonIntensity, NightFill, NightSide, NightBounce),
             K(6.3f, "#1A2E78", "#5A6CC0", "#FFB08A", "#FFB38A", 0.42f, new Color(0.26f, 0.27f, 0.46f), new Color(0.36f, 0.33f, 0.5f), new Color(0.42f, 0.3f, 0.3f)),
             K(8f, "#0D66CF", "#3E9DEE", "#D6EAFB", "#FFE2B4", 0.66f, new Color(0.35f, 0.4f, 0.55f), new Color(0.5f, 0.53f, 0.68f), new Color(0.5f, 0.42f, 0.35f)),
             K(10.5f, "#0B6FD6", "#1C9BF2", "#B4E2FC", "#FFEBB0", 0.76f, SpeedDial.SkyFill, SpeedDial.SideFill, SpeedDial.Bounce),
             K(16.2f, "#0B6FD6", "#1C9BF2", "#B4E2FC", "#FFEBB0", 0.76f, SpeedDial.SkyFill, SpeedDial.SideFill, SpeedDial.Bounce),
             K(17.8f, "#1660C8", "#54A0EA", "#FFD48E", "#FFB45C", 1.05f, new Color(0.36f, 0.38f, 0.52f), new Color(0.56f, 0.5f, 0.6f), new Color(0.62f, 0.43f, 0.3f)),
             K(19.4f, "#26308A", "#7E5CBC", "#FF9C86", "#FF8A5A", 0.46f, new Color(0.27f, 0.26f, 0.46f), new Color(0.4f, 0.32f, 0.5f), new Color(0.46f, 0.3f, 0.33f)),
-            K(20.8f, "#081848", "#122C6A", "#24418A", "#9DB4FF", 0.34f, NightFill, NightSide, NightBounce),
-            K(24f, "#081848", "#122C6A", "#24418A", "#9DB4FF", 0.34f, NightFill, NightSide, NightBounce),
+            K(20.8f, NightTop, NightMid, NightHorizon, Moon, MoonIntensity, NightFill, NightSide, NightBounce),
+            K(24f, NightTop, NightMid, NightHorizon, Moon, MoonIntensity, NightFill, NightSide, NightBounce),
         };
 
         static readonly Color RainTop = L("#4F6A95"), RainMid = L("#7890B4"), RainHorizon = L("#B5C3D8");
@@ -143,8 +146,8 @@ namespace Dogpatch.Look
             reach *= (1f - 0.4f * rainAmount) * (1f - 0.5f * snowAmount);
             reach *= 1f + Mathf.Max(view.transform.position.y - 5f, 0f) / 60f;
             RenderSettings.fogColor = horizon.gamma;
-            RenderSettings.fogStartDistance = 220f * reach;
-            RenderSettings.fogEndDistance = 1900f * reach;
+            RenderSettings.fogStartDistance = 220f * reach * Mathf.Lerp(1f, 0.2f, night);
+            RenderSettings.fogEndDistance = 1900f * reach * Mathf.Lerp(1f, 0.3f, night);
             view.backgroundColor = horizon.gamma;
 
             if (sky != null)
@@ -178,7 +181,7 @@ namespace Dogpatch.Look
             if (game == null) game = FindAnyObjectByType<GameController>();
             var car = game != null ? game.CurrentCar : null;
             bool on = car != null && night > 0.05f;
-            QualitySettings.pixelLightCount = on ? 2 : 1;
+            QualitySettings.pixelLightCount = night > 0.05f ? 1 + NightLights.MaxLights : 1;
             if (!on)
             {
                 if (headlights != null) headlights.enabled = false;
@@ -188,8 +191,9 @@ namespace Dogpatch.Look
             {
                 headlights = new GameObject("Headlights").AddComponent<Light>();
                 headlights.type = LightType.Spot;
-                headlights.range = 32f;
-                headlights.spotAngle = 75f;
+                headlights.range = 75f;
+                headlights.spotAngle = 62f;
+                headlights.innerSpotAngle = 30f;
                 headlights.color = SpeedDial.Hex("#FFF3DA");
                 headlights.shadows = LightShadows.None;
                 headlights.renderMode = LightRenderMode.ForcePixel;
@@ -198,10 +202,10 @@ namespace Dogpatch.Look
             {
                 headlights.transform.SetParent(car.transform, false);
                 headlights.transform.localPosition = new Vector3(0f, 0.9f, car.HalfExtents.z + 0.2f);
-                headlights.transform.localRotation = Quaternion.Euler(14f, 0f, 0f);
+                headlights.transform.localRotation = Quaternion.Euler(8f, 0f, 0f);
             }
             headlights.enabled = true;
-            headlights.intensity = 2.6f * night;
+            headlights.intensity = 7f * night;
         }
     }
 }
