@@ -3,10 +3,11 @@ using UnityEngine;
 namespace Dogpatch.Gameplay
 {
     // Third-person follow camera that pulls in when a building would block the view. Behind the
-    // car it swings in behind the heading. On foot it trails the walker like a lazy rope: it
-    // turns only as the walker moves sideways across the view, never swings round when they
-    // run toward it, and never recentres on its own, so a held direction keeps its meaning. A
-    // right-side drag orbits it on foot (Orbit).
+    // car it swings in behind the heading, at the same rate in reverse so it stays behind the
+    // nose. On foot it trails the walker like a lazy rope: it turns only as the walker moves
+    // sideways across the view, never swings round when they run toward it, and never recentres
+    // on its own, so a held direction keeps its meaning. A right-side drag orbits it on foot
+    // (Orbit).
     public sealed class FollowCamera : MonoBehaviour
     {
         public Transform Target;
@@ -50,8 +51,6 @@ namespace Dogpatch.Gameplay
             float dt = Time.deltaTime;
             float targetYaw = Target.eulerAngles.y;
             float follow = Driving ? 3.5f : 2.2f;
-            var car = Driving ? Target.GetComponent<CarController>() : null;
-            if (car != null && car.Speed < -0.5f) follow = 0.6f;
             if (Driving)
             {
                 yaw = Mathf.LerpAngle(yaw, targetYaw, 1f - Mathf.Exp(-follow * dt));
