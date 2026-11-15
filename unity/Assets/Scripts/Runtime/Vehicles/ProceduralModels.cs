@@ -236,10 +236,37 @@ namespace Dogpatch.Vehicles
                 var cyan = C("#5ff2ff", 1f);
                 var profile = new[]
                 {
-                    new Vector2(-2.3f, 0.45f), new Vector2(-2.3f, 0.95f), new Vector2(-1.6f, 1.15f), new Vector2(-0.8f, 1.4f),
+                    new Vector2(-1.7f, 0.45f), new Vector2(-1.7f, 1.12f), new Vector2(-0.8f, 1.4f),
                     new Vector2(0.4f, 1.4f), new Vector2(1.3f, 1.0f), new Vector2(2.3f, 0.72f), new Vector2(2.3f, 0.45f),
                 };
                 lp.Prism(profile, 0.85f, white, roof);
+
+                // Tapered tail instead of a flat box end: a frustum narrowing to a dark thruster face
+                // with two glowing cyan nozzles, a pair of raked fins and a red light bar, after the
+                // jet-car rears of Rocket League's battle-cars and the Xpeng X2's boat tail.
+                var tf = new[] { new Vector3(-0.85f, 0.45f, -1.7f), new Vector3(0.85f, 0.45f, -1.7f), new Vector3(0.85f, 1.12f, -1.7f), new Vector3(-0.85f, 1.12f, -1.7f) };
+                var tb = new[] { new Vector3(-0.58f, 0.58f, -2.5f), new Vector3(0.58f, 0.58f, -2.5f), new Vector3(0.58f, 0.98f, -2.5f), new Vector3(-0.58f, 0.98f, -2.5f) };
+                lp.Quad(tf[3], tf[2], tb[2], tb[3], roof);
+                lp.Quad(tf[0], tb[0], tb[1], tf[1], dark);
+                lp.Quad(tf[1], tb[1], tb[2], tf[2], white);
+                lp.Quad(tf[0], tf[3], tb[3], tb[0], white);
+                lp.Quad(tb[0], tb[3], tb[2], tb[1], dark);
+                foreach (float s in new[] { 1f, -1f })
+                {
+                    var nozzle = new Vector3(s * 0.28f, 0.74f, -2.5f);
+                    for (int i = 0; i < 8; i++)
+                    {
+                        float a0 = i * Mathf.PI * 0.25f, a1 = (i + 1) * Mathf.PI * 0.25f;
+                        var p0 = new Vector3(Mathf.Cos(a0), Mathf.Sin(a0), 0f);
+                        var p1 = new Vector3(Mathf.Cos(a1), Mathf.Sin(a1), 0f);
+                        lp.Quad(nozzle + p0 * 0.15f, nozzle + p1 * 0.15f, nozzle + p1 * 0.15f + new Vector3(0f, 0f, -0.12f), nozzle + p0 * 0.15f + new Vector3(0f, 0f, -0.12f), dark);
+                        lp.Tri(nozzle + new Vector3(0f, 0f, -0.08f), nozzle + p0 * 0.11f + new Vector3(0f, 0f, -0.08f), nozzle + p1 * 0.11f + new Vector3(0f, 0f, -0.08f), cyan);
+                    }
+                    var finTilt = Quaternion.Euler(-25f, 0f, s * -8f);
+                    var fin = new Vector3(s * 0.44f, 1.2f, -2.2f);
+                    lp.Box(fin, new Vector3(0.06f, 0.38f, 0.5f), finTilt, white);
+                    lp.Box(fin + finTilt * new Vector3(0f, 0.19f, 0f), new Vector3(0.07f, 0.05f, 0.5f), finTilt, cyan);
+                }
                 lp.Quad(new Vector3(-0.8f, 1.0f, 1.2f), new Vector3(-0.72f, 1.37f, 0.42f), new Vector3(0.72f, 1.37f, 0.42f), new Vector3(0.8f, 1.0f, 1.2f), glass);
                 lp.Quad(new Vector3(0.78f, 1.13f, -1.55f), new Vector3(0.7f, 1.37f, -0.85f), new Vector3(-0.7f, 1.37f, -0.85f), new Vector3(-0.78f, 1.13f, -1.55f), glass);
                 foreach (float s in new[] { 1f, -1f })
@@ -254,13 +281,20 @@ namespace Dogpatch.Vehicles
                     }
                 }
                 lp.Box(new Vector3(0f, 0.8f, 2.31f), new Vector3(1.4f, 0.06f, 0.03f), C("#f7f8f9", 0.85f));
-                lp.Box(new Vector3(0f, 0.85f, -2.31f), new Vector3(1.4f, 0.06f, 0.03f), C("#e8352c", 0.6f));
+                lp.Box(new Vector3(0f, 0.93f, -2.51f), new Vector3(1.0f, 0.05f, 0.03f), C("#a3241c", 0.5f));
                 lp.Box(new Vector3(0f, 0.42f, 0f), new Vector3(1.5f, 0.08f, 4.2f), cyan);
+                return lp;
+            });
+            var brake = Cached("flying car brake", () =>
+            {
+                var lp = new LowPoly();
+                lp.Box(new Vector3(0f, 0.93f, -2.53f), new Vector3(1.06f, 0.08f, 0.03f), C("#ff2a1f", 1f));
                 return lp;
             });
             var root = new GameObject("flying-car");
             Part(root.transform, "body", body, material, Vector3.zero);
-            return (root, new Bounds(new Vector3(0f, 0.8f, 0f), new Vector3(3.2f, 1.2f, 4.62f)));
+            Part(root.transform, "brake-glow", brake, material, Vector3.zero).SetActive(false);
+            return (root, new Bounds(new Vector3(0f, 0.8f, -0.1f), new Vector3(3.2f, 1.2f, 4.82f)));
         }
 
         // Supermarket shopping cart: tapered wire basket, red handle, child seat flap, four casters.
