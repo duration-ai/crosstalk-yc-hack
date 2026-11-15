@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using Dogpatch.Gameplay;
 using UnityEngine;
 
@@ -95,6 +96,12 @@ namespace Dogpatch.Audio
             for (int i = 0; i < OneShotVoices; i++) voices.Add(new Voice { Source = NewSource("voice " + i) });
             for (int i = 0; i < LoopVoices; i++) freeLoopSources.Push(NewSource("loop " + i));
 
+#if UNITY_IOS && !UNITY_EDITOR
+            Application.logMessageReceived += (message, stack, type) =>
+            {
+                if (message.StartsWith("[Audio]") || message.StartsWith("[Feel]")) DogpatchNativeLog(message);
+            };
+#endif
             float t0 = Time.realtimeSinceStartup;
             SoundBank.Load();
             Debug.Log($"[Audio] initialized: {SoundBank.Count} clips loaded in {(Time.realtimeSinceStartup - t0) * 1000f:F0} ms, {(SoundBank.Bytes > 0 ? SoundBank.Bytes / 1024 + " KB resident" : "resident size n/a outside development builds")}, output {AudioSettings.outputSampleRate} Hz {AudioSettings.speakerMode}, dsp buffer {DspBuffer()}, {OneShotVoices} one-shot + {LoopVoices} loop voices");
@@ -103,6 +110,23 @@ namespace Dogpatch.Audio
             gameObject.AddComponent<MusicDirector>();
             gameObject.AddComponent<Ambience>();
             gameObject.AddComponent<GameBridge>();
+        }
+
+#if UNITY_IOS && !UNITY_EDITOR
+        [DllImport("__Internal")] static extern void DogpatchNativeLog(string message);
+#endif
+
+        void Start() => Invoke(nameof(LogRunning), 10f);
+
+        // One line ten seconds in, so device logs show the mix is actually playing, not just set up.
+        void LogRunning()
+        {
+            int voicesPlaying = 0, loopsAudible = 0;
+            foreach (var v in voices) if (v.Source.isPlaying) voicesPlaying++;
+            foreach (var l in loops) if (l.Audible) loopsAudible++;
+            int music = 0;
+            foreach (var s in GetComponents<AudioSource>()) if (s.isPlaying) music++;
+            Debug.Log($"[Audio] running: {music} music stems playing, {loopsAudible}/{loops.Count} loops audible, {voicesPlaying} one-shots playing, listener={(listener != null ? listener.name : "none")}, culled={Culled} stolen={Stolen}, dsp time {AudioSettings.dspTime:F1}s");
         }
 
         static string DspBuffer()
