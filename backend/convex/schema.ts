@@ -90,6 +90,7 @@ export default defineSchema({
     strength: v.string(),
     color: v.string(),
     theme: v.string(),
+    vehicle: v.optional(v.string()),
     instant: v.boolean(),
     status: v.union(v.literal("pending"), v.literal("active"), v.literal("expired")),
     startsAt: v.number(),

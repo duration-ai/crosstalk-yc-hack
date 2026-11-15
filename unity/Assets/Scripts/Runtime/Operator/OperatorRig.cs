@@ -231,8 +231,9 @@ namespace Dogpatch.Operator
             if (hud == null) return;
             var racer = race.Last?.racers?.FirstOrDefault(r => r.playerId == row.requestedBy);
             var who = row.requestedBy == PlayerId ? "YOU" : racer != null ? WorldChangeCatalog.ShortName(racer.displayName) : "SOMEONE";
-            var words = $"{who} CALLED {(row.label ?? row.effect).Replace('_', ' ')}".ToUpperInvariant().Split(' ');
-            var news = string.Join(" ", words.Take(4));
+            bool ride = row.effect == "change_vehicle";
+            var words = (ride ? $"{who} GOT A {row.vehicle}" : $"{who} CALLED {row.label ?? row.effect}").Replace('_', ' ').ToUpperInvariant().Split(' ');
+            var news = string.Join(" ", words.Take(ride ? 5 : 4));
             hud.PushNews(news, NewsPicto(row.effect), racer?.color ?? "blue");
             Debug.Log($"[Operator] news \"{news}\" for {row.effect} {row.id}");
         }

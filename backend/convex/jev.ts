@@ -8,6 +8,7 @@ import {
   POPULATION_EFFECTS,
   SKY_EFFECTS,
   THEMES,
+  VEHICLES,
 } from "./operatorCatalogue";
 import type { Answers, ChoiceAnswer, View } from "./operatorRules";
 
@@ -55,6 +56,23 @@ const THEME_DESCRIPTIONS: Record<string, string> = {
   delivery_riders: "everyone a delivery rider",
 };
 
+const VEHICLE_DESCRIPTIONS: Record<string, string> = {
+  sports_car: "a sports car or supercar (fast, modern)",
+  race_car: "a race car (GT racer)",
+  hatchback: "a hatchback or small everyday car",
+  sedan: "a sedan or family car",
+  taxi: "a taxi or yellow cab",
+  cybertruck: "a Cybertruck or steel pickup truck",
+  waymo: "a Waymo robotaxi",
+  van: "a van or minivan",
+  zoox: "a Zoox robotaxi pod",
+  bus: "a bus or Muni bus",
+  bike: "a bike or bicycle",
+  scooter: "a scooter",
+  delivery_bike: "a delivery bike (DoorDash, Uber Eats)",
+  shopping_cart: "a shopping cart",
+};
+
 export function buildQuestions(view: View): Question[] {
   const targets: Choice[] = view.entities.map((e) => ({ value: e.id, description: `${e.color} ${e.class}: ${e.desc}`.trim() }));
   if (view.mode === "driving" && !view.entities.some((e) => e.id === "veh_me")) {
@@ -69,7 +87,7 @@ export function buildQuestions(view: View): Question[] {
       instructions:
         "What does the player's FIRST request change, right now? Answer for the first request only. Changing what something is made of (ice, rubber, glass, jelly, stone) is a property of that thing, not a transformation. A bare effect name (nitro, rush hour, earthquake) is a request. A request with a delay or a condition (in five minutes, later, after the race, when someone wins) is reject. A generic undo that does not name what to change (undo that, take it back, cancel that, never mind, go back) is reject, never an opposite effect.",
       choices: [
-        { value: "players", description: "the racers themselves (me, us, everyone): their size, shape, running, jumping, flying, or how their cars drive (super speed, nitro, grip, hop)" },
+        { value: "players", description: "the racers themselves (me, us, everyone): their size, shape, running, jumping, flying, how their cars drive (super speed, nitro, grip, hop), or which vehicle the player rides (give me a sports car, put me in a bus)" },
         { value: "world", description: "the whole world: time of day, weather, lights, gravity, ground, time speed, water, traffic, pedestrians and crowds (numbers, mood, costumes, big heads)" },
         { value: "object", description: "one specific thing the player can see (that car, this building, the burning tree, my car, his car)" },
         { value: "class", description: "every object of one named kind at once (all the buses, every tree, all Waymos)" },
@@ -162,13 +180,19 @@ export function buildQuestions(view: View): Question[] {
     },
     {
       type: "choice",
+      name: "vehicle",
+      instructions: "Which kind of vehicle does the player ask to ride or drive themself?",
+      choices: [NONE, ...VEHICLES.map((value) => ({ value, description: VEHICLE_DESCRIPTIONS[value] }))],
+    },
+    {
+      type: "choice",
       name: "reject_reason",
       instructions: "If the operator cannot do this, why not?",
       choices: [
         { value: "none", description: "the operator can do it" },
         { value: "unsupported", description: "a change the game does not have, when no other reason fits" },
         { value: "transformation", description: "turn a thing into a different kind of thing" },
-        { value: "spawning", description: "create, spawn, summon or add something that is not there (a dragon, a UFO, ramps)" },
+        { value: "spawning", description: "create, spawn, summon or add something that is not there (a dragon, a UFO, ramps); asking for a different vehicle to ride yourself is not this" },
         { value: "teleport", description: "move someone or something somewhere else instantly" },
         { value: "deferred", description: "do something later: in five minutes, after the race, when someone wins" },
         { value: "cheat", description: "win, skip ahead, finish the race, get points, or remove other players" },
@@ -231,7 +255,7 @@ export function parseAnswers(raw: RawAnswer[]): Answers {
   const answers = Object.fromEntries(
     [
       "scope", "player_effect", "world_group", "sky_effect", "physics_effect", "population_effect", "object_effect",
-      "class", "target", "strength", "color", "theme", "reject_reason",
+      "class", "target", "strength", "color", "theme", "vehicle", "reject_reason",
     ].map((name) => [name, choice(name)]),
   ) as Omit<Answers, (typeof PREDICATES)[number]>;
   return { ...answers, ...Object.fromEntries(PREDICATES.map((name) => [name, predicate(name)])) } as Answers;
