@@ -126,8 +126,15 @@ namespace Dogpatch.Gameplay
 
         public void Place(Vector3 position, float heading)
         {
-            body.isKinematic = true;
+            if (!body.isKinematic)
+            {
+                body.linearVelocity = Vector3.zero;
+                body.angularVelocity = Vector3.zero;
+            }
+            body.isKinematic = !Driven;
             transform.SetPositionAndRotation(position, Quaternion.Euler(0f, heading, 0f));
+            body.position = position;
+            body.rotation = transform.rotation;
             forwardSpeed = 0f;
         }
 
