@@ -34,6 +34,10 @@ describe("mission lobby", () => {
     expect(b.room.status).toBe("countdown");
     expect(b.room.startsAt - T0 - MISSION_COUNTDOWN_MS).toBeLessThan(50);
     expect(b.you.slot).not.toBe(a.you.slot);
+    for (const [id, joined] of [[ids[0], a], [ids[1], b]] as const) {
+      const world = await t.run((ctx) => ctx.db.query("worldPresence").collect());
+      expect(joined.you.slot).toBe(world.find((w) => w.playerId === id)!.slot);
+    }
     vi.setSystemTime(T0 + 4000);
     const c = await t.mutation(internal.missions.enter, { playerId: ids[2], mission: "yc" });
     expect(c.room.startsAt).toBeGreaterThanOrEqual(T0 + 4000 + MISSION_COUNTDOWN_MS);

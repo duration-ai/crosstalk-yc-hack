@@ -9,7 +9,8 @@ const CANDIDATES = 30;
 
 // Stepping into a mission's ring: the player joins the open race room for that mission in their
 // world shard, or opens one. The room counts down once it has minPlayers (default 2) and restarts
-// the countdown on every join, so the race launches through the ordinary race room.
+// the countdown on every join, so the race launches through the ordinary race room. A racer takes
+// the slot of their world colour when it is free, so their colour doesn't change in the race.
 export const enter = internalMutation({
   args: {
     playerId: v.string(),
@@ -31,7 +32,10 @@ export const enter = internalMutation({
         return joinedResponse(ctx, room._id, player._id, now);
       }
     }
-    const shard = (await findPresence(ctx, player._id))?.shard ?? 0;
+    const presence = await findPresence(ctx, player._id);
+    const shard = presence?.shard ?? 0;
+    const color = (presence?.slot ?? 0) % COLORS.length;
+    const slotFor = (taken: Set<number>) => (taken.has(color) ? COLORS.findIndex((_, i) => !taken.has(i)) : color);
     const recent = await ctx.db
       .query("rooms")
       .withIndex("by_world_shard", (q) => q.eq("worldShard", shard))
@@ -46,7 +50,7 @@ export const enter = internalMutation({
       if (isLocked(room, now) || rows.length >= MAX_PLAYERS) continue;
       await leaveOtherRooms(ctx, player._id, room._id, now);
       const taken = new Set(rows.map((row) => row.slot));
-      await addRacer(ctx, room, player, COLORS.findIndex((_, i) => !taken.has(i)), now);
+      await addRacer(ctx, room, player, slotFor(taken), now);
       await ctx.db.patch(room._id, missionPatch(room, await roomPlayers(ctx, room._id), now));
       return joinedResponse(ctx, room._id, player._id, now);
     }
@@ -54,7 +58,7 @@ export const enter = internalMutation({
     await leaveOtherRooms(ctx, player._id, null, now);
     const roomId = await insertRoom(ctx, args, now, { kind: "mission", mission: args.mission, worldShard: shard });
     const room = (await ctx.db.get(roomId))!;
-    await addRacer(ctx, room, player, 0, now);
+    await addRacer(ctx, room, player, color, now);
     await ctx.db.patch(roomId, missionPatch(room, await roomPlayers(ctx, roomId), now));
     return joinedResponse(ctx, roomId, player._id, now);
   },

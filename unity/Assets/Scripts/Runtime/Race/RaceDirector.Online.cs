@@ -29,6 +29,7 @@ namespace Dogpatch.Race
 
         ConvexRaceSession convex;
         float nextMissionTry;
+        bool ringArmed;
 
         public bool Online => convex != null;
         public string RoomCode { get; private set; }
@@ -154,6 +155,7 @@ namespace Dogpatch.Race
             cursor = null;
             Changes.ResetAll();
             Remotes.EndRace();
+            ringArmed = false;
             Gridded = Started = ResultsIn = false;
             Game.ExternalInput = false;
             if (myPilot != null) myPilot.Active = false;
@@ -176,7 +178,8 @@ namespace Dogpatch.Race
             float d = Vector2.Distance(RoutePath.Flat(me), RoutePath.Flat(Course.RingCenter));
             if (RoomId == null)
             {
-                if (d < Course.RingRadius && Time.time >= nextMissionTry)
+                if (d > Course.RingRadius + 1f) ringArmed = true;
+                if (ringArmed && d < Course.RingRadius && Time.time >= nextMissionTry)
                 {
                     nextMissionTry = Time.time + 2f;
                     EnterMission();
