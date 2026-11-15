@@ -77,7 +77,12 @@ namespace Dogpatch.Operator
             "set_fire", "extinguish", "demolish", "explode", "launch", "stop", "speed_up", "slow_down", "grow", "shrink", "recolor", "see_through", "bouncy", "icy", "rock_solid", "soft", "ghost",
         };
 
-        public static readonly string[] Built = { "rain", "night", "gravity_lower", "run_faster", "vehicle_hop", "recolor", "set_fire", "launch", "stop", "big_heads" };
+        public static readonly string[] Built =
+        {
+            "rain", "night", "gravity_lower", "run_faster", "vehicle_hop", "recolor", "set_fire", "launch", "stop", "big_heads",
+            "vehicle_faster", "vehicle_slower", "nitro", "run_slower", "jump_higher", "slow_fall", "bigger", "smaller", "grip_down", "slippery_ground",
+            "gravity_higher", "snow", "storm", "fog", "sunset", "day", "explode", "demolish", "grow", "shrink",
+        };
 
         public static readonly string[] Counters = { "clear_weather", "lights_on", "gravity_normal", "normal_speed", "drain", "undo_last" };
 
@@ -115,6 +120,7 @@ namespace Dogpatch.Operator
             registry.Register("launch", () => new LaunchEffect());
             registry.Register("stop", () => new StopEffect());
             registry.Register("big_heads", () => new BigHeadsEffect());
+            MoreEffects.Register(registry);
             return registry;
         }
     }

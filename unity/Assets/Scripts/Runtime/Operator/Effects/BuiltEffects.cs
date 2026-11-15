@@ -41,7 +41,7 @@ namespace Dogpatch.Operator
     {
         public override void Apply(string strength, EffectTarget target)
         {
-            float k = Scale(strength, 0.6f, 0.4f, 0.25f);
+            float k = Scale(strength, 0.35f, 0.2f, 0.12f);
             Physics.gravity = new Vector3(0f, -9.81f * k, 0f);
             PlayerController.GravityScale = k;
             CarFx.Float = strength == "small" ? 0f : 1f;
@@ -59,7 +59,7 @@ namespace Dogpatch.Operator
 
     public sealed class RunFasterEffect : OperatorEffect
     {
-        public override void Apply(string strength, EffectTarget target) => PlayerController.RunScale = Scale(strength, 1.35f, 1.7f, 2.2f);
+        public override void Apply(string strength, EffectTarget target) => PlayerController.RunScale = Scale(strength, 2.5f, 4f, 6f);
 
         public override void Revert() => PlayerController.RunScale = 1f;
     }
@@ -72,7 +72,7 @@ namespace Dogpatch.Operator
         public override void Apply(string strength, EffectTarget target)
         {
             ticker = Context.Host.gameObject.AddComponent<HopTicker>();
-            ticker.Up = Scale(strength, 3.5f, 5f, 7f);
+            ticker.Up = Scale(strength, 5f, 7.5f, 10f);
             ticker.Cars = new List<CarController>();
             foreach (var tag in target.Entities)
             {
@@ -163,7 +163,7 @@ namespace Dogpatch.Operator
             {
                 var tag = order[i];
                 var b = tag.WorldBounds;
-                var fire = FireFx.Create(Context.Material, b, Scale(strength, 0.7f, 1f, 1.5f), i < MaxLights);
+                var fire = FireFx.Create(Context.Material, b, Scale(strength, 1.2f, 1.6f, 2.2f), i < MaxLights);
                 if (tag.Span == null) fire.transform.SetParent(tag.transform, true);
                 fires.Add(fire.gameObject);
             }
@@ -183,7 +183,7 @@ namespace Dogpatch.Operator
     {
         public override void Apply(string strength, EffectTarget target)
         {
-            float up = Scale(strength, 9f, 14f, 22f);
+            float up = Scale(strength, 16f, 24f, 34f);
             foreach (var tag in target.Entities)
             {
                 var car = tag.GetComponent<CarController>();
@@ -234,7 +234,7 @@ namespace Dogpatch.Operator
 
         public override void Apply(string strength, EffectTarget target)
         {
-            float size = Scale(strength, 1.7f, 2.4f, 3.2f);
+            float size = Scale(strength, 2.5f, 3.5f, 4.5f);
             var people = new List<GameObject>();
             foreach (var tag in EntityTag.All)
                 if (EntityClasses.IsA(tag.Class, "person")) people.Add(tag.gameObject);
