@@ -128,8 +128,8 @@ http.route({
   path: "/api/rooms",
   method: "POST",
   handler: endpoint(
-    (ctx, { playerId, route, finishRadius, minPlayers }) =>
-      ctx.runMutation(api.rooms.create, { playerId, route, finishRadius, minPlayers }),
+    (ctx, { playerId, route, finishRadius, minPlayers, asks, pickups, pickupRadius }) =>
+      ctx.runMutation(api.rooms.create, { playerId, route, finishRadius, minPlayers, asks, pickups, pickupRadius }),
     201,
   ),
 });
@@ -186,6 +186,14 @@ http.route({
 });
 
 http.route({
+  path: "/api/race/collect",
+  method: "POST",
+  handler: endpoint((ctx, { playerId, roomId, pickup, position }) =>
+    ctx.runMutation(api.race.collect, { playerId, roomId, pickup, position }),
+  ),
+});
+
+http.route({
   path: "/api/world/presence",
   method: "POST",
   handler: endpoint(async (ctx, { playerId, position, heading, speed, mode, vehicleType }) => {
@@ -199,8 +207,8 @@ http.route({
 http.route({
   path: "/api/missions/enter",
   method: "POST",
-  handler: endpoint((ctx, { playerId, mission, route, finishRadius, minPlayers }) =>
-    ctx.runMutation(internal.missions.enter, { playerId, mission, route, finishRadius, minPlayers }),
+  handler: endpoint((ctx, { playerId, mission, route, finishRadius, minPlayers, asks, pickups, pickupRadius }) =>
+    ctx.runMutation(internal.missions.enter, { playerId, mission, route, finishRadius, minPlayers, asks, pickups, pickupRadius }),
   ),
 });
 

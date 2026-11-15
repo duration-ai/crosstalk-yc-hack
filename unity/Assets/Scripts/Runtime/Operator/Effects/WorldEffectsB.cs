@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Dogpatch.Ambient;
 using Dogpatch.Gameplay;
 using Dogpatch.Smash;
+using Dogpatch.WorldChanges;
 using Dogpatch.Traffic;
 using Dogpatch.Vehicles;
 using UnityEngine;
@@ -29,6 +30,8 @@ namespace Dogpatch.Operator
             r.Register("calm_npcs", () => new CrowdMoodEffect(CrowdMood.Calm));
             r.Register("panic", () => new CrowdMoodEffect(CrowdMood.Panic));
             r.Register("ped_theme", () => new PedThemeEffect());
+            r.Register("extinguish", () => new ExtinguishEffect());
+            foreach (var kind in new[] { "see_through", "bouncy", "icy", "rock_solid", "soft", "ghost" }) r.Register(kind, () => new MorphEffect(kind));
         }
 
         public static Color Hex(string hex)
@@ -495,6 +498,430 @@ namespace Dogpatch.Operator
         {
             v /= k;
             return Mathf.Abs(v - 1f) < 1e-3f ? 1f : v;
+        }
+    }
+
+// One object's stacked Operator looks and motions (see_through, bouncy, icy, rock_solid, soft,
+    // ghost): the last colour mix wins, the lowest alpha and strongest rim win, hops, jiggles and
+    // bobs take the largest. Cars move their visual children so the AI and physics keep the body;
+    // a lifted-out city piece moves as a whole from its base. Everything goes back when the last
+    // mod is removed.
+    public sealed class Morph : MonoBehaviour
+    {
+        public sealed class Mod
+        {
+            public Color Mix;
+            public float Amount;
+            public float Alpha = 1f;
+            public float Rim;
+            public float Hop;
+            public float Jiggle;
+            public float Bob;
+        }
+
+        static Shader shader;
+
+        readonly List<Mod> mods = new List<Mod>();
+        Renderer[] renderers;
+        Material[][] materials;
+        UnityEngine.Rendering.ShadowCastingMode[] shadows;
+        Transform[] parts;
+        Vector3[] restPosition;
+        Vector3[] restScale;
+        Material material;
+        float seed;
+
+        public static Morph On(GameObject go)
+        {
+            var m = go.GetComponent<Morph>();
+            if (m != null) return m;
+            m = go.AddComponent<Morph>();
+            m.Init();
+            return m;
+        }
+
+        void Init()
+        {
+            seed = UnityEngine.Random.value * 10f;
+            var list = new List<Renderer>();
+            foreach (var r in GetComponentsInChildren<Renderer>(true))
+                if (!(r is ParticleSystemRenderer) && r.GetComponentInParent<FireFx>() == null) list.Add(r);
+            renderers = list.ToArray();
+            materials = new Material[renderers.Length][];
+            shadows = new UnityEngine.Rendering.ShadowCastingMode[renderers.Length];
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                materials[i] = renderers[i].sharedMaterials;
+                shadows[i] = renderers[i].shadowCastingMode;
+            }
+            var moving = new List<Transform>();
+            if (GetComponent<Rigidbody>() != null || GetComponent<CarController>() != null)
+            {
+                foreach (Transform child in transform)
+                    if (child.GetComponentInChildren<Renderer>() != null && child.GetComponentInChildren<FireFx>() == null) moving.Add(child);
+            }
+            else moving.Add(transform);
+            parts = moving.ToArray();
+            restPosition = new Vector3[parts.Length];
+            restScale = new Vector3[parts.Length];
+            for (int i = 0; i < parts.Length; i++)
+            {
+                restPosition[i] = parts[i].localPosition;
+                restScale[i] = parts[i].localScale;
+            }
+        }
+
+        public void Add(Mod mod)
+        {
+            mods.Add(mod);
+            Restyle();
+        }
+
+        public void Remove(Mod mod)
+        {
+            mods.Remove(mod);
+            if (mods.Count > 0)
+            {
+                Restyle();
+                return;
+            }
+            Destroy(this);
+        }
+
+        void Restyle()
+        {
+            Mod mix = null;
+            float alpha = 1f, rim = 0f;
+            foreach (var m in mods)
+            {
+                if (m.Amount > 0f) mix = m;
+                alpha = Mathf.Min(alpha, m.Alpha);
+                rim = Mathf.Max(rim, m.Rim);
+            }
+            if (mix == null && alpha >= 0.999f && rim <= 0f)
+            {
+                RestoreLook();
+                return;
+            }
+            if (shader == null) shader = Resources.Load<Shader>("Shaders/FlatMorph");
+            if (material == null) material = new Material(shader) { name = "Morph" };
+            var c = mix != null ? mix.Mix : Color.white;
+            material.SetColor("_Mix", new Color(c.r, c.g, c.b, mix != null ? mix.Amount : 0f));
+            material.SetFloat("_Alpha", alpha);
+            material.SetFloat("_Rim", rim);
+            bool clear = alpha < 0.999f;
+            material.SetFloat("_SrcBlend", clear ? (float)UnityEngine.Rendering.BlendMode.SrcAlpha : (float)UnityEngine.Rendering.BlendMode.One);
+            material.SetFloat("_DstBlend", clear ? (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha : (float)UnityEngine.Rendering.BlendMode.Zero);
+            material.SetFloat("_ZWrite", clear ? 0f : 1f);
+            material.renderQueue = clear ? 3000 : 2000;
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                var r = renderers[i];
+                if (r == null) continue;
+                var set = new Material[materials[i].Length];
+                for (int k = 0; k < set.Length; k++) set[k] = material;
+                r.sharedMaterials = set;
+                r.shadowCastingMode = clear ? UnityEngine.Rendering.ShadowCastingMode.Off : shadows[i];
+            }
+        }
+
+        void RestoreLook()
+        {
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                if (renderers[i] == null) continue;
+                renderers[i].sharedMaterials = materials[i];
+                renderers[i].shadowCastingMode = shadows[i];
+            }
+        }
+
+        void LateUpdate()
+        {
+            float hop = 0f, jiggle = 0f, bob = 0f;
+            foreach (var m in mods)
+            {
+                hop = Mathf.Max(hop, m.Hop);
+                jiggle = Mathf.Max(jiggle, m.Jiggle);
+                bob = Mathf.Max(bob, m.Bob);
+            }
+            float t = Time.time + seed;
+            float u = Mathf.Abs(Mathf.Sin(t * Mathf.PI / 0.75f));
+            float y = hop * u + bob * (0.6f + 0.4f * Mathf.Sin(t * 1.7f));
+            float sy = 1f;
+            if (hop > 0f) sy = u < 0.2f ? 1f - 0.3f * (1f - u / 0.2f) : 1f + 0.12f * u;
+            if (jiggle > 0f) sy *= 1f + jiggle * Mathf.Sin(t * 10f) * (0.7f + 0.3f * Mathf.Sin(t * 2.3f));
+            float sw = 1f / Mathf.Sqrt(Mathf.Max(0.3f, sy));
+            float sway = bob > 0f ? Mathf.Sin(t * 1.3f) * 4f : 0f;
+            for (int i = 0; i < parts.Length; i++)
+            {
+                if (parts[i] == null) continue;
+                parts[i].localPosition = restPosition[i] + (parts[i].parent != null ? parts[i].parent.InverseTransformVector(Vector3.up) : Vector3.up) * y;
+                parts[i].localScale = Vector3.Scale(restScale[i], new Vector3(sw, sy, sw));
+                if (parts[i] == transform && bob > 0f) transform.rotation = Quaternion.Euler(sway, transform.eulerAngles.y, sway * 0.6f);
+            }
+        }
+
+        void OnDestroy()
+        {
+            RestoreLook();
+            for (int i = 0; i < parts.Length; i++)
+            {
+                if (parts[i] == null) continue;
+                parts[i].localPosition = restPosition[i];
+                parts[i].localScale = restScale[i];
+            }
+            if (material != null) Destroy(material);
+        }
+    }
+
+    // A city piece lifted out of its merged chunk while any object effect holds it; its own
+    // collider stays on (unbreakable while lifted) unless a ghost holds it.
+    public static class SpanCopies
+    {
+        sealed class Held
+        {
+            public GameObject Copy;
+            public int Refs;
+            public int Ghosts;
+        }
+
+        static readonly Dictionary<EntityTag, Held> held = new Dictionary<EntityTag, Held>();
+
+        public static GameObject Take(EntityTag tag, Material material, bool ghost)
+        {
+            if (!held.TryGetValue(tag, out var h))
+            {
+                var copy = tag.Span.Detach(tag.Id + " (operator)", material);
+                if (copy == null) return null;
+                held[tag] = h = new Held { Copy = copy };
+            }
+            h.Refs++;
+            if (ghost) h.Ghosts++;
+            Solid(tag, h.Ghosts == 0);
+            return h.Copy;
+        }
+
+        public static void Give(EntityTag tag, bool ghost)
+        {
+            if (!held.TryGetValue(tag, out var h)) return;
+            if (ghost) h.Ghosts--;
+            if (--h.Refs > 0)
+            {
+                Solid(tag, h.Ghosts == 0);
+                return;
+            }
+            held.Remove(tag);
+            if (h.Copy != null) Object.Destroy(h.Copy);
+            tag.Span.Show();
+        }
+
+        static void Solid(EntityTag tag, bool solid)
+        {
+            foreach (var part in tag.Span.Parts)
+                if (part.Collider != null) part.Collider.enabled = solid;
+        }
+    }
+
+    // Lets a moving ghost car through every other car around it, refreshed as it goes.
+    public sealed class GhostPass : MonoBehaviour
+    {
+        readonly List<(Collider a, Collider b)> ignored = new List<(Collider, Collider)>();
+        Collider[] mine;
+        float next;
+
+        void Awake() => mine = GetComponentsInChildren<Collider>();
+
+        void Update()
+        {
+            if (Time.time < next) return;
+            next = Time.time + 0.3f;
+            foreach (var hit in Physics.OverlapSphere(transform.position, 25f, ~0, QueryTriggerInteraction.Ignore))
+            {
+                if (hit.GetComponentInParent<CarController>() == null || hit.transform.IsChildOf(transform)) continue;
+                foreach (var c in mine)
+                {
+                    if (ignored.Contains((c, hit))) continue;
+                    Physics.IgnoreCollision(c, hit, true);
+                    ignored.Add((c, hit));
+                }
+            }
+        }
+
+        void OnDestroy()
+        {
+            foreach (var (a, b) in ignored)
+                if (a != null && b != null) Physics.IgnoreCollision(a, b, false);
+        }
+    }
+
+    // see_through, bouncy, icy, rock_solid, soft and ghost on objects: a look, a motion and the
+    // physics to match. Pedestrians (drawn by the crowd renderer) take the look on their clothes,
+    // and stone ones stand still as statues.
+    public sealed class MorphEffect : OperatorEffect
+    {
+        const int MaxTargets = 40;
+
+        static PhysicsMaterial ice, rubber, jelly;
+
+        readonly string kind;
+        readonly List<Action> undo = new List<Action>();
+
+        public MorphEffect(string kind) => this.kind = kind;
+
+        Morph.Mod Mod(float k) => kind switch
+        {
+            "see_through" => new Morph.Mod { Mix = WorldEffectsB.Hex("#9ED7FF"), Amount = 0.35f, Alpha = Mathf.Lerp(0.5f, 0.2f, k), Rim = 0.5f },
+            "ghost" => new Morph.Mod { Mix = new Color(0.92f, 0.95f, 1f), Amount = 0.75f, Alpha = Mathf.Lerp(0.55f, 0.3f, k), Rim = 0.45f, Bob = 0.6f * k },
+            "icy" => new Morph.Mod { Mix = WorldEffectsB.Hex("#CFEFFF"), Amount = 0.45f + 0.3f * k, Rim = 0.55f },
+            "rock_solid" => new Morph.Mod { Mix = WorldEffectsB.Hex("#8E9099"), Amount = 0.7f + 0.25f * k },
+            "soft" => new Morph.Mod { Mix = WorldEffectsB.Hex("#8CE3BF"), Amount = 0.35f, Alpha = 0.8f, Rim = 0.3f, Jiggle = 0.1f + 0.12f * k },
+            _ => new Morph.Mod { Mix = WorldEffectsB.Hex("#FF9C86"), Amount = 0.2f, Hop = 0.5f + 1f * k },
+        };
+
+        Color PuffColor => kind switch
+        {
+            "see_through" => WorldEffectsB.Hex("#9ED7FF"),
+            "icy" => WorldEffectsB.Hex("#CFEFFF"),
+            "rock_solid" => SmashFx.SmokeGrey,
+            "soft" => WorldEffectsB.Hex("#8CE3BF"),
+            "bouncy" => WorldEffectsB.Hex("#FF9C86"),
+            _ => SmashFx.SmokeLight,
+        };
+
+        public override void Apply(string strength, EffectTarget target)
+        {
+            float k = Scale(strength, 0.4f, 0.7f, 1f);
+            bool isGhost = kind == "ghost";
+            int n = 0;
+            foreach (var tag in target.Entities)
+            {
+                if (n >= MaxTargets) break;
+                var ped = tag.GetComponent<Pedestrian>();
+                if (ped != null)
+                {
+                    var m = Mod(k);
+                    PedestrianSystem.Instance?.AddLook(ped, m.Mix, Mathf.Max(m.Amount, 0.5f), kind == "rock_solid");
+                    undo.Add(() => PedestrianSystem.Instance?.RemoveLook(ped, kind == "rock_solid"));
+                    CrowdFx.Ensure(Context);
+                    WorldEffectsB.Poof(ped.Position + Vector3.up, 1.2f, PuffColor, 6);
+                    n++;
+                    continue;
+                }
+                var body = tag.Span != null ? SpanCopies.Take(tag, Context.Material, isGhost) : tag.gameObject;
+                if (body == null) continue;
+                n++;
+                if (tag.Span != null) undo.Add(() => SpanCopies.Give(tag, isGhost));
+                var morph = Morph.On(body);
+                var mod = Mod(k);
+                morph.Add(mod);
+                undo.Add(() => { if (morph != null) morph.Remove(mod); });
+                var b = tag.WorldBounds;
+                WorldEffectsB.Poof(b.center, Mathf.Clamp(b.extents.magnitude, 1.5f, 8f), PuffColor, 10);
+                if (tag.Span == null) Physics(tag.gameObject, k);
+            }
+        }
+
+        void Physics(GameObject go, float k)
+        {
+            var car = go.GetComponent<CarController>();
+            var body = go.GetComponent<Rigidbody>();
+            var colliders = go.GetComponentsInChildren<Collider>();
+            void Swap(PhysicsMaterial with)
+            {
+                foreach (var c in colliders)
+                {
+                    if (c.isTrigger) continue;
+                    var was = c.sharedMaterial;
+                    c.sharedMaterial = with;
+                    undo.Add(() => { if (c != null) c.sharedMaterial = was; });
+                }
+            }
+            switch (kind)
+            {
+                case "icy":
+                    if (ice == null) ice = new PhysicsMaterial("Operator ice") { dynamicFriction = 0f, staticFriction = 0f, frictionCombine = PhysicsMaterialCombine.Minimum };
+                    Swap(ice);
+                    break;
+                case "bouncy":
+                    if (rubber == null) rubber = new PhysicsMaterial("Operator rubber") { bounciness = 1f, bounceCombine = PhysicsMaterialCombine.Maximum };
+                    Swap(rubber);
+                    if (car != null && body != null && !body.isKinematic)
+                    {
+                        var ticker = go.AddComponent<HopTicker>();
+                        ticker.Cars = new List<CarController> { car };
+                        ticker.Up = 3f + 4f * k;
+                        undo.Add(() => { if (ticker != null) Object.Destroy(ticker); });
+                    }
+                    break;
+                case "soft":
+                    if (jelly == null) jelly = new PhysicsMaterial("Operator jelly") { bounciness = 0.6f, bounceCombine = PhysicsMaterialCombine.Maximum, dynamicFriction = 0.9f, staticFriction = 0.9f };
+                    Swap(jelly);
+                    break;
+                case "rock_solid":
+                    var damage = go.GetComponent<VehicleDamage>();
+                    if (damage != null)
+                    {
+                        damage.Invulnerable++;
+                        undo.Add(() => { if (damage != null) damage.Invulnerable--; });
+                    }
+                    if (body != null)
+                    {
+                        float mass = body.mass;
+                        body.mass = mass * 5f;
+                        undo.Add(() => { if (body != null) body.mass = mass; });
+                    }
+                    if (go.GetComponent<TrafficAgent>() is TrafficAgent agent && agent.enabled)
+                    {
+                        var frozen = go.AddComponent<Frozen>();
+                        undo.Add(() => { if (frozen != null) Object.Destroy(frozen); });
+                    }
+                    break;
+                case "ghost":
+                    if (body == null || body.isKinematic)
+                    {
+                        foreach (var c in colliders)
+                        {
+                            if (!c.enabled || c.isTrigger) continue;
+                            c.enabled = false;
+                            undo.Add(() => { if (c != null) c.enabled = true; });
+                        }
+                    }
+                    else
+                    {
+                        var pass = go.AddComponent<GhostPass>();
+                        undo.Add(() => { if (pass != null) Object.Destroy(pass); });
+                    }
+                    break;
+            }
+        }
+
+        public override void Revert()
+        {
+            for (int i = undo.Count - 1; i >= 0; i--) undo[i]();
+            undo.Clear();
+        }
+    }
+
+    // Instant: a gush of water and a cloud of steam on each target, and any flames on it go out.
+    public sealed class ExtinguishEffect : OperatorEffect
+    {
+        public override void Apply(string strength, EffectTarget target)
+        {
+            var fires = Object.FindObjectsByType<FireFx>(FindObjectsSortMode.None);
+            var fx = SmashWorld.Instance?.Fx;
+            int n = 0;
+            foreach (var tag in target.Entities)
+            {
+                if (n++ >= 12) break;
+                var b = tag.WorldBounds;
+                b.Expand(4f);
+                foreach (var fire in fires)
+                    if (fire != null && b.Contains(fire.transform.position)) Object.Destroy(fire.gameObject);
+                var top = new Vector3(b.center.x, b.max.y - 3f, b.center.z);
+                fx?.Spout(new Vector3(b.center.x, b.min.y + 2f, b.center.z), 1.2f);
+                fx?.Smoke(top, SmashFx.SmokeLight, Mathf.Clamp(b.extents.magnitude, 2f, 6f), 14, 2.5f);
+                WorldEffectsB.Poof(top, Mathf.Clamp(b.extents.magnitude, 2f, 8f), WorldEffectsB.Hex("#9ED7FF"), 12);
+            }
         }
     }
 

@@ -19,6 +19,12 @@ export const PHOTO_FINISH_MS = 1_000;
 export const DEFAULT_FINISH_RADIUS = 15;
 export const MAX_ROUTE_POINTS = 512;
 export const EVENTS_PER_POLL = 100;
+export const DEFAULT_ASKS = 2;
+export const MAX_ASKS = 9;
+export const MAX_PICKUPS = 64;
+export const DEFAULT_PICKUP_RADIUS = 4;
+/** Slack on top of the pickup radius for the racer's reported position, which lags the car a little. */
+export const COLLECT_SLACK = 3;
 export const DEFAULT_ROUTE: Vec3[] = [
   { x: 0, y: 0, z: 0 },
   { x: 0, y: 0, z: 800 },
@@ -181,7 +187,19 @@ export function toRoom(room: Room, rows: RoomPlayer[], now: number) {
     finish: finishPoint(room),
     finishRadius: room.finishRadius,
     createdAt: room.createdAt,
+    asks: startingAsks(room),
+    pickups: room.pickups ?? [],
+    pickupRadius: room.pickupRadius ?? DEFAULT_PICKUP_RADIUS,
   };
+}
+
+export function startingAsks(room: Room) {
+  return room.asks ?? DEFAULT_ASKS;
+}
+
+/** The racer's asks; rows from before asks existed start with the room's count. */
+export function asksOf(room: Room, row: RoomPlayer) {
+  return row.asks ?? startingAsks(room);
 }
 
 export function finishMs(room: Room, row: RoomPlayer) {
@@ -203,6 +221,8 @@ export function toRacer(room: Room, row: RoomPlayer, place: number) {
     finished: row.finishedAt > 0,
     finishMs: finishMs(room, row),
     smash: row.smash ?? 0,
+    asks: asksOf(room, row),
+    collected: row.collected ?? [],
     left: row.left,
     updatedAt: row.updatedAt,
   };

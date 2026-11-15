@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Dogpatch.Data;
 using Dogpatch.World;
 using UnityEngine;
@@ -24,6 +25,24 @@ namespace Dogpatch.Race
         public GeoPoint[] via;
         public float finishRadius;
         public float ringRadius;
+    }
+
+    // Ask pickups (Resources/SpeedDial/asks.json): how many asks a racer starts with, and where the
+    // pickups that earn more go. Each pickup sits on a street node minDetour to maxDetour metres of
+    // street from the route and at least minOffRoute metres from it in a straight line, so taking one
+    // costs a detour; they spread evenly along the route, at least minSpacing apart.
+    [Serializable]
+    public class AskTuning
+    {
+        public int startAsks = 2;
+        public int pickupCount = 6;
+        public float minDetour = 40f;
+        public float maxDetour = 120f;
+        public float minOffRoute = 25f;
+        public float minSpacing = 60f;
+        public float pickupRadius = 4f;
+        public float botDetourChance = 0.35f;
+        public int seed = 7;
     }
 
     public struct Spot
@@ -54,9 +73,12 @@ namespace Dogpatch.Race
         public float FinishHeading;
         public float FinishHalfWidth;
         public Vector3 YcSite;
+        public StreetGraph Graph { get; private set; }
+        public List<Vector3> AskPickups = new List<Vector3>();
 
         readonly WorldContext world;
         readonly WorldData data;
+        Func<Vector2, bool> occupied;
 
         RaceCourse(WorldContext world, WorldData data, CourseData course)
         {
@@ -65,10 +87,12 @@ namespace Dogpatch.Race
             Data = course;
         }
 
-        public static RaceCourse Build(WorldContext world, WorldData data, string json)
+        // occupied: true where something already stands on the street (a parked bike, a showroom car),
+        // so the start grid avoids it.
+        public static RaceCourse Build(WorldContext world, WorldData data, string json, Func<Vector2, bool> occupied = null)
         {
             Physics.SyncTransforms();
-            var course = new RaceCourse(world, data, JsonUtility.FromJson<CourseData>(json));
+            var course = new RaceCourse(world, data, JsonUtility.FromJson<CourseData>(json)) { occupied = occupied };
             course.Plan();
             return course;
         }
@@ -104,25 +128,66 @@ namespace Dogpatch.Race
             var finishTarget = Project(Data.finish);
             YcSite = Ground(finishTarget);
 
-            var graph = new StreetGraph(world.Roads, RaceKinds);
+            Graph = new StreetGraph(world.Roads, RaceKinds);
             var stops = new List<Vector2> { startTarget };
             if (Data.via != null) foreach (var v in Data.via) stops.Add(Project(v));
             stops.Add(finishTarget);
-            var points = new List<Vector2>();
-            for (int i = 0; i < stops.Count - 1; i++)
-            {
-                var leg = graph.Route(stops[i], stops[i + 1]);
-                if (leg == null || leg.Count < 2) leg = new List<Vector2> { stops[i], stops[i + 1] };
-                foreach (var p in leg)
-                    if (points.Count == 0 || Vector2.Distance(points[points.Count - 1], p) > 0.5f) points.Add(p);
-            }
-            Route = new RoutePath(Simplify(points));
+            Route = new RoutePath(Simplify(Streets(stops)));
             foreach (var p in Route.Points) RouteWorld.Add(Ground(p));
             Debug.Log($"[SpeedDial] route {Data.startName} -> {Data.finishName}: {Route.Length:F0} m, {Route.Points.Length} points");
 
             PlaceRing(startTarget);
             PlaceGrid();
             PlaceFinish();
+        }
+
+        // The street path through every stop in order, one-way streets respected.
+        List<Vector2> Streets(IReadOnlyList<Vector2> stops)
+        {
+            var points = new List<Vector2>();
+            for (int i = 0; i < stops.Count - 1; i++)
+            {
+                var leg = Graph.Route(stops[i], stops[i + 1]);
+                if (leg == null || leg.Count < 2) leg = new List<Vector2> { stops[i], stops[i + 1] };
+                foreach (var p in leg)
+                    if (points.Count == 0 || Vector2.Distance(points[points.Count - 1], p) > 0.5f) points.Add(p);
+            }
+            return points;
+        }
+
+        // A street path from `from` through `via` back onto the race route `rejoin` metres along it.
+        public RoutePath Detour(Vector2 from, Vector2 via, float rejoin)
+        {
+            var points = Streets(new[] { from, via, Route.PointAt(Mathf.Min(rejoin, Route.Length)) });
+            return points.Count < 2 ? null : new RoutePath(points);
+        }
+
+        public void PlaceAskPickups(AskTuning tuning)
+        {
+            AskPickups.Clear();
+            var detours = Graph.StreetDistances(Route, tuning.maxDetour);
+            var candidates = new List<(Vector2 p, float progress)>();
+            foreach (var (p, detour) in detours)
+            {
+                if (detour < tuning.minDetour) continue;
+                float progress = Route.Project(p);
+                if (Vector2.Distance(p, Route.PointAt(progress)) < tuning.minOffRoute) continue;
+                if (progress < 40f || progress > Route.Length - 40f) continue;
+                candidates.Add((p, progress));
+            }
+            var random = new System.Random(tuning.seed);
+            var chosen = new List<Vector2>();
+            int count = Mathf.Max(0, tuning.pickupCount);
+            for (int i = 0; i < count; i++)
+            {
+                float from = Route.Length * i / count;
+                float to = Route.Length * (i + 1) / count;
+                var pool = candidates.Where(c => c.progress >= from && c.progress < to && chosen.All(q => Vector2.Distance(q, c.p) >= tuning.minSpacing)).ToList();
+                if (pool.Count == 0) continue;
+                chosen.Add(pool[random.Next(pool.Count)].p);
+            }
+            foreach (var p in chosen.OrderBy(p => Route.Project(p))) AskPickups.Add(Ground(p));
+            Debug.Log($"[SpeedDial] {AskPickups.Count} ask pickups placed from {candidates.Count} side-street spots");
         }
 
         static List<Vector2> Simplify(List<Vector2> pts)
@@ -193,15 +258,63 @@ namespace Dogpatch.Race
             RingFacing = toStart.sqrMagnitude < 1f ? Vector3.forward : new Vector3(toStart.x, 0f, toStart.y).normalized;
         }
 
-        void PlaceGrid()
+        // The start grid is staggered: two columns 3.5 m apart, each car 3.5 m behind the one beside it,
+        // so 7 m to the car ahead in its own column, all facing down the route. Slots follow the room's
+        // slot order, so every client seats every racer the same. The grid slides down the first
+        // straight until each slot sits on asphalt clear of the kerbs, buildings and parked cars.
+        public const float GridLateral = 1.75f;
+        const float GridStep = 3.5f;
+
+        public static float GridLane(int slot) => slot % 2 == 0 ? -GridLateral : GridLateral;
+
+        Vector2 GridPoint(float front, int slot)
         {
+            float d = front - slot * GridStep;
+            return Route.PointAt(d) + Route.RightAt(d) * GridLane(slot);
+        }
+
+        // How many things are in the way of a grid whose front slot is `front` metres along the route: a
+        // bend, kerbs, buildings, or a parked or standing vehicle on a slot or within a car's width of its
+        // lane for the first 30 m.
+        int GridProblems(float front)
+        {
+            int problems = 0;
+            float back = front - 3f * GridStep;
+            if (Route.TurnAhead(back - 2f, front - back + 30f) > 12f) problems++;
             for (int slot = 0; slot < 4; slot++)
             {
-                float d = Mathf.Min(14f - (slot / 2) * 7f, Route.Length * 0.4f);
-                float side = slot % 2 == 0 ? -1.9f : 1.9f;
-                var p = Route.PointAt(d) + Route.RightAt(d) * side;
-                Grid[slot] = new Spot { Position = Ground(p) + Vector3.up * 0.3f, Heading = RoutePath.Heading(Route.DirectionAt(d)), Progress = d };
+                if (world.Buildings.Blocked(GridPoint(front, slot), 1.5f)) problems++;
+                for (float ahead = 0f; ahead <= 30f; ahead += 2.5f)
+                {
+                    var q = GridPoint(front + ahead, slot);
+                    if (!world.Roads.OnCurbedCarriageway(q, -1.2f)) problems++;
+                    if (occupied != null && occupied(q)) problems++;
+                    foreach (var car in world.ParkedCars)
+                        if ((new Vector2(car.Position.x, car.Position.z) - q).sqrMagnitude < 3f * 3f) problems++;
+                }
             }
+            return problems;
+        }
+
+        void PlaceGrid()
+        {
+            float first = 3f * GridStep + 4f;
+            float front = first;
+            int best = int.MaxValue;
+            for (float d = first; d < Mathf.Min(120f, Route.Length * 0.4f) && best > 0; d += 2f)
+            {
+                int problems = GridProblems(d);
+                if (problems >= best) continue;
+                best = problems;
+                front = d;
+            }
+            bool clear = best == 0;
+            for (int slot = 0; slot < 4; slot++)
+            {
+                float d = front - slot * GridStep;
+                Grid[slot] = new Spot { Position = Ground(GridPoint(front, slot)) + Vector3.up * 0.3f, Heading = RoutePath.Heading(Route.DirectionAt(d)), Progress = d };
+            }
+            Debug.Log($"[SpeedDial] grid from {front - 3f * GridStep:F0} to {front:F0} m along the route{(clear ? "" : $", {best} problems left")}");
         }
 
         void PlaceFinish()
@@ -270,6 +383,42 @@ namespace Dogpatch.Race
                 point = q;
             }
             return (best, point);
+        }
+
+        // Street distance from the route to every node within `limit` of it, either way along every street:
+        // how far off the route a stop at that node takes you.
+        public List<(Vector2 point, float distance)> StreetDistances(RoutePath route, float limit)
+        {
+            var links = new List<List<(int to, float cost)>>();
+            for (int i = 0; i < nodes.Count; i++) links.Add(new List<(int, float)>());
+            foreach (var (a, b, _) in segments)
+            {
+                float cost = Vector2.Distance(nodes[a], nodes[b]);
+                links[a].Add((b, cost));
+                links[b].Add((a, cost));
+            }
+            var dist = new Dictionary<int, float>();
+            var open = new SortedSet<(float d, int node)>();
+            for (int i = 0; i < nodes.Count; i++)
+            {
+                if (Vector2.Distance(nodes[i], route.PointAt(route.Project(nodes[i]))) > 3f) continue;
+                dist[i] = 0f;
+                open.Add((0f, i));
+            }
+            while (open.Count > 0)
+            {
+                var (d, u) = open.Min;
+                open.Remove(open.Min);
+                foreach (var (v, cost) in links[u])
+                {
+                    float nd = d + cost;
+                    if (nd > limit || (dist.TryGetValue(v, out float old) && nd >= old)) continue;
+                    if (dist.ContainsKey(v)) open.Remove((old, v));
+                    dist[v] = nd;
+                    open.Add((nd, v));
+                }
+            }
+            return dist.Select(kv => (nodes[kv.Key], kv.Value)).ToList();
         }
 
         // Street path from a street point near "from" to the one nearest "to". Every street within

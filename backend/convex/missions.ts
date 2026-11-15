@@ -17,6 +17,9 @@ export const enter = internalMutation({
     route: v.optional(v.array(vec3)),
     finishRadius: v.optional(v.number()),
     minPlayers: v.optional(v.number()),
+    asks: v.optional(v.number()),
+    pickups: v.optional(v.array(vec3)),
+    pickupRadius: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const player = await getPlayer(ctx, args.playerId);
