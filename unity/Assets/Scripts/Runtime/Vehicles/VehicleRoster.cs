@@ -22,6 +22,19 @@ namespace Dogpatch.Vehicles
         static Material material;
         static GlbAsset playerModel;
 
+        // CROS-23's damage and barging read mass, durability and barge strength from the roster's
+        // handling profiles; vehicles outside the roster keep its per-model table.
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        static void ProvideSpecs()
+        {
+            Smash.VehicleSpecs.Provider = car =>
+            {
+                if (car == null || car.GetComponent<VehicleIdentity>() == null) return null;
+                var h = car.Handling;
+                return new Smash.VehicleSpec { Mass = h.Mass, Durability = h.Durability, BargeStrength = h.BargeStrength };
+            };
+        }
+
         // Set once by the traffic system; defaults to the shared flat shader.
         public static void Configure(Material shared, GlbAsset player)
         {

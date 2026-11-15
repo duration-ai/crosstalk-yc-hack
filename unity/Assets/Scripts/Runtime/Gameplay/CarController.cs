@@ -18,6 +18,7 @@ namespace Dogpatch.Gameplay
         public bool Enterable = true;
         public float Speed => forwardSpeed;
         public Vector3 HalfExtents { get; private set; }
+        public bool Stunned => Time.time < stunnedUntil;
 
         // While true, something else (the traffic AI) moves this car and FixedUpdate leaves the body
         // alone, even with the player aboard as a passenger.
@@ -45,6 +46,7 @@ namespace Dogpatch.Gameplay
         readonly List<Transform> wheels = new List<Transform>();
         readonly List<Transform> steering = new List<Transform>();
         float wheelSpin;
+        float stunnedUntil;
 
         public static CarController Create(string vehicleId, GlbAsset model, Material material, Vector3 position, float heading) =>
             Create(vehicleId, model.Id, model.Instantiate(material), model.ComputeBounds(), position, heading);
@@ -138,9 +140,17 @@ namespace Dogpatch.Gameplay
             forwardSpeed = 0f;
         }
 
+        // Hands the body to physics for a moment so knockback, launches and shoves play out
+        // instead of being overwritten by the next step's steering. A parked car becomes dynamic.
+        public void Stun(float seconds)
+        {
+            stunnedUntil = Mathf.Max(stunnedUntil, Time.time + seconds);
+            body.isKinematic = false;
+        }
+
         void FixedUpdate()
         {
-            if (body.isKinematic || Autopilot) return;
+            if (body.isKinematic || Stunned || Autopilot) return;
             float dt = Time.fixedDeltaTime;
             var forward = transform.forward;
             var right = transform.right;

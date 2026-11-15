@@ -215,6 +215,22 @@ namespace Dogpatch.Traffic
                 system.Release(this);
                 return;
             }
+            if (Car.Stunned)
+            {
+                Speed = 0f;
+                State = "knocked";
+                return;
+            }
+            if (!body.isKinematic)
+            {
+                body.isKinematic = true;
+                var snap = CurrentPath.Sample(S, out _);
+                if (Vector2.Distance(snap, new Vector2(transform.position.x, transform.position.z)) > 2.5f + Mathf.Abs(lateral))
+                {
+                    system.Release(this);
+                    return;
+                }
+            }
 
             var path = CurrentPath;
             path.Sample(S, out var forward);
