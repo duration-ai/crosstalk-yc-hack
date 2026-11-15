@@ -4,8 +4,8 @@ using Dogpatch.Race;
 
 namespace Dogpatch.Operator
 {
-    // What the caller said into the payphone: words, a recording, or both. The contract has two
-    // endpoints for it, POST /api/operator (text) and POST /api/operator/audio (raw recording).
+    // What the caller said into the payphone: words, a recording, or both, and what they could see
+    // when they pressed Call (View, for the voice Operator's operator:call).
     public sealed class OperatorCall
     {
         public string PlayerId;
@@ -13,6 +13,8 @@ namespace Dogpatch.Operator
         public string Text;
         public byte[] Audio;
         public string AudioMime;
+        public OperatorView View;
+        public int SttMs;
     }
 
     // The Operator on the other end of every payphone. She hears a call and answers with exactly
