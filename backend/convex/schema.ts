@@ -137,6 +137,7 @@ export default defineSchema({
     speed: v.number(),
     mode: movementMode,
     vehicleType: v.string(),
+    protocol: v.optional(v.number()),
     worldRoomId: v.id("rooms"),
     joinedAt: v.number(),
     updatedAt: v.number(),
