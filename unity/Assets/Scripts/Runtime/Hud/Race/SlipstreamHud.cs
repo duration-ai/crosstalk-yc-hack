@@ -283,6 +283,7 @@ namespace Dogpatch.Slipstream
             if (Race.Online && lobby && !paused) MissionPlate(room);
             if (Race.Gridded && !Race.ResultsIn) Countdown();
             if (racing) RaceCorners();
+            if (racing && Race.CrossedFinish) FinishedBanner();
             if (Race.ResultsIn) Results();
             OperatorAndNews();
             PhoneButton(lobby || Race.ResultsIn);
@@ -392,6 +393,21 @@ namespace Dogpatch.Slipstream
             float shake = since < 0.2f ? Mathf.Sin(since * 90f) * 4f * s * (1f - since / 0.2f) : 0f;
             var r = new Rect(Screen.width * 0.5f - m.x * 0.5f + shake, Screen.height * 0.42f - m.y * 0.5f, m.x, m.y);
             Text(r, label, size, Sun, TextAnchor.UpperLeft, 5f * s * scale);
+        }
+
+        // Once you're over the line: your place and time, and how long until the results at the latest.
+        void FinishedBanner()
+        {
+            var me = Race.Me;
+            if (me == null) return;
+            var label = "FINISHED " + me.place + Ordinal(me.place);
+            var size = Measure(label, 64f);
+            var r = new Rect(Screen.width * 0.5f - size.x * 0.5f, Screen.height * 0.3f - size.y * 0.5f, size.x, size.y);
+            Text(r, label, 64f, Sun, TextAnchor.UpperLeft, 3f * s);
+            float wait = Race.Room.closesAt > 0 ? Mathf.Max(0f, (Race.Room.closesAt - Race.NowMs) / 1000f) : 0f;
+            var sub = (me.finishMs / 1000f).ToString("F1") + "S   RESULTS IN " + Mathf.CeilToInt(wait) + "S";
+            var subSize = Measure(sub, 22f);
+            Text(new Rect(Screen.width * 0.5f - subSize.x * 0.5f, r.yMax + 6f * s, subSize.x, subSize.y), sub, 22f, White, TextAnchor.UpperLeft, 1.6f * s);
         }
 
         void RaceCorners()

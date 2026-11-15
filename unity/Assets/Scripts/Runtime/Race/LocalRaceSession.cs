@@ -19,7 +19,7 @@ namespace Dogpatch.Race
         const long AllReadyMs = 3000;
         const long AutoStartMs = 10000;
         const long LockMs = 3000;
-        const long CloseAfterFirstFinishMs = 60000;
+        const long CloseAfterFirstFinishMs = 30000;
         const int DefaultAsks = 2;
         const int MaxPickups = 64;
         const float DefaultPickupRadius = 4f;
