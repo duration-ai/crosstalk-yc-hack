@@ -14,7 +14,6 @@ namespace Dogpatch.Audio
     // subscribes to their public events and reads their public state, so their code stays as is.
     public sealed class GameBridge : MonoBehaviour
     {
-        const float RingRange = 70f;
 
         RaceDirector race;
         string lastStatus;
@@ -22,7 +21,6 @@ namespace Dogpatch.Audio
         int lastCount = -1;
         int place;
         OpState callState = OpState.None;
-        readonly Dictionary<Payphone, SoundLoop> rings = new Dictionary<Payphone, SoundLoop>();
 
         void OnEnable()
         {
@@ -161,20 +159,6 @@ namespace Dogpatch.Audio
                 if (state == OpState.None) GameEvents.RaiseCall(CallState.Ended);
                 SoundSystem.SetDuck(this, state == OpState.Talking);
                 callState = state;
-            }
-
-            var listener = SoundSystem.ListenerPosition;
-            foreach (var phone in calls.Phones)
-            {
-                if (phone == null) continue;
-                bool ring = state == OpState.None && phone.Ringing && Vector3.Distance(phone.transform.position, listener) < RingRange;
-                rings.TryGetValue(phone, out var loop);
-                if (ring && loop == null) rings[phone] = SoundSystem.LoopAt("call_ring", Bus.Ui, phone.transform.position + Vector3.up * 1.6f, RingRange, 200, 0.9f);
-                else if (!ring && loop != null)
-                {
-                    loop.Stop(0.05f);
-                    rings[phone] = null;
-                }
             }
         }
     }
