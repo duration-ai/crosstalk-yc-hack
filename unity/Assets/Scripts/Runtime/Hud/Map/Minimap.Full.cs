@@ -109,10 +109,10 @@ namespace Dogpatch.Map
         }
 
         // For captures: select the mission and zoom by factor about the centre.
-        public void Preview(float zoom)
+        public void Preview(float zoom, bool selectMission = true)
         {
             FrameFull();
-            if (MissionUp(RaceDirector.Instance)) Select(-1);
+            if (selectMission && MissionUp(RaceDirector.Instance)) Select(-1);
             ZoomAbout(center, zoom);
         }
 
@@ -452,9 +452,9 @@ namespace Dogpatch.Map
             EnsureStyle();
             style.fontSize = Mathf.RoundToInt(8.5f * s);
             var drawn = new List<(Vector2 at, float reach)>();
-            var halo = SpeedDial.Hex("#E6DDCB");
+            var halo = MapLook.Current.LabelHalo;
             halo.a = alpha;
-            var ink = Ink;
+            var ink = MapLook.Current.LabelInk;
             ink.a = alpha;
             foreach (var label in geometry.Streets)
             {
@@ -530,7 +530,7 @@ namespace Dogpatch.Map
                 if (id < 0)
                 {
                     Disc(p, 10f * k * s, Ink, 28);
-                    Disc(p, 8.2f * k * s, Sunshine, 28);
+                    Disc(p, 8.2f * k * s, MapLook.Current.Mission, 28);
                     float q = 2.8f * k * s;
                     for (int x = -1; x <= 0; x++)
                         for (int y = -1; y <= 0; y++)
@@ -541,6 +541,11 @@ namespace Dogpatch.Map
                 }
                 else
                 {
+                    if (MapLook.Current.PopPins)
+                    {
+                        Quad(p + new Vector2(-1.2f * s, -9f * s), p + new Vector2(-1.2f * s, 0f), p + new Vector2(1.2f * s, 0f), p + new Vector2(1.2f * s, -9f * s), Ink);
+                        Disc(p + new Vector2(0f, -9f * s), 2.2f * s, Ink, 10);
+                    }
                     Disc(p, 7f * k * s, Ink, 20);
                     Disc(p, 4.6f * k * s, White, 20);
                     Disc(p, 2.2f * k * s, Ink, 12);

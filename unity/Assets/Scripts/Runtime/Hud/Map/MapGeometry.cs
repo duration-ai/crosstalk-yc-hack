@@ -15,7 +15,7 @@ namespace Dogpatch.Map
     public sealed class MapGeometry
     {
         const float Tile = 200f;
-        const int Layers = 6;
+        const int Layers = 7;
 
         public struct Palette
         {
@@ -24,7 +24,11 @@ namespace Dogpatch.Map
             public Color32 Path;
             public Color32 Casing;
             public Color32 Street;
-            public Color32 Building;
+            public Color32[] Buildings;
+            public Color32 Shadow;
+            public Vector2 ShadowOffset;
+            public float CasingExtra;
+            public float StreetScale;
         }
 
         public struct Label
@@ -66,12 +70,22 @@ namespace Dogpatch.Map
                 if (road.kind == "path") g.Line(pts, 1.2f, 2, palette.Path);
                 else
                 {
-                    float hw = Mathf.Max(road.width, 5f) * 0.5f;
-                    g.Line(pts, hw + 1.1f, 3, palette.Casing);
+                    float hw = Mathf.Max(road.width, 5f) * 0.5f * palette.StreetScale;
+                    g.Line(pts, hw + palette.CasingExtra, 3, palette.Casing);
                     g.Line(pts, hw, 4, palette.Street);
                 }
             }
-            foreach (var b in data.buildings) g.Fill(null, Geometry.ToPoints(b.pts), 5, palette.Building);
+            for (int i = 0; i < data.buildings.Length; i++)
+            {
+                var pts = Geometry.ToPoints(data.buildings[i].pts);
+                if (palette.ShadowOffset != Vector2.zero)
+                {
+                    var shadow = new Vector2[pts.Length];
+                    for (int k = 0; k < pts.Length; k++) shadow[k] = pts[k] + palette.ShadowOffset;
+                    g.Fill(null, shadow, 5, palette.Shadow);
+                }
+                g.Fill(null, pts, 6, palette.Buildings[(i * 7 + pts.Length) % palette.Buildings.Length]);
+            }
             g.CollectLabels(data);
             return g;
         }
