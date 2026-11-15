@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Dogpatch.Audio;
 using Dogpatch.Look;
 using Dogpatch.Smash;
 using Dogpatch.World;
@@ -17,6 +18,9 @@ namespace Dogpatch.Race
     // waiting, then dropping one a second through the countdown while the ring builds energy (spin,
     // halos, motes, a punch on every drop). At GO a shockwave rolls out of the ring, and in front of
     // the player's car two checkered flags pop up spinning and confetti bursts over the road.
+    // Sound (Kenney CC0, see tools/AudioGen/CREDITS.md): a hum at the ring that rises with the
+    // countdown, a whoosh on approach, a blip per player joining, a tick per segment drop, a riser into
+    // the last seconds and a zap at GO; the 3-2-1 beeps and GO stay with GameSounds.
     // Look only: it reads RaceDirector's room state and never changes it.
     public sealed class StartRingFx : MonoBehaviour
     {
@@ -54,6 +58,9 @@ namespace Dogpatch.Race
         Renderer shock;
         float goAt = -100f;
         bool wasStarted;
+        SoundLoop hum;
+        bool approached;
+        int lastRacers;
         ParticleSystem confetti;
         readonly Transform[] flags = new Transform[2];
 
@@ -241,12 +248,25 @@ namespace Dogpatch.Race
             {
                 energy = Mathf.Clamp01(1f - race.MsToStart / CountdownMs);
                 lit = Mathf.Clamp(Mathf.CeilToInt(race.MsToStart / 1000f), 0, Segments);
-                if (lastLit >= 0 && lit < lastLit) punch = 1f;
+                if (lastLit >= 0 && lit < lastLit)
+                {
+                    punch = 1f;
+                    if (lit >= 4) Sound("ring_tick", 1f, 1f + (Segments - lit) * 0.07f);
+                    if (lit == 4) Sound("ring_charge", 0.75f, 1f);
+                }
             }
             else if (room != null && room.status == RoomStatus.Lobby)
-                lit = Mathf.Clamp(Mathf.RoundToInt((race.Last?.racers?.Count ?? 0) * Segments / 4f), 1, Segments);
+            {
+                int racers = race.Last?.racers?.Count ?? 0;
+                if (racers > lastRacers) Sound("ring_join", 0.8f, 1f + racers * 0.08f);
+                lastRacers = racers;
+                lit = Mathf.Clamp(Mathf.RoundToInt(racers * Segments / 4f), 1, Segments);
+            }
             else
+            {
+                if (room == null) lastRacers = 0;
                 lit = -1;
+            }
             lastLit = lit;
             Meter(lit < 0 ? 1 << ((int)(t * 4f) % Segments) : (1 << lit) - 1);
 
@@ -255,6 +275,15 @@ namespace Dogpatch.Race
             wasStarted = started;
             punch = Mathf.Max(0f, punch - dt * 3f);
             Pop(t - goAt);
+
+            if (!approached && distance < 25f) Sound("ring_whoosh", 0.7f, 1f);
+            approached = distance < (approached ? 35f : 25f);
+            if (hum == null) hum = SoundSystem.LoopAt("ring_hum", Bus.Sfx, transform.position + Vector3.up, 35f, 110, 0.3f);
+            if (hum != null)
+            {
+                hum.Volume = 0.3f + energy * 0.45f;
+                hum.Pitch = 1f + energy * 0.5f;
+            }
 
             beatPhase = Mathf.Repeat(beatPhase + dt * (0.8f + energy * 2.4f) * Mathf.PI * 2f, Mathf.PI * 2f);
             float pulse = 1f + Mathf.Sin(beatPhase) * (0.05f + energy * 0.06f);
@@ -331,6 +360,7 @@ namespace Dogpatch.Race
                 site = car.transform.position + forward * 16f;
             }
             var side = Vector3.Cross(Vector3.up, forward);
+            SoundSystem.Play("ring_launch", site + Vector3.up * 2f, Bus.Sfx, 0.9f, 1f, 220, 80f);
             for (int i = 0; i < flags.Length; i++)
             {
                 flags[i].gameObject.SetActive(true);
@@ -380,6 +410,9 @@ namespace Dogpatch.Race
                 flags[i].Rotate(0f, (i == 0 ? turn : -turn) * Time.deltaTime, 0f, Space.World);
             }
         }
+
+        void Sound(string clip, float volume, float pitch)
+            => SoundSystem.Play(clip, transform.position + Vector3.up * 1.5f, Bus.Sfx, volume, pitch, 200, 45f);
 
         void SetAlpha(Renderer r, float alpha)
         {
