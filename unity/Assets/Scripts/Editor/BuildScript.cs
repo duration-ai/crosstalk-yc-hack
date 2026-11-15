@@ -18,6 +18,8 @@ namespace Dogpatch.EditorTools
     //   IOS_SDK        simulator (default) or device
     //   IOS_BUNDLE_ID  bundle identifier (default com.crosstalk.dogpatch)
     //   APPLE_TEAM_ID  Apple developer team for automatic signing of device builds
+    //   BUILD_NUMBER   CFBundleVersion (default: UTC timestamp yyyyMMdd.HHmm, so every upload increments)
+    //   BUILD_VERSION  CFBundleShortVersionString (default 0.1.0)
     //   BUILD_OUTPUT   output folder (default ../Builds/iOS-<sdk> or ../Builds/Linux)
     //   BUILD_DEFINES  extra scripting defines, comma separated (SMASH_DEMO: the smash showcase build)
     public static class BuildScript
@@ -41,7 +43,7 @@ namespace Dogpatch.EditorTools
             ConfigureCommon();
             var target = NamedBuildTarget.iOS;
             PlayerSettings.SetApplicationIdentifier(target, Env("IOS_BUNDLE_ID", "com.crosstalk.dogpatch"));
-            PlayerSettings.iOS.buildNumber = Env("BUILD_NUMBER", "1");
+            PlayerSettings.iOS.buildNumber = Env("BUILD_NUMBER", DateTime.UtcNow.ToString("yyyyMMdd.HHmm"));
             PlayerSettings.SetScriptingBackend(target, ScriptingImplementation.IL2CPP);
             PlayerSettings.SetUseDefaultGraphicsAPIs(BuildTarget.iOS, false);
             PlayerSettings.SetGraphicsAPIs(BuildTarget.iOS, new[] { GraphicsDeviceType.Metal });
@@ -50,6 +52,7 @@ namespace Dogpatch.EditorTools
             PlayerSettings.iOS.simulatorSdkArchitecture = AppleMobileArchitectureSimulator.ARM64;
             PlayerSettings.iOS.targetDevice = iOSTargetDevice.iPhoneAndiPad;
             PlayerSettings.iOS.cameraUsageDescription = "Take a full-body photo to make your avatar.";
+            PlayerSettings.iOS.microphoneUsageDescription = "Hold Call to talk to the Operator.";
             PlayerSettings.iOS.appleEnableAutomaticSigning = true;
             PlayerSettings.iOS.appleDeveloperTeamID = team;
             if (!simulator && team.Length == 0)
