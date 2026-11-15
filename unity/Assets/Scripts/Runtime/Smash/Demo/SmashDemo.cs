@@ -434,9 +434,9 @@ namespace Dogpatch.Smash.Demo
             int n = 0;
             for (int row = 0; row < 5; row++)
                 for (int col = 0; col < 4 && n < 18; col++, n++)
-                    Prop(kinds[n % kinds.Length], -3.5f + col * 2.4f, 20f + row * 4f, n * 37f, kinds[n % kinds.Length] == "p-lamp" ? 0.2f : 0f, 3f);
-            Prop("t-street-egg-tree", -1f, 42f, 0f, 0.3f, 3f);
-            Prop("t-ornamental", 2.2f, 44f, 0f, 0.3f, 3f);
+                    Prop(kinds[n % kinds.Length], -1.6f + col * 1.1f + (row % 2) * 0.5f, 20f + row * 3.5f, n * 37f, kinds[n % kinds.Length] == "p-lamp" ? 0.2f : 0f, 3f);
+            Prop("t-street-egg-tree", -0.6f, 40f, 0f, 0.3f, 3f);
+            Prop("t-ornamental", 0.8f, 43f, 0f, 0.3f, 3f);
             Car("town-car-56eeb6", "parked-1", -1.5f, 52f, 90f);
             Car("family-minivan-924de0", "parked-2", 2.5f, 57f, 80f);
             var truck = Car("delivery-truck-a9537e", "truck", 0f, -35f, 0f);
