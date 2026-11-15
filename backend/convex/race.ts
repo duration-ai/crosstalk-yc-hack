@@ -1,8 +1,11 @@
 import { v } from "convex/values";
-import { mutation } from "./_generated/server";
+import { internalMutation, mutation } from "./_generated/server";
 import { fail, getPlayer, vec3 } from "./model";
 import {
   CLOSE_AFTER_FIRST_FINISH_MS,
+  COLLECT_SLACK,
+  DEFAULT_PICKUP_RADIUS,
+  asksOf,
   finishIfDone,
   finishMs,
   getMembership,
@@ -56,5 +59,48 @@ export const update = mutation({
       finished: next.finishedAt > 0,
       finishMs: finishMs(room, next),
     };
+  },
+});
+
+/**
+ * Collects ask pickup `pickup` (an index into room.pickups) for one more Operator request. Only while
+ * racing, from within the pickup's radius; each racer can take each pickup once a race, and taking one
+ * again answers collected: false.
+ */
+export const collect = mutation({
+  args: { playerId: v.string(), roomId: v.string(), pickup: v.number(), position: vec3 },
+  handler: async (ctx, args) => {
+    const player = await getPlayer(ctx, args.playerId);
+    const room = await getRoom(ctx, args.roomId);
+    const row = await getMembership(ctx, room, player._id);
+    if (row.left) fail("CONFLICT", "Player left this room");
+    if (phase(room, Date.now()) !== "racing") fail("CONFLICT", "Pickups only count while racing");
+    const pickups = room.pickups ?? [];
+    if (!Number.isInteger(args.pickup) || args.pickup < 0 || args.pickup >= pickups.length) {
+      fail("INVALID_ARGUMENT", "pickup must index room.pickups");
+    }
+    const asks = asksOf(room, row);
+    const collected = row.collected ?? [];
+    if (collected.includes(args.pickup)) return { collected: false, asks };
+    const at = pickups[args.pickup];
+    const reach = (room.pickupRadius ?? DEFAULT_PICKUP_RADIUS) + COLLECT_SLACK;
+    if (Math.hypot(args.position.x - at.x, args.position.z - at.z) > reach) fail("CONFLICT", "Too far from the pickup");
+    await ctx.db.patch(row._id, { asks: asks + 1, collected: [...collected, args.pickup] });
+    return { collected: true, asks: asks + 1 };
+  },
+});
+
+/** Spends one of the racer's asks for an Operator request; CONFLICT when none are left. operator.call runs it. */
+export const spendAsk = internalMutation({
+  args: { playerId: v.id("players"), roomId: v.id("rooms") },
+  handler: async (ctx, args) => {
+    const room = await getRoom(ctx, args.roomId);
+    const row = await getMembership(ctx, room, args.playerId);
+    if (row.left) fail("CONFLICT", "Player left this room");
+    if (phase(room, Date.now()) === "finished") fail("CONFLICT", "The race is over");
+    const asks = asksOf(room, row);
+    if (asks <= 0) fail("CONFLICT", "No asks left");
+    await ctx.db.patch(row._id, { asks: asks - 1 });
+    return { asks: asks - 1 };
   },
 });

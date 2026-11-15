@@ -179,7 +179,7 @@ namespace Dogpatch.Ambient
         public void OperatorFrame()
         {
             string theme = themes.Count > 0 ? themes[themes.Count - 1] : null;
-            bool dress = theme != null || Mood == CrowdMood.Angry;
+            bool dress = theme != null || Mood == CrowdMood.Angry || looks.Count > 0;
             if (!dress && dressed.Count > 0) Undress();
             var sprites = Mood != CrowdMood.Normal ? EffectSprites.Get() : null;
             var eye = new Vector2(cameraPos.x, cameraPos.z);
@@ -198,6 +198,16 @@ namespace Dogpatch.Ambient
                     var outfit = was.outfit;
                     if (theme != null) outfit = Costume(outfit, theme, ped.Id);
                     if (Mood == CrowdMood.Angry) outfit.Skin = Vector4.Lerp(outfit.Skin, new Vector4(0.85f, 0.05f, 0.03f, 1f), 0.45f + 0.35f * moodK);
+                    if (looks.TryGetValue(ped, out var look) && look.id == ped.Id && look.tints.Count > 0)
+                    {
+                        var (mix, amount) = look.tints[look.tints.Count - 1];
+                        outfit.Top = Vector4.Lerp(outfit.Top, mix, amount);
+                        outfit.Under = Vector4.Lerp(outfit.Under, mix, amount);
+                        outfit.Bottom = Vector4.Lerp(outfit.Bottom, mix, amount);
+                        outfit.Hair = Vector4.Lerp(outfit.Hair, mix, amount);
+                        outfit.Skin = Vector4.Lerp(outfit.Skin, mix, amount);
+                        if (look.statues > 0) ped.Vel = Vector2.zero;
+                    }
                     ped.Outfit = outfit;
                 }
                 if (sprites == null || marks >= 40 || ped.State >= PedState.Dive) continue;
@@ -221,7 +231,36 @@ namespace Dogpatch.Ambient
             dressed.Clear();
         }
 
-        public static bool Busy => Crowd.Count > 0 || moods.Count > 0 || themes.Count > 0;
+        public static bool Busy => Crowd.Count > 0 || moods.Count > 0 || themes.Count > 0 || (Instance != null && Instance.looks.Count > 0);
+
+        readonly Dictionary<Pedestrian, (int id, List<(Vector4 mix, float amount)> tints, int statues)> looks = new Dictionary<Pedestrian, (int, List<(Vector4, float)>, int)>();
+
+        // An object effect's look on one person's clothes; a stone one stands still as a statue.
+        public void AddLook(Pedestrian ped, Color mix, float amount, bool statue)
+        {
+            if (!looks.TryGetValue(ped, out var look) || look.id != ped.Id) look = (ped.Id, new List<(Vector4, float)>(), 0);
+            look.tints.Add(((Vector4)mix, amount));
+            if (statue)
+            {
+                look.statues++;
+                LeaveSpotState(ped);
+                ped.Crossing = -1;
+                Unregister(ped);
+                ped.Vel = Vector2.zero;
+                ped.Lean = 0f;
+                Enter(ped, PedState.Startled, 9999f);
+            }
+            looks[ped] = look;
+        }
+
+        public void RemoveLook(Pedestrian ped, bool statue)
+        {
+            if (!looks.TryGetValue(ped, out var look) || look.id != ped.Id) return;
+            if (look.tints.Count > 0) look.tints.RemoveAt(look.tints.Count - 1);
+            if (statue && --look.statues == 0 && ped.State == PedState.Startled) Enter(ped, PedState.Startled, 0.2f);
+            if (look.tints.Count == 0) looks.Remove(ped);
+            else looks[ped] = look;
+        }
 
         static Vector4 Lin(string hex)
         {

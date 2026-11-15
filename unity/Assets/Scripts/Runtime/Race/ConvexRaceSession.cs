@@ -57,11 +57,12 @@ namespace Dogpatch.Race
 
         [Serializable] public class CreatePlayerRequest { public string displayName; }
         [Serializable] public class PlayerResponse { public Player player; }
-        [Serializable] public class CreateRoomRequest { public string playerId; public List<Vec3> route; public float finishRadius; public int minPlayers; }
+        [Serializable] public class CreateRoomRequest { public string playerId; public List<Vec3> route; public float finishRadius; public int minPlayers; public int asks; public List<Vec3> pickups; public float pickupRadius; }
         [Serializable] public class JoinRequest { public string playerId; public string code; }
         [Serializable] public class RoomRequest { public string playerId; public string roomId; }
         [Serializable] public class ReadyRequest { public string playerId; public string roomId; public bool ready; }
         [Serializable] public class UpdateRequest { public string playerId; public string roomId; public Vec3 position; public float heading; }
+        [Serializable] public class CollectRequest { public string playerId; public string roomId; public int pickup; public Vec3 position; }
         [Serializable] public class FireRequest { public string playerId; public string roomId; public string type; public WorldChangeParams @params; }
         [Serializable] public class ErrorBody { public ErrorDetail error; }
         [Serializable] public class ErrorDetail { public string code; public string message; }
@@ -84,13 +85,26 @@ namespace Dogpatch.Race
         public static Request CreatePlayer(string displayName) =>
             new Request("POST", "/api/players", JsonUtility.ToJson(new CreatePlayerRequest { displayName = displayName }));
 
-        public static Request CreateRoom(string playerId, IReadOnlyList<Vec3> route, float finishRadius, int minPlayers)
+        public static Request CreateRoom(string playerId, IReadOnlyList<Vec3> route, float finishRadius, int minPlayers,
+            int asks = 0, IReadOnlyList<Vec3> pickups = null, float pickupRadius = 0f)
         {
-            var body = new CreateRoomRequest { playerId = playerId, route = route != null ? new List<Vec3>(route) : null, finishRadius = finishRadius, minPlayers = minPlayers };
+            var body = new CreateRoomRequest
+            {
+                playerId = playerId,
+                route = route != null ? new List<Vec3>(route) : null,
+                finishRadius = finishRadius,
+                minPlayers = minPlayers,
+                asks = asks,
+                pickups = pickups != null ? new List<Vec3>(pickups) : null,
+                pickupRadius = pickupRadius,
+            };
             var json = JsonUtility.ToJson(body);
             if (route == null) json = json.Replace("\"route\":[],", "");
             if (finishRadius == 0f) json = json.Replace(",\"finishRadius\":0.0", "");
             if (minPlayers == 0) json = json.Replace(",\"minPlayers\":0", "");
+            if (asks == 0) json = json.Replace(",\"asks\":0", "");
+            if (pickups == null || pickups.Count == 0) json = json.Replace(",\"pickups\":[]", "");
+            if (pickupRadius == 0f) json = json.Replace(",\"pickupRadius\":0.0", "");
             return new Request("POST", "/api/rooms", json);
         }
 
@@ -108,6 +122,9 @@ namespace Dogpatch.Race
 
         public static Request Update(string playerId, string roomId, Vec3 position, float heading) =>
             new Request("POST", "/api/race/update", JsonUtility.ToJson(new UpdateRequest { playerId = playerId, roomId = roomId, position = position, heading = Mathf.Repeat(heading, 360f) }));
+
+        public static Request Collect(string playerId, string roomId, int pickup, Vec3 position) =>
+            new Request("POST", "/api/race/collect", JsonUtility.ToJson(new CollectRequest { playerId = playerId, roomId = roomId, pickup = pickup, position = position }));
 
         public static Request Fire(string playerId, string roomId, WorldChangeCommand command) =>
             new Request("POST", "/api/rooms/events", JsonUtility.ToJson(new FireRequest { playerId = playerId, roomId = roomId, type = command?.type, @params = command?.@params ?? new WorldChangeParams() }));
@@ -148,8 +165,9 @@ namespace Dogpatch.Race
 
         public async Task<Player> CreatePlayerAsync(string displayName) => (await Send<PlayerResponse>(CreatePlayer(displayName))).player;
 
-        public Task<RoomResponse> CreateRoomAsync(string playerId, IReadOnlyList<Vec3> route, float finishRadius, int minPlayers) =>
-            Send<RoomResponse>(CreateRoom(playerId, route, finishRadius, minPlayers));
+        public Task<RoomResponse> CreateRoomAsync(string playerId, IReadOnlyList<Vec3> route, float finishRadius, int minPlayers,
+            int asks = 0, IReadOnlyList<Vec3> pickups = null, float pickupRadius = 0f) =>
+            Send<RoomResponse>(CreateRoom(playerId, route, finishRadius, minPlayers, asks, pickups, pickupRadius));
 
         public Task<RoomResponse> JoinRoomAsync(string playerId, string code) => Send<RoomResponse>(Join(playerId, code));
 
@@ -170,6 +188,13 @@ namespace Dogpatch.Race
 
         public Task<RaceUpdateResponse> UpdateAsync(string playerId, string roomId, Vec3 position, float heading) =>
             Send<RaceUpdateResponse>(Update(playerId, roomId, position, heading));
+
+        public Task<AskResponse> CollectAskAsync(string playerId, string roomId, int pickup, Vec3 position) =>
+            Send<AskResponse>(Collect(playerId, roomId, pickup, position));
+
+        // The server spends asks inside operator.call, so there is no client endpoint for it.
+        public Task<AskResponse> SpendAskAsync(string playerId, string roomId) =>
+            throw new BackendException(RaceErrorCodes.NotImplemented, "Asks are spent by the Operator on the server");
 
         public Task<FireEventResponse> FireEventAsync(string playerId, string roomId, WorldChangeCommand command) =>
             Send<FireEventResponse>(Fire(playerId, roomId, command));
