@@ -337,6 +337,7 @@ namespace Dogpatch.Audio
                     if (l.gameObject != cam.gameObject) Destroy(l);
                 }
                 if (cam.GetComponent<AudioListener>() == null) cam.gameObject.AddComponent<AudioListener>();
+                if (cam.GetComponent<MasterLimiter>() == null) cam.gameObject.AddComponent<MasterLimiter>();
                 listener = cam.transform;
             }
             foreach (var car in FindObjectsByType<CarController>(FindObjectsSortMode.None))
