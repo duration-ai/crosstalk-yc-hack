@@ -275,7 +275,7 @@ Players come from `POST /api/players`. A player is in at most one room: creating
   "playerCount": 3,          // racers in the room who have not left
   "readyCount": 2,
   "startsAt": 0,             // server time of GO, 0 when no countdown is running
-  "closesAt": 0,             // server time the race ends for stragglers (first finish + 60 s), 0 until someone finishes
+  "closesAt": 0,             // server time the race ends for stragglers (first finish + 30 s), 0 until someone finishes
   "routeLength": 700,        // meters along the route
   "finish": { "x": 300, "y": 0, "z": 400 },   // the route's last point
   "finishRadius": 10,
@@ -369,7 +369,7 @@ Players come from `POST /api/players`. A player is in at most one room: creating
 - `progress` is the racer's position projected onto the room's route polyline (x and z only), in meters from the start.
 - **Place order:** finished racers first by `finishMs`, then racers still driving by `progress` (highest first), then racers who left. Ties go to the lower slot.
 - A racer **finishes** on the first `race/update` during `racing` whose position is within `finishRadius` meters (x/z) of the route's last point. `finishMs` is that update's server time minus `startsAt`. Updates before the start never finish anyone.
-- The room is **finished** when every racer still in it has finished, or at `closesAt` (60 s after the first finish), whichever is first. Anyone still driving is then a DNF (`finished: false`).
+- The room is **finished** when every racer still in it has finished, or at `closesAt` (30 s after the first finish), whichever is first. Anyone still driving is then a DNF (`finished: false`).
 - **Awards**, one per racer, the first rule that applies:
   1. **CHAOS CALLER**: the racer with the most calls this race (at least one); a tie goes to the better place.
   2. **WRECKING BALL**: the racer with the most smash points this race (at least 1); a tie goes to the better place.

@@ -2,7 +2,7 @@ import { v, type ObjectType } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { internalMutation, internalQuery, type QueryCtx } from "./_generated/server";
 import { fail, getPlayer, movementMode, vec3 } from "./model";
-import { COLORS, DEFAULT_FINISH_RADIUS, DEFAULT_ROUTE, MAX_PLAYERS, routeLength } from "./raceModel";
+import { COLORS, DEFAULT_FINISH_RADIUS, DEFAULT_ROUTE, MAX_PLAYERS, roomPlayers, routeLength } from "./raceModel";
 import { addRacer, newRoomCode } from "./rooms";
 import type { MutationCtx } from "./_generated/server";
 
@@ -12,7 +12,7 @@ import type { MutationCtx } from "./_generated/server";
 export const SHARD_CAP = 16;
 export const PRESENCE_TIMEOUT_MS = 10_000;
 const MAX_VEHICLE_TYPE = 64;
-const SWEEP_PER_BEAT = 8;
+const SWEEP_BATCH = 64;
 
 export const presenceArgs = {
   playerId: v.string(),
@@ -60,9 +60,7 @@ export function toWorldPlayer(row: Doc<"worldPresence">) {
 
 // Writes this player's presence. An active row only patches itself, so steady heartbeats never
 // contend with each other; joining (or coming back after the timeout) picks the first shard with
-// room and the player colour fewest members of its world room have. Joining counts world-room
-// members rather than active presence rows, because those rows change on every heartbeat and a
-// join that read them kept failing on write conflicts once a few players were online.
+// room and the player colour fewest active players there have.
 const heartbeatArgs = { ...presenceArgs, now: v.number() };
 
 export async function beat(ctx: MutationCtx, args: ObjectType<typeof heartbeatArgs>) {
@@ -86,41 +84,55 @@ export async function beat(ctx: MutationCtx, args: ObjectType<typeof heartbeatAr
   const row = await findPresence(ctx, player._id);
   if (row && isActive(row, args.now)) {
     await ctx.db.patch(row._id, fields);
-    await sweep(ctx, row.shard, args.now);
     return { shard: row.shard, slot: row.slot, worldRoomId: row.worldRoomId };
   }
   if (row) await dropPresence(ctx, row);
 
+  // Joining counts the shard through its world room's members, which only change on join, leave
+  // and sweep, never through other players' presence rows, which every heartbeat rewrites.
   let shard = 0;
   let room: Doc<"rooms">;
-  let others: Doc<"roomPlayers">[];
+  let members: Doc<"roomPlayers">[];
   for (;; shard++) {
     room = await worldRoom(ctx, shard, args.now);
-    const roomId = room._id;
-    others = (await ctx.db.query("roomPlayers").withIndex("by_room", (q) => q.eq("roomId", roomId)).take(SHARD_CAP + 1)).filter(
-      (r) => r.playerId !== player._id,
-    );
-    if (others.length < SHARD_CAP) break;
+    members = (await roomPlayers(ctx, room._id)).filter((r) => !r.left && r.playerId !== player._id);
+    if (members.length < SHARD_CAP) break;
   }
-  const used = COLORS.map((_, i) => others.filter((r) => r.slot === i).length);
+  const used = COLORS.map((_, i) => members.filter((r) => r.slot % COLORS.length === i).length);
   const slot = used.indexOf(Math.min(...used));
   await enterWorldRoom(ctx, room, player, slot, args.now);
   await ctx.db.insert("worldPresence", { ...fields, playerId: player._id, shard, slot, worldRoomId: room._id, joinedAt: args.now });
-  await sweep(ctx, shard, args.now);
   return { shard, slot, worldRoomId: room._id };
 }
 
 export const heartbeat = internalMutation({ args: heartbeatArgs, handler: beat });
 
 // Presence that has timed out leaves the shard: its row goes, and so does its membership in the
-// world room, so voice effects stop reaching a closed app. Each heartbeat clears a few.
+// world room, so voice effects stop reaching a closed app. A cron runs it every few seconds, so
+// heartbeats never race each other to delete the same stale rows.
 async function sweep(ctx: MutationCtx, shard: number, now: number) {
   const stale = await ctx.db
     .query("worldPresence")
     .withIndex("by_shard_updated", (q) => q.eq("shard", shard).lte("updatedAt", now - PRESENCE_TIMEOUT_MS))
-    .take(SWEEP_PER_BEAT);
+    .take(SWEEP_BATCH);
   for (const row of stale) await dropPresence(ctx, row);
 }
+
+export const sweepStale = internalMutation({
+  args: { now: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const now = args.now ?? Date.now();
+    for (let shard = 0; ; shard++) {
+      const room = await ctx.db
+        .query("rooms")
+        .withIndex("by_world_shard", (q) => q.eq("worldShard", shard))
+        .filter((q) => q.eq(q.field("kind"), "world"))
+        .first();
+      if (!room) return;
+      await sweep(ctx, shard, now);
+    }
+  },
+});
 
 async function dropPresence(ctx: MutationCtx, row: Doc<"worldPresence">) {
   const member = await ctx.db

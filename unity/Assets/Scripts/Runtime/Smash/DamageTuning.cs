@@ -18,6 +18,8 @@ namespace Dogpatch.Smash
     //   maxTumbleSpin: rad/s of roll and pitch a car may have while tumbling.
     //   airborneGravity: gravity multiplier for an undriven or stunned car off the ground, so it
     //     lands within a second.
+    //   parkedShoveKeep: share of its own speed the player's car keeps when it barges a parked car
+    //     (at least its barge strength), so it plows through a curb row instead of stopping dead.
     //   maxDepenetration: m/s at which physics may push apart overlapping bodies, so a parked or AI
     //     car that turns physical while overlapping something slides out instead of shooting up.
     [Serializable]
@@ -35,6 +37,7 @@ namespace Dogpatch.Smash
         public float maxTumbleSpin = 3f;
         public float airborneGravity = 2.5f;
         public float maxDepenetration = 1f;
+        public float parkedShoveKeep = 0f;
 
         static DamageTuning current;
 

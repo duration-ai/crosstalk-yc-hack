@@ -91,8 +91,8 @@ describe("operator.call", () => {
     const result = await say("make it rain", RAIN);
     expect(result).toMatchObject({ outcome: "applied", line: "Rain!", refusal: null, timings: { attempts: 1 } });
     expect(result.effect).toMatchObject({ effect: "rain", scope: "world", status: "active", strength: "medium", instant: false });
-    expect(result.effect!.durationS).toBeGreaterThanOrEqual(10);
-    expect(result.effect!.durationS).toBeLessThanOrEqual(20);
+    expect(result.effect!.durationS).toBeGreaterThanOrEqual(23);
+    expect(result.effect!.durationS).toBeLessThanOrEqual(45);
     expect(result.effect!.endsAt - result.effect!.startsAt).toBe(result.effect!.durationS * 1000);
 
     expect(requests).toHaveLength(1);
@@ -249,7 +249,7 @@ describe("operator.call", () => {
   });
 
   it("spends one ask per applied effect and refuses cleanly at zero", async () => {
-    const { t, tim, maya, say, effects, asksOf } = await room({});
+    const { t, tim, maya, say, effects, asksOf } = await room({ asks: 2 });
     expect(await asksOf(tim.id)).toBe(2);
     await say("make it rain", RAIN);
     expect(await say("spawn a dragon", { scope: "reject", reject_reason: "spawning" })).toMatchObject({ outcome: "refused" });

@@ -28,8 +28,8 @@ namespace Dogpatch.Gameplay
         ModelLibrary models;
         Material material;
         DragInput input;
-        FollowCamera follow;
         float? reverseYaw;
+        FollowCamera follow;
         Camera view;
         Hud hud;
         PlayerController player;
@@ -235,13 +235,14 @@ namespace Dogpatch.Gameplay
         {
             if (!ready) return;
 
-            input.Split = current == null;
-            var look = input.TakeLook();
-            if (current == null) follow.Orbit(look);
-            var dir2 = input.Direction;
+            input.Driving = current != null;
+            follow.Orbit(input.TakeLook());
+            var stick = input.Direction;
             if (current == null || !current.Reversing || !input.Dragging) reverseYaw = null;
             else reverseYaw ??= follow.Yaw;
-            var dir = dir2 == Vector2.zero ? Vector3.zero : Quaternion.Euler(0f, reverseYaw ?? follow.Yaw, 0f) * new Vector3(dir2.x, 0f, dir2.y);
+            var dir = stick == Vector2.zero ? Vector3.zero
+                : current != null && !DragInput.DragAnywhere ? CarStick(current.transform, stick)
+                : Quaternion.Euler(0f, reverseYaw ?? follow.Yaw, 0f) * new Vector3(stick.x, 0f, stick.y);
             if (ExternalInput) { }
             else if (current != null) current.SetInput(dir, input.Strength);
             else player.SetInput(dir, input.Strength);
@@ -261,6 +262,16 @@ namespace Dogpatch.Gameplay
                 nextLog = Time.time + 2f;
                 Debug.Log($"[Dogpatch] mode={(current != null ? "driving" : "onFoot")} pos=({focus.position.x:F1},{focus.position.z:F1}) heading={focus.eulerAngles.y:F0} speed={kmh:F0}km/h street={StreetName}");
             }
+        }
+
+        // At the wheel the stick is the car's own frame, so panning the camera never steers: up is
+        // throttle, down is reverse, and sideways steers in proportion (full sideways is full lock
+        // while still driving forward). Pulled back, sideways swings the tail that way.
+        static Vector3 CarStick(Transform car, Vector2 stick)
+        {
+            bool back = stick.y < -0.35f && -stick.y > Mathf.Abs(stick.x) * 0.5f;
+            float angle = back ? 180f - stick.x * CarController.FullLockAngle : stick.x * CarController.FullLockAngle;
+            return Quaternion.Euler(0f, car.eulerAngles.y + angle, 0f) * Vector3.forward;
         }
 
         CarController FindNearestCar(Vector3 position, float range)

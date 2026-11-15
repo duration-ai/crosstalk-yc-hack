@@ -341,33 +341,27 @@ namespace Dogpatch.Gameplay
 
         bool PauseChipVisible => (stage == Stage.Closed || stage == Stage.Prompt) && hud != null && hud.Paused;
 
-        bool PromptVisible => stage == Stage.Prompt && (hud == null || !hud.Paused) && (game == null || !game.Driving);
+        bool PromptVisible => stage == Stage.Prompt && (hud == null || !hud.Paused) && (game == null || !game.Driving) && !HudLayout.LobbyShowing;
 
         // The label panel in the top-left corner, sized to its text; origin bottom-left.
         Rect TagRect(string text)
         {
             float s = Scale;
-            var safe = Screen.safeArea;
+            var safe = HudLayout.Safe;
             float h = 58f * s;
             float w = TextWidth(text, 34f * s) + h * Lean + 44f * s;
             return new Rect(safe.xMin + 22f * s, safe.yMax - 22f * s - h, w, h);
         }
 
-        // The corner card's label, bottom left above its two buttons (the race roster owns the top left).
-        Rect PromptRect()
-        {
-            float s = Scale;
-            var tag = TagRect("YOUR AVATAR");
-            tag.y = Screen.safeArea.yMin + 40f * s + 60f * s + 16f * s;
-            return tag;
-        }
+        // The corner card's label, top left above its two buttons; it gives way to the mission lobby.
+        Rect PromptRect() => TagRect("YOUR AVATAR");
 
         // Pause menu chip, a row under the HUD's time and weather chips.
         Rect PauseChipRect()
         {
             float s = Scale;
-            var safe = Screen.safeArea;
-            float w = 220f * s, h = 40f * s, top = 92f * s + 2f * (40f + 12f) * s;
+            var safe = HudLayout.Safe;
+            float w = 220f * s, h = 40f * s, top = 92f * s + 3f * (40f + 12f) * s;
             return new Rect(safe.xMin + 24f * s - 0.5f * h * Lean, safe.yMax - top - h, w, h);
         }
 
@@ -375,7 +369,7 @@ namespace Dogpatch.Gameplay
         List<(string id, Rect rect)> Buttons()
         {
             float s = Scale;
-            var safe = Screen.safeArea;
+            var safe = HudLayout.Safe;
             var list = new List<(string, Rect)>();
             switch (stage)
             {

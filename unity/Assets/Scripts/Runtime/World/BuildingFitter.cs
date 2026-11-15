@@ -252,16 +252,15 @@ namespace Dogpatch.World
             return roofColours[variant] = best;
         }
 
+        // The far LOD keeps the model's look at a distance: its main wall colour (not an average of
+        // walls, trim and windows, which washed every building out to the same grey), its own roof
+        // colour, and a navy window band per floor on every wall long enough to hold windows.
+        // Colours are opaque, so far buildings never pick up the night glow.
         void AddFar(Vector2[] poly, float h, Vector2 centroid, string variant)
         {
-            if (!farColours.TryGetValue(variant, out var colour))
-            {
-                var mesh = statics.Mesh(variant);
-                var sum = Color.black;
-                var cols = mesh.colors;
-                foreach (var c in cols) sum += c;
-                farColours[variant] = colour = cols.Length > 0 ? sum / cols.Length : Color.gray;
-            }
+            if (!farColours.TryGetValue(variant, out var colour)) farColours[variant] = colour = WallColour(variant);
+            var roof = RoofColour(variant);
+            roof.a = 1f;
             var mb = statics.Generated(StaticModels.Layer.BuildingsFar, centroid);
             for (int i = 0, j = poly.Length - 1; i < poly.Length; j = i++)
             {
@@ -269,9 +268,45 @@ namespace Dogpatch.World
                 var b = poly[i];
                 var outward = new Vector3(b.y - a.y, 0f, a.x - b.x).normalized;
                 mb.Quad(MeshBuilder.At(a, 0f), MeshBuilder.At(a, h), MeshBuilder.At(b, h), MeshBuilder.At(b, 0f), colour, outward);
+                float length = Vector2.Distance(a, b);
+                if (length < 3f) continue;
+                var dir = (b - a) / length;
+                var off = new Vector2(outward.x, outward.z) * 0.08f;
+                var a1 = a + dir * 0.8f + off;
+                var b1 = b - dir * 0.8f + off;
+                for (float y = 1.4f; y + 1.6f < h; y += 3.6f)
+                    mb.Quad(MeshBuilder.At(a1, y), MeshBuilder.At(a1, y + 1.4f), MeshBuilder.At(b1, y + 1.4f), MeshBuilder.At(b1, y), FarWindow, outward);
             }
-            mb.Polygon(poly, h, colour * 0.8f);
+            mb.Polygon(poly, h, roof);
         }
+
+        static readonly Color FarWindow = WorldBuilder.Palette("navy");
+
+        // The colour covering the most side-facing area of the model.
+        static Color DominantSide(Mesh mesh)
+        {
+            var verts = mesh.vertices;
+            var cols = mesh.colors;
+            var tris = mesh.triangles;
+            var area = new Dictionary<Color, float>();
+            for (int i = 0; cols.Length > 0 && i < tris.Length; i += 3)
+            {
+                var a = verts[tris[i]];
+                var n = Vector3.Cross(verts[tris[i + 1]] - a, verts[tris[i + 2]] - a);
+                if (Mathf.Abs(n.normalized.y) > 0.3f) continue;
+                var c = cols[tris[i]];
+                area.TryGetValue(c, out float s);
+                area[c] = s + n.magnitude;
+            }
+            var best = Color.gray;
+            float most = 0f;
+            foreach (var pair in area)
+                if (pair.Value > most) { most = pair.Value; best = pair.Key; }
+            best.a = 1f;
+            return best;
+        }
+
+        Color WallColour(string variant) => DominantSide(statics.Mesh(variant));
 
         static float Iou(Vector2[] poly, Vector2 center, Vector2 right, Vector2 forward, float W, float D, int nx, int nz, bool[,] inside, float area)
         {

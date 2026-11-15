@@ -14,13 +14,13 @@ export const MAX_PLAYERS = COLORS.length;
 export const COUNTDOWN_MS = 3_000;
 export const AUTO_START_MS = 10_000;
 export const MISSION_COUNTDOWN_MS = 10_000;
-export const CLOSE_AFTER_FIRST_FINISH_MS = 60_000;
+export const CLOSE_AFTER_FIRST_FINISH_MS = 30_000;
 export const PHOTO_FINISH_MS = 1_000;
 export const DEFAULT_FINISH_RADIUS = 15;
 export const MAX_ROUTE_POINTS = 512;
 export const EVENTS_PER_POLL = 100;
-export const DEFAULT_ASKS = 2;
-export const MAX_ASKS = 9;
+export const DEFAULT_ASKS = 100;
+export const MAX_ASKS = 100;
 export const MAX_PICKUPS = 64;
 export const DEFAULT_PICKUP_RADIUS = 4;
 /** Slack on top of the pickup radius for the racer's reported position, which lags the car a little. */
