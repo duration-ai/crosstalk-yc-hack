@@ -38,11 +38,34 @@ namespace Dogpatch.Gameplay
         float nextLog;
         Vector3 lastSafe;
 
+        // Raised once the city, player and parked cars exist; vehicle and traffic systems start here.
+        public static event Action<GameController> WorldReady;
+        public static event Action<CarController> VehicleEntered;
+        public static event Action<CarController> VehicleExited;
+
         public bool Driving => current != null;
-        public CarController CurrentCar => current;
+        public bool IsReady => ready;
+        public bool Riding => current != null && current.Handling.PassengerOnly;
+        public CarController Current => current;
+        public Transform Focus => current != null ? current.transform : player != null ? player.transform : null;
         public CarController NearestCar { get; private set; }
         public Camera View => view;
+        public bool ExternalInput;
+        public IGameBackend Backend => backend;
+        public Player Profile => profile;
+        public WorldContext World => world;
+        public WorldData Data { get; private set; }
+        public ModelLibrary Models => models;
+        public Material SharedMaterial => material;
         public PlayerController Player => player;
+        public CarController CurrentCar => current;
+        public IReadOnlyDictionary<string, CarController> Cars => cars;
+        public FollowCamera Follow => follow;
+        public DragInput Drag => input;
+
+        public Task EnterCar(CarController car) => RunAsync(() => EnterCarAsync(car));
+
+        public Task ExitCar() => current == null ? Task.CompletedTask : RunAsync(ExitCarAsync);
         public string StreetName { get; private set; } = "";
         public string StatusLine { get; private set; } = "Loading Dogpatch…";
 
@@ -58,6 +81,7 @@ namespace Dogpatch.Gameplay
             SetupRendering();
 
             var data = JsonUtility.FromJson<WorldData>(Resources.Load<TextAsset>("World/dogpatch").text);
+            Data = data;
             models = new ModelLibrary();
             float t0 = Time.realtimeSinceStartup;
             world = WorldBuilder.Build(data, models, material);
@@ -83,6 +107,7 @@ namespace Dogpatch.Gameplay
                 await LoadFromBackendAsync();
                 ready = true;
                 StatusLine = "On foot";
+                WorldReady?.Invoke(this);
             }
             catch (Exception e)
             {
@@ -170,14 +195,15 @@ namespace Dogpatch.Gameplay
             follow.Hold = input.Dragging && current == null;
             var dir2 = input.Direction;
             var dir = dir2 == Vector2.zero ? Vector3.zero : Quaternion.Euler(0f, follow.Yaw, 0f) * new Vector3(dir2.x, 0f, dir2.y);
-            if (current != null) current.SetInput(dir, input.Strength);
+            if (ExternalInput) { }
+            else if (current != null) current.SetInput(dir, input.Strength);
             else player.SetInput(dir, input.Strength);
 
             var focus = current != null ? current.transform : player.transform;
             NearestCar = current == null ? FindNearestCar(player.transform.position, 40f) : null;
             StreetName = world.Roads.StreetNameAt(new Vector2(focus.position.x, focus.position.z));
             float kmh = Mathf.Abs(current != null ? current.Speed : player.Speed) * 3.6f;
-            StatusLine = (current != null ? "Driving" : "On foot") + $" · {kmh:F0} km/h";
+            StatusLine = (Riding ? "Riding" : current != null ? "Driving" : "On foot") + $" · {kmh:F0} km/h";
 
             if (focus.position.y < -1.5f) Respawn(focus);
             else if (focus.position.y > -0.2f && Time.frameCount % 30 == 0) lastSafe = focus.position;
@@ -221,6 +247,7 @@ namespace Dogpatch.Gameplay
             CarController tapped = null;
             if (Physics.SphereCast(ray, 0.4f, out var hit, 200f, ~0, QueryTriggerInteraction.Ignore))
                 tapped = hit.collider.GetComponentInParent<CarController>();
+            if (tapped != null && tapped != current && !tapped.Enterable) tapped = null;
             Debug.Log($"[Dogpatch] tap at ({screen.x:F0},{screen.y:F0}) hit={(tapped != null ? "car " + tapped.VehicleId : "nothing")}");
 
             if (current != null)
@@ -243,6 +270,12 @@ namespace Dogpatch.Gameplay
             {
                 hud.Toast("Walk closer to get in");
                 return;
+            }
+            if (!cars.ContainsKey(tapped.VehicleId))
+            {
+                if (!(backend is InMemoryGameBackend local)) return;
+                local.SeedVehicle(tapped.VehicleId, tapped.ModelId, ToVec(tapped.transform.position), tapped.transform.eulerAngles.y);
+                cars[tapped.VehicleId] = tapped;
             }
             await RunAsync(() => EnterCarAsync(tapped));
         }
@@ -274,7 +307,8 @@ namespace Dogpatch.Gameplay
             player.gameObject.SetActive(false);
             follow.Target = car.transform;
             follow.Driving = true;
-            hud.Toast("Drag to drive");
+            hud.Toast(car.Handling.PassengerOnly ? "Sit back, it drives itself" : "Drag to drive");
+            VehicleEntered?.Invoke(car);
         }
 
         async Task ExitCarAsync()
@@ -294,6 +328,7 @@ namespace Dogpatch.Gameplay
             player.Teleport(ToVector(result.state.position), result.state.heading);
             follow.Target = player.transform;
             follow.Driving = false;
+            VehicleExited?.Invoke(car);
             Debug.Log($"[Dogpatch] exited car {car.VehicleId} at ({t.position.x:F1},{t.position.z:F1})");
         }
 

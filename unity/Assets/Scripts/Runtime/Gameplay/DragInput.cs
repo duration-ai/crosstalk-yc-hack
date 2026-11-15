@@ -14,6 +14,7 @@ namespace Dogpatch.Gameplay
         public Vector2 Anchor { get; private set; }
         public Vector2 Current { get; private set; }
         public event Action<Vector2> Tapped;
+        public Func<Vector2, bool> IgnoreTouch;
 
         // Touches that begin where this returns true (the HUD's pause button, or anywhere while
         // paused) are left to the HUD and never start a drag or a tap.
@@ -77,7 +78,7 @@ namespace Dogpatch.Gameplay
 
         void Begin(int id, Vector2 position)
         {
-            if (IgnoreAt != null && IgnoreAt(position)) return;
+            if ((IgnoreAt != null && IgnoreAt(position)) || (IgnoreTouch != null && IgnoreTouch(position))) return;
             fingerId = id;
             Anchor = Current = position;
             downTime = Time.unscaledTime;

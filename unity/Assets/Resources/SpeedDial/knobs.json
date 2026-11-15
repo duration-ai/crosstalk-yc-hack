@@ -1,0 +1,77 @@
+{
+  "models": [
+    {
+      "id": "compact-hatchback-386417",
+      "paint": [
+        "#b58941"
+      ]
+    },
+    {
+      "id": "yellow-cab-8df4a0",
+      "paint": [
+        "#e8a825"
+      ]
+    },
+    {
+      "id": "town-car-56eeb6",
+      "paint": [
+        "#322d2c"
+      ]
+    },
+    {
+      "id": "police-cruiser-a2d25e",
+      "paint": [
+        "#45525f"
+      ]
+    },
+    {
+      "id": "family-crossover-suv-42027f",
+      "paint": [
+        "#55636d"
+      ]
+    },
+    {
+      "id": "pickup-truck-a34bf2",
+      "paint": [
+        "#60acb4"
+      ]
+    },
+    {
+      "id": "delivery-truck-a9537e",
+      "paint": [
+        "#f5f1e7"
+      ]
+    },
+    {
+      "id": "family-minivan-924de0",
+      "paint": [
+        "#c7a87c"
+      ]
+    },
+    {
+      "id": "commuter-381e7f",
+      "paint": [
+        "#525150",
+        "#474645"
+      ]
+    },
+    {
+      "id": "payphone-stand-f97728",
+      "paint": [],
+      "fixed": [
+        {
+          "from": "#97614a",
+          "to": "#FF3E8E"
+        },
+        {
+          "from": "#463b37",
+          "to": "#9E2458"
+        },
+        {
+          "from": "#564e4a",
+          "to": "#1C2347"
+        }
+      ]
+    }
+  ]
+}

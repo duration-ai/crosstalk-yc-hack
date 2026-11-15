@@ -163,8 +163,9 @@ namespace Dogpatch.Gameplay
 
         void OnGUI()
         {
-            if (Event.current.type != EventType.Repaint) return;
             float s = Scale;
+            if (Paused && Event.current.type != EventType.Repaint) DrawEnvironmentMenu(s);
+            if (Event.current.type != EventType.Repaint) return;
             material.SetPass(0);
             GL.PushMatrix();
             GL.LoadPixelMatrix();
@@ -177,6 +178,7 @@ namespace Dogpatch.Gameplay
             GL.End();
             GL.PopMatrix();
             if (Paused) DrawPausedText(s);
+            if (Paused) DrawEnvironmentMenu(s);
         }
 
         void DrawSpeedLines()
@@ -303,6 +305,44 @@ namespace Dogpatch.Gameplay
             var safe = Screen.safeArea;
             float left = safe.xMin + 24f * s, top = Screen.height - safe.yMax + 22f * s;
             Outlined(new Rect(left, top, 400f * s, 56f * s), "PAUSED", title, White, s);
+        }
+
+        static readonly (string label, string query)[][] EnvironmentRows =
+        {
+            new[] { ("DAWN", "time=dawn"), ("DAY", "time=day"), ("GOLDEN", "time=golden"), ("DUSK", "time=dusk"), ("NIGHT", "time=night") },
+            new[] { ("SUN", "weather=sun"), ("RAIN", "weather=rain"), ("SNOW", "weather=snow"), ("FOG", "fog=1"), ("CLEAR", "fog=0.35") },
+        };
+
+        GUIStyle chip;
+
+        // Debug menu while paused: time of day, weather and fog presets as flat chips under PAUSED.
+        // They apply at once.
+        void DrawEnvironmentMenu(float s)
+        {
+            if (chip == null) chip = new GUIStyle { font = font, alignment = TextAnchor.MiddleCenter };
+            chip.fontSize = Mathf.RoundToInt(18f * s);
+            var safe = Screen.safeArea;
+            float left = safe.xMin + 24f * s, top = Screen.height - safe.yMax + 92f * s;
+            float w = 104f * s, h = 40f * s, gap = 12f * s;
+            for (int row = 0; row < EnvironmentRows.Length; row++)
+                for (int i = 0; i < EnvironmentRows[row].Length; i++)
+                {
+                    var (label, query) = EnvironmentRows[row][i];
+                    var r = new Rect(left + i * (w + gap), top + row * (h + gap), w, h);
+                    if (Event.current.type == EventType.Repaint)
+                    {
+                        material.SetPass(0);
+                        GL.PushMatrix();
+                        GL.LoadPixelMatrix();
+                        GL.Begin(GL.TRIANGLES);
+                        var c = new Vector2(r.center.x, Screen.height - r.center.y);
+                        Parallelogram(c, w * 0.5f, h * 0.5f, 7f * s, Ink);
+                        GL.End();
+                        GL.PopMatrix();
+                    }
+                    chip.normal.textColor = White;
+                    if (GUI.Button(r, label, chip)) WorldEnvironment.Apply(query);
+                }
         }
 
         static void Outlined(Rect r, string text, GUIStyle style, Color color, float s)

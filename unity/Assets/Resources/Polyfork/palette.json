@@ -1,6 +1,6 @@
 {
  "palette": "speed-dial",
- "note": "Speed Dial recolor of each Polyfork model through its own color knobs. from is the knob's default (its exact COLOR_0 value), to is the Speed Dial color. See STYLE-GUIDE.md.",
+ "note": "Speed Dial recolor of each Polyfork model through its own color knobs. from is the knob's default (its exact COLOR_0 value), to is the Speed Dial color. See STYLE-GUIDE.md. night lists the knob zones that glow after dark, with the intensity from Polyfork's night block.",
  "models": [
   {
    "id": "compact-hatchback-386417",
@@ -51,6 +51,16 @@
      "from": "#B83833",
      "to": "#FF4B3E"
     }
+   ],
+   "night": [
+    {
+     "zone": "headlight",
+     "intensity": 0.8
+    },
+    {
+     "zone": "taillight",
+     "intensity": 0.6
+    }
    ]
   },
   {
@@ -96,6 +106,20 @@
      "knob": "lens",
      "from": "#C1B0A1",
      "to": "#FFF3DA"
+    }
+   ],
+   "night": [
+    {
+     "zone": "lens",
+     "intensity": 1.0
+    },
+    {
+     "zone": "tail",
+     "intensity": 0.55
+    },
+    {
+     "zone": "sign",
+     "intensity": 0.8
     }
    ]
   },
@@ -153,6 +177,20 @@
      "from": "#463B37",
      "to": "#FFF3DA"
     }
+   ],
+   "night": [
+    {
+     "zone": "lens",
+     "intensity": 1.0
+    },
+    {
+     "zone": "amber",
+     "intensity": 0.7
+    },
+    {
+     "zone": "tail",
+     "intensity": 0.55
+    }
    ]
   },
   {
@@ -209,6 +247,24 @@
      "from": "#3D6EE0",
      "to": "#2D8CFF"
     }
+   ],
+   "night": [
+    {
+     "zone": "lens",
+     "intensity": 1.0
+    },
+    {
+     "zone": "tail",
+     "intensity": 0.55
+    },
+    {
+     "zone": "lampRed",
+     "intensity": 1.0
+    },
+    {
+     "zone": "lampBlue",
+     "intensity": 1.0
+    }
    ]
   },
   {
@@ -260,6 +316,16 @@
      "from": "#B9553F",
      "to": "#FF4B3E"
     }
+   ],
+   "night": [
+    {
+     "zone": "lamp",
+     "intensity": 1.0
+    },
+    {
+     "zone": "tail",
+     "intensity": 0.55
+    }
    ]
   },
   {
@@ -310,6 +376,16 @@
      "knob": "interior",
      "from": "#55636D",
      "to": "#6C758B"
+    }
+   ],
+   "night": [
+    {
+     "zone": "headlight",
+     "intensity": 1.0
+    },
+    {
+     "zone": "taillight",
+     "intensity": 0.55
     }
    ]
   },
@@ -407,6 +483,16 @@
      "from": "#968173",
      "to": "#6C758B"
     }
+   ],
+   "night": [
+    {
+     "zone": "headlamp",
+     "intensity": 1.0
+    },
+    {
+     "zone": "tail",
+     "intensity": 0.6
+    }
    ]
   },
   {
@@ -462,6 +548,20 @@
      "knob": "tailLamps",
      "from": "#A34A38",
      "to": "#FF4B3E"
+    }
+   ],
+   "night": [
+    {
+     "zone": "frontLamps",
+     "intensity": 1.0
+    },
+    {
+     "zone": "tailLamps",
+     "intensity": 0.55
+    },
+    {
+     "zone": "rearLamps",
+     "intensity": 0.5
     }
    ]
   },
@@ -584,7 +684,8 @@
      "from": "#937A61",
      "to": "#1C2347"
     }
-   ]
+   ],
+   "night": []
   },
   {
    "id": "delivery-courier-327e30",
@@ -650,7 +751,8 @@
      "from": "#24221E",
      "to": "#1C2347"
     }
-   ]
+   ],
+   "night": []
   },
   {
    "id": "construction-worker-c1ad8c",
@@ -806,7 +908,8 @@
      "from": "#8B3D26",
      "to": "#C94A32"
     }
-   ]
+   ],
+   "night": []
   },
   {
    "id": "broad-canopy-shade-tree-e7c4a2",
@@ -827,7 +930,8 @@
      "from": "#6E5238",
      "to": "#9A5B3A"
     }
-   ]
+   ],
+   "night": []
   },
   {
    "id": "ornamental-front-yard-tree-c6781a",
@@ -858,7 +962,8 @@
      "from": "#6E5238",
      "to": "#7A4A2E"
     }
-   ]
+   ],
+   "night": []
   },
   {
    "id": "street-tree-0d33f3",
@@ -884,7 +989,8 @@
      "from": "#52613B",
      "to": "#7A4A2E"
     }
-   ]
+   ],
+   "night": []
   },
   {
    "id": "tree-in-pit-grate-ea8010",
@@ -935,7 +1041,8 @@
      "from": "#70757E",
      "to": "#A3AEC4"
     }
-   ]
+   ],
+   "night": []
   },
   {
    "id": "cobra-head-street-light-3e25b8",
@@ -970,6 +1077,16 @@
      "knob": "door",
      "from": "#55636D",
      "to": "#6C758B"
+    }
+   ],
+   "night": [
+    {
+     "zone": "lens",
+     "intensity": 0.95
+    },
+    {
+     "zone": "ledPanel",
+     "intensity": 1.0
     }
    ]
   },
@@ -1007,6 +1124,24 @@
      "from": "#ECE5D3",
      "to": "#F7F8F9"
     }
+   ],
+   "night": [
+    {
+     "zone": "stop",
+     "intensity": 0.8
+    },
+    {
+     "zone": "amber",
+     "intensity": 0.8
+    },
+    {
+     "zone": "go",
+     "intensity": 0.8
+    },
+    {
+     "zone": "walk",
+     "intensity": 0.85
+    }
    ]
   },
   {
@@ -1038,7 +1173,8 @@
      "from": "#E8A825",
      "to": "#FFCB1F"
     }
-   ]
+   ],
+   "night": []
   },
   {
    "id": "metal-trash-can-f57043",
@@ -1069,7 +1205,8 @@
      "from": "#1B1B1E",
      "to": "#1C2347"
     }
-   ]
+   ],
+   "night": []
   },
   {
    "id": "newspaper-box-3f2c0e",
@@ -1120,7 +1257,8 @@
      "from": "#252B38",
      "to": "#1C2347"
     }
-   ]
+   ],
+   "night": []
   },
   {
    "id": "park-bench-dc8b62",
@@ -1136,7 +1274,8 @@
      "from": "#3D6B52",
      "to": "#2FA35A"
     }
-   ]
+   ],
+   "night": []
   },
   {
    "id": "parking-meter-e9cf71",
@@ -1176,6 +1315,12 @@
      "knob": "hardware",
      "from": "#463B37",
      "to": "#1C2347"
+    }
+   ],
+   "night": [
+    {
+     "zone": "dial",
+     "intensity": 0.55
     }
    ]
   },
@@ -1223,6 +1368,24 @@
      "from": "#97614A",
      "to": "#FFCB1F"
     }
+   ],
+   "night": [
+    {
+     "zone": "diffuser",
+     "intensity": 1.0
+    },
+    {
+     "zone": "posterSky",
+     "intensity": 0.9
+    },
+    {
+     "zone": "posterLand",
+     "intensity": 0.9
+    },
+    {
+     "zone": "posterMotif",
+     "intensity": 0.9
+    }
    ]
   },
   {
@@ -1254,7 +1417,8 @@
      "from": "#E8A825",
      "to": "#FFCB1F"
     }
-   ]
+   ],
+   "night": []
   },
   {
    "id": "rooftop-water-tower-b38362",
@@ -1285,7 +1449,8 @@
      "from": "#A34A38",
      "to": "#E2603F"
     }
-   ]
+   ],
+   "night": []
   }
  ]
 }

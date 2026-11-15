@@ -1,0 +1,130 @@
+{
+  "source": "OpenStreetMap via Overpass, 2026-11-15 (© OpenStreetMap contributors, ODbL). Used only until CROS-19's extract carries props, platforms and routes.",
+  "docks": [
+    {
+      "name": "Bay Wheels",
+      "x": -186.6,
+      "z": -730.8,
+      "capacity": 8
+    },
+    {
+      "name": "Bay Wheels",
+      "x": -37.5,
+      "z": -176.9,
+      "capacity": 8
+    },
+    {
+      "name": "Bay Wheels",
+      "x": 152.1,
+      "z": 370.3,
+      "capacity": 8
+    }
+  ],
+  "busRoute": {
+    "ref": "55",
+    "name": "Muni 55 16th Street (Dogpatch loop)",
+    "waypoints": [
+      -723,
+      335,
+      -452,
+      357,
+      -429,
+      73,
+      -1,
+      105,
+      -19,
+      389,
+      -93,
+      384,
+      -110,
+      382,
+      -89,
+      98,
+      -429,
+      73,
+      -452,
+      357,
+      -723,
+      335
+    ],
+    "stops": [
+      {
+        "name": "20th St & Missouri St",
+        "x": -722,
+        "z": 330
+      },
+      {
+        "name": "20th St & Pennsylvania Ave",
+        "x": -466,
+        "z": 349
+      },
+      {
+        "name": "22nd St & Iowa St",
+        "x": -353,
+        "z": 73
+      },
+      {
+        "name": "22nd St & Minnesota St",
+        "x": -186,
+        "z": 84
+      },
+      {
+        "name": "3rd St & 22nd St",
+        "x": 3,
+        "z": 138
+      },
+      {
+        "name": "20th St & 3rd St (terminal)",
+        "x": -89,
+        "z": 393
+      },
+      {
+        "name": "22nd St & Minnesota St",
+        "x": -162,
+        "z": 102
+      },
+      {
+        "name": "22nd St & Iowa St",
+        "x": -376,
+        "z": 86
+      },
+      {
+        "name": "Pennsylvania Ave & 20th St",
+        "x": -442,
+        "z": 345
+      },
+      {
+        "name": "20th St & Missouri St",
+        "x": -692,
+        "z": 346
+      }
+    ]
+  },
+  "railStops": [
+    {
+      "name": "UCSF Medical Center",
+      "x": -55.4,
+      "z": 760.3
+    },
+    {
+      "name": "20th Street",
+      "x": -27.3,
+      "z": 439
+    },
+    {
+      "name": "20th Street",
+      "x": -29.3,
+      "z": 336.1
+    },
+    {
+      "name": "23rd Street",
+      "x": 20.9,
+      "z": -118.2
+    },
+    {
+      "name": "23rd Street",
+      "x": 19.9,
+      "z": -233.6
+    }
+  ]
+}
