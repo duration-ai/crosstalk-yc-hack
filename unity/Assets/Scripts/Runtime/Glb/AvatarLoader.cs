@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Dogpatch.Backend;
 using UnityEngine;
 using UnityEngine.Networking;
+using Avatar = Dogpatch.Backend.Avatar;
 
 namespace Dogpatch.Glb
 {
@@ -17,12 +18,14 @@ namespace Dogpatch.Glb
     //   - the recolour swaps each colour-zone default ("from", sRGB hex) for the player's "to";
     //   - if the remix can't be fetched (any non-200, e.g. Polyfork's per-IP bake budget), the
     //     stock GLB is used instead, which has its own clips.
-    // Downloads are cached under persistentDataPath/avatars keyed by a hash of the URL.
+    // Build, figure, age and expression are baked into the remix, so the model is never rescaled.
+    // Downloads are cached under persistentDataPath/avatars keyed by a hash of the URL; a stock
+    // Polyfork URL whose model ships in Resources/Polyfork is read from there instead.
     public static class AvatarLoader
     {
         public static string CacheDirectory => Path.Combine(Application.persistentDataPath, "avatars");
 
-        public static async Task<GlbAsset> LoadAsync(PlayerAvatar avatar, GlbAsset clipSource)
+        public static async Task<GlbAsset> LoadAsync(Avatar avatar, GlbAsset clipSource)
         {
             var bytes = await FetchAsync(avatar.glbUrl);
             if (bytes == null) bytes = await FetchAsync(avatar.fallbackGlbUrl);
@@ -30,7 +33,7 @@ namespace Dogpatch.Glb
             return Prepare(GlbAsset.Load("avatar-" + avatar.@base, bytes), avatar, clipSource);
         }
 
-        public static GlbAsset Prepare(GlbAsset glb, PlayerAvatar avatar, GlbAsset clipSource)
+        public static GlbAsset Prepare(GlbAsset glb, Avatar avatar, GlbAsset clipSource)
         {
             Recolor(glb, avatar.recolor);
             if (glb.Clips.Length == 0 && clipSource != null) glb.Clips = Retarget(clipSource, glb);
@@ -40,12 +43,14 @@ namespace Dogpatch.Glb
         static async Task<byte[]> FetchAsync(string url)
         {
             if (string.IsNullOrEmpty(url)) return null;
+            var bundled = Bundled(url);
+            if (bundled != null) return bundled;
             string path = Path.Combine(CacheDirectory, Hash(url) + ".glb");
             if (File.Exists(path)) return File.ReadAllBytes(path);
 
             using var request = UnityWebRequest.Get(url);
             request.timeout = 60;
-            await ConvexAvatarClient.Send(request);
+            await AvatarHttpClient.Send(request);
             var data = request.downloadHandler.data;
             if (request.result != UnityWebRequest.Result.Success || request.responseCode != 200 || !IsGlb(data))
             {
@@ -56,6 +61,16 @@ namespace Dogpatch.Glb
             Directory.CreateDirectory(CacheDirectory);
             File.WriteAllBytes(path, data);
             return data;
+        }
+
+        // https://polyfork.dev/cdn/<id>.glb with no query is the stock model; the commuter (the
+        // stub's answer) ships byte-identical in Resources/Polyfork.
+        public static byte[] Bundled(string url)
+        {
+            if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Host != "polyfork.dev" || uri.Query.Length > 0) return null;
+            if (!uri.AbsolutePath.StartsWith("/cdn/") || !uri.AbsolutePath.EndsWith(".glb")) return null;
+            var asset = Resources.Load<TextAsset>("Polyfork/" + Path.GetFileNameWithoutExtension(uri.AbsolutePath));
+            return asset != null && IsGlb(asset.bytes) ? asset.bytes : null;
         }
 
         public static bool IsGlb(byte[] data) => data != null && data.Length > 20 && BitConverter.ToUInt32(data, 0) == 0x46546C67;
