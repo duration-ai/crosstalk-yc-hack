@@ -64,6 +64,11 @@ namespace Dogpatch.Race
             var jun = GameObject.Find("Racer Jun");
             if (jun != null)
             {
+                var toJun = jun.transform.position - race.Course.RingCenter;
+                toJun.y = 0f;
+                var beside = jun.transform.position - toJun.normalized * 1.4f;
+                game.Player.Teleport(new Vector3(beside.x, jun.transform.position.y + 0.05f, beside.z), game.Player.transform.eulerAngles.y);
+                yield return null;
                 var dir = jun.transform.position - game.Player.transform.position;
                 dir.y = 0f;
                 Log(race.Shove.ShoveToward(dir.normalized) ? "shoved Jun on the ring" : "Jun out of reach");

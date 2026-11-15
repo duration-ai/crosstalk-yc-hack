@@ -184,7 +184,7 @@ namespace Dogpatch.Race
             if (weather == null)
             {
                 var local = gameObject.AddComponent<LocalWeather>();
-                local.Init(Game.View, material);
+                local.Init(Game.View);
                 weather = local;
             }
             Changes = gameObject.AddComponent<WorldChangeDirector>();
@@ -592,6 +592,19 @@ namespace Dogpatch.Race
         void LateUpdate()
         {
             if (!Setup) return;
+            if (ResultsIn && Gridded)
+            {
+                Game.Follow.enabled = false;
+                var car = myCar.transform;
+                float orbit = (Time.time - ResultsAt) * 9f;
+                var offset = Quaternion.Euler(0f, car.eulerAngles.y + 150f + orbit, 0f) * Vector3.forward * 7.5f;
+                var target = car.position + offset + Vector3.up * 2.4f;
+                var view = Game.View.transform;
+                float blend = 1f - Mathf.Exp(-3f * Time.deltaTime);
+                view.position = Vector3.Lerp(view.position, target, blend);
+                view.rotation = Quaternion.Slerp(view.rotation, Quaternion.LookRotation(car.position + Vector3.up * 0.8f - view.position, Vector3.up), blend);
+                return;
+            }
             bool want = !Gridded && Game.CurrentCar == null && inRing && stillFor > 0.6f;
             if (want && !lobbyCam)
             {

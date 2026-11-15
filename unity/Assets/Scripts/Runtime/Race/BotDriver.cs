@@ -22,6 +22,8 @@ namespace Dogpatch.Race
         float sidestepUntil;
         int recoveries;
         float lastRecovery;
+        int streak;
+        float lastRespawn = -100f;
         readonly RaycastHit[] hits = new RaycastHit[8];
 
         public void ResetProgress(float progress)
@@ -31,6 +33,8 @@ namespace Dogpatch.Race
             reverseUntil = 0f;
             sidestep = 0f;
             recoveries = 0;
+            streak = 0;
+            lastRespawn = -100f;
         }
 
         void Update()
@@ -91,11 +95,15 @@ namespace Dogpatch.Race
             Car.SetInput(desired.normalized, strength);
         }
 
+        // Puts the car back on its lane a little further on. Stuck again at the same spot, it goes
+        // further each time and drops to the middle of the road, so a blocked lane never holds it.
         void Respawn()
         {
             recoveries = 0;
-            float d = Mathf.Min(Progress + 4f, Route.Length - 3f);
-            var p = Route.PointAt(d) + Route.RightAt(d) * Lane;
+            streak = Mathf.Abs(Progress - lastRespawn) < 15f ? streak + 1 : 0;
+            lastRespawn = Progress;
+            float d = Mathf.Min(Progress + 4f + streak * 10f, Route.Length - 3f);
+            var p = Route.PointAt(d) + Route.RightAt(d) * (streak > 0 ? 0f : Lane);
             Car.Place(new Vector3(p.x, Car.transform.position.y + 0.5f, p.y), RoutePath.Heading(Route.DirectionAt(d)));
             Car.SetDriven(true);
             Debug.Log($"[SpeedDial] bot {name} unstuck at {d:F0} m");

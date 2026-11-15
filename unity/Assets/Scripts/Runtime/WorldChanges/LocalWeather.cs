@@ -55,7 +55,7 @@ namespace Dogpatch.WorldChanges
         readonly List<Vector3> drops = new List<Vector3>();
         bool captured;
 
-        public void Init(Camera camera, Material material)
+        public void Init(Camera camera)
         {
             view = camera;
             foreach (var light in FindObjectsByType<Light>(FindObjectsSortMode.None))
@@ -70,7 +70,7 @@ namespace Dogpatch.WorldChanges
             precipitation.MarkDynamic();
             go.AddComponent<MeshFilter>().sharedMesh = precipitation;
             var r = go.AddComponent<MeshRenderer>();
-            r.sharedMaterial = material;
+            r.sharedMaterial = new Material(Resources.Load<Shader>("SpeedDial/UnlitVertexColor")) { name = "Precipitation" };
             r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             r.receiveShadows = false;
             var rng = new System.Random(5);
@@ -233,7 +233,7 @@ namespace Dogpatch.WorldChanges
             float amount = Mathf.Max(rainAmount, snowAmount);
             int count = Mathf.RoundToInt(drops.Count * amount);
             var mb = new MeshBuilder();
-            var color = snowing ? PaintJob.Linear("#FFFFFF") : PaintJob.Linear("#C9D9F2");
+            var color = snowing ? new Color(1f, 1f, 1f, 0.95f) : new Color(0.8f, 0.86f, 0.95f, 0.7f);
             var right = view.transform.right;
             for (int i = 0; i < drops.Count; i++)
             {
@@ -246,7 +246,7 @@ namespace Dogpatch.WorldChanges
                 var p = new Vector3(Mathf.Repeat(d.x - center.x, 40f) - 20f + center.x, center.y - 6f + d.y, Mathf.Repeat(d.z - center.z, 40f) - 20f + center.z);
                 if (snowing)
                 {
-                    float s = 0.09f;
+                    float s = 0.06f;
                     mb.Quad(p - right * s + Vector3.up * s, p + right * s + Vector3.up * s, p + right * s - Vector3.up * s, p - right * s - Vector3.up * s, color, -view.transform.forward);
                 }
                 else

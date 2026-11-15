@@ -74,10 +74,13 @@ namespace Dogpatch.Slipstream
         {
             var def = Race.Catalog.Get(e.type);
             string text = e.news ?? "";
-            if (e.playerId == Race.MyId)
+            var mine = Race.Me != null ? WorldChanges.WorldChangeCatalog.ShortName(Race.Me.displayName) : null;
+            if (!string.IsNullOrEmpty(mine))
             {
-                int space = text.IndexOf(' ');
-                text = "YOU" + (space >= 0 ? text.Substring(space) : "");
+                var words = text.Split(' ');
+                for (int i = 0; i < words.Length; i++)
+                    if (words[i] == mine && (i == 0 || words[i - 1] == "WITH")) words[i] = "YOU";
+                text = string.Join(" ", words);
             }
             queue.Enqueue(new News { Text = text, Picto = def?.pictogram ?? e.type, Color = SlotColor(e.color) });
         }
@@ -188,19 +191,27 @@ namespace Dogpatch.Slipstream
 
         Vector2 Measure(string text, float size) => Style(size, TextAnchor.UpperLeft).CalcSize(new GUIContent(text));
 
+        // IMGUI text is linearized once more than textures in a linear-space build, so text colors go
+        // in gamma-corrected to land on the same palette as the panels.
+        static Color TextColor(Color c, float alpha)
+        {
+            var g = QualitySettings.activeColorSpace == ColorSpace.Linear ? c.gamma : c;
+            return new Color(g.r, g.g, g.b, c.a * alpha);
+        }
+
         void Text(Rect r, string text, float size, Color fill, TextAnchor anchor = TextAnchor.MiddleLeft, float outline = 0f, float alpha = 1f)
         {
             var st = Style(size, anchor);
             if (outline > 0f)
             {
-                st.normal.textColor = new Color(Ink.r, Ink.g, Ink.b, alpha);
+                st.normal.textColor = TextColor(Ink, alpha);
                 for (int i = 0; i < 12; i++)
                 {
                     float a = i * Mathf.PI * 2f / 12f;
                     GUI.Label(new Rect(r.x + Mathf.Cos(a) * outline, r.y + Mathf.Sin(a) * outline, r.width, r.height), text, st);
                 }
             }
-            st.normal.textColor = new Color(fill.r, fill.g, fill.b, fill.a * alpha);
+            st.normal.textColor = TextColor(fill, alpha);
             GUI.Label(r, text, st);
         }
 

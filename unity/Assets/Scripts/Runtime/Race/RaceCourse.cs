@@ -150,9 +150,22 @@ namespace Dogpatch.Race
             return false;
         }
 
+        bool NearRail(Vector2 p, float clearance)
+        {
+            if (data.rails == null) return false;
+            foreach (var rail in data.rails)
+            {
+                var pts = Geometry.ToPoints(rail.pts);
+                for (int i = 0; i < pts.Length - 1; i++)
+                    if (Vector2.Distance(p, Geometry.ClosestPointOnSegment(p, pts[i], pts[i + 1], out _)) < clearance) return true;
+            }
+            return false;
+        }
+
         bool RingFits(Vector2 p)
         {
             if (world.Buildings.Blocked(p, RingRadius + 0.5f)) return false;
+            if (NearRail(p, RingRadius + 2f)) return false;
             if (world.Roads.Nearest(p, RingRadius + 0.5f, out _)) return false;
             for (int a = 0; a < 8; a++)
             {
@@ -318,31 +331,55 @@ namespace Dogpatch.Race
             return (best, point);
         }
 
-        // Street path from the street point nearest to "from" to the one nearest to "to".
+        // Street path from a street point near "from" to the one nearest "to". Every street within
+        // 40 m of the nearest one is tried as the start, and the shortest total wins, so a start beside
+        // a one-way carriageway never begins with a loop around the block.
         public List<Vector2> Route(Vector2 from, Vector2 to)
         {
             if (segments.Count == 0) return null;
-            var (fs, fp) = NearestSegment(from);
             var (ts, tp) = NearestSegment(to);
+            float nearest = Vector2.Distance(from, NearestSegment(from).point);
+            List<Vector2> best = null;
+            float bestCost = float.MaxValue;
+            for (int fs = 0; fs < segments.Count; fs++)
+            {
+                var start = segments[fs];
+                var fp = Geometry.ClosestPointOnSegment(from, nodes[start.a], nodes[start.b], out _);
+                float approach = Vector2.Distance(from, fp);
+                if (approach > nearest + 40f) continue;
+                var path = Leg(fs, fp, ts, tp, out float cost);
+                if (path == null || approach + cost >= bestCost) continue;
+                bestCost = approach + cost;
+                best = path;
+            }
+            return best ?? new List<Vector2> { NearestSegment(from).point, tp };
+        }
+
+        List<Vector2> Leg(int fs, Vector2 fp, int ts, Vector2 tp, out float cost)
+        {
             var start = segments[fs];
             var goal = segments[ts];
-            if (fs == ts && (!start.oneway || Vector2.Dot(tp - fp, nodes[start.b] - nodes[start.a]) >= 0f)) return new List<Vector2> { fp, tp };
-
+            cost = float.MaxValue;
+            if (fs == ts && (!start.oneway || Vector2.Dot(tp - fp, nodes[start.b] - nodes[start.a]) >= 0f))
+            {
+                cost = Vector2.Distance(fp, tp);
+                return new List<Vector2> { fp, tp };
+            }
             var sources = new List<(int node, float cost)> { (start.b, Vector2.Distance(fp, nodes[start.b])) };
             if (!start.oneway) sources.Add((start.a, Vector2.Distance(fp, nodes[start.a])));
             var targets = new Dictionary<int, float> { [goal.a] = Vector2.Distance(nodes[goal.a], tp) };
             if (!goal.oneway) targets[goal.b] = Vector2.Distance(nodes[goal.b], tp);
-
-            var path = Search(sources, targets, tp);
-            if (path == null) return new List<Vector2> { fp, tp };
+            var path = Search(sources, targets, tp, out cost);
+            if (path == null) return null;
             var result = new List<Vector2> { fp };
             foreach (int n in path) result.Add(nodes[n]);
             result.Add(tp);
             return result;
         }
 
-        List<int> Search(List<(int node, float cost)> sources, Dictionary<int, float> targets, Vector2 goal)
+        List<int> Search(List<(int node, float cost)> sources, Dictionary<int, float> targets, Vector2 goal, out float total)
         {
+            total = float.MaxValue;
             var dist = new Dictionary<int, float>();
             var prev = new Dictionary<int, int>();
             var open = new SortedSet<(float f, int node)>();
@@ -375,6 +412,7 @@ namespace Dogpatch.Race
                 }
             }
             if (bestEnd < 0) return null;
+            total = bestTotal;
             var path = new List<int>();
             for (int n = bestEnd; n >= 0; n = prev[n]) path.Add(n);
             path.Reverse();
