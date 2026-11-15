@@ -34,7 +34,7 @@ namespace Dogpatch.Race
     [Serializable]
     public class AskTuning
     {
-        public int startAsks = 2;
+        public int startAsks = 100;
         public int pickupCount = 6;
         public float minDetour = 40f;
         public float maxDetour = 120f;
