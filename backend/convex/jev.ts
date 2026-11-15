@@ -60,7 +60,7 @@ export function buildQuestions(view: View): Question[] {
   if (view.mode === "driving" && !view.entities.some((e) => e.id === "veh_me")) {
     targets.push({ value: "veh_me", description: "the player's own car" });
   }
-  targets.push({ value: "none", description: "no specific visible thing" });
+  targets.push({ value: "none", description: "none of these: no specific thing, or the named thing is not in this list" });
 
   return [
     {
@@ -117,7 +117,13 @@ export function buildQuestions(view: View): Question[] {
         { value: "everything", description: "everything, all things at once" },
       ],
     },
-    { type: "choice", name: "target", instructions: "Which visible thing does the player mean?", choices: targets },
+    {
+      type: "choice",
+      name: "target",
+      instructions:
+        "Which visible thing does the player mean? If they name a particular thing (the YC building, the red bus) and nothing in this list matches that name or description, answer none rather than another thing of the same kind.",
+      choices: targets,
+    },
     {
       type: "predicate",
       name: "described",
