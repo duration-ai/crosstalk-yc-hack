@@ -9,7 +9,7 @@ import { ConvexClient } from "convex/browser";
 import { api } from "../convex/_generated/api.js";
 import { PLAYABLE } from "../convex/operatorCatalogue.js";
 
-type Expect = { effect?: string; refuse?: string | string[]; target?: string; targetClass?: string; color?: string; theme?: string; outcome?: string };
+type Expect = { effect?: string; refuse?: string | string[]; target?: string; targetClass?: string; color?: string; theme?: string; vehicle?: string; outcome?: string };
 type Case = [string, Expect, string, typeof view?];
 
 const url = process.env.CONVEX_URL;
@@ -58,6 +58,9 @@ const CASES: Case[] = [
   ["earthquake", { effect: "earthquake" }, "world"],
   ["rush hour traffic", { effect: "more_traffic" }, "world"],
   ["dress everyone like elvis", { effect: "ped_theme", theme: "elvis" }, "world"],
+  ["give me a sports car", { effect: "change_vehicle", vehicle: "sports_car" }, "players"],
+  ["put me in a bus", { effect: "change_vehicle", vehicle: "bus" }, "players"],
+  ["I want a bike", { effect: "change_vehicle", vehicle: "bike" }, "players"],
   ["give everyone big heads", { effect: "big_heads" }, "world"],
   ["make all the traffic lights green", { effect: "green_lights" }, "world"],
   ["super speed", { effect: "vehicle_faster" }, "players"],
@@ -134,7 +137,8 @@ function check(expect: Expect, result: any, timId: string) {
     (expect.target === undefined || fx.target === expect.target) &&
     (expect.targetClass === undefined || fx.targetClass === expect.targetClass) &&
     (expect.color === undefined || fx.color === expect.color) &&
-    (expect.theme === undefined || fx.theme === expect.theme)
+    (expect.theme === undefined || fx.theme === expect.theme) &&
+    (expect.vehicle === undefined || fx.vehicle === expect.vehicle)
   );
 }
 
