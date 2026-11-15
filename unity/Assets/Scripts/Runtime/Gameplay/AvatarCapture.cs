@@ -32,6 +32,7 @@ namespace Dogpatch.Gameplay
         Material material;
         readonly ConvexAvatarClient client = new ConvexAvatarClient();
         DragInput drag;
+        Func<Vector2, bool> ignore;
         Stage stage = Stage.Closed;
         bool refused;
         bool hasAvatar;
@@ -306,6 +307,16 @@ namespace Dogpatch.Gameplay
             return list;
         }
 
+        // Touches on these buttons never become a drag or a jump. The HUD owns DragInput.IgnoreAt
+        // and may set it after this component starts, so the hook re-chains whenever it changes.
+        void HookDrag()
+        {
+            if (drag == null || drag.IgnoreAt == ignore) return;
+            var previous = drag.IgnoreAt;
+            ignore = p => (previous != null && previous(p)) || Hit(Buttons(), p) != null;
+            drag.IgnoreAt = ignore;
+        }
+
         static string Hit(List<(string id, Rect rect)> buttons, Vector2 p)
         {
             foreach (var (id, rect) in buttons) if (rect.Contains(p)) return id;
@@ -330,19 +341,15 @@ namespace Dogpatch.Gameplay
                 up = Input.GetMouseButtonUp(0);
             }
 
+            HookDrag();
             var buttons = Buttons();
             if (down) pressed = Hit(buttons, p);
-            if (pressed == "retake" && down)
-            {
-                pressed = null;
-                Open();
-                return;
-            }
             if (!up || pressed == null) return;
             string id = pressed;
             pressed = null;
             if (Hit(buttons, p) != id) return;
-            if (id == "shutter") Shoot();
+            if (id == "retake") Open();
+            else if (id == "shutter") Shoot();
             else if (id == "flip") Flip();
             else if (id == "close") Close();
         }
