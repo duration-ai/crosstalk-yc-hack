@@ -9,6 +9,8 @@ namespace Dogpatch.EditorTools
     // ADPCM compressed in memory (cheap to decode, no loop clicks).
     public sealed class AudioImportRules : AssetPostprocessor
     {
+        public override uint GetVersion() => 2;
+
         void OnPreprocessAudio()
         {
             if (!assetPath.StartsWith("Assets/Resources/Audio/")) return;
@@ -20,7 +22,7 @@ namespace Dogpatch.EditorTools
             {
                 case "Music":
                     s.compressionFormat = AudioCompressionFormat.Vorbis;
-                    s.quality = 0.6f;
+                    s.quality = 0.1f;
                     s.loadType = Path.GetFileNameWithoutExtension(assetPath).StartsWith("music_") ? AudioClipLoadType.Streaming : AudioClipLoadType.CompressedInMemory;
                     break;
                 case "Ambience":
