@@ -128,15 +128,84 @@ namespace Dogpatch.Race
             if (task.IsFaulted) Debug.LogError("[SpeedDial] " + task.Exception?.GetBaseException());
         }
 
-        // Which course to race: "-speeddial-route b" on the command line, else Resources/SpeedDial/route
-        // (one word), else the classic course.json. Course "x" lives in Resources/SpeedDial/course-x.json,
-        // and each course is its own mission, so racers on different routes never share a lobby.
+        // Every route is its own mission with its own start ring, all live at once: the classic
+        // course.json plus Resources/SpeedDial/course-<id>.json for each id in Routes. Online, driving
+        // into another route's ring in free roam makes it the race course, and its mission (yc-<id>)
+        // keeps its lobby apart. "-speeddial-route b" picks the starting course for headless runs.
+        public static readonly string[] Routes = { "", "b", "c" };
         static string RouteChoice()
         {
             var args = Environment.GetCommandLineArgs();
             int i = Array.IndexOf(args, "-speeddial-route");
-            if (i >= 0 && i + 1 < args.Length) return args[i + 1].Trim().ToLowerInvariant();
-            return Resources.Load<TextAsset>("SpeedDial/route")?.text.Trim().ToLowerInvariant() ?? "";
+            return i >= 0 && i + 1 < args.Length ? args[i + 1].Trim().ToLowerInvariant() : "";
+        }
+
+        readonly Dictionary<string, RaceCourse> courses = new Dictionary<string, RaceCourse>();
+        Transform courseRoot;
+        Transform ringsRoot;
+
+        static string MissionOf(string route) => route.Length > 0 ? "yc-" + route : "yc";
+
+        public string RouteName(string route) => courses.TryGetValue(route, out var c) && !string.IsNullOrEmpty(c.Data.routeName) ? c.Data.routeName : "RACE";
+
+        // Every route's ring with its name, for the HUD and the map: the race course's own and the rest.
+        public IEnumerable<(string name, Vector3 at)> RouteRingSpots() => courses.Select(kv => (RouteName(kv.Key), kv.Value.RingCenter));
+
+        // The race course's ring, finish and chevrons.
+        void DressCourse()
+        {
+            var material = Game.SharedMaterial;
+            courseRoot = new GameObject("SpeedDialCourse").transform;
+            courseRoot.SetParent(Game.World.Root.transform, false);
+            CourseDressing.StartRing(courseRoot, Course.RingCenter, Course.RingRadius, material);
+            var finishRight = Quaternion.Euler(0f, Course.FinishHeading, 0f) * Vector3.right;
+            float ycSide = Vector3.Dot(Course.YcSite - Course.Finish, finishRight) >= 0f ? 1f : -1f;
+            var flagSpot = Course.Finish + finishRight * ycSide * (Course.FinishHalfWidth + 1.6f) + Quaternion.Euler(0f, Course.FinishHeading, 0f) * Vector3.forward * 3f;
+            CourseDressing.Finish(courseRoot, Course.Finish, Course.FinishHeading, Course.FinishHalfWidth, flagSpot, material);
+            CourseDressing.TurnChevrons(courseRoot, Course.Route, Course.RouteWorld, material);
+        }
+
+        // The other routes' start rings, each with a map pin named after its route. Online only:
+        // offline races its one local room.
+        void RouteRings()
+        {
+            if (ringsRoot != null) Destroy(ringsRoot.gameObject);
+            ringsRoot = new GameObject("SpeedDialRouteRings").transform;
+            ringsRoot.SetParent(Game.World.Root.transform, false);
+            foreach (var kv in courses)
+            {
+                if (!Online && kv.Key != RouteId) continue;
+                var pin = new GameObject(RouteName(kv.Key)).transform;
+                pin.SetParent(ringsRoot, false);
+                pin.position = kv.Value.RingCenter;
+                Dogpatch.Map.MapMarkers.Track(pin, Dogpatch.Map.MapMarkerKind.Race);
+                if (kv.Key != RouteId && Online) CourseDressing.StartRing(ringsRoot, kv.Value.RingCenter, kv.Value.RingRadius, Game.SharedMaterial);
+            }
+        }
+
+        // Driving into another route's ring in free roam makes it the race course; the mission ring
+        // then enters its lobby as usual.
+        void PickRouteByRing()
+        {
+            if (!Online || RoomId != null || Busy) return;
+            var me = RoutePath.Flat(BodyOf(MyId).position);
+            foreach (var kv in courses)
+            {
+                if (kv.Key == RouteId || Vector2.Distance(me, RoutePath.Flat(kv.Value.RingCenter)) > kv.Value.RingRadius) continue;
+                RouteId = kv.Key;
+                Course = kv.Value;
+                ConvexRaceSession.Mission = MissionOf(RouteId);
+                Destroy(courseRoot.gameObject);
+                DressCourse();
+                Destroy(Pickups);
+                Pickups = gameObject.AddComponent<AskPickups>();
+                Pickups.Race = this;
+                Pickups.Place(Course.AskPickups, AskTuning.pickupRadius, Game.SharedMaterial, courseRoot);
+                RouteRings();
+                RoomChanged?.Invoke();
+                Debug.Log($"[SpeedDial] route {RouteName(RouteId)}: {Course.Data.startName} -> {Course.Data.finishName}, {Course.Route.Length:F0} m, mission {ConvexRaceSession.Mission}");
+                return;
+            }
         }
 
         IEnumerator Start()
@@ -163,21 +232,21 @@ namespace Dogpatch.Race
                 }
                 return false;
             }
-            RouteId = RouteChoice();
-            var course = (RouteId.Length > 0 ? Resources.Load<TextAsset>("SpeedDial/course-" + RouteId) : null) ?? Resources.Load<TextAsset>("SpeedDial/course");
-            ConvexRaceSession.Mission = RouteId.Length > 0 ? "yc-" + RouteId : "yc";
-            Course = RaceCourse.Build(Game.World, Game.Data, course.text, Occupied);
+            RouteId = Array.IndexOf(Routes, RouteChoice()) >= 0 ? RouteChoice() : "";
             AskTuning = JsonUtility.FromJson<AskTuning>(Resources.Load<TextAsset>("SpeedDial/asks").text);
-            Course.PlaceAskPickups(AskTuning);
-
-            var root = new GameObject("SpeedDialCourse").transform;
-            root.SetParent(Game.World.Root.transform, false);
-            CourseDressing.StartRing(root, Course.RingCenter, Course.RingRadius, material);
-            var finishRight = Quaternion.Euler(0f, Course.FinishHeading, 0f) * Vector3.right;
-            float ycSide = Vector3.Dot(Course.YcSite - Course.Finish, finishRight) >= 0f ? 1f : -1f;
-            var flagSpot = Course.Finish + finishRight * ycSide * (Course.FinishHalfWidth + 1.6f) + Quaternion.Euler(0f, Course.FinishHeading, 0f) * Vector3.forward * 3f;
-            CourseDressing.Finish(root, Course.Finish, Course.FinishHeading, Course.FinishHalfWidth, flagSpot, material);
-            CourseDressing.TurnChevrons(root, Course.Route, Course.RouteWorld, material);
+            foreach (var id in Routes)
+            {
+                try
+                {
+                    var c = RaceCourse.Build(Game.World, Game.Data, Resources.Load<TextAsset>(id.Length > 0 ? "SpeedDial/course-" + id : "SpeedDial/course").text, Occupied);
+                    c.PlaceAskPickups(AskTuning);
+                    courses[id] = c;
+                }
+                catch (Exception e) { Debug.LogWarning($"[SpeedDial] route '{id}' failed to build: {e.Message}"); }
+            }
+            Course = courses[RouteId];
+            ConvexRaceSession.Mission = MissionOf(RouteId);
+            DressCourse();
 
             MyId = Game.Profile.id;
             var url = ConvexRaceSession.ConfiguredUrl();
@@ -208,7 +277,8 @@ namespace Dogpatch.Race
 
             Pickups = gameObject.AddComponent<AskPickups>();
             Pickups.Race = this;
-            Pickups.Place(Course.AskPickups, AskTuning.pickupRadius, material, root);
+            Pickups.Place(Course.AskPickups, AskTuning.pickupRadius, material, courseRoot);
+            RouteRings();
 
             Hud = gameObject.AddComponent<SlipstreamHud>();
             Hud.Race = this;
@@ -830,6 +900,7 @@ namespace Dogpatch.Race
         {
             if (!Setup) return;
             if (Locked) myCar.SetInput(Vector3.zero, 0f);
+            PickRouteByRing();
 
             foreach (var bot in bots)
             {
