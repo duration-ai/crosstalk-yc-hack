@@ -27,6 +27,10 @@ namespace Dogpatch.Race
         const float PollEvery = 0.12f;
         const float SendEvery = 0.1f;
         const float LockMs = 3000f;
+        const float GhostFor = 4f;
+        const float ContactWatch = 10f;
+        const float ClearRoadFor = 10f;
+        const float ClearRoadMeters = 150f;
 
         public static RaceDirector Instance { get; private set; }
 
@@ -65,6 +69,7 @@ namespace Dogpatch.Race
             public float NextCall;
             public float LastProgress;
             public float NextShove;
+            public float LaunchAt;
         }
 
         readonly List<Bot> bots = new List<Bot>();
@@ -80,6 +85,10 @@ namespace Dogpatch.Race
         float lobbySince;
         float botCallsAfter;
         bool lobbyCam;
+        bool ghosted;
+        bool roadCleared;
+        bool contactsReported;
+        readonly Dictionary<string, int> launchContacts = new Dictionary<string, int>();
 
         public long NowMs => convex != null ? convex.ServerNowMs : (long)(epochMs + Time.timeAsDouble * 1000.0);
         public Room Room => Last?.room;
@@ -224,7 +233,7 @@ namespace Dogpatch.Race
                 bot.Driver.Car = bot.Car;
                 bot.Driver.Route = Course.Route;
                 bot.Driver.Skill = BotSkill[Array.IndexOf(BotNames, botName)];
-                bot.Driver.Lane = bot.Slot % 2 == 0 ? -1.9f : 1.9f;
+                bot.Driver.Lane = RaceCourse.GridLane(bot.Slot);
                 bot.Avatar = RacerAvatar.Create(avatarAsset, material, PaintJob.Linear(SlotHex[bot.Slot]), bot.Name);
                 bot.Avatar.transform.SetParent(Game.World.Root.transform, true);
                 bot.Car.SetDriven(false);
@@ -386,12 +395,60 @@ namespace Dogpatch.Race
             botCallsAfter = Time.time + 4f;
             foreach (var bot in bots)
             {
-                bot.Driver.Active = true;
+                bot.LaunchAt = Time.time + 0.2f + (float)random.NextDouble() * 0.4f;
                 bot.NextCall = Time.time + 5f + (float)random.NextDouble() * 6f;
+            }
+            Ghost(true);
+            launchContacts.Clear();
+            contactsReported = false;
+            foreach (var car in RacerCars())
+            {
+                var watch = car.GetComponent<LaunchContacts>() ?? car.gameObject.AddComponent<LaunchContacts>();
+                watch.Race = this;
+                watch.Until = Time.time + ContactWatch;
             }
             Game.ExternalInput = Autopilot;
             if (myPilot != null) myPilot.Active = Autopilot;
             Debug.Log("[SpeedDial] GO");
+        }
+
+        // For the first seconds after GO the racers pass through each other, so a bunched launch can't
+        // pile up.
+        void Ghost(bool on)
+        {
+            ghosted = on;
+            var cars = RacerCars().Where(c => c != null).Select(c => c.GetComponentsInChildren<Collider>()).ToList();
+            for (int i = 0; i < cars.Count; i++)
+                for (int j = i + 1; j < cars.Count; j++)
+                    foreach (var a in cars[i])
+                        foreach (var b in cars[j])
+                            if (a != null && b != null) Physics.IgnoreCollision(a, b, on);
+        }
+
+        // Traffic stays off the start and the first stretch of the route from the countdown until a few
+        // seconds after GO.
+        void ClearRoad(bool on)
+        {
+            roadCleared = on;
+            var traffic = Dogpatch.Traffic.TrafficSystem.Instance;
+            if (traffic == null) return;
+            if (!on)
+            {
+                traffic.KeepClear(null, 0f);
+                return;
+            }
+            var points = new List<Vector2>();
+            for (float d = 0f; d <= Mathf.Min(ClearRoadMeters, Course.Route.Length); d += 8f) points.Add(Course.Route.PointAt(d));
+            traffic.KeepClear(points, 16f);
+        }
+
+        public bool IsRacerCar(CarController car) => RacerCars().Contains(car);
+
+        public void NoteLaunchContact(string kind, CarController a, CarController b)
+        {
+            launchContacts.TryGetValue(kind, out int n);
+            launchContacts[kind] = n + 1;
+            Debug.Log($"[SpeedDial] launch contact {kind}: {a.name} hit {b.name} at {Time.time - StartedAt:F1} s");
         }
 
         IEnumerator BackToLobby()
@@ -438,7 +495,7 @@ namespace Dogpatch.Race
                 myPilot.Car = myCar;
                 myPilot.Route = Course.Route;
                 myPilot.Skill = 1f;
-                myPilot.Lane = MySlot % 2 == 0 ? -1.9f : 1.9f;
+                myPilot.Lane = RaceCourse.GridLane(MySlot);
                 myPilot.ResetProgress(Course.Grid[MySlot].Progress);
             }
             if (Started && !ResultsIn)
@@ -571,6 +628,21 @@ namespace Dogpatch.Race
                 Debug.Log("[SpeedDial] you stepped onto the start ring");
             }
             stillFor = Game.Drag.Dragging ? 0f : stillFor + Time.deltaTime;
+
+            bool clearRoad = Room != null && (Room.status == RoomStatus.Countdown || (Started && !ResultsIn && Time.time - StartedAt < ClearRoadFor));
+            if (clearRoad != roadCleared) ClearRoad(clearRoad);
+            if (Started && ghosted && Time.time - StartedAt > GhostFor) Ghost(false);
+            if (Started && !contactsReported && Time.time - StartedAt > ContactWatch)
+            {
+                contactsReported = true;
+                Debug.Log($"[SpeedDial] launch contacts in the first {ContactWatch:F0} s: {launchContacts.Values.Sum()} (racer {launchContacts.GetValueOrDefault("racer")}, traffic {launchContacts.GetValueOrDefault("traffic")}, parked {launchContacts.GetValueOrDefault("parked")})");
+            }
+            foreach (var bot in bots)
+            {
+                if (!Started || ResultsIn || bot.LaunchAt <= 0f || Time.time < bot.LaunchAt) continue;
+                bot.LaunchAt = 0f;
+                bot.Driver.Active = true;
+            }
 
             if (Started && !ResultsIn) BotRaceBehaviour();
             else if (!Gridded) BotLobbyBehaviour();

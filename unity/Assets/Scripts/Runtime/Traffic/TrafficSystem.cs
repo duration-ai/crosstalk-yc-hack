@@ -43,6 +43,8 @@ namespace Dogpatch.Traffic
         readonly Dictionary<string, Stack<CarController>> pool = new Dictionary<string, Stack<CarController>>();
         readonly List<CarController> parked = new List<CarController>();
         readonly List<StreetGraph.Lane> candidates = new List<StreetGraph.Lane>();
+        readonly List<Vector2> keepClear = new List<Vector2>();
+        float keepClearRadius;
         readonly Stopwatch watch = new Stopwatch();
         readonly Dictionary<CarController, GameObject> playerRiders = new Dictionary<CarController, GameObject>();
         float frameAccumulator;
@@ -106,6 +108,24 @@ namespace Dogpatch.Traffic
             if (Instance == this) Instance = null;
         }
 
+        // Streets the AI keeps empty for a while, like the race start: discs of `radius` around `points`.
+        // Nothing spawns there and cars that are or drive in there go back to the pool; buses and trains
+        // keep their routes. KeepClear with no points lifts it.
+        public void KeepClear(IReadOnlyList<Vector2> points, float radius)
+        {
+            keepClear.Clear();
+            if (points != null) keepClear.AddRange(points);
+            keepClearRadius = radius;
+        }
+
+        bool InKeepClear(Vector3 p)
+        {
+            var q = new Vector2(p.x, p.z);
+            foreach (var c in keepClear)
+                if ((c - q).sqrMagnitude < keepClearRadius * keepClearRadius) return true;
+            return false;
+        }
+
         Vector3 Focus => game.Focus != null ? game.Focus.position : Vector3.zero;
 
         bool Visible(Vector3 p)
@@ -129,7 +149,7 @@ namespace Dogpatch.Traffic
                 var agent = Agents[i];
                 float d = Vector3.Distance(agent.transform.position, focus);
                 bool fixedRoute = agent.OnRail || agent.Route != null || agent.Car == game.Current;
-                if (!fixedRoute && (d > 240f || (d > 150f && !Visible(agent.transform.position)) || (agent.Idle > 40f && !Visible(agent.transform.position))))
+                if (!fixedRoute && (d > 240f || InKeepClear(agent.transform.position) || (d > 150f && !Visible(agent.transform.position)) || (agent.Idle > 40f && !Visible(agent.transform.position))))
                 {
                     Despawn(agent);
                     continue;
@@ -265,6 +285,7 @@ namespace Dogpatch.Traffic
             float d = Vector2.Distance(p, f2);
             if (d > SpawnMax || d < (initial ? 25f : SpawnMin)) return;
             if (!initial && d < 170f && Visible(world)) return;
+            if (InKeepClear(world)) return;
             foreach (var a in Agents)
                 if ((a.transform.position - world).sqrMagnitude < 14f * 14f) return;
             foreach (var car in parked)

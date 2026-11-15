@@ -197,15 +197,52 @@ namespace Dogpatch.Race
             RingFacing = toStart.sqrMagnitude < 1f ? Vector3.forward : new Vector3(toStart.x, 0f, toStart.y).normalized;
         }
 
-        void PlaceGrid()
+        // The start grid is staggered: two columns 3.5 m apart, each car 3.5 m behind the one beside it,
+        // so 7 m to the car ahead in its own column, all facing down the route. Slots follow the room's
+        // slot order, so every client seats every racer the same. The grid slides down the first
+        // straight until each slot sits on asphalt clear of the kerbs, buildings and parked cars.
+        public const float GridLateral = 1.75f;
+        const float GridStep = 3.5f;
+
+        public static float GridLane(int slot) => slot % 2 == 0 ? -GridLateral : GridLateral;
+
+        Vector2 GridPoint(float front, int slot)
         {
+            float d = front - slot * GridStep;
+            return Route.PointAt(d) + Route.RightAt(d) * GridLane(slot);
+        }
+
+        bool GridClear(float front)
+        {
+            float back = front - 3f * GridStep;
+            if (Route.TurnAhead(back - 2f, front - back + 20f) > 12f) return false;
             for (int slot = 0; slot < 4; slot++)
             {
-                float d = Mathf.Min(14f - (slot / 2) * 7f, Route.Length * 0.4f);
-                float side = slot % 2 == 0 ? -1.9f : 1.9f;
-                var p = Route.PointAt(d) + Route.RightAt(d) * side;
-                Grid[slot] = new Spot { Position = Ground(p) + Vector3.up * 0.3f, Heading = RoutePath.Heading(Route.DirectionAt(d)), Progress = d };
+                var p = GridPoint(front, slot);
+                if (!world.Roads.OnCurbedCarriageway(p, -1.4f) || world.Buildings.Blocked(p, 1.5f)) return false;
+                foreach (var car in world.ParkedCars)
+                    if ((new Vector2(car.Position.x, car.Position.z) - p).sqrMagnitude < 4.5f * 4.5f) return false;
             }
+            return true;
+        }
+
+        void PlaceGrid()
+        {
+            float first = 3f * GridStep + 4f;
+            float front = first;
+            bool clear = false;
+            for (float d = first; d < Mathf.Min(120f, Route.Length * 0.4f); d += 2f)
+                if (clear = GridClear(d))
+                {
+                    front = d;
+                    break;
+                }
+            for (int slot = 0; slot < 4; slot++)
+            {
+                float d = front - slot * GridStep;
+                Grid[slot] = new Spot { Position = Ground(GridPoint(front, slot)) + Vector3.up * 0.3f, Heading = RoutePath.Heading(Route.DirectionAt(d)), Progress = d };
+            }
+            Debug.Log($"[SpeedDial] grid from {front - 3f * GridStep:F0} to {front:F0} m along the route{(clear ? "" : ", no fully clear stretch found")}");
         }
 
         void PlaceFinish()
