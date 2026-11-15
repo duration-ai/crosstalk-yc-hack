@@ -17,6 +17,8 @@ namespace Dogpatch.World
         const float Cell = 50f;
         const float SkylineReach = 1300f;
 
+        public static float LandTop(Rect map) => map.yMax + Reach;
+
         static Color L(string hex) => SpeedDial.Hex(hex).linear;
 
         static readonly Color[] Houses = { L("#FFE27A"), L("#8CE3BF"), L("#FF9C86"), L("#BBA6F7"), L("#9ED7FF"), L("#FFF3DA") };
