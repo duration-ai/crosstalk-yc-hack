@@ -150,7 +150,12 @@ namespace Dogpatch.Race
             yield return Seconds(2.5f);
             yield return Shot("12b-rematch-lobby");
 
-            while (race.Me.asks > 0) yield return Wait(race.Session.SpendAskAsync(race.MyId, race.RoomId));
+            for (int left = race.Me.asks; left > 0;)
+            {
+                var spend = race.Session.SpendAskAsync(race.MyId, race.RoomId);
+                yield return Wait(spend);
+                left = spend.Result.asks;
+            }
             yield return Until(() => race.Me.asks == 0, 3f, "out of asks");
             race.Calls.BeginTalk();
             yield return Until(() => Time.time - race.Calls.TurnedDownAt < 1f, 3f, "call turned down with no asks");
