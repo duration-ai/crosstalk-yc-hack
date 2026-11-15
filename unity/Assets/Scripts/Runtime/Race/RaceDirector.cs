@@ -108,6 +108,9 @@ namespace Dogpatch.Race
         public Racer Me => Last?.racers?.FirstOrDefault(r => r.playerId == MyId);
         public float MsToStart => Room == null || Room.startsAt == 0 ? float.MaxValue : Room.startsAt - NowMs;
         public bool Locked => Gridded && !Started;
+
+        // On the start ring, counting down or racing: the race owns the arrow and the route.
+        public bool Joined => Setup && (Gridded || inRing || (Room != null && Room.status == RoomStatus.Countdown));
         public CarController MyCar => myCar;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]

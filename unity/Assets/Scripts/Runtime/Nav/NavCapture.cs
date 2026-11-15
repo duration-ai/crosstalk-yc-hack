@@ -126,7 +126,13 @@ namespace Dogpatch.Nav
             var exit = game.ExitCar();
             while (!exit.IsCompleted) yield return null;
 
+            nav.SetWaypoint(new Vector3(anchor.x + 300f, 0f, anchor.y + 200f));
+            Log($"waypoint before the ring: {nav.Target?.Kind.ToString() ?? "none"}");
             game.Player.Teleport(race.RingSpot(race.MySlot), 0f);
+            yield return Seconds(0.5f);
+            nav.SetWaypoint(new Vector3(anchor.x + 300f, 0f, anchor.y + 200f));
+            yield return null;
+            Log($"on the ring: waypoint {(nav.Target == null ? "cleared" : "kept")}, objective {nav.Kind}");
             race.Hud.PressReady();
             yield return Until(() => race.Started, 40f, "race started");
             race.EnableAutopilot();

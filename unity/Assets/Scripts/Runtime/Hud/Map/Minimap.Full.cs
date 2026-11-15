@@ -326,7 +326,9 @@ namespace Dogpatch.Map
             }
             foreach (var c in Clusters())
             {
-                if ((c.At - p).magnitude > 26f * s) continue;
+                var face = c.At + new Vector2(0f, c.Pin.Kind == TargetKind.Ring ? 26f * s : c.Pin.Kind == TargetKind.Spot ? 22f * s : 0f);
+                bool onBadge = c.Pin.Kind == TargetKind.Ring && Mathf.Abs(p.x - face.x) < 60f * s && p.y > c.At.y - 10f * s && p.y < face.y + 44f * s;
+                if (!onBadge && (c.At - p).magnitude > 26f * s && (face - p).magnitude > 26f * s) continue;
                 if (c.Count > 1 && fullZoom < MaxZoom * 0.95f)
                 {
                     zoomPivot = c.At;
@@ -421,6 +423,7 @@ namespace Dogpatch.Map
             var race = RaceDirector.Instance;
             blocked = race != null && (race.Started || race.Gridded) ? "IN A RACE" : "IN A LOBBY";
             if (!CanTravel(race)) return false;
+            if (picked.Kind == TargetKind.Ring && (picked.World - new Vector2(race.Course.RingCenter.x, race.Course.RingCenter.z)).sqrMagnitude < 1f) return true;
             blocked = "NO ROAD HERE";
             return Landing(picked, out _, out _);
         }
