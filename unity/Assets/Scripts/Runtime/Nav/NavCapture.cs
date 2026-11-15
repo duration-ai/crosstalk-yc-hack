@@ -122,7 +122,7 @@ namespace Dogpatch.Nav
         {
             var map = FindAnyObjectByType<Minimap>();
             map.SetFull(true);
-            map.Preview(1.7f);
+            map.Preview(1f);
             yield return Seconds(0.3f);
             yield return Shot(name);
             map.SetFull(false);

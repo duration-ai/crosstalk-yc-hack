@@ -42,6 +42,11 @@ namespace Dogpatch.Map
         Vector2 zoomPivot;
         bool recentring;
         bool longPressed;
+        int selectedKind = -1;
+        int selectedPlace;
+        float selectedAt;
+        Rect cardRect;
+        Rect cardButton;
 
         Vector2 ScreenMid => new Vector2(Screen.width, Screen.height) * 0.5f;
         Rect MapArea => new Rect(geometry.Bounds.xMin - 60f, geometry.Bounds.yMin - 60f, geometry.Bounds.width + 120f, geometry.Bounds.height + 120f);
@@ -90,7 +95,7 @@ namespace Dogpatch.Map
             tapFinger = -1;
             tapValid = false;
             gestureKey = -1;
-            travelChosen = false;
+            selectedKind = -1;
             velocity = Vector2.zero;
             zoomGoal = 0f;
             recentring = false;
@@ -103,11 +108,11 @@ namespace Dogpatch.Map
             ClampView();
         }
 
-        // For captures: show the TRAVEL offer and zoom by factor about the centre.
+        // For captures: select the mission and zoom by factor about the centre.
         public void Preview(float zoom)
         {
             FrameFull();
-            travelChosen = CanTravel(RaceDirector.Instance);
+            if (MissionUp(RaceDirector.Instance)) Select(-1);
             ZoomAbout(center, zoom);
         }
 
@@ -289,30 +294,33 @@ namespace Dogpatch.Map
             lastMouse = mouse;
         }
 
-        // The X and recentre buttons, then TRAVEL, then outside the view (closes), then a double
-        // tap (zooms in), then a mission marker (offers TRAVEL); anything else drops the offer.
+        // The card first (its button acts, the rest of it absorbs), then the X and recentre buttons,
+        // then outside the view (drops the card, or closes the map), a double tap (zooms in), and
+        // a pin: a cluster zooms in until it splits, a single pin is selected. Empty map drops
+        // the selection.
         void FullTap(Vector2 p)
         {
+            bool card = selectedKind >= 0;
+            if (card && cardButton.Contains(p))
+            {
+                CardAction();
+                return;
+            }
+            if (card && cardRect.Contains(p)) return;
             if ((p - CloseAt).magnitude < ButtonR * 1.5f)
             {
                 SetFull(false);
                 return;
             }
-            if ((p - RecentreAt).magnitude < ButtonR * 1.5f)
+            if (!card && (p - RecentreAt).magnitude < ButtonR * 1.5f)
             {
                 recentring = true;
                 return;
             }
-            var race = RaceDirector.Instance;
-            bool can = CanTravel(race);
-            if (can && travelChosen && travelRect.Contains(p))
-            {
-                StartTravel();
-                return;
-            }
             if (!Inside(p, 0f))
             {
-                SetFull(false);
+                if (card) selectedKind = -1;
+                else SetFull(false);
                 return;
             }
             bool doubleTap = Time.unscaledTime - lastTapAt < 0.32f && (p - lastTapPos).magnitude < 40f * s;
@@ -324,7 +332,91 @@ namespace Dogpatch.Map
                 zoomGoal = Mathf.Min(fullZoom * 2f, MaxZoom);
                 return;
             }
-            travelChosen = can && (ToMap(race.Course.RingCenter) - p).magnitude < race.Course.RingRadius * fullZoom + 26f * s;
+            if (card && (ToMap(SelectedWorld) - p).magnitude < 20f * s) return;
+            foreach (var c in Clusters())
+            {
+                if ((c.At - p).magnitude > 20f * s) continue;
+                if (c.Count > 1 && fullZoom < MaxZoom * 0.95f)
+                {
+                    zoomPivot = c.At;
+                    zoomGoal = Mathf.Min(fullZoom * 2.2f, MaxZoom);
+                    return;
+                }
+                Select(c.Top);
+                return;
+            }
+            var race = RaceDirector.Instance;
+            if (MissionUp(race) && (ToMap(race.Course.RingCenter) - p).magnitude < race.Course.RingRadius * fullZoom)
+            {
+                Select(-1);
+                return;
+            }
+            selectedKind = -1;
+        }
+
+        static bool MissionUp(RaceDirector race) => race != null && race.Setup && !race.Gridded;
+
+        void Select(int id)
+        {
+            selectedKind = id < 0 ? 0 : 1;
+            selectedPlace = Mathf.Max(id, 0);
+            selectedAt = Time.unscaledTime;
+        }
+
+        Vector2 SelectedWorld
+        {
+            get
+            {
+                if (selectedKind != 0) return geometry.Places[selectedPlace].Position;
+                var ring = RaceDirector.Instance.Course.RingCenter;
+                return new Vector2(ring.x, ring.z);
+            }
+        }
+
+        // The mission travels there; a landmark becomes the waypoint and the map closes.
+        void CardAction()
+        {
+            var race = RaceDirector.Instance;
+            if (selectedKind == 0)
+            {
+                if (CanTravel(race)) StartTravel();
+                return;
+            }
+            var at = geometry.Places[selectedPlace].Position;
+            if (NavService.Instance != null && Game.Focus != null && !(race != null && (race.Gridded || race.Started)))
+                NavService.Instance.SetWaypoint(new Vector3(at.x, Game.Focus.position.y, at.y));
+            SetFull(false);
+        }
+
+        struct PinCluster
+        {
+            public Vector2 At;
+            public int Top;
+            public int Count;
+        }
+
+        // The mission and the landmarks in view, merged where they would overlap on screen; the
+        // first one in (the mission) is the cluster's face. The selected pin stays out.
+        List<PinCluster> Clusters()
+        {
+            var list = new List<PinCluster>();
+            void Add(int id, Vector2 p)
+            {
+                if (!Inside(p, 6f * s) || (selectedKind >= 0 && (id < 0 ? selectedKind == 0 : selectedKind == 1 && selectedPlace == id))) return;
+                for (int i = 0; i < list.Count; i++)
+                    if ((list[i].At - p).magnitude < 30f * s)
+                    {
+                        var c = list[i];
+                        c.Count++;
+                        list[i] = c;
+                        return;
+                    }
+                list.Add(new PinCluster { At = p, Top = id, Count = 1 });
+            }
+            var race = RaceDirector.Instance;
+            if (MissionUp(race)) Add(-1, ToMap(race.Course.RingCenter));
+            for (int i = 0; i < geometry.Places.Count; i++) Add(i, ToMap(geometry.Places[i].Position));
+            return list;
         }
 
         // A long press (right click on desktop) points the arrow at that spot; not during a race.
@@ -389,41 +481,140 @@ namespace Dogpatch.Map
             }
         }
 
-        // Landmarks, the race start (and its TRAVEL offer), the players' names, then the chrome.
+        // Players as coloured dots with an initial, the pins (icons; names only once zoomed in),
+        // then, with a selection, everything else dimmed under the popped pin and its card.
         void DrawFullLabels(Vector2 player)
         {
             var race = RaceDirector.Instance;
-            bool raceUp = race != null && race.Setup;
-            foreach (var place in geometry.Places)
-            {
-                var p = ToMap(place.Position);
-                if (!Inside(p, 30f * s)) continue;
-                Gl(() =>
-                {
-                    Disc(p, 4.2f * s, Ink, 16);
-                    Disc(p, 2.8f * s, White, 16);
-                });
-                Chip(p + new Vector2(0f, 13f * s), place.Text, 9.5f, Ink, White);
-            }
-            if (raceUp && !race.Gridded)
-            {
-                var ring = ToMap(race.Course.RingCenter);
-                float ringR = Mathf.Max(race.Course.RingRadius * pxPerMeter, 4.5f * s);
-                if (Inside(ring, 20f * s)) Chip(ring + new Vector2(0f, ringR + 11f * s), "RACE START", 9.5f, Sunshine, Ink);
-                if (travelChosen && CanTravel(race) && Inside(ring, 4f * s))
-                    travelRect = Chip(ring - new Vector2(0f, ringR + 18f * s), "TRAVEL", 15f, Sunshine, Ink);
-            }
-            if (raceUp && race.Last?.racers != null)
+            if (race != null && race.Setup && race.Last?.racers != null)
                 foreach (var r in race.Last.racers)
                 {
-                    if (r.left || r.playerId == race.MyId || string.IsNullOrEmpty(r.displayName)) continue;
+                    if (r.left || r.playerId == race.MyId) continue;
                     var body = race.BodyOf(r.playerId);
                     var p = ToMap(body != null ? body.position : new Vector3(r.position.x, r.position.y, r.position.z));
-                    if (Inside(p, 20f * s)) Chip(p + new Vector2(0f, 14f * s), r.displayName.ToUpperInvariant(), 9f, SlipstreamHud.SlotColor(r.color), White);
+                    if (!Inside(p, 6f * s)) continue;
+                    var color = SlipstreamHud.SlotColor(r.color);
+                    Gl(() =>
+                    {
+                        Disc(p, 6.6f * s, Ink, 20);
+                        Disc(p, 5.2f * s, color, 20);
+                    });
+                    if (!string.IsNullOrEmpty(r.displayName)) Label(p, r.displayName.Substring(0, 1).ToUpperInvariant(), 7.5f, White);
                 }
-            var mine = ToMap(player);
-            if (Inside(mine, 20f * s)) Chip(mine + new Vector2(0f, 15f * s), "YOU", 9f, Sunshine, Ink);
+            bool named = fullZoom / BaseZoom >= 1.45f;
+            foreach (var c in Clusters()) DrawPin(c.Top, c.At, c.Count, named, false);
+            if (selectedKind >= 0)
+            {
+                Gl(() => Shape(Outline(0f), Vector2.zero, new Color(Ink.r, Ink.g, Ink.b, 0.38f)));
+                DrawPin(selectedKind == 0 ? -1 : selectedPlace, ToMap(SelectedWorld), 1, true, true);
+                DrawCard(player);
+            }
             DrawChrome();
+        }
+
+        // The mission is a sunshine disc with a checker; a landmark an ink and white dot. A cluster
+        // carries a pink count. The selected pin is bigger, outlined in white and pulses.
+        void DrawPin(int id, Vector2 p, int count, bool named, bool selected)
+        {
+            float t = Time.unscaledTime - selectedAt;
+            float k = selected ? 1.4f + 0.06f * Mathf.Sin(t * 6f) : 1f;
+            var badge = p + new Vector2(8f, 8f) * s * k;
+            Gl(() =>
+            {
+                if (selected)
+                {
+                    float pulse = Mathf.Repeat(t * 1.1f, 1f);
+                    Ring(p, (13f + 16f * pulse) * s, 2.2f * s, new Color(Sunshine.r, Sunshine.g, Sunshine.b, 1f - pulse), 40);
+                    Disc(p, (id < 0 ? 12f : 9.2f) * k * s, White, 28);
+                }
+                if (id < 0)
+                {
+                    Disc(p, 10f * k * s, Ink, 28);
+                    Disc(p, 8.2f * k * s, Sunshine, 28);
+                    float q = 2.8f * k * s;
+                    for (int x = -1; x <= 0; x++)
+                        for (int y = -1; y <= 0; y++)
+                        {
+                            var o = p + new Vector2(x * q, y * q);
+                            Quad(o, o + new Vector2(0f, q), o + new Vector2(q, q), o + new Vector2(q, 0f), (x + y) % 2 == 0 ? Ink : White);
+                        }
+                }
+                else
+                {
+                    Disc(p, 7f * k * s, Ink, 20);
+                    Disc(p, 4.6f * k * s, White, 20);
+                    Disc(p, 2.2f * k * s, Ink, 12);
+                }
+                if (count > 1)
+                {
+                    Disc(badge, 6.8f * s, Ink, 16);
+                    Disc(badge, 5.6f * s, Pink, 16);
+                }
+            });
+            if (count > 1) Label(badge, count.ToString(), 8f, White);
+            string text = id < 0 ? "RACE START" : geometry.Places[id].Text;
+            if (selected) Chip(p + new Vector2(0f, 24f * s), text, 11f, id < 0 ? Sunshine : Ink, id < 0 ? Ink : White);
+            else if (count == 1 && named) Chip(p + new Vector2(0f, 15f * s), text, 9f, Ink, White);
+        }
+
+        // Docked to the bottom edge (bottom right in landscape): what it is, the route, how far,
+        // who is waiting there, and one big button.
+        void DrawCard(Vector2 player)
+        {
+            var race = RaceDirector.Instance;
+            var safe = Screen.safeArea;
+            bool landscape = Screen.width > Screen.height;
+            float w = landscape ? Mathf.Min(330f * s, safe.width * 0.42f) : safe.width - 32f * s;
+            float h = 118f * s;
+            float x0 = landscape ? safe.xMax - 18f * s - w : safe.xMin + 16f * s;
+            float y0 = safe.yMin + 14f * s;
+            cardRect = new Rect(x0, y0, w, h);
+            bool mission = selectedKind == 0;
+            var world = SelectedWorld;
+            float meters = Vector2.Distance(player, world);
+            string title = mission ? "SPEED DIAL" : geometry.Places[selectedPlace].Text;
+            string route = mission ? $"{race.Course.Data.startName} TO {race.Course.Data.finishName}".ToUpperInvariant() : "LANDMARK";
+            string info = meters < 1000f ? $"{Mathf.Max(10, Mathf.RoundToInt(meters / 10f) * 10)} M AWAY" : $"{meters / 1000f:F1} KM AWAY";
+            if (mission)
+            {
+                int waiting = 0;
+                if (race.Last?.racers != null)
+                    foreach (var r in race.Last.racers)
+                    {
+                        if (r.left || r.playerId == race.MyId) continue;
+                        var body = race.BodyOf(r.playerId);
+                        var pos = body != null ? body.position : new Vector3(r.position.x, r.position.y, r.position.z);
+                        if (Vector2.Distance(new Vector2(pos.x, pos.z), world) < race.Course.RingRadius + 4f) waiting++;
+                    }
+                info += waiting == 1 ? "    1 PLAYER WAITING" : $"    {waiting} PLAYERS WAITING";
+            }
+            bool can = !mission || CanTravel(race);
+            string action = !mission ? "SET WAYPOINT" : can ? "FAST TRAVEL" : race.Started || race.Gridded ? "IN A RACE" : "IN A LOBBY";
+            var c = cardRect.center;
+            var button = new Rect(x0 + 14f * s, y0 + 12f * s, w - 28f * s, 38f * s);
+            cardButton = new Rect(button.x - 6f * s, button.y - 6f * s, button.width + 12f * s, button.height + 12f * s);
+            Gl(() =>
+            {
+                Parallelogram(c + new Vector2(6f * s, -7f * s), w * 0.5f, h * 0.5f, 7f * s, new Color(0f, 0f, 0f, 0.35f));
+                Parallelogram(c, w * 0.5f, h * 0.5f, 7f * s, White);
+                Parallelogram(c, w * 0.5f - 2.5f * s, h * 0.5f - 2.5f * s, 7f * s, Ink);
+                var fill = can ? Sunshine : new Color(0.55f, 0.57f, 0.65f, 1f);
+                Parallelogram(button.center, button.width * 0.5f, button.height * 0.5f, 6f * s, fill);
+            });
+            TextAt(new Vector2(x0 + 18f * s, y0 + h - 12f * s), title, 17f, White);
+            TextAt(new Vector2(x0 + 18f * s, y0 + h - 36f * s), route, 9.5f, Sunshine);
+            TextAt(new Vector2(x0 + 18f * s, y0 + h - 52f * s), info, 9.5f, White);
+            Label(button.center, action, 16f, Ink);
+        }
+
+        // Left-aligned text with its top-left corner at p (GL pixels).
+        void TextAt(Vector2 p, string text, float fontSize, Color color)
+        {
+            EnsureStyle();
+            style.fontSize = Mathf.RoundToInt(fontSize * s);
+            var size = style.CalcSize(new GUIContent(text));
+            style.normal.textColor = TextColor(color);
+            GUI.Label(new Rect(p.x, Screen.height - p.y, size.x, size.y), text, style);
         }
 
         void DrawChrome()
@@ -439,7 +630,7 @@ namespace Dogpatch.Map
                 Label(n, "N", 13f, White);
             }
             Button(CloseAt, true);
-            Button(RecentreAt, false);
+            if (selectedKind < 0) Button(RecentreAt, false);
             if (MapStyle == 1)
             {
                 var c = CloseAt;
@@ -447,7 +638,7 @@ namespace Dogpatch.Map
                 style.fontSize = Mathf.RoundToInt(15f * s);
                 var title = style.CalcSize(new GUIContent("DOGPATCH"));
                 Chip(new Vector2(c.x + ButtonR + 14f * s + title.x * 0.5f, c.y), "DOGPATCH", 15f, Ink, White);
-                DrawLegend();
+                if (selectedKind < 0) DrawLegend();
             }
             if (MapStyle == 2) Chip(ToScreen(new Vector2(-half.x + 70f * s, half.y + 2f * s)), "DOGPATCH", 13f, Ink, White);
         }
