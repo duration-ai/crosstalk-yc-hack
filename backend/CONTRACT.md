@@ -55,7 +55,8 @@ Every failure returns this body with the status below:
 | 400 | `INVALID_ARGUMENT` | The body is not a JSON object, a field is missing or has the wrong type, or a value breaks a rule (for example an empty `displayName`). |
 | 404 | `NOT_FOUND` | The `playerId`, `vehicleId`, `roomId` or room `code` does not exist (including malformed ids). |
 | 409 | `CONFLICT` | The request contradicts current state: the vehicle is taken, the player is in another vehicle, or the player is not the driver; the room is full, started, finished or in its countdown lock, or the player is not in it. |
-| 501 | `NOT_IMPLEMENTED` | Audio sent to an Operator provider that understands text only. |
+| 429 | `RATE_LIMITED` | More than 10 Scribe tokens a minute for one player. |
+| 503 | `UNAVAILABLE` | The speech service could not mint a token, or its key is not set. |
 | 500 | `INTERNAL` | Anything unexpected. The message is always `Internal error`. |
 
 `message` is for logs, not for branching; branch on `code` and the status. A path or method that matches no route gets Convex's plain-text `404 No matching routes found` instead of the JSON body.
@@ -311,7 +312,6 @@ Players come from `POST /api/players`. A player is in at most one room: creating
 | Send my position | `POST /api/race/update` | `race.update` |
 | Fire a world change | `POST /api/rooms/events` | `events.fire` |
 | Call the Operator (text) | `POST /api/operator` | `operator.call` (action) |
-| Call the Operator (audio) | `POST /api/operator/audio?playerId=…&roomId=…` | `operator.call` (action) |
 
 A typical client loop: create or join, then poll at 5–10 Hz from the lobby onward; send `ready` from the Ready button; once `status` is `countdown` or `racing`, also send `race/update` at 5–10 Hz; apply `events` in `seq` order as they arrive; show `results` when `status` is `finished`.
 
@@ -401,40 +401,91 @@ For world changes that do not go through the Operator: a debug menu, pickups, bo
 
 #### Call the Operator: `POST /api/operator`
 
+The same as the `operator:call` Convex function in [The voice Operator](#the-voice-operator), for clients without a Convex client:
+
 ```json
-{ "playerId": "jd7…", "roomId": "k57…", "text": "make every car yellow" }
+{ "playerId": "jd7…", "roomId": "k57…", "text": "make it rain", "view": View }
 ```
 
-`text` is what the caller said, 1–500 characters after trimming. Response `200`:
+`text` (or `transcript`) is 1–300 characters after trimming. `view` is optional; without it the Operator sees an on-foot player with nothing in view, so object requests are refused as `not_visible`. The response is a `CallResult`. The Operator no longer writes to the world-change log: its effects live in `activeEffects`. `POST /api/operator/audio` is gone, because speech-to-text runs on the device through Scribe. Errors: `400`, `404`, `409` (not in the room, left).
+
+### The voice Operator
+
+While a player holds the Call plate, the client streams the microphone to ElevenLabs Scribe and shows partial transcripts. On release it sends the final transcript and a snapshot of what the player sees to `operator:call`. The action asks `typesafe-ai/jev` 16 typed questions in one decision, and the routing rules in `convex/operatorRules.ts` turn the answers into exactly one effect or one refusal. Effects are rows in `activeEffects`. Every client subscribes to `operator:activeEffects` and applies them. Keys live only in the deployment's env vars: `AI_GATEWAY_API_KEY` for Jev and `ELEVENLABS_API_KEY` for Scribe tokens.
+
+Call these as Convex functions, through a Convex client or the HTTP API on the deployment's `.convex.cloud` URL (`POST /api/action`, `/api/mutation` and `/api/query` with `{ "path": "operator:call", "args": {…}, "format": "json" }`):
+
+| Function | Kind | Args | Returns |
+| --- | --- | --- | --- |
+| `operator:mintScribeToken` | action | `{ playerId }` | `{ token, serverNow }`, a single-use Scribe realtime token. At most 10 a minute per player (`RATE_LIMITED`). |
+| `operator:call` | action | `{ roomId, playerId, transcript, view, clientTimings? }` | `CallResult` |
+| `operator:confirm` | mutation | `{ playerId, effectId }` | `ActiveEffect`, now active. Only the requester, within 10 s of the call (`CONFLICT` otherwise). |
+| `operator:activeEffects` | query (reactive) | `{ roomId }` | `{ effects: ActiveEffect[] }`, only active rows |
 
 ```jsonc
+// View: taken when the Call plate is pressed. At most 8 entities, most prominent first.
 {
-  "line": "Yellow it is!",          // the Operator's spoken line for her pink bar (and TTS later)
-  "command": { "type": "recolor", "params": { "color": "yellow", "hex": "#FFCB1F" } },
-  "event": Event,                   // the same command, already in the room's log
-  "provider": "keyword"             // which provider answered
+  "mode": "driving",                 // "onFoot" | "driving"
+  "timeOfDay": "day",
+  "weather": "clear",
+  "entities": [
+    {
+      "id": "veh_12",                // stable and identical on every client; the caller's car is "veh_me", other racers' cars "car:<playerId>"
+      "class": "waymo",              // leaf class: waymo, zoox, car, bus, bike, pedestrian, delivery_rider, tree, plant, building, streetlight, billboard
+      "desc": "Waymo robotaxi",
+      "color": "white",
+      "screen": "centre, large",
+      "distance_m": 18,
+      "view_rank": 1,
+      "protected": false,            // the YC building is protected
+      "controlledBy": ""             // "me" | "player" | ""
+    }
+  ]
+}
+
+// CallResult
+{
+  "outcome": "applied",              // "applied" | "pending" (needs operator:confirm) | "refused"
+  "effect": ActiveEffect,            // null when refused
+  "refusal": null,                   // { "reason": "protected", "message": "That landmark's protected." }
+  "line": "Rain!",                   // four words at most, for the Operator's pink bar
+  "serverNow": 1794772800000,
+  "timings": { "jevMs": 140, "totalMs": 170, "attempts": 1 }
+}
+
+// ActiveEffect: strings are "" rather than null
+{
+  "id": "k97…",
+  "effect": "recolor",
+  "scope": "object",                 // "players" (every racer) | "world" | "object" (target) | "class" (every targetClass)
+  "target": "veh_12",                // "car:<playerId>" for a racer's car
+  "targetClass": "waymo",
+  "strength": "",                    // "small" | "medium" | "large" on lasting effects
+  "color": "pink",                   // recolor only
+  "theme": "",                       // ped_theme only
+  "instant": true,
+  "status": "active",
+  "startsAt": 1794772800000,
+  "endsAt": 1794772803000,
+  "durationS": 0,
+  "label": "Repainted",
+  "requestedBy": "jd7…",
+  "transcript": "make that Waymo pink"
 }
 ```
 
-The Operator always returns exactly one world change. The event also reaches everyone through the poll, the caller included, so apply world changes from the poll only and use `event.seq` to avoid applying one twice. Errors: `400`, `404`, `409` (not in the room, left, room finished).
+**Lifetimes.** The server rolls a lasting effect's duration from the catalogue range and expires it at `endsAt` with `ctx.scheduler.runAt`. The row leaves the subscription then, and that is when clients revert it. The same effect on the same target extends the existing row (same id, later `endsAt`). A counter (`clear_weather`, `lights_on`, `gravity_normal`, `normal_speed`, `drain`) ends the effects it counters. A contradicting effect (night after day, `gravity_higher` after `gravity_lower`) ends its rival. `undo_last` ends the newest lasting effect. Instant effects (counters, `undo_last`, `demolish`, `explode`, `launch`, `recolor`, `extinguish`) stay listed for 3 s so every client sees them once. Apply them once per id and never revert them.
 
-#### Call the Operator with audio: `POST /api/operator/audio?playerId=<id>&roomId=<id>`
+**Confirm.** An object effect aimed at another racer becomes the matching players effect (`slow_down` → `vehicle_slower`, `grow` → `bigger`, and so on), and the call comes back `pending`. Show "This will affect everyone, including you." and call `operator:confirm` within 10 s, or the effect lapses.
 
-The body is the raw recording with an `audio/*` `Content-Type` (for example `audio/wav`), at most 5 MB. The response is the same as the text call. **Today this returns `501 NOT_IMPLEMENTED`** because the shipped provider understands text only. It starts working when a voice provider is configured, with no client change. Errors: `400` (not `audio/*`, empty, over 5 MB), `404`, `409`, `501`.
+**Refusals.** `refusal.reason` is one of `unsupported`, `transformation`, `spawning`, `teleport`, `deferred`, `cheat`, `vague`, `not_a_request`, `too_broad`, `player_target`, `no_op`, `incompatible`, `not_visible`, `protected`, or `unavailable` (Jev failed twice or timed out after 2 s). `message` is a short, friendly toast line of four words or fewer.
 
-### The Operator's providers
+**Log.** Every call writes an `operatorCalls` row with the transcript, view, Jev input, answers, command, outcome and timings.
 
-`operator.call` is a Convex action. It asks a provider for `{ line, command }`, validates the command with the same rules as a direct fire, and appends it to the room's log through `events.fire`. The `OPERATOR_PROVIDER` deployment env var picks the provider:
-
-| `OPERATOR_PROVIDER` | What it does |
-| --- | --- |
-| unset or `keyword` | Deterministic keyword matching with no keys and no network. The earliest keyword in the utterance wins: a color word → recolor, "gravity" → gravity low ("more gravity" → high), "icy" → ice, "fog" → fog, "night"/"dusk"/"golden"/"morning" → time, "traffic" → traffic heavy, "swap" → swap with a named racer or the racer just ahead, "shrink"/"giant" → resize, "ramp"/"jump" → ramp, "rain"/"rainy"/"storm"/"wet"/"drizzle" → rain on, "snow"/"snowy"/"blizzard"/"flurries" → snow on (either with "stop"/"no"/"off" → off). Anything else still gets a world change, picked deterministically from the text, with "Didn't catch that." in front of the line. |
-| (open slot) | An LLM or voice provider. Which one is a pending team decision; none is wired up or called. |
-
-To add one, implement `OperatorProvider` (in `convex/operatorProviders.ts`: `respond({ text?, audio?, caller, racers })` returning `{ line, command }`, plus `acceptsAudio`) in its own module, read its key from its own env var, register it in `PROVIDERS`, and set `OPERATOR_PROVIDER` to its name. An unknown name, a provider that throws, or a provider that returns an invalid command falls back to the keyword provider for text calls, and `provider` then says `keyword`.
+The catalogue (effects, classes, durations, allowed classes) is `convex/operatorCatalogue.ts`. The questions are `convex/jev.ts`.
 
 ### Race client notes
 
-- **Measured on rapid-gnat-965** from a cloud machine, with four racers updating and four clients polling in parallel: about 107 ms mean (151 ms p95) per update and 94 ms (126 ms p95) per poll, with no errors. The curl harness that awaited each call sustained 6.7 updates per second per racer, and a round trip that short leaves room for about 9 Hz, so the 5–10 Hz target holds on that link. Operator text calls took 130–190 ms.
-- **Trust:** there is no auth or anti-cheat. Positions, finishes and world changes are taken as sent; there is no rate limit on Operator calls yet.
+- **Measured on rapid-gnat-965** from a cloud machine, with four racers updating and four clients polling in parallel: about 107 ms mean (151 ms p95) per update and 94 ms (126 ms p95) per poll, with no errors. The curl harness that awaited each call sustained 6.7 updates per second per racer, and a round trip that short leaves room for about 9 Hz, so the 5–10 Hz target holds on that link. Voice Operator calls take about 300 ms from `operator:call` to the effect showing up in the subscription (Jev about 140 ms of it).
+- **Trust:** there is no auth or anti-cheat. Positions, finishes and world changes are taken as sent; Operator calls are not rate-limited; Scribe tokens are.
 - **Rooms are never deleted.** Codes are unique across all rooms ever created, so a code always means the same room.

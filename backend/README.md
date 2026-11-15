@@ -15,8 +15,11 @@ The Unity client does not call this yet: it runs against a local in-memory `IGam
 | `convex/rooms.ts` | `create`, `join`, `leave`, `setReady` (and rematch), and the internal `poll` |
 | `convex/race.ts` | `update`: position, route progress and finish detection |
 | `convex/events.ts` | `fire`: appends a world change to a room's log |
-| `convex/operator.ts` | `call`: the Operator action |
-| `convex/operatorProviders.ts` | The `OperatorProvider` interface, the keyword provider, and the provider registry |
+| `convex/operator.ts` | The voice Operator: `call`, `confirm`, `activeEffects`, `mintScribeToken`, expiry |
+| `convex/operatorRules.ts` | The routing rules that turn Jev's answers into one command |
+| `convex/operatorCatalogue.ts` | Effects, classes, durations, counters |
+| `convex/jev.ts` | The Jev questions, the input text and the HTTP call |
+| `scripts/live-operator.mts`, `scripts/live-voice.mts` | Live tests against a deployment |
 | `convex/raceModel.ts` | Room rules: colors, countdown, phase, route progress, place order, awards |
 | `convex/worldChanges.ts` | World-change validation and news text |
 | `convex/model.ts` | Shared validators, error helper, and response shapes |
@@ -69,7 +72,14 @@ curl "$CONVEX_SITE_URL/api/vehicles"
 
 ## The Operator
 
-`OPERATOR_PROVIDER` (a deployment env var, `npx convex env set OPERATOR_PROVIDER <name>`) picks who answers Operator calls. Unset, it is `keyword`: deterministic keyword matching with no API keys. An LLM or voice provider plugs in as another `OperatorProvider` registered in `convex/operatorProviders.ts`; none is wired up yet. See "The Operator's providers" in [CONTRACT.md](CONTRACT.md).
+The Operator needs two deployment env vars: `AI_GATEWAY_API_KEY` (Vercel AI Gateway, for `typesafe-ai/jev`) and `ELEVENLABS_API_KEY` (for Scribe tokens). Set them with `npx convex env set <NAME> <value>` on every deployment, or add them as project defaults in the Convex dashboard. Without the gateway key, every call is refused as `unavailable`. See "The voice Operator" in [CONTRACT.md](CONTRACT.md).
+
+Live tests (they create throwaway players and a room on the deployment):
+
+```sh
+CONVEX_URL=https://<deployment>.convex.cloud npx tsx scripts/live-operator.mts   # 45 phrases across every scope and refusal
+CONVEX_URL=https://<deployment>.convex.cloud npx tsx scripts/live-voice.mts      # macOS say → Scribe → Operator, release-to-effect timing
+```
 
 ## Deploy
 
