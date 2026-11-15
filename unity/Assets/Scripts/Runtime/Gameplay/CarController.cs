@@ -13,6 +13,9 @@ namespace Dogpatch.Gameplay
         public string VehicleId;
         public string ModelId;
         public bool Driven { get; private set; }
+
+        // False while the vehicle can't be taken, such as a delivery bike with its rider still on.
+        public bool Enterable = true;
         public float Speed => forwardSpeed;
         public Vector3 HalfExtents { get; private set; }
 

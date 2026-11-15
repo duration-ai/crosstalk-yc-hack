@@ -228,6 +228,7 @@ namespace Dogpatch.Gameplay
             CarController tapped = null;
             if (Physics.SphereCast(ray, 0.4f, out var hit, 200f, ~0, QueryTriggerInteraction.Ignore))
                 tapped = hit.collider.GetComponentInParent<CarController>();
+            if (tapped != null && tapped != current && !tapped.Enterable) tapped = null;
             Debug.Log($"[Dogpatch] tap at ({screen.x:F0},{screen.y:F0}) hit={(tapped != null ? "car " + tapped.VehicleId : "nothing")}");
 
             if (current != null)
