@@ -5,7 +5,14 @@ import type { MutationCtx, QueryCtx } from "./_generated/server";
 export const vec3 = v.object({ x: v.number(), y: v.number(), z: v.number() });
 export const movementMode = v.union(v.literal("onFoot"), v.literal("driving"));
 
-export type ErrorCode = "INVALID_ARGUMENT" | "NOT_FOUND" | "CONFLICT" | "RATE_LIMITED" | "UNAVAILABLE";
+export type ErrorCode =
+  | "INVALID_ARGUMENT"
+  | "NOT_FOUND"
+  | "CONFLICT"
+  | "RATE_LIMITED"
+  | "UNAVAILABLE"
+  | "RETAKE"
+  | "DECISION_UNAVAILABLE";
 
 export function fail(code: ErrorCode, message: string): never {
   throw new ConvexError({ code, message });
