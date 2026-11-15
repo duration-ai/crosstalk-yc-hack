@@ -206,7 +206,11 @@ namespace Dogpatch.Race
         Vector3 LobbyRight => Vector3.Cross(Vector3.up, -Course.RingFacing);
         float LobbyHeading => RoutePath.Heading(new Vector2(Course.RingFacing.x, Course.RingFacing.z));
 
-        public Vector3 RingSpot(int slot) => Course.RingCenter + LobbyRight * RingLateral[slot] + Vector3.up * 0.06f;
+        public Vector3 RingSpot(int slot)
+        {
+            var p = Course.RingCenter + LobbyRight * RingLateral[slot];
+            return new Vector3(p.x, Course.GroundY(new Vector2(p.x, p.z)) + 0.06f, p.z);
+        }
 
         void PlaceForLobby(bool onRing)
         {
