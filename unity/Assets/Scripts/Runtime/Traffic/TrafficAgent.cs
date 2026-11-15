@@ -264,10 +264,18 @@ namespace Dogpatch.Traffic
             float rate = brake;
             State = "cruising";
 
-            if (Express && Link == null && Lane == GoalLane)
+            if (Express && GoalLane != null)
             {
-                Limit(ref target, GoalS - S, brake);
-                State = "pulling up";
+                float toGoal = float.MaxValue;
+                if (Link == null && Lane == GoalLane) toGoal = GoalS - S;
+                else if (Link != null && Link.To == GoalLane) toGoal = Link.Path.Length - S + GoalS;
+                else if (Link == null && Route != null && Route[(RouteIndex + 1) % Route.Count] == GoalLane)
+                    toGoal = Lane.Path.Length - S + (nextLink != null ? nextLink.Path.Length : 0f) + GoalS;
+                if (toGoal < float.MaxValue)
+                {
+                    Limit(ref target, toGoal, brake);
+                    State = "pulling up";
+                }
             }
 
             if (!OnRail && Link == null && !Express)
@@ -431,6 +439,11 @@ namespace Dogpatch.Traffic
                     {
                         Lane = link.To;
                         S = 0f;
+                        if (Route != null)
+                        {
+                            RouteIndex = (RouteIndex + 1) % Route.Count;
+                            if (Route[RouteIndex] != Lane) Route = null;
+                        }
                         continue;
                     }
                     Link = link;

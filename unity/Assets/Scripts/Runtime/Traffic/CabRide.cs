@@ -46,6 +46,7 @@ namespace Dogpatch.Traffic
                 .Take(8);
             foreach (var (lane, s, d) in candidates)
             {
+                if (lane == start && a.Link == null && a.S > s - 3f) continue;
                 var route = System.Graph.Route(start, lane);
                 if (route == null) continue;
                 if (a.Link != null) route.Insert(0, a.Lane);
