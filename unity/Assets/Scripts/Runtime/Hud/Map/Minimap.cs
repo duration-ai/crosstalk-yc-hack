@@ -7,6 +7,7 @@ using Dogpatch.Nav;
 using Dogpatch.Race;
 using Dogpatch.Slipstream;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace Dogpatch.Map
 {
@@ -65,6 +66,8 @@ namespace Dogpatch.Map
         Task<MapGeometry> build;
         float buildStarted;
         RenderTexture target;
+        CommandBuffer commands;
+        Mesh unitQuad;
         Hud hud;
         Font font;
         GUIStyle style;
@@ -391,11 +394,11 @@ namespace Dogpatch.Map
 
         void OnGUI()
         {
+            GUI.depth = FullOpen ? -20 : 0;
             if (Event.current.type != EventType.Repaint || geometry == null || Game == null || !Game.IsReady || (!Shown && !FullOpen)) return;
             var focus = Game.Focus;
             var cam = Game.View;
             if (focus == null || cam == null) return;
-            GUI.depth = FullOpen ? -20 : 0;
             var player = new Vector2(focus.position.x, focus.position.z);
 
             if (FullOpen)
@@ -467,20 +470,22 @@ namespace Dogpatch.Map
             var reach = new Vector2(w, h) * (FullOpen ? 0.5f : 0.75f) / pxPerMeter;
             var view = new Rect(me - reach, reach * 2f);
 
+            if (commands == null)
+            {
+                commands = new CommandBuffer { name = "Minimap" };
+                unitQuad = new Mesh { name = "MapBay" };
+                unitQuad.SetVertices(new[] { Vector3.zero, Vector3.up, new Vector3(1f, 1f, 0f), Vector3.right });
+                var bay = (Color32)Bay;
+                unitQuad.SetColors(new[] { bay, bay, bay, bay });
+                unitQuad.SetTriangles(new[] { 0, 1, 2, 0, 2, 3 }, 0);
+            }
             var previous = RenderTexture.active;
-            RenderTexture.active = target;
-            GL.PushMatrix();
-            GL.LoadPixelMatrix(0f, w, 0f, h);
-            marks.SetPass(0);
-            GL.Begin(GL.QUADS);
-            GL.Color(Bay);
-            GL.Vertex3(0f, 0f, 0f);
-            GL.Vertex3(0f, h, 0f);
-            GL.Vertex3(w, h, 0f);
-            GL.Vertex3(w, 0f, 0f);
-            GL.End();
-            geometry.Draw(marks, worldToPixel, view);
-            GL.PopMatrix();
+            commands.Clear();
+            commands.SetRenderTarget(target);
+            commands.SetViewProjectionMatrices(Matrix4x4.identity, Matrix4x4.Ortho(0f, w, 0f, h, -1f, 1f));
+            commands.DrawMesh(unitQuad, Matrix4x4.Scale(new Vector3(w, h, 1f)), marks, 0, 0);
+            geometry.Draw(commands, marks, worldToPixel, view);
+            Graphics.ExecuteCommandBuffer(commands);
             RenderTexture.active = previous;
         }
 
@@ -823,3 +828,78 @@ namespace Dogpatch.Map
         }
 
         // Distance to a free-roam objective, frameless white Exo 2 with a thin ink outline just
+        // above the rim (a race already has its meters to YC top right).
+        void DrawDistance()
+        {
+            var nav = NavService.Instance;
+            if (nav == null || !nav.HasObjective || nav.Arrived || nav.Kind == NavKind.Race) return;
+            int meters = Mathf.RoundToInt(nav.Remaining);
+            meters = meters < 100 ? Mathf.Max(5, Mathf.RoundToInt(meters / 5f) * 5) : Mathf.RoundToInt(meters / 10f) * 10;
+            EnsureStyle();
+            var num = meters.ToString();
+            style.fontSize = Mathf.RoundToInt(20f * s);
+            var numSize = style.CalcSize(new GUIContent(num));
+            float x = center.x + radius * 0.18f;
+            float baseline = Screen.height - (center.y + radius + 7f * s);
+            Outlined(new Rect(x, baseline - numSize.y, numSize.x, numSize.y), num, 1.6f * s);
+            style.fontSize = Mathf.RoundToInt(11f * s);
+            var mSize = style.CalcSize(new GUIContent("M"));
+            Outlined(new Rect(x + numSize.x + 2f * s, baseline - mSize.y - 2f * s, mSize.x, mSize.y), "M", 1.2f * s);
+        }
+
+        // IMGUI text is linearized once more than GL colours in a linear-space build, so text
+        // colours go in gamma-corrected (as in SlipstreamHud).
+        static Color TextColor(Color c) => QualitySettings.activeColorSpace == ColorSpace.Linear ? c.gamma : c;
+
+        void Outlined(Rect r, string text, float outline) => Outlined(r, text, outline, White, Ink);
+
+        void Outlined(Rect r, string text, float outline, Color fill, Color edge)
+        {
+            style.normal.textColor = TextColor(edge);
+            for (int i = 0; i < 12; i++)
+            {
+                float a = i * Mathf.PI * 2f / 12f;
+                GUI.Label(new Rect(r.x + Mathf.Cos(a) * outline, r.y + Mathf.Sin(a) * outline, r.width, r.height), text, style);
+            }
+            style.normal.textColor = TextColor(fill);
+            GUI.Label(r, text, style);
+        }
+
+        static void Tri(Vector2 a, Vector2 b, Vector2 c, Color color)
+        {
+            GL.Color(color);
+            GL.Vertex3(a.x, a.y, 0f);
+            GL.Vertex3(b.x, b.y, 0f);
+            GL.Vertex3(c.x, c.y, 0f);
+        }
+
+        static void Quad(Vector2 a, Vector2 b, Vector2 c, Vector2 d, Color color)
+        {
+            Tri(a, b, c, color);
+            Tri(a, c, d, color);
+        }
+
+        static void Parallelogram(Vector2 c, float w, float h, float lean, Color color) =>
+            Quad(c + new Vector2(-w - lean, -h), c + new Vector2(-w + lean, h), c + new Vector2(w + lean, h), c + new Vector2(w - lean, -h), color);
+
+        static void Disc(Vector2 c, float r, Color color, int segments = 20)
+        {
+            for (int i = 0; i < segments; i++)
+            {
+                float a0 = i * Mathf.PI * 2f / segments, a1 = (i + 1) * Mathf.PI * 2f / segments;
+                Tri(c, c + new Vector2(Mathf.Cos(a0), Mathf.Sin(a0)) * r, c + new Vector2(Mathf.Cos(a1), Mathf.Sin(a1)) * r, color);
+            }
+        }
+
+        static void Ring(Vector2 c, float r, float width, Color color, int segments = 64)
+        {
+            for (int i = 0; i < segments; i++)
+            {
+                float a0 = i * Mathf.PI * 2f / segments, a1 = (i + 1) * Mathf.PI * 2f / segments;
+                var d0 = new Vector2(Mathf.Cos(a0), Mathf.Sin(a0));
+                var d1 = new Vector2(Mathf.Cos(a1), Mathf.Sin(a1));
+                Quad(c + d0 * (r - width), c + d0 * r, c + d1 * r, c + d1 * (r - width), color);
+            }
+        }
+    }
+}

@@ -249,15 +249,14 @@ namespace Dogpatch.Map
 
         public int TriangleCount { get; private set; }
 
-        // Draws every tile overlapping view (world metres) into the active target, layer by layer
-        // so streets stay over parks and buildings over streets across tile edges. worldToPixel
-        // maps a vertex (world x, world z, 0) to a pixel under GL.LoadPixelMatrix.
-        public void Draw(Material material, Matrix4x4 worldToPixel, Rect view)
+        // Queues every tile overlapping view (world metres), layer by layer so streets stay over
+        // parks and buildings over streets across tile edges. model maps a vertex (world x,
+        // world z, 0) to a pixel of the target.
+        public void Draw(CommandBuffer cb, Material material, Matrix4x4 model, Rect view)
         {
-            material.SetPass(0);
             for (int layer = 0; layer < Layers; layer++)
                 foreach (var (mesh, bounds) in meshes)
-                    if (bounds.Overlaps(view)) Graphics.DrawMeshNow(mesh, worldToPixel, layer);
+                    if (bounds.Overlaps(view)) cb.DrawMesh(mesh, model, material, layer, 0);
         }
     }
 }
