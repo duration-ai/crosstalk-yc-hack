@@ -12,6 +12,10 @@ namespace Dogpatch.Race
         public RoutePath Route;
         public float Skill = 0.9f;
         public float Lane;
+
+        // How far a lane plus a sidestep may pull a bot off the route: clear of the cars parked along
+        // the kerbs, which sit some 4.3 m either side of it on the course's streets.
+        const float MaxOffset = 2.2f;
         public bool Active;
 
         public float Progress { get; private set; }
@@ -76,7 +80,7 @@ namespace Dogpatch.Race
 
             float look = Mathf.Clamp(6f + speed * 0.55f, 6f, 18f);
             float at = Mathf.Min(Progress + look, Route.Length);
-            var target = Route.PointAt(at) + Route.RightAt(at) * (Lane + sidestep);
+            var target = Route.PointAt(at) + Route.RightAt(at) * Mathf.Clamp(Lane + sidestep, -MaxOffset, MaxOffset);
             var desired = new Vector3(target.x - pos.x, 0f, target.y - pos.y);
 
             float turn = Route.TurnAhead(Progress, 10f + speed * speed / 13f);
