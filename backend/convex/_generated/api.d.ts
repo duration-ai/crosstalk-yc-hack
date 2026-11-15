@@ -16,6 +16,7 @@ import type * as avatars from "../avatars.js";
 import type * as events from "../events.js";
 import type * as http from "../http.js";
 import type * as jev from "../jev.js";
+import type * as missions from "../missions.js";
 import type * as model from "../model.js";
 import type * as operator from "../operator.js";
 import type * as operatorCatalogue from "../operatorCatalogue.js";
@@ -44,6 +45,7 @@ declare const fullApi: ApiFromModules<{
   events: typeof events;
   http: typeof http;
   jev: typeof jev;
+  missions: typeof missions;
   model: typeof model;
   operator: typeof operator;
   operatorCatalogue: typeof operatorCatalogue;

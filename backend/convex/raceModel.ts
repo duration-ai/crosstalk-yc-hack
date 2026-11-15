@@ -13,6 +13,7 @@ export const COLORS = [
 export const MAX_PLAYERS = COLORS.length;
 export const COUNTDOWN_MS = 3_000;
 export const AUTO_START_MS = 10_000;
+export const MISSION_COUNTDOWN_MS = 10_000;
 export const CLOSE_AFTER_FIRST_FINISH_MS = 60_000;
 export const PHOTO_FINISH_MS = 1_000;
 export const DEFAULT_FINISH_RADIUS = 15;
@@ -133,6 +134,18 @@ export function countdownPatch(room: Room, rows: RoomPlayer[], now: number) {
   return { status: "lobby" as const, startsAt: 0 };
 }
 
+/** A mission lobby counts down once it has minPlayers, restarting the countdown on every join or leave. */
+export function missionPatch(room: Room, rows: RoomPlayer[], now: number) {
+  if (rows.filter((row) => !row.left).length >= room.minPlayers) {
+    return { status: "countdown" as const, startsAt: now + MISSION_COUNTDOWN_MS };
+  }
+  return { status: "lobby" as const, startsAt: 0 };
+}
+
+export function lobbyPatch(room: Room, rows: RoomPlayer[], now: number) {
+  return room.kind === "mission" ? missionPatch(room, rows, now) : countdownPatch(room, rows, now);
+}
+
 /** Ends the race once nobody still in it is driving. */
 export async function finishIfDone(ctx: MutationCtx, room: Room) {
   const rows = await roomPlayers(ctx, room._id);
@@ -146,7 +159,7 @@ export async function removeFromRoom(ctx: MutationCtx, room: Room, row: RoomPlay
   const status = phase(room, now);
   if (status === "lobby" || status === "countdown") {
     await ctx.db.delete(row._id);
-    await ctx.db.patch(room._id, countdownPatch(room, await roomPlayers(ctx, room._id), now));
+    await ctx.db.patch(room._id, lobbyPatch(room, await roomPlayers(ctx, room._id), now));
     return;
   }
   await ctx.db.patch(row._id, { left: true, ready: false, updatedAt: now });

@@ -197,6 +197,14 @@ http.route({
 });
 
 http.route({
+  path: "/api/missions/enter",
+  method: "POST",
+  handler: endpoint((ctx, { playerId, mission, route, finishRadius, minPlayers }) =>
+    ctx.runMutation(internal.missions.enter, { playerId, mission, route, finishRadius, minPlayers }),
+  ),
+});
+
+http.route({
   path: "/api/world/leave",
   method: "POST",
   handler: endpoint((ctx, { playerId }) => ctx.runMutation(internal.world.leave, { playerId })),
