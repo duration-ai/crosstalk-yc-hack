@@ -73,6 +73,12 @@ namespace Dogpatch.Look
             Stepped?.Invoke(position);
         }
 
+        // A few soft dust puffs blown out from under a hovering vehicle; no landing events.
+        public static void Downwash(Vector3 position)
+        {
+            if (instance != null) instance.SoftBurst(position, 3, 0, Dust, 0.12f, 1.2f, 0.5f, 0.35f);
+        }
+
         public static void Scrape(Vector3 position, Vector3 normal, float strength)
         {
             strength = Mathf.Clamp01(strength);

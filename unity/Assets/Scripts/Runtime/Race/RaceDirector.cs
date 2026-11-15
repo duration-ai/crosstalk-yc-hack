@@ -28,9 +28,8 @@ namespace Dogpatch.Race
         const float SendEvery = 0.1f;
         const float LockMs = 3000f;
         const float GhostFor = 4f;
-        public const float WreckHold = 2.5f;
-        public const float WreckSkipAfter = 1f;
-        const float WreckFadeTime = 0.25f;
+        const float WreckHold = 1f;
+        const float WreckFadeTime = 0.1f;
         const float ContactWatch = 10f;
         const float ClearRoadFor = 10f;
         const float ClearRoadMeters = 150f;
@@ -542,7 +541,7 @@ namespace Dogpatch.Race
 
         // A wreck doesn't end anyone's race. A bot's car is repaired and back on the route a moment
         // later. Yours is a beat: you're thrown out and roll, then stand by the smoking wreck with the
-        // camera on it and WRECKED up for 2.5 s (a tap skips it after 1 s), a quick fade, and you're
+        // camera on it and WRECKED up for 1 s, a quick fade, and you're
         // back on the route where you were in the same car, repaired. Getting out on purpose is not a
         // wreck, so it never respawns you.
         void OnWrecked(CarController car)
@@ -565,9 +564,7 @@ namespace Dogpatch.Race
             Game.Follow.Target = car.transform;
             while (!ResultsIn)
             {
-                float since = Time.time - WreckedAt;
-                bool tapped = Input.GetMouseButtonDown(0) || (Input.touchCount > 0 && Input.GetTouch(0).phase == TouchPhase.Began);
-                if (since >= WreckHold || (since >= WreckSkipAfter && tapped)) break;
+                if (Time.time - WreckedAt >= WreckHold) break;
                 if (Game.CurrentCar == null && Game.Player.enabled) Game.Player.SetInput(Vector3.zero, 0f);
                 yield return null;
             }

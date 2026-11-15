@@ -94,8 +94,6 @@ namespace Dogpatch.Map
         Vector2 fullCenter;
         float fullZoom;
         int tapFinger = -1;
-        bool travelChosen;
-        Rect travelRect;
         float travelStart = -1f;
         bool travelDone;
         const float FadeOut = 0.22f;
@@ -583,6 +581,7 @@ namespace Dogpatch.Map
                     var color = SlipstreamHud.SlotColor(r.color);
                     if (Inside(p, 5f * s))
                     {
+                        if (FullOpen) continue;
                         Parallelogram(p, 5.2f * s, 5.2f * s, 1.6f * s, Ink);
                         Parallelogram(p, 3.8f * s, 3.8f * s, 1.6f * s, color);
                     }
