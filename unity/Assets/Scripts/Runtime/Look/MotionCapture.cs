@@ -23,7 +23,7 @@ namespace Dogpatch.Look
         string output;
         GameController game;
         CarController car;
-        Vector3 heading;
+        Vector3 heading, runStart;
         float steerOffset;
         float throttle;
         bool driving;
@@ -50,9 +50,11 @@ namespace Dogpatch.Look
             var (start, dir, length) = LongestRun();
             Debug.Log($"[MotionCapture] run at {start} heading {dir} length {length:F0} m");
 
+            foreach (var hud in FindObjectsByType<Operator.OperatorHud>(FindObjectsSortMode.None)) hud.DebugInput = false;
+
             CarController parked = null;
             foreach (var c in FindObjectsByType<CarController>(FindObjectsSortMode.None))
-                if (c.Enterable && !c.Autopilot && !c.Driven && (parked == null || Vector3.Distance(c.transform.position, game.Player.transform.position) < Vector3.Distance(parked.transform.position, game.Player.transform.position)))
+                if (c.Enterable && !c.Autopilot && !c.Driven && c.HalfExtents.z < 2.6f && (parked == null || Vector3.Distance(c.transform.position, game.Player.transform.position) < Vector3.Distance(parked.transform.position, game.Player.transform.position)))
                     parked = c;
             if (parked == null) throw new InvalidOperationException("no parked car");
             game.Player.Teleport(parked.transform.position - parked.transform.right * (parked.HalfExtents.x + 1f), 0f);
@@ -62,18 +64,20 @@ namespace Dogpatch.Look
             var task = (Task)enter.Invoke(game, new object[] { car });
             while (!task.IsCompleted) yield return null;
 
+            ClearLane(start, dir, length);
             heading = dir;
+            runStart = start;
             car.Place(start + Vector3.up * 0.3f, Mathf.Atan2(dir.x, dir.z) * Mathf.Rad2Deg);
             game.View.GetComponent<FollowCamera>().Snap(car.transform, true);
             for (int k = 0; k < 20; k++) yield return null;
             driving = true;
 
             var draws = ProfilerRecorder.StartNew(ProfilerCategory.Render, "Draw Calls Count");
-            var trace = new StringBuilder("frame,t,phase,speed_ms,speed_factor,rush,boost,lateral,fov,draw_calls\n");
+            var trace = new StringBuilder("frame,t,phase,speed_ms,y,speed_factor,rush,boost,lateral,fov,draw_calls\n");
             var material = new Material(Resources.Load<Shader>("Shaders/FlatVertexColor"));
             int frame = 0;
             string phase = "";
-            bool boosted = false, ramped = false, barrier = false;
+            bool boosted = false, ramped = false, drifted = false, barrier = false;
             while (frame < 30 * 17)
             {
                 float t = frame / 30f;
@@ -99,23 +103,31 @@ namespace Dogpatch.Look
                     at.y = 0f;
                     Ramp.Create(null, at, Mathf.Atan2(heading.x, heading.z) * Mathf.Rad2Deg, material);
                 }
+                if (frame % 15 == 0) ClearTraffic();
+                if (phase == "drift" && !drifted)
+                {
+                    drifted = true;
+                    Relaunch(20f);
+                }
                 if (phase == "drift")
                 {
                     float d = t - 10.5f;
-                    steerOffset = d < 0.8f ? -70f : d < 1.7f ? 70f : 0f;
+                    steerOffset = d < 0.3f ? 0f : d < 1f ? -35f : d < 1.8f ? 35f : 0f;
                 }
                 if (phase == "scrape" && !barrier)
                 {
                     barrier = true;
-                    heading = Flat(car.transform.forward);
-                    Barrier(car.transform.position + heading * 8f + Vector3.Cross(Vector3.up, heading) * (car.HalfExtents.x + 1.6f), heading, material);
+                    Relaunch(17f);
+                    var right = Vector3.Cross(Vector3.up, heading);
+                    var lane = runStart + heading * Vector3.Dot(car.transform.position - runStart, heading);
+                    Barrier(lane + heading * 6f + right * (car.HalfExtents.x + 0.8f), heading, material);
                 }
-                if (phase == "scrape") steerOffset = 9f;
+                if (phase == "scrape") steerOffset = 12f;
 
                 yield return new WaitForEndOfFrame();
                 Save(Path.Combine(output, $"frame_{frame:D5}.ppm"));
-                trace.Append(string.Format(CultureInfo.InvariantCulture, "{0},{1:F2},{2},{3:F2},{4:F3},{5:F3},{6:F3},{7:F2},{8:F1},{9}\n",
-                    frame, t, phase, car.Speed, MotionFx.SpeedFactor, MotionFx.Rush, MotionFx.BoostFactor, MotionFx.Lateral, game.View.fieldOfView, draws.Valid ? draws.LastValue : -1));
+                trace.Append(string.Format(CultureInfo.InvariantCulture, "{0},{1:F2},{2},{3:F2},{4:F2},{5:F3},{6:F3},{7:F3},{8:F2},{9:F1},{10}\n",
+                    frame, t, phase, car.Speed, car.transform.position.y, MotionFx.SpeedFactor, MotionFx.Rush, MotionFx.BoostFactor, MotionFx.Lateral, game.View.fieldOfView, draws.Valid ? draws.LastValue : -1));
                 frame++;
             }
             driving = false;
@@ -123,6 +135,39 @@ namespace Dogpatch.Look
             File.WriteAllText(Path.Combine(output, "trace.csv"), trace.ToString());
             Debug.Log($"[MotionCapture] done, {frame} frames");
             Application.Quit();
+        }
+
+        // Parked and passing cars sitting on the drive line would end the run early, so the capture
+        // parks them out of the way.
+        void ClearLane(Vector3 start, Vector3 dir, float length)
+        {
+            foreach (var c in FindObjectsByType<CarController>(FindObjectsSortMode.None))
+            {
+                if (c == car) continue;
+                var d = c.transform.position - start;
+                float along = Vector3.Dot(d, dir);
+                if (along < -20f || along > length + 50f) continue;
+                if (Vector3.Cross(dir, d).magnitude < 3.5f) c.gameObject.SetActive(false);
+            }
+            foreach (var agent in FindObjectsByType<Traffic.TrafficAgent>(FindObjectsSortMode.None))
+                if (Vector3.Distance(agent.transform.position, start) < length + 50f) agent.gameObject.SetActive(false);
+        }
+
+        // Puts the car back on the run line where it is along it, at a given speed, so each maneuver
+        // starts clean.
+        void Relaunch(float speed)
+        {
+            float along = Vector3.Dot(car.transform.position - runStart, heading);
+            car.Place(runStart + heading * along + Vector3.up * 0.3f, Mathf.Atan2(heading.x, heading.z) * Mathf.Rad2Deg);
+            car.GetComponent<Rigidbody>().linearVelocity = heading * speed;
+        }
+
+        // Moving traffic would crash into the scripted maneuvers, so the capture parks it.
+        void ClearTraffic()
+        {
+            foreach (var agent in FindObjectsByType<Traffic.TrafficAgent>(FindObjectsSortMode.None)) agent.gameObject.SetActive(false);
+            foreach (var c in FindObjectsByType<CarController>(FindObjectsSortMode.None))
+                if (c != car && (c.Autopilot || c.Driven)) c.gameObject.SetActive(false);
         }
 
         static Vector3 Flat(Vector3 v)
@@ -142,7 +187,7 @@ namespace Dogpatch.Look
             mesh.colors = colors;
             go.GetComponent<MeshFilter>().sharedMesh = mesh;
             go.GetComponent<MeshRenderer>().sharedMaterial = material;
-            var rotation = Quaternion.LookRotation(Quaternion.Euler(0f, -4f, 0f) * along);
+            var rotation = Quaternion.LookRotation(Quaternion.Euler(0f, -2f, 0f) * along);
             go.transform.SetPositionAndRotation(nearEnd + rotation * Vector3.forward * 20f + Vector3.up * 0.5f, rotation);
             go.transform.localScale = new Vector3(0.6f, 1f, 40f);
         }
@@ -179,7 +224,7 @@ namespace Dogpatch.Look
                     best = run;
                     var dir = (pts[i] - pts[from]).normalized;
                     bestDir = new Vector3(dir.x, 0f, dir.y);
-                    bestStart = new Vector3(pts[from].x, 0f, pts[from].y) + Vector3.Cross(Vector3.up, bestDir) * 2.2f;
+                    bestStart = new Vector3(pts[from].x, 0f, pts[from].y) + Vector3.Cross(Vector3.up, bestDir) * 1.2f;
                 }
             }
             return (bestStart, bestDir, best);
