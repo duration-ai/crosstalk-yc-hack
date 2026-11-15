@@ -18,6 +18,7 @@ namespace Dogpatch.World
         const float Step = 5f;
         const float RampLength = 230f;
         const float Ease = 25f;
+        const float FootKick = 0.25f;
         const float Cell = 20f;
         const float MphToMs = 0.44704f;
 
@@ -56,6 +57,17 @@ namespace Dogpatch.World
             public Vector2 Point;
         }
 
+        // Ramps the flat world can't hold. In OSM they stack over the kept Mariposa ramps where I-280 runs in
+        // its cut under 18th St; on a flat map they would cross those ramps at the same height. Each only
+        // meets the deck at the map edge (the southbound off-ramp to 18th St and Pennsylvania leaves the
+        // deck north of the bbox, the northbound on-ramp from 18th St joins it there), so no in-map route
+        // is lost: the southbound on-ramp from Mariposa and the northbound off-ramp to Mariposa stay.
+        static readonly HashSet<long> Omitted = new HashSet<long>
+        {
+            8915244, 1563350187, 394691480, 394691479, 8915636, 40829048,
+            8915638, 953287542, 1563350186,
+        };
+
         public readonly List<Way> Ways = new List<Way>();
         public readonly List<Junction> Junctions = new List<Junction>();
         readonly Dictionary<Vector2Int, List<(int way, int i)>> grid = new Dictionary<Vector2Int, List<(int, int)>>();
@@ -66,7 +78,7 @@ namespace Dogpatch.World
             foreach (var w in data.ways)
             {
                 var pts = Geometry.ToPoints(w.pts);
-                if (pts.Length < 2) continue;
+                if (pts.Length < 2 || Omitted.Contains(w.osmId)) continue;
                 var resampled = new List<Vector2> { pts[0] };
                 var ids = new List<long> { w.nodes[0] };
                 for (int i = 1; i < pts.Length; i++)
@@ -206,10 +218,16 @@ namespace Dogpatch.World
                     edges[key[w][i]].Add((key[w][i + 1], len));
                     edges[key[w][i + 1]].Add((key[w][i], len));
                 }
-                for (int i = 0; i < way.Points.Length; i++)
-                    if (!way.Ramp || InsideMotorway(way, way.Points[i])) deck[key[w][i]] = true;
+                if (!way.Ramp)
+                    for (int i = 0; i < way.Points.Length; i++) deck[key[w][i]] = true;
             }
-            foreach (var j in Junctions) ground[key[j.Way][j.AtStart ? 0 : Ways[j.Way].Points.Length - 1]] = true;
+            var baseY = new float[count];
+            foreach (var j in Junctions)
+            {
+                int n = key[j.Way][j.AtStart ? 0 : Ways[j.Way].Points.Length - 1];
+                ground[n] = true;
+                baseY[n] = RoadSurface.GroundY(j.Point);
+            }
             for (int w = 0; w < Ways.Count; w++)
             {
                 var way = Ways[w];
@@ -219,7 +237,21 @@ namespace Dogpatch.World
             }
             for (int n = 0; n < count; n++) if (ground[n]) deck[n] = false;
 
-            var toGround = Distances(edges, ground, deck);
+            // A ramp stays at deck height while it is still inside a motorway deck (gores), if it leads to the
+            // deck at all: at-grade ramps that merely pass under the deck keep their own profile.
+            var reach = Distances(edges, deck, new bool[count]);
+            for (int w = 0; w < Ways.Count; w++)
+            {
+                if (!Ways[w].Ramp) continue;
+                for (int i = 0; i < Ways[w].Points.Length; i++)
+                {
+                    int n = key[w][i];
+                    if (!ground[n] && !float.IsInfinity(reach[n]) && InsideMotorway(Ways[w], Ways[w].Points[i])) deck[n] = true;
+                }
+            }
+
+            var origin = new int[count];
+            var toGround = Distances(edges, ground, deck, origin);
             var toDeck = Distances(edges, deck, ground);
             for (int w = 0; w < Ways.Count; w++)
                 for (int i = 0; i < Ways[w].Points.Length; i++)
@@ -227,15 +259,46 @@ namespace Dogpatch.World
                     int n = key[w][i];
                     float h;
                     if (deck[n]) h = DeckHeight;
-                    else if (ground[n]) h = 0f;
+                    else if (ground[n]) h = baseY[n];
                     else if (float.IsInfinity(toGround[n])) h = DeckHeight;
-                    else if (float.IsInfinity(toDeck[n])) h = 0f;
+                    else if (float.IsInfinity(toDeck[n])) h = baseY[origin[n]];
                     else
                     {
+                        // The foot starts on the street's own surface (recessed asphalt on curbed streets)
+                        // and kicks up at about 6% so it clears the sidewalk before it reaches the curb.
+                        float foot = baseY[origin[n]];
                         float span = Mathf.Min(toGround[n] + toDeck[n], RampLength);
-                        h = DeckHeight * Profile(toGround[n] / span, Mathf.Min(Ease / span, 0.3f));
+                        float rise = (DeckHeight - foot) * Profile(toGround[n] / span, Mathf.Min(Ease / span, 0.3f));
+                        h = foot + Mathf.Max(rise, Mathf.Min(FootKick, toGround[n] * FootKick / 4f));
                     }
                     Ways[w].Points[i].y = h;
+                }
+
+            // Where ramps split or merge, branches that overlap carry slightly different heights (each was
+            // graded from its own street end); pull overlapping free points together so the decks meet flush.
+            for (int pass = 0; pass < 8; pass++)
+                for (int w = 0; w < Ways.Count; w++)
+                {
+                    var a = Ways[w];
+                    if (!a.Ramp) continue;
+                    for (int i = 0; i < a.Points.Length; i++)
+                    {
+                        int n = key[w][i];
+                        if (deck[n] || ground[n]) continue;
+                        var p = new Vector2(a.Points[i].x, a.Points[i].z);
+                        foreach (var b in Ways)
+                        {
+                            if (b == a || !b.Ramp) continue;
+                            for (int j = 0; j + 1 < b.Points.Length; j++)
+                            {
+                                var q = Geometry.ClosestPointOnSegment(p, new Vector2(b.Points[j].x, b.Points[j].z), new Vector2(b.Points[j + 1].x, b.Points[j + 1].z), out float t);
+                                if (Vector2.Distance(p, q) > (a.HalfWidth + b.HalfWidth) * 0.5f) continue;
+                                float hb = Mathf.Lerp(b.Points[j].y, b.Points[j + 1].y, t);
+                                if (Mathf.Abs(hb - a.Points[i].y) < 3f) a.Points[i].y = (a.Points[i].y + hb) * 0.5f;
+                                break;
+                            }
+                        }
+                    }
                 }
         }
 
@@ -253,13 +316,14 @@ namespace Dogpatch.World
             return false;
         }
 
-        static float[] Distances(List<(int to, float len)>[] edges, bool[] sources, bool[] walls)
+        static float[] Distances(List<(int to, float len)>[] edges, bool[] sources, bool[] walls, int[] origin = null)
         {
             var dist = new float[edges.Length];
             var open = new SortedSet<(float d, int n)>();
             for (int n = 0; n < dist.Length; n++)
             {
                 dist[n] = sources[n] ? 0f : float.PositiveInfinity;
+                if (origin != null) origin[n] = n;
                 if (sources[n]) open.Add((0f, n));
             }
             while (open.Count > 0)
@@ -272,6 +336,7 @@ namespace Dogpatch.World
                     if (d + len >= dist[v]) continue;
                     if (!float.IsInfinity(dist[v])) open.Remove((dist[v], v));
                     dist[v] = d + len;
+                    if (origin != null) origin[v] = origin[u];
                     open.Add((dist[v], v));
                 }
             }

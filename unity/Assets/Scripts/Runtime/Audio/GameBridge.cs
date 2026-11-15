@@ -43,7 +43,7 @@ namespace Dogpatch.Audio
 
         void OnScored(SmashScoreEvent e)
         {
-            bool mine = e.Scorer != null && e.Scorer.Driven;
+            bool mine = IsPlayer(e.Scorer);
             switch (e.Kind)
             {
                 case SmashKind.Break:
@@ -55,7 +55,10 @@ namespace Dogpatch.Audio
             }
         }
 
-        void OnWrecked(CarController car) => GameEvents.RaiseWreck(car.transform.position, car.Driven);
+        void OnWrecked(CarController car) => GameEvents.RaiseWreck(car.transform.position, IsPlayer(car));
+
+        // Race bots also drive (Driven is true for them), so the local player is the GameController's car.
+        static bool IsPlayer(CarController car) => car != null && SoundSystem.Game != null && SoundSystem.Game.CurrentCar == car;
 
         void OnBoosted(float strength)
         {
@@ -79,6 +82,7 @@ namespace Dogpatch.Audio
 
         void Update()
         {
+            if (SoundDemo.Active) return;
             GameEvents.SetEnvironment(WorldEnvironment.TimeOfDay, WorldEnvironment.Rain, WorldEnvironment.Snow, WorldEnvironment.FogDensity > 0.5f);
 
             if (race == null && RaceDirector.Instance != null)

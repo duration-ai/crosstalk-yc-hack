@@ -51,12 +51,12 @@ namespace Dogpatch.Vehicles
             }
         }
 
-        public static CarController Spawn(string type, Vector3 position, float heading, Transform parent = null, int paint = -1)
+        public static CarController Spawn(string type, Vector3 position, float heading, Transform parent = null, int paint = -1, string id = null)
         {
             var spec = VehicleCatalog.Get(type);
             if (paint < 0) paint = UnityEngine.Random.Range(0, 1000);
             var (visual, bounds) = VehicleModels.Build(spec, paint, SharedMaterial);
-            var car = CarController.Create(type + "-" + nextId++, spec.Id, visual, bounds, position, heading);
+            var car = CarController.Create(id ?? type + "-" + nextId++, spec.Id, visual, bounds, position, heading);
             if (parent != null) car.transform.SetParent(parent, true);
             Apply(car, spec, paint);
             return car;

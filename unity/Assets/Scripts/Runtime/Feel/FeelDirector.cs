@@ -8,8 +8,8 @@ namespace Dogpatch.Feel
     public sealed class FeelDirector : MonoBehaviour
     {
         PlayerController player;
-        Camera feelCamera;
         float nextScan;
+        bool cameraFeelFailed;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Boot()
@@ -52,10 +52,10 @@ namespace Dogpatch.Feel
             if (Time.unscaledTime < nextScan) return;
             nextScan = Time.unscaledTime + 0.5f;
             var cam = Camera.main;
-            if (cam != null && cam != feelCamera)
+            if (!cameraFeelFailed && cam != null && cam.GetComponent<CameraFeel>() == null && cam.gameObject.AddComponent<CameraFeel>() == null)
             {
-                feelCamera = cam;
-                if (cam.GetComponent<CameraFeel>() == null && cam.gameObject.AddComponent<CameraFeel>() == null) Debug.LogWarning("[Feel] could not add CameraFeel; camera shake is off");
+                cameraFeelFailed = true;
+                Debug.LogError("[Feel] Could not add CameraFeel to the main camera; camera shake is off");
             }
             if (player != null) return;
             player = FindAnyObjectByType<PlayerController>();

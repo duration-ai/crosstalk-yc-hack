@@ -50,12 +50,19 @@ namespace Dogpatch.Gameplay
             Directory.CreateDirectory(output);
             while ((game = FindAnyObjectByType<GameController>()) == null || game.World == null || game.Player == null) yield return null;
             for (int k = 0; k < 10; k++) yield return null;
+            if (Race.RaceDirector.Instance != null) Destroy(Race.RaceDirector.Instance);
             var freeway = game.World.Roads.Freeway;
             if (freeway == null) throw new InvalidOperationException("no freeway graph");
             BuildPath(freeway);
 
-            car = game.NearestCar;
-            if (car == null) throw new InvalidOperationException("no car near the player");
+            CarController parked = null;
+            foreach (var c in FindObjectsByType<CarController>(FindObjectsSortMode.None))
+                if (c.Enterable && !c.Autopilot && !c.Driven && (parked == null || Vector3.Distance(c.transform.position, game.Player.transform.position) < Vector3.Distance(parked.transform.position, game.Player.transform.position)))
+                    parked = c;
+            if (parked == null) throw new InvalidOperationException("no parked car");
+            game.Player.Teleport(parked.transform.position - parked.transform.right * (parked.HalfExtents.x + 1f), 0f);
+            for (int k = 0; k < 3; k++) yield return null;
+            car = game.NearestCar ?? parked;
             var enter = typeof(GameController).GetMethod("EnterCarAsync", BindingFlags.Instance | BindingFlags.NonPublic);
             var task = (Task)enter.Invoke(game, new object[] { car });
             while (!task.IsCompleted) yield return null;

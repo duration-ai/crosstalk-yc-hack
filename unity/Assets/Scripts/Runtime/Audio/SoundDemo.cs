@@ -18,6 +18,8 @@ namespace Dogpatch.Audio
     {
         const BindingFlags Private = BindingFlags.NonPublic | BindingFlags.Instance;
 
+        public static bool Active { get; private set; }
+
         GameController game;
         DragInput input;
         AudioRecorder recorder;
@@ -29,6 +31,7 @@ namespace Dogpatch.Audio
         {
             if (!Environment.GetCommandLineArgs().Contains("-soundDemo")) return;
             GameEvents.LogEvents = true;
+            Active = true;
             new GameObject("SoundDemo").AddComponent<SoundDemo>();
         }
 
