@@ -66,9 +66,10 @@ namespace Dogpatch.Gameplay
             }
             else
             {
-                traceAnchor = HudLayout.StickScreen;
-                traceAlpha = Mathf.MoveTowards(traceAlpha, Rest, Time.unscaledDeltaTime / TraceFade);
-                traceTip = Vector2.Lerp(traceTip, traceAnchor, 1f - Mathf.Exp(-Time.unscaledDeltaTime * 18f));
+                bool fixedStick = !DragInput.DragAnywhere;
+                if (fixedStick) traceAnchor = HudLayout.StickScreen;
+                traceAlpha = Mathf.MoveTowards(traceAlpha, fixedStick ? Rest : 0f, Time.unscaledDeltaTime / TraceFade);
+                if (fixedStick) traceTip = Vector2.Lerp(traceTip, traceAnchor, 1f - Mathf.Exp(-Time.unscaledDeltaTime * 18f));
             }
 
         }
@@ -120,7 +121,8 @@ namespace Dogpatch.Gameplay
             GL.LoadPixelMatrix();
             GL.Begin(GL.TRIANGLES);
             DrawCarMarker(s);
-            if (!Paused && Game != null && Game.IsReady) DrawStick(s);
+            if (!Paused && Game != null && Game.IsReady && !DragInput.DragAnywhere) DrawStick(s);
+            else if (!Paused && traceAlpha > 0.01f) DrawTrace(s);
             GL.End();
             GL.PopMatrix();
             if (Paused) DrawPausedText(s);
@@ -151,6 +153,18 @@ namespace Dogpatch.Gameplay
             }
             Chevron(2.4f * s, Ink);
             Chevron(0f, Sunshine);
+        }
+
+        // The drag-anywhere scheme's faint trace under the thumb, which fades when the finger lifts.
+        void DrawTrace(float s)
+        {
+            float reach = Input != null ? Input.Reach : 200f * s;
+            var a = traceAnchor;
+            var tip = a + Vector2.ClampMagnitude(traceTip - a, reach);
+            var faint = new Color(1f, 1f, 1f, 0.5f * traceAlpha);
+            Ring(a, 46f * s, 2.6f * s, faint);
+            Disc(a, 4f * s, faint);
+            Disc(tip, 15f * s, new Color(1f, 1f, 1f, 0.85f * traceAlpha));
         }
 
         void DrawStick(float s)
@@ -229,6 +243,13 @@ namespace Dogpatch.Gameplay
                 if (Chip(new Rect(left + i * (w + gap), effectsTop, w, h), label, selected, s)) EffectsSettings.Intensity = intensity;
             }
             if (Chip(new Rect(left + EffectsRow.Length * (w + gap), effectsTop, w, h), "MAP", Minimap.Shown, s)) Minimap.Shown = !Minimap.Shown;
+            var controls = new Rect(left + 232f * s, effectsTop + h + gap, 230f * s, h);
+            if (Chip(controls, DragInput.DragAnywhere ? "CONTROLS: DRAG" : "CONTROLS: STICK", false, s))
+            {
+                DragInput.DragAnywhere = !DragInput.DragAnywhere;
+                Input?.Cancel();
+                Debug.Log("[Hud] controls " + (DragInput.DragAnywhere ? "drag anywhere" : "fixed stick"));
+            }
         }
 
         bool Chip(Rect r, string label, bool selected, float s)

@@ -28,6 +28,7 @@ namespace Dogpatch.Gameplay
         ModelLibrary models;
         Material material;
         DragInput input;
+        float? reverseYaw;
         FollowCamera follow;
         Camera view;
         Hud hud;
@@ -234,9 +235,14 @@ namespace Dogpatch.Gameplay
         {
             if (!ready) return;
 
+            input.Driving = current != null;
             follow.Orbit(input.TakeLook());
             var stick = input.Direction;
-            var dir = stick == Vector2.zero ? Vector3.zero : current != null ? CarStick(current.transform, stick) : Quaternion.Euler(0f, follow.Yaw, 0f) * new Vector3(stick.x, 0f, stick.y);
+            if (current == null || !current.Reversing || !input.Dragging) reverseYaw = null;
+            else reverseYaw ??= follow.Yaw;
+            var dir = stick == Vector2.zero ? Vector3.zero
+                : current != null && !DragInput.DragAnywhere ? CarStick(current.transform, stick)
+                : Quaternion.Euler(0f, reverseYaw ?? follow.Yaw, 0f) * new Vector3(stick.x, 0f, stick.y);
             if (ExternalInput) { }
             else if (current != null) current.SetInput(dir, input.Strength);
             else player.SetInput(dir, input.Strength);

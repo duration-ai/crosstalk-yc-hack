@@ -10,8 +10,10 @@ namespace Dogpatch.Gameplay
     // it never drifts, so you always know where it is. A drag that starts anywhere else pans the
     // camera, on foot and in a car. A quick touch anywhere off the stick is a tap (jump, get in or
     // out), with any finger, so you can jump while running; two fingers off the stick together are
-    // the pause gesture, never a tap. Touches on the minimap are left to it.
-    // The mouse stands in for touch.
+    // the pause gesture, never a tap. Touches on the minimap are left to it. The pause menu's
+    // CONTROLS chip switches to the old drag-anywhere scheme (DragAnywhere): on foot a drag from the
+    // left half moves with an anchor that trails the thumb and the right half looks; at the wheel a
+    // drag anywhere drives. The mouse stands in for touch.
     public sealed class DragInput : MonoBehaviour
     {
         const int MouseId = 1000;
@@ -26,6 +28,27 @@ namespace Dogpatch.Gameplay
             public float DownTime;
             public float MaxTravel;
         }
+
+        const string SchemeKey = "dogpatch.controls";
+        static int scheme = -1;
+
+        public static bool DragAnywhere
+        {
+            get
+            {
+                if (scheme < 0) scheme = PlayerPrefs.GetInt(SchemeKey, 0);
+                return scheme == 1;
+            }
+            set
+            {
+                scheme = value ? 1 : 0;
+                PlayerPrefs.SetInt(SchemeKey, scheme);
+                PlayerPrefs.Save();
+            }
+        }
+
+        // Set by GameController each frame; the drag-anywhere scheme drives from the whole screen.
+        public bool Driving;
 
         public bool Dragging { get; private set; }
         public Vector2 Anchor { get; private set; }
@@ -47,8 +70,8 @@ namespace Dogpatch.Gameplay
         Vector2 lookDelta;
         bool twoFinger;
 
-        public float Reach => HudLayout.StickRadius;
-        float DeadZone => Reach * 0.15f;
+        public float Reach => DragAnywhere ? Mathf.Min(Screen.width, Screen.height) * 0.25f : HudLayout.StickRadius;
+        float DeadZone => DragAnywhere ? Mathf.Min(Screen.width, Screen.height) * 0.035f : Reach * 0.15f;
         static float TapPixels => Mathf.Min(Screen.width, Screen.height) * 0.02f;
 
         public Vector2 Direction
@@ -138,11 +161,12 @@ namespace Dogpatch.Gameplay
         {
             if ((IgnoreAt != null && IgnoreAt(position)) || (IgnoreTouch != null && IgnoreTouch(position)) || (Map.Minimap.Shown && HudLayout.InMinimap(position))) return;
             var finger = new Finger { Id = id, Start = position, Last = position, DownTime = Time.unscaledTime };
-            if (move.Id < 0 && HudLayout.InStick(position))
+            bool grab = DragAnywhere ? Driving || position.x < Screen.width * 0.5f : HudLayout.InStick(position);
+            if (move.Id < 0 && grab)
             {
                 move = finger;
                 Dragging = true;
-                Anchor = HudLayout.StickScreen;
+                Anchor = DragAnywhere ? position : HudLayout.StickScreen;
                 Current = position;
                 return;
             }
@@ -159,6 +183,9 @@ namespace Dogpatch.Gameplay
             if (id == move.Id)
             {
                 Current = position;
+                move.MaxTravel = Mathf.Max(move.MaxTravel, (position - move.Start).magnitude);
+                var offset = position - Anchor;
+                if (DragAnywhere && !Driving && offset.magnitude > Reach) Anchor = position - offset.normalized * Reach;
                 return;
             }
             if (id == look.Id)
@@ -179,8 +206,11 @@ namespace Dogpatch.Gameplay
         {
             if (id == move.Id)
             {
+                Move(id, position);
+                bool quick = DragAnywhere && move.MaxTravel < DeadZone && Time.unscaledTime - move.DownTime < 0.35f;
                 move.Id = -1;
                 Dragging = false;
+                if (quick && TapAllowed(position)) Tapped?.Invoke(position);
                 return;
             }
             Move(id, position);
