@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace Dogpatch.Map
 {
-    public enum MapMarkerKind { Ask }
+    public enum MapMarkerKind { Ask, Race }
 
     // Things other systems put on the minimap. CROS-17's ask pickups call Track when they spawn
     // and Untrack when they are collected; destroyed transforms drop out on their own.

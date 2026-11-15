@@ -63,6 +63,7 @@ namespace Dogpatch.Map
         Material marks;
         Material mapMaterial;
         MapGeometry geometry;
+        bool routePlaces;
         Task<MapGeometry> build;
         float buildStarted;
         RenderTexture target;
@@ -156,12 +157,19 @@ namespace Dogpatch.Map
                 {
                     geometry = build.Result;
                     geometry.Upload();
+                    routePlaces = false;
                     Debug.Log($"[Minimap] built {geometry.TriangleCount} map triangles, {geometry.Streets.Count} street labels, {geometry.Places.Count} places in {(Time.realtimeSinceStartup - buildStarted) * 1000f:F0} ms");
                 }
                 build = null;
             }
 
             if (Game == null || !Game.IsReady) return;
+            var director = RaceDirector.Instance;
+            if (geometry != null && !routePlaces && director != null && director.Setup)
+            {
+                routePlaces = true;
+                foreach (var (name, at) in director.RouteRingSpots()) geometry.Places.Add(new MapGeometry.Label { Text = "RACE: " + name, Position = new Vector2(at.x, at.z) });
+            }
             if (travelStart >= 0f)
             {
                 float t = Time.unscaledTime - travelStart;
@@ -542,9 +550,15 @@ namespace Dogpatch.Map
                 if (Inside(ring, 6f * s)) Ring(ring, Mathf.Max(race.Course.RingRadius * pxPerMeter, 4.5f * s), 1.8f * s, Sunshine);
             }
 
-            foreach (var (target, _) in MapMarkers.All)
+            foreach (var (target, kind) in MapMarkers.All)
             {
                 var p = ToMap(target.position);
+                if (kind == MapMarkerKind.Race)
+                {
+                    if (!Inside(p, 6f * s)) Pin(p, 4f * s, Pink);
+                    else if (!raceUp || race.Gridded || (race.Course.RingCenter - target.position).sqrMagnitude > 1f) Ring(p, 5f * s, 1.6f * s, Pink);
+                    continue;
+                }
                 if (Inside(p, 4f * s)) Diamond(p, 4.8f * s, 3.4f * s);
                 else Pin(p, 3.6f * s, White);
             }

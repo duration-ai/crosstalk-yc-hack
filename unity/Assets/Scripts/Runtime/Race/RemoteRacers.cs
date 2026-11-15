@@ -14,7 +14,8 @@ namespace Dogpatch.Race
     // triggers, not solid: driving into one gives this device's car a light push apart.
     public sealed class RemoteRacers : MonoBehaviour
     {
-        public const float BufferMs = 120f;
+        const double MinBufferMs = 80.0;
+        const double MaxBufferMs = 120.0;
         const float MaxExtrapolateMs = 250f;
         const float MaxDeadReckonMs = 1000f;
         const float MaxYawRate = 120f;
@@ -56,6 +57,13 @@ namespace Dogpatch.Race
             internal float WorldSeenAt = -1000f;
             internal long ModeSince;
             internal long WorldUpdatedAt;
+            internal double IntervalMs = MaxBufferMs;
+            internal bool IntervalKnown;
+
+            // Just over the time between this player's updates, so their newest sample is usually in
+            // hand: about 80 ms for a phone sending 15/s, at most 120 ms, with dead reckoning
+            // covering slower senders.
+            public double BufferMs => System.Math.Min(MaxBufferMs, System.Math.Max(MinBufferMs, IntervalMs * 1.25));
             public string RaceColorHex;
             public string WorldColor;
             public string WorldColorHex;
@@ -80,6 +88,9 @@ namespace Dogpatch.Race
 
         // How far behind the server clock remote players are drawn.
         public double DelayMs => lagMs + BufferMs;
+
+        // The average of every remote's own buffer, for the logs.
+        public double BufferMs => remotes.Count == 0 ? MaxBufferMs : remotes.Values.Average(r => r.BufferMs);
 
         // Race room: every racer this device does not drive.
         public void Sync(PollResponse poll)
@@ -152,6 +163,11 @@ namespace Dogpatch.Race
             {
                 var prev = remote.Samples[remote.Samples.Count - 1];
                 float span = (float)(updatedAt - prev.T) / 1000f;
+                if (span > 0.01f && span < 1f)
+                {
+                    remote.IntervalMs = remote.IntervalKnown ? remote.IntervalMs + (span * 1000.0 - remote.IntervalMs) * 0.1 : span * 1000.0;
+                    remote.IntervalKnown = true;
+                }
                 if (span > 0.02f)
                 {
                     sample.V = Vector3.Lerp(prev.V, (p - prev.P) / span, 0.6f);
@@ -301,12 +317,12 @@ namespace Dogpatch.Race
             if (Race == null || remotes.Count == 0) return;
             if (!Race.Reconnecting)
                 foreach (var gone in remotes.Values.Where(r => Time.time - r.SeenAt > ForgetAfter).Select(r => r.Id).ToList()) Despawn(gone);
-            double t = Race.NowMs - DelayMs;
+            double now = Race.NowMs - lagMs;
             var mine = Race.Game.CurrentCar;
             foreach (var remote in remotes.Values)
             {
                 Paint(remote, Race);
-                if (!Predict(remote.Samples, t, out var target, out float targetH, out var velocity)) continue;
+                if (!Predict(remote.Samples, now - remote.BufferMs, out var target, out float targetH, out var velocity)) continue;
                 float dt = Mathf.Max(Time.deltaTime, 1e-3f);
                 remote.Velocity = velocity;
                 if (!remote.Placed || Vector3.Distance(remote.Position, target) > SnapMeters)

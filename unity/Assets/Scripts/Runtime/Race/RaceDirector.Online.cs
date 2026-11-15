@@ -247,7 +247,7 @@ namespace Dogpatch.Race
                 if (now >= nextTrafficLog)
                 {
                     nextTrafficLog = now + TrafficLogEvery;
-                    Debug.Log("[Net] " + convex.TakeTrafficStats() + $", remote delay {Remotes.DelayMs:F0} ms");
+                    Debug.Log("[Net] " + convex.TakeTrafficStats() + $", remote delay {Remotes.DelayMs:F0} ms, buffers " + string.Join(" ", Remotes.All.Select(r => $"{r.Name} {r.BufferMs:F0}")));
                 }
                 yield return null;
             }
