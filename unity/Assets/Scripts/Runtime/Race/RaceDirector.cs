@@ -24,7 +24,7 @@ namespace Dogpatch.Race
         static readonly float[] BotSkill = { 0.95f, 0.91f, 0.87f };
         static readonly float[] RingLateral = { -0.9f, -2.7f, 0.9f, 2.7f };
         public static readonly string[] SlotHex = { "#2D8CFF", "#A35BFF", "#FF8A1E", "#2EC27E" };
-        const float PollEvery = 0.12f;
+        const float PollEvery = 0.1f;
         const float SendEvery = 0.1f;
         const float LockMs = 3000f;
         const float GhostFor = 4f;
@@ -353,6 +353,7 @@ namespace Dogpatch.Race
                     continue;
                 }
                 string polled = RoomId;
+                float pollStarted = Time.realtimeSinceStartup;
                 var poll = Session.PollAsync(polled, cursor);
                 while (!poll.IsCompleted) yield return null;
                 if (poll.Status != TaskStatus.RanToCompletion)
@@ -363,7 +364,9 @@ namespace Dogpatch.Race
                 }
                 failures = 0;
                 if (polled == RoomId) yield return Handle(poll.Result);
-                yield return Pause(PollEvery);
+                float pollWait = PollEvery - (Time.realtimeSinceStartup - pollStarted);
+                if (pollWait > 0f) yield return Pause(pollWait);
+                else yield return null;
             }
         }
 
@@ -600,6 +603,7 @@ namespace Dogpatch.Race
             }
             else
             {
+                if (Game.CurrentCar != null && Game.CurrentCar != myCar) yield return Wait(Game.ExitCar());
                 if (Game.CurrentCar != myCar)
                 {
                     Game.Player.Teleport(spot + Quaternion.Euler(0f, heading, 0f) * Vector3.left * 2.2f, heading);
@@ -646,6 +650,7 @@ namespace Dogpatch.Race
                     yield return null;
                     continue;
                 }
+                float sendStarted = Time.realtimeSinceStartup;
                 var sends = new List<Task>();
                 var me = BodyOf(MyId);
                 if (me != null) sends.Add(Session.UpdateAsync(MyId, RoomId, new Vec3(me.position.x, me.position.y, me.position.z), me.eulerAngles.y));
@@ -663,7 +668,9 @@ namespace Dogpatch.Race
                     continue;
                 }
                 failures = 0;
-                yield return Pause(SendEvery);
+                float sendWait = SendEvery - (Time.realtimeSinceStartup - sendStarted);
+                if (sendWait > 0f) yield return Pause(sendWait);
+                else yield return null;
             }
         }
 

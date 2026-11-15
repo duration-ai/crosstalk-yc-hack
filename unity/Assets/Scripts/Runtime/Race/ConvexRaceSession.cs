@@ -44,6 +44,49 @@ namespace Dogpatch.Race
         // Raised on the first answer after Reconnecting, so callers can resync.
         public event Action Reconnected;
 
+        sealed class Traffic
+        {
+            public int Count;
+            public int Failed;
+            public readonly List<double> Rtt = new List<double>();
+        }
+
+        readonly Dictionary<string, Traffic> traffic = new Dictionary<string, Traffic>();
+        double trafficSince = -1.0;
+
+        // Requests per second, round-trip p50/p95 and failures per endpoint since the last call.
+        public string TakeTrafficStats()
+        {
+            double now = LocalMs;
+            double seconds = trafficSince < 0.0 ? 1.0 : Math.Max(0.001, (now - trafficSince) / 1000.0);
+            trafficSince = now;
+            var parts = new List<string>();
+            foreach (var pair in traffic)
+            {
+                var t = pair.Value;
+                if (t.Count == 0) continue;
+                t.Rtt.Sort();
+                double p50 = t.Rtt.Count > 0 ? t.Rtt[t.Rtt.Count / 2] : 0.0;
+                double p95 = t.Rtt.Count > 0 ? t.Rtt[Math.Min(t.Rtt.Count - 1, (int)(t.Rtt.Count * 0.95))] : 0.0;
+                parts.Add($"{pair.Key} {t.Count / seconds:F1}/s rtt {p50:F0}/{p95:F0} ms{(t.Failed > 0 ? $" {t.Failed} failed" : "")}");
+                t.Count = 0;
+                t.Failed = 0;
+                t.Rtt.Clear();
+            }
+            return string.Join(", ", parts);
+        }
+
+        void Count(string path, double rtt, bool ok)
+        {
+            if (trafficSince < 0.0) trafficSince = LocalMs;
+            int q = path.IndexOf('?');
+            var key = (q >= 0 ? path.Substring(0, q) : path).Replace("/api/", "");
+            if (!traffic.TryGetValue(key, out var t)) traffic[key] = t = new Traffic();
+            t.Count++;
+            if (ok) t.Rtt.Add(rtt);
+            else t.Failed++;
+        }
+
         // The server's clock, estimated from every poll's serverTime plus half the round trip.
         public long ServerNowMs => (long)(LocalMs + offsetMs);
 
@@ -182,9 +225,12 @@ namespace Dogpatch.Race
                 web.downloadHandler = new DownloadHandlerBuffer();
                 web.timeout = TimeoutSeconds;
                 var done = new TaskCompletionSource<bool>();
+                double sentAt = LocalMs;
                 web.SendWebRequest().completed += _ => done.TrySetResult(true);
                 await done.Task;
-                if (web.result == UnityWebRequest.Result.ConnectionError || web.responseCode >= 500)
+                bool failed = web.result == UnityWebRequest.Result.ConnectionError || web.responseCode >= 500;
+                Count(request.Path, LocalMs - sentAt, !failed);
+                if (failed)
                 {
                     if (failingSinceMs < 0.0) failingSinceMs = LocalMs;
                     if (web.result == UnityWebRequest.Result.ConnectionError) throw new BackendException(Unavailable, web.error);
