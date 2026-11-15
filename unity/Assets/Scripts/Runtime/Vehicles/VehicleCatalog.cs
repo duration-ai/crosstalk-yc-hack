@@ -19,6 +19,8 @@ namespace Dogpatch.Vehicles
         public const string MonsterTruck = "monster-truck";
         public const string WaymoOjai = "waymo-ojai";
         public const string ArtCar = "art-car";
+        public const string DuckBoat = "duck-boat";
+        public const string FireTruck = "fire-truck";
         public const string MuniBus = "muni-bus";
         public const string ShoppingCart = "shopping-cart";
         public const string BayWheels = "bay-wheels-ebike";
@@ -33,7 +35,7 @@ namespace Dogpatch.Vehicles
         public static readonly string[] All =
         {
             WaymoSuv, WaymoOjai, WaymoVan, Zoox, Cybertruck, RaceCar, SportsCar, FlyingCar, CableCar, MonsterTruck, Lowrider, ArtCar, MuniBus, ShoppingCart, BayWheels, Scooter,
-            DoorDashBike, UberEatsBike, Hatchback, Sedan, YellowCab, TThird,
+            DoorDashBike, UberEatsBike, Hatchback, Sedan, YellowCab, TThird, DuckBoat, FireTruck,
         };
     }
 
@@ -139,6 +141,10 @@ namespace Dogpatch.Vehicles
             cable.Coasting = 0.8f;
             Add(new VehicleSpec { Id = VehicleTypes.MonsterTruck, Title = "Monster truck", Source = ModelSource.Procedural, Handling = H(24f, 9f, 16f, 70f, 1f, 3800f, 400f, 0.9f), CruiseSpeed = 12f, Ability = typeof(MonsterCrush) });
             Add(new VehicleSpec { Id = VehicleTypes.CableCar, Title = "Cable car", Source = ModelSource.Procedural, Handling = cable, CruiseSpeed = 6f });
+            var duck = H(19f, 6.5f, 12f, 58f, 0.9f, 3400f, 110f, 0.7f);
+            duck.Draft = 1.5f;
+            Add(new VehicleSpec { Id = VehicleTypes.DuckBoat, Title = "Duck boat", Source = ModelSource.Procedural, Handling = duck, CruiseSpeed = 9f, Ability = typeof(DuckBoat) });
+            Add(new VehicleSpec { Id = VehicleTypes.FireTruck, Title = "Fire truck", Source = ModelSource.Procedural, Handling = H(22f, 7f, 16f, 60f, 1.0f, 5200f, 140f, 0.85f), CruiseSpeed = 10f, Ability = typeof(FireTruck) });
             Add(new VehicleSpec
             {
                 Id = VehicleTypes.MuniBus, Title = "Muni bus", Source = ModelSource.Glb, Resource = "Vehicles/muni-bus", PolyforkId = "city-bus-49fd97",
