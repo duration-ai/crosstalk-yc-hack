@@ -1,0 +1,689 @@
+{
+  "bounds": {
+    "south": 37.7495,
+    "north": 37.7645,
+    "west": -122.3965,
+    "east": -122.38,
+    "minX": -725.3,
+    "maxX": 725.3,
+    "minZ": -834,
+    "maxZ": 834,
+    "originLat": 37.757,
+    "originLon": -122.38825,
+    "reason": "Unchanged from the first extract. Contains the whole Pier 70 site to the bay edge and the YC campus (580 20th St, 37.76078 -122.38664) with >= 413 m margin to the nearest edge; no clipping to the official Dogpatch outline."
+  },
+  "sources": {
+    "osm": "Overpass API (ODbL)",
+    "datasf": {
+      "ynuv-fyni": "Building Footprints",
+      "acdm-wktn": "Parcels - Active and Retired",
+      "c5ge-t6pj": "San Francisco Land Use",
+      "wv5m-vpq2": "Assessor Historical Secured Property Tax Rolls (2025)",
+      "tkzw-k3nq": "San Francisco Street Tree Inventory",
+      "ybh5-27n2": "Traffic Signals",
+      "i28k-bkz6": "Muni Stops",
+      "8vzz-qzz9": "Parking Meters",
+      "hn4j-6fx5": "Bicycle Parking Racks",
+      "5buk-jp7b": "Trash Can Locations",
+      "7jbp-yzp3": "Bay Area Bike Share Stations",
+      "4542-gpa3": "Stop Signs",
+      "e3jj-mbb3": "Assets Maintained by the Recreation and Parks Department"
+    }
+  },
+  "world": {
+    "roads": 1386,
+    "rails": 95,
+    "parks": 32,
+    "landPolygons": 1,
+    "bridges": 22,
+    "viaducts": 21,
+    "platforms": 8,
+    "waterPolygons": 1,
+    "coastlineRuns": 3,
+    "landmarks": 25
+  },
+  "buildings": {
+    "total": 1317,
+    "datasfRows": 1431,
+    "outsideBounds": 0,
+    "under12m2": 114,
+    "heightSource": {
+      "datasf": 1256,
+      "default": 59,
+      "osm": 2
+    },
+    "byType": {
+      "victorian": 359,
+      "rowhouse_modern": 262,
+      "warehouse": 242,
+      "shed": 198,
+      "apartment_midrise": 83,
+      "industrial_brick": 61,
+      "commercial_lowrise": 49,
+      "mixed_use": 30,
+      "civic": 22,
+      "garage": 7,
+      "office": 3,
+      "utility": 1
+    },
+    "byTypeRule": {
+      "res_pre1925": 359,
+      "parcel_pdr": 238,
+      "res_small_lot": 237,
+      "geom_small": 145,
+      "res_tall": 82,
+      "parcel_pdr_old": 53,
+      "vacant_structure": 50,
+      "com_low": 29,
+      "res_retail": 27,
+      "fallback": 20,
+      "parcel_civic": 19,
+      "res_default": 14,
+      "fallback_small_lot": 11,
+      "osm_historic": 8,
+      "lu_parking": 6,
+      "fallback_large_low": 4,
+      "com_tall": 3,
+      "osm_civic": 3,
+      "res_tall_old_retail": 3,
+      "fallback_small": 2,
+      "osm_garage": 1,
+      "osm_shed": 1,
+      "osm_utility": 1,
+      "res_large_lowrise": 1
+    },
+    "byUse": {
+      "RESIDENT": 722,
+      "PDR": 215,
+      "VACANT": 188,
+      "MIXRES": 63,
+      "UNKNOWN": 46,
+      "MIPS": 36,
+      "RETAIL": 26,
+      "CIE": 11,
+      "PARKING": 6,
+      "OPENSPACE": 3,
+      "MED": 1
+    },
+    "byAssessorUse": {
+      "SRES": 428,
+      "IND": 329,
+      "MRES": 276,
+      "MISC": 92,
+      "(none)": 89,
+      "COMR": 41,
+      "COMM": 33,
+      "GOVT": 17,
+      "COMO": 9,
+      "COMH": 3
+    },
+    "withParcel": 1271,
+    "withYearBuilt": 1000,
+    "withStories": 892,
+    "withUnits": 790,
+    "withOsmMatch": 1044,
+    "withOsmName": 72,
+    "cottages": 273,
+    "parcelRows": 2907,
+    "landUseRows": 1081,
+    "assessorRows": 2674,
+    "assessorRowsUnmatched": 49
+  },
+  "trees": {
+    "total": 2358,
+    "bySource": {
+      "datasf": 2285,
+      "osm": 73
+    },
+    "osmDroppedAsDuplicateOfDatasf": 0,
+    "osmNodes": 73,
+    "withDbh": 2166,
+    "dropped": {
+      "empty planting site / stump (Planting site (cut))": 1,
+      "empty planting site / stump (Planting site (pave))": 1,
+      "empty planting site / stump (Planting site (plant))": 1,
+      "empty planting site / stump (Planting site)": 1,
+      "empty planting site / stump (Stump (hand Remove))": 1,
+      "empty planting site / stump (Stump (use Grinder))": 1
+    },
+    "top15Species": [
+      {
+        "species": "Brisbane Box (Lophostemon confertus)",
+        "count": 366
+      },
+      {
+        "species": "Sycamore, London Plane (Platanus x hispanica)",
+        "count": 93
+      },
+      {
+        "species": "Chinese Elm (Ulmus parvifolia)",
+        "count": 86
+      },
+      {
+        "species": "American Sweet Gum (Liquidambar styraciflua)",
+        "count": 79
+      },
+      {
+        "species": "(unknown)",
+        "count": 74
+      },
+      {
+        "species": "Maidenhair Tree (Ginkgo biloba)",
+        "count": 70
+      },
+      {
+        "species": "Swamp Myrtle (Tristaniopsis laurina)",
+        "count": 64
+      },
+      {
+        "species": "Cherry Plum (Prunus cerasifera)",
+        "count": 61
+      },
+      {
+        "species": "Jacaranda (Jacaranda mimosifolia)",
+        "count": 60
+      },
+      {
+        "species": "Cajeput (Melaleuca quinquenervia)",
+        "count": 50
+      },
+      {
+        "species": "Evergreen Pear (Pyrus kawakamii)",
+        "count": 50
+      },
+      {
+        "species": "Little Gem Magnolia (Magnolia grandiflora 'Little Gem')",
+        "count": 45
+      },
+      {
+        "species": "Indian Laurel Fig Tree 'Green Gem' (Ficus microcarpa nitida 'Green Gem')",
+        "count": 41
+      },
+      {
+        "species": "Spanish Dagger (Yucca gloriosa)",
+        "count": 40
+      },
+      {
+        "species": "Saint Mary Magnolia (Magnolia grandiflora 'Saint Mary')",
+        "count": 39
+      }
+    ]
+  },
+  "props": {
+    "total": 2149,
+    "bySource": {
+      "datasf": 1181,
+      "osm": 968
+    },
+    "byKind": {
+      "parking_meter": {
+        "total": 787,
+        "datasf": 787,
+        "osm": 0
+      },
+      "crossing": {
+        "total": 399,
+        "datasf": 0,
+        "osm": 399
+      },
+      "stop_sign": {
+        "total": 276,
+        "datasf": 151,
+        "osm": 125
+      },
+      "power_pole": {
+        "total": 167,
+        "datasf": 0,
+        "osm": 167
+      },
+      "bike_rack": {
+        "total": 91,
+        "datasf": 77,
+        "osm": 14
+      },
+      "traffic_signal": {
+        "total": 84,
+        "datasf": 26,
+        "osm": 58
+      },
+      "trash_can": {
+        "total": 69,
+        "datasf": 49,
+        "osm": 20
+      },
+      "level_crossing": {
+        "total": 68,
+        "datasf": 0,
+        "osm": 68
+      },
+      "bench": {
+        "total": 56,
+        "datasf": 23,
+        "osm": 33
+      },
+      "bus_stop": {
+        "total": 49,
+        "datasf": 37,
+        "osm": 12
+      },
+      "street_lamp": {
+        "total": 30,
+        "datasf": 11,
+        "osm": 19
+      },
+      "picnic_table": {
+        "total": 10,
+        "datasf": 8,
+        "osm": 2
+      },
+      "bicycle_rental": {
+        "total": 8,
+        "datasf": 6,
+        "osm": 2
+      },
+      "crane": {
+        "total": 8,
+        "datasf": 0,
+        "osm": 8
+      },
+      "post_box": {
+        "total": 5,
+        "datasf": 0,
+        "osm": 5
+      },
+      "recycling": {
+        "total": 5,
+        "datasf": 0,
+        "osm": 5
+      },
+      "dog_bag_dispenser": {
+        "total": 4,
+        "datasf": 4,
+        "osm": 0
+      },
+      "artwork": {
+        "total": 3,
+        "datasf": 0,
+        "osm": 3
+      },
+      "drinking_water": {
+        "total": 3,
+        "datasf": 2,
+        "osm": 1
+      },
+      "fire_hydrant": {
+        "total": 3,
+        "datasf": 0,
+        "osm": 3
+      },
+      "historic": {
+        "total": 3,
+        "datasf": 0,
+        "osm": 3
+      },
+      "transit_station": {
+        "total": 3,
+        "datasf": 0,
+        "osm": 3
+      },
+      "vending": {
+        "total": 3,
+        "datasf": 0,
+        "osm": 3
+      },
+      "bollard": {
+        "total": 2,
+        "datasf": 0,
+        "osm": 2
+      },
+      "cream_stone": {
+        "total": 2,
+        "datasf": 0,
+        "osm": 2
+      },
+      "drydock": {
+        "total": 2,
+        "datasf": 0,
+        "osm": 2
+      },
+      "machine_shop": {
+        "total": 2,
+        "datasf": 0,
+        "osm": 2
+      },
+      "caltrain_22nd": {
+        "total": 1,
+        "datasf": 0,
+        "osm": 1
+      },
+      "power_tower": {
+        "total": 1,
+        "datasf": 0,
+        "osm": 1
+      },
+      "pumping_station": {
+        "total": 1,
+        "datasf": 0,
+        "osm": 1
+      },
+      "smokestack": {
+        "total": 1,
+        "datasf": 0,
+        "osm": 1
+      },
+      "street_cabinet": {
+        "total": 1,
+        "datasf": 0,
+        "osm": 1
+      },
+      "toilets": {
+        "total": 1,
+        "datasf": 0,
+        "osm": 1
+      },
+      "yc": {
+        "total": 1,
+        "datasf": 0,
+        "osm": 1
+      }
+    },
+    "dedupedAcrossSources": 44,
+    "droppedOutsideBounds": 1,
+    "headingSource": {
+      "faces_road": 1269,
+      "perp_to_road": 451,
+      "faces_approach": 185,
+      "datasf_st_facing": 151,
+      "road_dir": 41,
+      "osm_direction": 15,
+      "none": 14,
+      "crossing_way": 10,
+      "way_long_axis": 9,
+      "footprint_long_axis": 4
+    }
+  },
+  "landmarks": [
+    {
+      "kind": "bike_share",
+      "name": "22nd St Caltrain Station",
+      "x": -319.55,
+      "z": 78.29,
+      "lat": 37.757704,
+      "lon": -122.391885,
+      "footprintId": "",
+      "osmId": "",
+      "heightM": null
+    },
+    {
+      "kind": "bike_share",
+      "name": "Indiana St at Cesar Chavez St",
+      "x": -193.17,
+      "z": -730.07,
+      "lat": 37.750434,
+      "lon": -122.390447,
+      "footprintId": "",
+      "osmId": "",
+      "heightM": null
+    },
+    {
+      "kind": "bike_share",
+      "name": "23rd St at Tennessee St",
+      "x": -47.91,
+      "z": -181.57,
+      "lat": 37.755367,
+      "lon": -122.388795,
+      "footprintId": "",
+      "osmId": "",
+      "heightM": null
+    },
+    {
+      "kind": "bike_share",
+      "name": "Illinois St at 20th St",
+      "x": 70.42,
+      "z": 371.78,
+      "lat": 37.760344,
+      "lon": -122.387449,
+      "footprintId": "",
+      "osmId": "",
+      "heightM": null
+    },
+    {
+      "kind": "bike_share",
+      "name": "Illinois St at Cesar Chavez St",
+      "x": 153.71,
+      "z": -766.41,
+      "lat": 37.750108,
+      "lon": -122.386502,
+      "footprintId": "",
+      "osmId": "",
+      "heightM": null
+    },
+    {
+      "kind": "bike_share",
+      "name": "Esprit Park",
+      "x": -210.79,
+      "z": 515.31,
+      "lat": 37.761634,
+      "lon": -122.390648,
+      "footprintId": "",
+      "osmId": "",
+      "heightM": null
+    },
+    {
+      "kind": "bike_share",
+      "name": "",
+      "x": 152.09,
+      "z": 370.3,
+      "lat": 37.76033,
+      "lon": -122.38652,
+      "footprintId": "",
+      "osmId": "node/10901205520",
+      "heightM": null
+    },
+    {
+      "kind": "bike_share",
+      "name": "Bay Wheels",
+      "x": -231.63,
+      "z": 511.47,
+      "lat": 37.7616,
+      "lon": -122.390885,
+      "footprintId": "",
+      "osmId": "way/1093485847",
+      "heightM": null
+    },
+    {
+      "kind": "caltrain_22nd",
+      "name": "22nd Street",
+      "x": -364.83,
+      "z": 31.8,
+      "lat": 37.757286,
+      "lon": -122.3924,
+      "footprintId": "",
+      "osmId": "node/2160213364",
+      "heightM": null
+    },
+    {
+      "kind": "crane",
+      "name": "",
+      "x": 434.4,
+      "z": 698.13,
+      "lat": 37.763278,
+      "lon": -122.383309,
+      "footprintId": "",
+      "osmId": "node/6357298180",
+      "heightM": null
+    },
+    {
+      "kind": "crane",
+      "name": "",
+      "x": 436.99,
+      "z": 672.42,
+      "lat": 37.763047,
+      "lon": -122.383279,
+      "footprintId": "",
+      "osmId": "node/6357298181",
+      "heightM": null
+    },
+    {
+      "kind": "crane",
+      "name": "",
+      "x": 579.42,
+      "z": 631.62,
+      "lat": 37.76268,
+      "lon": -122.381659,
+      "footprintId": "",
+      "osmId": "node/6357298184",
+      "heightM": null
+    },
+    {
+      "kind": "crane",
+      "name": "",
+      "x": 630.11,
+      "z": 630.92,
+      "lat": 37.762674,
+      "lon": -122.381082,
+      "footprintId": "",
+      "osmId": "node/6357299886",
+      "heightM": null
+    },
+    {
+      "kind": "crane",
+      "name": "",
+      "x": 338.66,
+      "z": 775.7,
+      "lat": 37.763976,
+      "lon": -122.384398,
+      "footprintId": "",
+      "osmId": "node/6357299892",
+      "heightM": null
+    },
+    {
+      "kind": "crane",
+      "name": "",
+      "x": 352.33,
+      "z": 599.79,
+      "lat": 37.762394,
+      "lon": -122.384242,
+      "footprintId": "",
+      "osmId": "node/6357299897",
+      "heightM": null
+    },
+    {
+      "kind": "crane",
+      "name": "",
+      "x": 124.91,
+      "z": 557.03,
+      "lat": 37.762009,
+      "lon": -122.386829,
+      "footprintId": "",
+      "osmId": "way/288656668",
+      "heightM": null
+    },
+    {
+      "kind": "crane",
+      "name": "",
+      "x": 130.4,
+      "z": 678.56,
+      "lat": 37.763102,
+      "lon": -122.386767,
+      "footprintId": "",
+      "osmId": "way/853565321",
+      "heightM": null
+    },
+    {
+      "kind": "cream_stone",
+      "name": "Bethlehem Steel Administrative Building",
+      "x": 90.32,
+      "z": 431.31,
+      "lat": 37.760879,
+      "lon": -122.387223,
+      "footprintId": "201006.0001084",
+      "osmId": "way/257338315",
+      "heightM": 19.1
+    },
+    {
+      "kind": "cream_stone",
+      "name": "Union Iron Works Office",
+      "x": 193.5,
+      "z": 425.78,
+      "lat": 37.760829,
+      "lon": -122.386049,
+      "footprintId": "201006.0002646",
+      "osmId": "way/257338714",
+      "heightM": 15.4
+    },
+    {
+      "kind": "drydock",
+      "name": "",
+      "x": 411.18,
+      "z": 695.61,
+      "lat": 37.763256,
+      "lon": -122.383573,
+      "footprintId": "",
+      "osmId": "way/678913608",
+      "heightM": null
+    },
+    {
+      "kind": "drydock",
+      "name": "Pier 2",
+      "x": 605.46,
+      "z": 742.32,
+      "lat": 37.763676,
+      "lon": -122.381363,
+      "footprintId": "",
+      "osmId": "way/678913609",
+      "heightM": null
+    },
+    {
+      "kind": "machine_shop",
+      "name": "Machine Shop",
+      "x": 231.49,
+      "z": 378.77,
+      "lat": 37.760406,
+      "lon": -122.385617,
+      "footprintId": "201006.0000154",
+      "osmId": "way/257340309",
+      "heightM": 13.3
+    },
+    {
+      "kind": "machine_shop",
+      "name": "Machine Shop",
+      "x": 286.36,
+      "z": 342.06,
+      "lat": 37.760076,
+      "lon": -122.384993,
+      "footprintId": "201006.0001684",
+      "osmId": "way/257340773",
+      "heightM": 17.9
+    },
+    {
+      "kind": "smokestack",
+      "name": "",
+      "x": 561.64,
+      "z": -109.33,
+      "lat": 37.756017,
+      "lon": -122.381861,
+      "footprintId": "201006.0001039",
+      "osmId": "way/678950945",
+      "heightM": 91.44
+    },
+    {
+      "kind": "yc",
+      "name": "Y Combinator",
+      "x": 141.93,
+      "z": 419.99,
+      "lat": 37.760777,
+      "lon": -122.386636,
+      "footprintId": "201006.0001084",
+      "osmId": "node/11657169276",
+      "heightM": 19.1
+    }
+  ],
+  "validationOverlays": [
+    "data/validation/tennessee_22nd.png",
+    "data/validation/third_20th_22nd.png",
+    "data/validation/22nd_tennessee_third.png",
+    "data/validation/pier70.png"
+  ],
+  "warnings": []
+}

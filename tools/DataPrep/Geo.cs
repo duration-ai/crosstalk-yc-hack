@@ -47,6 +47,56 @@ static class Geo
 
     public static double Dist(P a, P b) => Math.Sqrt((a.x - b.x) * (a.x - b.x) + (a.z - b.z) * (a.z - b.z));
 
+    public static double MinX, MaxX, MinZ, MaxZ;
+    public static bool Inside(P p) => p.x >= MinX && p.x <= MaxX && p.z >= MinZ && p.z <= MaxZ;
+
+    public static (double lat, double lon) Unproj(P p) =>
+        (OriginLat + p.z / MPerDeg, OriginLon + p.x / (Math.Cos(OriginLat * Math.PI / 180) * MPerDeg));
+
+    /// <summary>Compass bearing in degrees clockwise from north (+z) of the direction a to b, in [0,360).</summary>
+    public static double Bearing(P a, P b)
+    {
+        var d = Math.Atan2(b.x - a.x, b.z - a.z) * 180 / Math.PI;
+        return d < 0 ? d + 360 : d;
+    }
+
+    public static double Norm360(double d) { d %= 360; return d < 0 ? d + 360 : d; }
+
+    public static (P pt, double dist, double t) Nearest(P p, P a, P b)
+    {
+        double dx = b.x - a.x, dz = b.z - a.z, l2 = dx * dx + dz * dz;
+        double t = l2 == 0 ? 0 : Math.Clamp(((p.x - a.x) * dx + (p.z - a.z) * dz) / l2, 0, 1);
+        var q = (a.x + t * dx, a.z + t * dz);
+        return (q, Dist(p, q), t);
+    }
+
+    public static double Area(IList<P> r) => Math.Abs(SignedArea(r));
+
+    /// <summary>Minimum-area bounding rectangle: returns length (long side), width, and the long axis as a bearing in [0,180).</summary>
+    public static (double len, double wid, double bearing) LongAxis(IList<P> r)
+    {
+        if (r.Count < 2) return (0, 0, 0);
+        double bestA = double.MaxValue, bl = 0, bw = 0, bb = 0;
+        for (int i = 0; i < r.Count; i++)
+        {
+            var a = r[i]; var b = r[(i + 1) % r.Count];
+            double ang = Math.Atan2(b.z - a.z, b.x - a.x), c = Math.Cos(-ang), s = Math.Sin(-ang);
+            double u0 = double.MaxValue, u1 = double.MinValue, v0 = double.MaxValue, v1 = double.MinValue;
+            foreach (var p in r)
+            {
+                double u = p.x * c - p.z * s, v = p.x * s + p.z * c;
+                u0 = Math.Min(u0, u); u1 = Math.Max(u1, u); v0 = Math.Min(v0, v); v1 = Math.Max(v1, v);
+            }
+            double w = u1 - u0, h = v1 - v0, area = w * h;
+            if (area >= bestA - 1e-9 || area <= 0) continue;
+            bestA = area;
+            bool uLong = w >= h; bl = Math.Max(w, h); bw = Math.Min(w, h);
+            double axisAng = uLong ? ang : ang + Math.PI / 2;
+            bb = Norm360(90 - axisAng * 180 / Math.PI) % 180;
+        }
+        return (bl, bw, bb);
+    }
+
     static double SegDist(P p, P a, P b)
     {
         double dx = b.x - a.x, dz = b.z - a.z, l2 = dx * dx + dz * dz;
