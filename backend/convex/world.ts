@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { v, type ObjectType } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { internalMutation, internalQuery, type QueryCtx } from "./_generated/server";
 import { fail, getPlayer, movementMode, vec3 } from "./model";
@@ -61,49 +61,50 @@ export function toWorldPlayer(row: Doc<"worldPresence">) {
 // Writes this player's presence. An active row only patches itself, so steady heartbeats never
 // contend with each other; joining (or coming back after the timeout) picks the first shard with
 // room and the player colour fewest active players there have.
-export const heartbeat = internalMutation({
-  args: { ...presenceArgs, now: v.number() },
-  handler: async (ctx, args) => {
-    const player = await getPlayer(ctx, args.playerId);
-    finite(args.position.x, "position.x");
-    finite(args.position.y, "position.y");
-    finite(args.position.z, "position.z");
-    finite(args.heading, "heading");
-    const speed = args.speed ?? 0;
-    finite(speed, "speed");
-    const vehicleType = (args.vehicleType ?? "").slice(0, MAX_VEHICLE_TYPE);
-    const fields = {
-      displayName: player.displayName,
-      position: args.position,
-      heading: args.heading,
-      speed,
-      mode: args.mode ?? ("onFoot" as const),
-      vehicleType,
-      updatedAt: args.now,
-    };
-    const row = await findPresence(ctx, player._id);
-    if (row && isActive(row, args.now)) {
-      await ctx.db.patch(row._id, fields);
-      await sweep(ctx, row.shard, args.now);
-      return { shard: row.shard, slot: row.slot, worldRoomId: row.worldRoomId };
-    }
-    if (row) await dropPresence(ctx, row);
+const heartbeatArgs = { ...presenceArgs, now: v.number() };
 
-    let shard = 0;
-    let others: Doc<"worldPresence">[] = [];
-    for (;; shard++) {
-      others = (await activeInShard(ctx, shard, args.now).take(SHARD_CAP + 1)).filter((r) => r.playerId !== player._id);
-      if (others.length < SHARD_CAP) break;
-    }
-    const used = COLORS.map((_, i) => others.filter((r) => r.slot === i).length);
-    const slot = used.indexOf(Math.min(...used));
-    const room = await worldRoom(ctx, shard, args.now);
-    await enterWorldRoom(ctx, room, player, slot, args.now);
-    await ctx.db.insert("worldPresence", { ...fields, playerId: player._id, shard, slot, worldRoomId: room._id, joinedAt: args.now });
-    await sweep(ctx, shard, args.now);
-    return { shard, slot, worldRoomId: room._id };
-  },
-});
+export async function beat(ctx: MutationCtx, args: ObjectType<typeof heartbeatArgs>) {
+  const player = await getPlayer(ctx, args.playerId);
+  finite(args.position.x, "position.x");
+  finite(args.position.y, "position.y");
+  finite(args.position.z, "position.z");
+  finite(args.heading, "heading");
+  const speed = args.speed ?? 0;
+  finite(speed, "speed");
+  const vehicleType = (args.vehicleType ?? "").slice(0, MAX_VEHICLE_TYPE);
+  const fields = {
+    displayName: player.displayName,
+    position: args.position,
+    heading: args.heading,
+    speed,
+    mode: args.mode ?? ("onFoot" as const),
+    vehicleType,
+    updatedAt: args.now,
+  };
+  const row = await findPresence(ctx, player._id);
+  if (row && isActive(row, args.now)) {
+    await ctx.db.patch(row._id, fields);
+    await sweep(ctx, row.shard, args.now);
+    return { shard: row.shard, slot: row.slot, worldRoomId: row.worldRoomId };
+  }
+  if (row) await dropPresence(ctx, row);
+
+  let shard = 0;
+  let others: Doc<"worldPresence">[] = [];
+  for (;; shard++) {
+    others = (await activeInShard(ctx, shard, args.now).take(SHARD_CAP + 1)).filter((r) => r.playerId !== player._id);
+    if (others.length < SHARD_CAP) break;
+  }
+  const used = COLORS.map((_, i) => others.filter((r) => r.slot === i).length);
+  const slot = used.indexOf(Math.min(...used));
+  const room = await worldRoom(ctx, shard, args.now);
+  await enterWorldRoom(ctx, room, player, slot, args.now);
+  await ctx.db.insert("worldPresence", { ...fields, playerId: player._id, shard, slot, worldRoomId: room._id, joinedAt: args.now });
+  await sweep(ctx, shard, args.now);
+  return { shard, slot, worldRoomId: room._id };
+}
+
+export const heartbeat = internalMutation({ args: heartbeatArgs, handler: beat });
 
 // Presence that has timed out leaves the shard: its row goes, and so does its membership in the
 // world room, so voice effects stop reaching a closed app. Each heartbeat clears a few.
@@ -173,13 +174,14 @@ async function enterWorldRoom(ctx: MutationCtx, room: Doc<"rooms">, player: Doc<
 }
 
 // Everyone else active in the shard, for the presence response.
-export const snapshot = internalQuery({
-  args: { shard: v.number(), playerId: v.string(), now: v.number() },
-  handler: async (ctx, args) => {
-    const rows = await activeInShard(ctx, args.shard, args.now).take(SHARD_CAP * 2);
-    return rows.filter((r) => r.playerId !== args.playerId).map(toWorldPlayer);
-  },
-});
+const snapshotArgs = { shard: v.number(), playerId: v.string(), now: v.number() };
+
+export async function others(ctx: QueryCtx, args: ObjectType<typeof snapshotArgs>) {
+  const rows = await activeInShard(ctx, args.shard, args.now).take(SHARD_CAP * 2);
+  return rows.filter((r) => r.playerId !== args.playerId).map(toWorldPlayer);
+}
+
+export const snapshot = internalQuery({ args: snapshotArgs, handler: others });
 
 export const leave = internalMutation({
   args: { playerId: v.string() },
