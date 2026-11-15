@@ -16,6 +16,7 @@ namespace Dogpatch.Vehicles
         public const string FlyingCar = "flying-car";
         public const string CableCar = "cable-car";
         public const string Lowrider = "lowrider";
+        public const string MonsterTruck = "monster-truck";
         public const string MuniBus = "muni-bus";
         public const string ShoppingCart = "shopping-cart";
         public const string BayWheels = "bay-wheels-ebike";
@@ -29,7 +30,7 @@ namespace Dogpatch.Vehicles
 
         public static readonly string[] All =
         {
-            WaymoSuv, WaymoVan, Zoox, Cybertruck, RaceCar, SportsCar, FlyingCar, CableCar, Lowrider, MuniBus, ShoppingCart, BayWheels, Scooter,
+            WaymoSuv, WaymoVan, Zoox, Cybertruck, RaceCar, SportsCar, FlyingCar, CableCar, MonsterTruck, Lowrider, MuniBus, ShoppingCart, BayWheels, Scooter,
             DoorDashBike, UberEatsBike, Hatchback, Sedan, YellowCab, TThird,
         };
     }
@@ -134,6 +135,7 @@ namespace Dogpatch.Vehicles
             Add(new VehicleSpec { Id = VehicleTypes.FlyingCar, Title = "Flying car", Source = ModelSource.Procedural, Handling = hover, CruiseSpeed = 12f });
             var cable = H(11f, 2f, 5f, 28f, 1f, 16000f, 1e6f, 1f, false, 3f);
             cable.Coasting = 0.8f;
+            Add(new VehicleSpec { Id = VehicleTypes.MonsterTruck, Title = "Monster truck", Source = ModelSource.Procedural, Handling = H(24f, 9f, 16f, 70f, 1f, 3800f, 400f, 0.9f), CruiseSpeed = 12f, Ability = typeof(MonsterCrush) });
             Add(new VehicleSpec { Id = VehicleTypes.CableCar, Title = "Cable car", Source = ModelSource.Procedural, Handling = cable, CruiseSpeed = 6f });
             Add(new VehicleSpec
             {
