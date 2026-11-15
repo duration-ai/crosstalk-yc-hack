@@ -79,7 +79,7 @@ namespace Dogpatch.Audio
 
         IEnumerator Start()
         {
-            while ((game = FindAnyObjectByType<GameController>()) == null || game.StatusLine != "On foot") yield return null;
+            while ((game = FindAnyObjectByType<GameController>()) == null || !game.StatusLine.StartsWith("On foot")) yield return null;
             input = game.GetComponent<DragInput>();
             yield return Wait(1.5f);
             var listener = FindAnyObjectByType<AudioListener>();

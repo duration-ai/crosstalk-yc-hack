@@ -101,6 +101,7 @@ namespace Dogpatch.Audio
             gameObject.AddComponent<GameSounds>();
             gameObject.AddComponent<MusicDirector>();
             gameObject.AddComponent<Ambience>();
+            gameObject.AddComponent<GameBridge>();
         }
 
         static string DspBuffer()
