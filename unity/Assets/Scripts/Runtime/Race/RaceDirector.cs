@@ -25,7 +25,7 @@ namespace Dogpatch.Race
         static readonly float[] RingLateral = { -0.9f, -2.7f, 0.9f, 2.7f };
         public static readonly string[] SlotHex = { "#2D8CFF", "#A35BFF", "#FF8A1E", "#2EC27E" };
         const float PollEvery = 0.1f;
-        const float SendEvery = 0.1f;
+        const float SendEvery = 1f / 15f;
         const float LockMs = 3000f;
         const float GhostFor = 4f;
         const float WreckHold = 1f;
