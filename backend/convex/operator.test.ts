@@ -249,7 +249,7 @@ describe("operator.call", () => {
   });
 
   it("spends one ask per applied effect and refuses cleanly at zero", async () => {
-    const { t, tim, maya, say, effects, asksOf } = await room({});
+    const { t, tim, maya, say, effects, asksOf } = await room({ asks: 2 });
     expect(await asksOf(tim.id)).toBe(2);
     await say("make it rain", RAIN);
     expect(await say("spawn a dragon", { scope: "reject", reject_reason: "spawning" })).toMatchObject({ outcome: "refused" });
