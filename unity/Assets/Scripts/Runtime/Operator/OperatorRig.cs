@@ -1,9 +1,11 @@
 using System;
 using System.Collections;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading.Tasks;
 using Dogpatch.Operator.Voice;
 using Dogpatch.Race;
+using Dogpatch.WorldChanges;
 using UnityEngine;
 using Debug = UnityEngine.Debug;
 
@@ -14,6 +16,10 @@ namespace Dogpatch.Operator
     // configured and reachable, swaps the payphone's LocalOperator for ConvexOperator with a
     // Scribe microphone, a Convex player and room of its own, and the room's activeEffects
     // subscription. Offline (or -operator-local, or the scripted demo) LocalOperator stays.
+    // When the race itself is online (RaceDirector's session is not the local one), the Operator
+    // follows the race's own player and room instead of making a solo room, so every racer's
+    // calls land in, and are applied from, the same activeEffects list. This is the only place
+    // activeEffects are applied; the race applies its world-change log and nothing else.
     // Also handles speeddial://operator?say=...&room=CODE, and -operator-say "<words>" or the
     // OPERATOR_SAY environment variable (SIMCTL_CHILD_OPERATOR_SAY on the iOS Simulator).
     public sealed class OperatorRig : MonoBehaviour
@@ -112,6 +118,7 @@ namespace Dogpatch.Operator
 
             race.Calls.View = Snapshot;
             race.Calls.Answered += OnAnswered;
+            Effects.Started += OnEffectStarted;
 
             if (Config.UseConvex)
             {
@@ -137,13 +144,18 @@ namespace Dogpatch.Operator
             var clock = Stopwatch.StartNew();
             var client = await ConvexClients.ConnectAsync(Config.convexUrl, Config.transport, "operator:activeEffects", JsonUtility.ToJson(new RoomArgs { roomId = "probe" }), Config.connectTimeoutS);
             if (client == null) return;
-            PlayerId = await EnsurePlayerAsync(client);
-            var room = string.IsNullOrEmpty(Config.roomCode)
-                ? await client.MutationAsync("rooms:create", JsonUtility.ToJson(new PlayerArgs { playerId = PlayerId }))
-                : await client.MutationAsync("rooms:join", JsonUtility.ToJson(new JoinArgs { playerId = PlayerId, code = Config.roomCode }));
             var convex = new ConvexOperator(client, Config);
             Convex = convex;
-            UseRoom(JsonUtility.FromJson<RoomResult>(room).room);
+            if (RaceOnline) PlayerId = race.MyId;
+            else
+            {
+                PlayerId = await EnsurePlayerAsync(client);
+                var json = string.IsNullOrEmpty(Config.roomCode)
+                    ? await client.MutationAsync("rooms:create", JsonUtility.ToJson(new PlayerArgs { playerId = PlayerId }))
+                    : await client.MutationAsync("rooms:join", JsonUtility.ToJson(new JoinArgs { playerId = PlayerId, code = Config.roomCode }));
+                var room = JsonUtility.FromJson<RoomResult>(json).room;
+                UseRoom(room.id, room.code);
+            }
 
             var voice = gameObject.AddComponent<ScribeVoice>();
             voice.Config = Config;
@@ -183,22 +195,77 @@ namespace Dogpatch.Operator
             return id;
         }
 
-        void UseRoom(RoomRow room)
+        bool RaceOnline => race != null && race.Session != null && !(race.Session is LocalRaceSession);
+
+        void UseRoom(string id, string code)
         {
             watch?.Dispose();
-            RoomId = room.id;
-            RoomCode = room.code;
+            RoomId = id;
+            RoomCode = code;
             watch = Convex.WatchEffects(RoomId, Effects.OnActiveList);
+        }
+
+        void Update()
+        {
+            if (Convex == null || !RaceOnline || string.IsNullOrEmpty(race.RoomId) || race.RoomId == RoomId) return;
+            PlayerId = race.MyId;
+            EntityTagger.MyPlayerId = PlayerId;
+            Effects.ResetAll();
+            UseRoom(race.RoomId, race.Room?.code ?? "");
+            Debug.Log($"[Operator] following the race room {RoomCode} ({RoomId}) as {PlayerId}");
+        }
+
+        // Every voice effect, from any racer, reaches the news bar once: Started fires once per row id,
+        // from the caller's own answer or from the subscription on everyone else's device.
+        void OnEffectStarted(ActiveEffect row)
+        {
+            var hud = race.Hud;
+            if (hud == null) return;
+            var racer = race.Last?.racers?.FirstOrDefault(r => r.playerId == row.requestedBy);
+            var who = row.requestedBy == PlayerId ? "YOU" : racer != null ? WorldChangeCatalog.ShortName(racer.displayName) : "SOMEONE";
+            var words = $"{who} CALLED {(row.label ?? row.effect).Replace('_', ' ')}".ToUpperInvariant().Split(' ');
+            hud.PushNews(string.Join(" ", words.Take(4)), NewsPicto(row.effect), racer?.color ?? "blue");
+        }
+
+        static string NewsPicto(string effect)
+        {
+            switch (effect)
+            {
+                case "rain":
+                case "storm":
+                    return "rain";
+                case "snow":
+                case "fog":
+                case "recolor":
+                    return effect;
+                case "night":
+                case "sunset":
+                    return "time";
+                case "gravity_lower":
+                case "gravity_higher":
+                case "gravity_normal":
+                    return "gravity";
+                case "more_traffic":
+                    return "traffic";
+                default:
+                    return "call";
+            }
         }
 
         public async void JoinRoom(string code)
         {
             if (Convex == null || string.IsNullOrWhiteSpace(code)) return;
+            if (RaceOnline)
+            {
+                Debug.Log($"[Operator] ignoring room {code}: the Operator follows the online race's room");
+                return;
+            }
             try
             {
                 var json = await Convex.Client.MutationAsync("rooms:join", JsonUtility.ToJson(new JoinArgs { playerId = PlayerId, code = code.Trim() }));
                 Effects.ResetAll();
-                UseRoom(JsonUtility.FromJson<RoomResult>(json).room);
+                var room = JsonUtility.FromJson<RoomResult>(json).room;
+                UseRoom(room.id, room.code);
                 Debug.Log($"[Operator] joined room {RoomCode} ({RoomId})");
             }
             catch (ConvexException e)
