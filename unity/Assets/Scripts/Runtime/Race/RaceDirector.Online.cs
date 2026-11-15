@@ -34,6 +34,11 @@ namespace Dogpatch.Race
         public string MyName { get; private set; }
         public string ServerUrl => convex?.BaseUrl;
 
+        // Raised when this device creates, joins, leaves or rematches a room: MyId and RoomId (null
+        // when not in a room) are already current. OperatorRig follows it to watch the room's
+        // activeEffects.
+        public event Action RoomChanged;
+
         object Pause(float seconds) => Online ? (object)new WaitForSecondsRealtime(seconds) : new WaitForSeconds(seconds);
 
         static string Arg(string name)
@@ -173,6 +178,7 @@ namespace Dogpatch.Race
             if (myPilot != null) myPilot.Active = false;
             if (Game.CurrentCar != null) await Game.ExitCar();
             PlaceForLobby(false);
+            RoomChanged?.Invoke();
             try { await Session.LeaveRoomAsync(MyId, room); }
             catch (BackendException e) { Debug.LogWarning($"[SpeedDial] leave: {e.Code}"); }
             Debug.Log("[SpeedDial] left the room");

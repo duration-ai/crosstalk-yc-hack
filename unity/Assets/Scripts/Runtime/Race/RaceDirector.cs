@@ -196,6 +196,7 @@ namespace Dogpatch.Race
             cursor = null;
             MySlot = room.you.slot;
             PaintJob.For(myCar.gameObject, myCar.ModelId).SetBase(PaintJob.Linear(SlotHex[MySlot]));
+            RoomChanged?.Invoke();
         }
 
         // Fills the room's empty slots with Maya, Jun and Rosa, driven on this device. Offline they
@@ -397,6 +398,7 @@ namespace Dogpatch.Race
         {
             Debug.Log($"[SpeedDial] rematch: race {raceNumber}");
             Changes.ResetAll();
+            RoomChanged?.Invoke();
             Gridded = Started = ResultsIn = false;
             Game.ExternalInput = false;
             if (myPilot != null) myPilot.Active = false;

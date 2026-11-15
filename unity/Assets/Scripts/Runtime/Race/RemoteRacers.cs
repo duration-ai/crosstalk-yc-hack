@@ -22,7 +22,7 @@ namespace Dogpatch.Race
 
         public RaceDirector Race;
 
-        struct Sample
+        public struct Sample
         {
             public double T;
             public Vector3 P;
@@ -125,7 +125,7 @@ namespace Dogpatch.Race
         }
 
         // Interpolated pose at server time t, from the samples around it.
-        static bool Pose(List<Sample> samples, double t, out Vector3 p, out float h)
+        public static bool Pose(List<Sample> samples, double t, out Vector3 p, out float h)
         {
             p = default;
             h = 0f;

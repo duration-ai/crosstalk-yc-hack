@@ -41,12 +41,16 @@ namespace Dogpatch.Race
         // game was started with -offline.
         public static string ConfiguredUrl()
         {
+#if SPEEDDIAL_DEMO
+            return "";
+#else
             var args = Environment.GetCommandLineArgs();
-            if (Array.IndexOf(args, "-offline") >= 0) return "";
+            if (Array.IndexOf(args, "-offline") >= 0 || Array.IndexOf(args, "-speeddial-demo") >= 0) return "";
             int at = Array.IndexOf(args, "-convex-url");
             if (at >= 0 && at + 1 < args.Length) return args[at + 1];
             var env = Environment.GetEnvironmentVariable("DOGPATCH_CONVEX_URL");
             return string.IsNullOrWhiteSpace(env) ? DefaultUrl : env.Trim();
+#endif
         }
 
         // ---- wire shapes for requests and errors ----
