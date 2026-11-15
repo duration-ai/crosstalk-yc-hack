@@ -285,6 +285,17 @@ describe("operator.call", () => {
     expect(log[log.length - 1]).toMatchObject({ transcript: "roll in the fog", outcome: "refused", reason: "no_asks" });
   });
 
+  it("charges nothing for a declined call and acts on the ask inside chatter", async () => {
+    vi.stubEnv("OPERATOR_ANYWHERE", "false");
+    const { tim, say, asksOf } = await room({ asks: 2 });
+    expect(await say("I'm fine.", { scope: "reject", reject_reason: "not_a_request", nearest: "rain" })).toMatchObject({ outcome: "refused" });
+    expect(await say("take it back", { scope: "reject", reject_reason: "undo", nearest: "rain" })).toMatchObject({ outcome: "refused" });
+    expect(await asksOf(tim.id)).toBe(2);
+    const mixed = await say("No, I didn't call Fast Card. Car flies.", { scope: "reject", reject_reason: "not_a_request", nearest: "cars_fly" });
+    expect(mixed).toMatchObject({ outcome: "applied", effect: { effect: "cars_fly" } });
+    expect(await asksOf(tim.id)).toBe(1);
+  });
+
   it("charges a promoted effect when it is confirmed, not when it is asked for", async () => {
     vi.stubEnv("OPERATOR_SELF_SCOPE", "false");
     vi.stubEnv("OPERATOR_ANYWHERE", "false");

@@ -143,10 +143,11 @@ namespace Dogpatch.Gameplay
                 }
                 return;
             }
-            if (speed > 3.8f) animator.Play("Run");
-            else if (speed > 0.25f) animator.Play("Walk");
+            float stride = speed / Mathf.Max(transform.lossyScale.y, 0.1f);
+            if (stride > 3.8f) animator.Play("Run");
+            else if (stride > 0.25f) animator.Play("Walk");
             else animator.Play("Idle");
-            animator.Speed = speed > 3.8f ? speed / 6f : speed > 0.25f ? Mathf.Max(speed / 1.6f, 0.6f) : 1f;
+            animator.Speed = stride > 3.8f ? stride / 6f : stride > 0.25f ? Mathf.Max(stride / 1.6f, 0.6f) : 1f;
         }
     }
 }

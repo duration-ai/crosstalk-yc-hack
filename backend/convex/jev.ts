@@ -92,7 +92,7 @@ export function buildQuestions(view: View): Question[] {
       type: "choice",
       name: "scope",
       instructions:
-        "What does the player's FIRST request change, right now? Answer for the first request only. Changing what something is made of (ice, rubber, glass, jelly, stone) is a property of that thing, not a transformation. A bare effect name (nitro, rush hour, earthquake) is a request. A request with a delay or a condition (in five minutes, later, after the race, when someone wins) is reject. A generic undo that does not name what to change (undo that, take it back, cancel that, never mind, go back) is reject, never an opposite effect.",
+        "What does the player's FIRST request change, right now? Answer for the first request only. Changing what something is made of (ice, rubber, glass, jelly, stone) is a property of that thing, not a transformation. A bare effect name (nitro, rush hour, earthquake) is a request, and so is any short fragment or noun phrase that names or implies an effect, a vehicle or a world change (cars flying, car flies, snowy, monster truck). If the player mixes chatter with a request (no, I didn't call that, car flies), answer for the request and ignore the chatter. Lean towards acting: anything that plausibly asks for a change is a request. A request with a delay or a condition (in five minutes, later, after the race, when someone wins) is reject. A generic undo that does not name what to change (undo that, take it back, cancel that, never mind, go back) is reject, never an opposite effect.",
       choices: [
         { value: "players", description: "the racers themselves (me, us, everyone): their size, shape, running, jumping, flying, how their cars drive (super speed, nitro, grip, hop), or which vehicle the player rides (give me a sports car, put me in a bus)" },
         { value: "world", description: "the whole world: time of day, weather, lights, gravity, ground, time speed, water, traffic, pedestrians and crowds (numbers, mood, costumes, big heads)" },
@@ -205,20 +205,20 @@ export function buildQuestions(view: View): Question[] {
         { value: "cheat", description: "win, skip ahead, finish the race, get points, or remove other players" },
         { value: "undo", description: "undo, cancel or take back an earlier change without naming it (undo that, take it back, never mind)" },
         { value: "vague", description: "unclear what change is wanted" },
-        { value: "not_a_request", description: "chit-chat, a question or noise; a bare effect name like rush hour is a request" },
+        { value: "not_a_request", description: "only pure chit-chat or noise with no plausible ask in it (I'm fine, look at this); a fragment that names or implies an effect, vehicle or world change (cars flying, snowy, rush hour) is a request" },
       ],
     },
     {
       type: "choice",
       name: "nearest",
       instructions:
-        "If the game could not do this request exactly, which built change is the closest, most fun stand-in? Match the spirit: a tank or a monster truck is change_vehicle, summoning Godzilla or a monster is earthquake or the Waymo attack, turning into a dragon or a bird is change_vehicle (a flying car), raining frogs or cats is rain. Always pick one.",
+        "If the game could not do this request exactly, which built change is the closest, most fun stand-in? Match the spirit: a tank or a monster truck is change_vehicle, summoning Godzilla or a monster is earthquake or the Waymo attack, turning into a dragon or a bird is change_vehicle (a flying car), raining frogs or cats is rain. An open ask (surprise me, something crazy, do something) is anything big and fun. Always pick one.",
       choices: STAND_INS.map((value) => ({ value, description: (PLAYER_EFFECTS[value] ?? WORLD_EFFECTS[value]).description })),
     },
     {
       type: "choice",
       name: "nearest_vehicle",
-      instructions: "Which of these rides is closest to the vehicle or creature the player wants to be or ride (a tank: the Cybertruck; a dragon, plane or rocket: the flying car)? Always pick one.",
+      instructions: "Which of these rides is closest to the vehicle or creature the player wants to be or ride (a tank: the monster truck; a dragon, plane or rocket: the flying car)? Always pick one.",
       choices: VEHICLES.map((value) => ({ value, description: VEHICLE_DESCRIPTIONS[value] })),
     },
     {
