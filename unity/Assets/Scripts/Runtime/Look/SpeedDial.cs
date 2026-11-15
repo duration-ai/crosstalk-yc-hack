@@ -83,6 +83,7 @@ namespace Dogpatch.Look
             Shader.SetGlobalColor("_SkyHorizon", SkyHorizon);
             EnvironmentRig.Create(view, sun, SkyRig.Create(view));
             view.gameObject.AddComponent<CameraFx>();
+            view.gameObject.AddComponent<SpeedLines>();
             return sun;
         }
 
