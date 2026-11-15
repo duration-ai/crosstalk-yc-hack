@@ -18,6 +18,7 @@ namespace Dogpatch.Race
     [Serializable]
     public class CourseData
     {
+        public string routeName;
         public string startName;
         public GeoPoint start;
         public string finishName;

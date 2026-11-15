@@ -273,6 +273,7 @@ namespace Dogpatch.Slipstream
             {
                 WorldTags();
                 NetChip();
+                if (!Race.Gridded) RouteTags();
             }
             if (Race.Last == null) return;
 
@@ -422,6 +423,22 @@ namespace Dogpatch.Slipstream
             var size = Measure(label, 72f * scale);
             var r = new Rect(Screen.width * 0.5f - size.x * 0.5f, Screen.height * 0.3f - size.y * 0.5f, size.x, size.y);
             Text(r, label, 72f * scale, Pink, TextAnchor.UpperLeft, 3.5f * s * scale);
+        }
+
+        // Each start ring's route name floating over it, so you can pick a race by driving to its ring.
+        void RouteTags()
+        {
+            var cam = Camera.main;
+            if (cam == null) return;
+            foreach (var (name, at) in Race.RouteRingSpots())
+            {
+                var sp = cam.WorldToScreenPoint(at + Vector3.up * 3.2f);
+                if (sp.z < 1f || sp.z > 140f) continue;
+                var size = Measure(name, 20f);
+                var r = new Rect(sp.x - size.x * 0.5f, Screen.height - sp.y - size.y, size.x, size.y);
+                Panel(Inflate(r, 6f * s), Pink);
+                Text(r, name, 20f, White, TextAnchor.UpperLeft);
+            }
         }
 
         void FinishedBanner()
