@@ -87,33 +87,71 @@ namespace Dogpatch.Operator
         }
     }
 
-    // Instant: the building drops into the ground in a burst of flame and is gone.
+    // Instant: the building blows up in one go. A fireball, chunky debris and a dust cloud, a boom
+    // and a shake when you're close, and in the same frame the building is gone: hidden in its chunk,
+    // its own colliders off and a ghost zone over the merged city collider, so you drive straight
+    // across the lot over a low rubble patch.
     public sealed class DemolishEffect : OperatorEffect
     {
+        static readonly Color[] Chunks = { Smash.SmashFx.SmokeGrey, Smash.SmashFx.SmokeDark, WorldEffectsB.Hex("#C9B79C"), WorldEffectsB.Hex("#8A7C6B") };
+
         public override void Apply(string strength, EffectTarget target)
         {
+            var fx = Smash.SmashWorld.Instance?.Fx;
             foreach (var tag in target.Entities)
             {
-                var fire = FireFx.Create(Context.Material, tag.WorldBounds, 1.4f, true);
-                Object.Destroy(fire.gameObject, 2.5f);
-                var copy = tag.Span != null ? tag.Span.Detach(tag.Id + " (demolished)", Context.Material) : tag.gameObject;
-                if (copy != null) copy.AddComponent<Sink>().Depth = tag.WorldBounds.size.y + 1f;
+                var b = tag.WorldBounds;
+                var foot = new Vector3(b.center.x, b.min.y, b.center.z);
+                float size = Mathf.Clamp(Mathf.Max(b.extents.x, b.extents.z), 4f, 30f);
+
+                var fire = FireFx.Create(Context.Material, b, 2.4f, true);
+                Object.Destroy(fire.gameObject, 3f);
+                for (int i = 0; i < 8; i++)
+                {
+                    var from = foot + Vector3.up * (b.size.y * Random.Range(0.1f, 0.7f));
+                    var fling = Random.insideUnitSphere * size * 1.5f + Vector3.up * Random.Range(8f, 18f);
+                    fx?.Debris(from, fling, Chunks, 6, 0.9f);
+                }
+                fx?.Smoke(foot + Vector3.up * 2f, Smash.SmashFx.SmokeGrey, size, 20, 2.5f);
+                WorldEffectsB.Poof(b.center, size, Smash.SmashFx.SmokeLight, 16);
+                Audio.SoundSystem.Play("wreck", b.center, Audio.Bus.Sfx, 1f, 0.7f, 220, 200f);
+                var cam = Camera.main;
+                if (cam != null && Feel.CameraFeel.Instance != null)
+                {
+                    float d = Vector3.Distance(cam.transform.position, b.center);
+                    if (d < 150f) Feel.CameraFeel.Instance.AddTrauma(Mathf.Lerp(0.9f, 0.2f, d / 150f));
+                }
+
+                if (tag.Span != null)
+                {
+                    var copy = tag.Span.Detach(tag.Id + " (demolished)", Context.Material);
+                    if (copy != null) Object.Destroy(copy);
+                    foreach (var part in tag.Span.Parts)
+                        if (part.Collider != null) part.Collider.enabled = false;
+                    new GameObject(tag.Id + " (lot)").AddComponent<GhostZone>().Area = b;
+                }
+                else tag.gameObject.SetActive(false);
+                Rubble(tag.Id, foot, b.size);
             }
         }
-    }
 
-    public sealed class Sink : MonoBehaviour
-    {
-        public float Depth = 10f;
-        float sunk;
-
-        void Update()
+        void Rubble(string id, Vector3 foot, Vector3 size)
         {
-            float step = Depth / 1.6f * Time.deltaTime;
-            transform.position += Vector3.down * step;
-            transform.Rotate(0f, 0f, Mathf.Sin(Time.time * 40f) * 0.3f);
-            sunk += step;
-            if (sunk >= Depth) gameObject.SetActive(false);
+            var mb = new Vehicles.MeshBuilder();
+            var rng = new System.Random(id.GetHashCode());
+            float w = size.x * 0.45f, l = size.z * 0.45f;
+            for (int i = 0; i < 14; i++)
+            {
+                var at = new Vector3(((float)rng.NextDouble() * 2f - 1f) * w, 0f, ((float)rng.NextDouble() * 2f - 1f) * l);
+                float s = 1f + (float)rng.NextDouble() * 2.5f;
+                at.y = s * 0.15f;
+                mb.Box(at, new Vector3(s, s * 0.3f, s * 0.8f), Quaternion.Euler(0f, rng.Next(0, 90), 0f), Chunks[rng.Next(Chunks.Length)]);
+            }
+            mb.Box(new Vector3(0f, 0.04f, 0f), new Vector3(size.x * 0.95f, 0.08f, size.z * 0.95f), Quaternion.identity, Smash.SmashFx.SmokeDark);
+            var go = new GameObject(id + " (rubble)");
+            go.transform.position = foot;
+            go.AddComponent<MeshFilter>().sharedMesh = mb.ToMesh(id + " rubble");
+            go.AddComponent<MeshRenderer>().sharedMaterial = Context.Material;
         }
     }
 
