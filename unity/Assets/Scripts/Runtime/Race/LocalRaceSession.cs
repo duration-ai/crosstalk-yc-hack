@@ -220,6 +220,7 @@ namespace Dogpatch.Race
                 r.metersToFinish = state.Route.Length;
                 r.finished = false;
                 r.finishMs = 0;
+                r.smash = 0;
             }
             state.Calls.Clear();
             state.Results = new List<RaceResult>();
@@ -272,6 +273,8 @@ namespace Dogpatch.Race
                 var top = ordered.Where(r => state.Calls.TryGetValue(r.playerId, out int c) && c == maxCalls).ToList();
                 caller = top[0].playerId;
             }
+            int maxSmash = ordered.Count == 0 ? 0 : ordered.Max(r => r.smash);
+            string wrecker = maxSmash > 0 ? ordered.First(r => r.smash == maxSmash).playerId : null;
             var results = new List<RaceResult>();
             for (int i = 0; i < ordered.Count; i++)
             {
@@ -280,6 +283,7 @@ namespace Dogpatch.Race
                 bool photo = r.finished && ((i > 0 && ordered[i - 1].finished && Math.Abs(r.finishMs - ordered[i - 1].finishMs) <= 1000)
                     || (i + 1 < ordered.Count && ordered[i + 1].finished && Math.Abs(r.finishMs - ordered[i + 1].finishMs) <= 1000));
                 string award = r.playerId == caller ? "CHAOS CALLER"
+                    : r.playerId == wrecker ? "WRECKING BALL"
                     : photo ? "PHOTO FINISH"
                     : !r.finished ? "STILL DRIVING"
                     : r.place == 1 ? "FIRST TO YC" : r.place == 2 ? "SO CLOSE" : r.place == 3 ? "PODIUM FINISH" : "SCENIC ROUTE";
@@ -292,6 +296,7 @@ namespace Dogpatch.Race
                     finished = r.finished,
                     finishMs = r.finishMs,
                     calls = calls,
+                    smash = r.smash,
                     award = award,
                 });
             }
@@ -329,7 +334,7 @@ namespace Dogpatch.Race
             });
         }
 
-        public Task<RaceUpdateResponse> UpdateAsync(string playerId, string roomId, Vec3 position, float heading)
+        public Task<RaceUpdateResponse> UpdateAsync(string playerId, string roomId, Vec3 position, float heading, int smash = 0)
         {
             if (position == null) throw Error(BackendErrorCodes.InvalidArgument, "position is required");
             var state = RoomById(roomId);
@@ -339,6 +344,7 @@ namespace Dogpatch.Race
             racer.position = Copy(position);
             racer.heading = heading;
             racer.updatedAt = now;
+            if (state.Room.status != RoomStatus.Finished) racer.smash = Math.Max(racer.smash, Math.Max(0, smash));
             var room = state.Room;
             if (!racer.finished && room.status != RoomStatus.Finished)
             {
