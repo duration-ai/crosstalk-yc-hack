@@ -79,15 +79,23 @@ namespace Dogpatch.World
 
         public static bool IsDriveable(Road road) => road.kind != "path";
 
-        // Never narrower than its lanes: OSM gives lane counts on most arterials, and its width is a per-kind default.
+        // Never narrower than its lanes: OSM gives lane counts on most arterials, and its width is a per-kind
+        // default. Curbed streets also carry a parking lane along each curb, as SF streets do.
         public static float HalfWidth(Road road)
         {
             float width = Mathf.Max(road.width, 2f);
-            if (road.lanes > 0 && IsDriveable(road)) width = Mathf.Max(width, road.lanes * LaneWidth);
+            if (!IsDriveable(road)) return width * 0.5f;
+            if (road.lanes > 0) width = Mathf.Max(width, road.lanes * LaneWidth);
+            if (IsCurbed(road))
+            {
+                var (f, b) = LaneCounts(road);
+                width = Mathf.Max(width, (f + b) * LaneWidth + 2f * ParkingLane);
+            }
             return width * 0.5f;
         }
 
         public const float LaneWidth = 3.1f;
+        public const float ParkingLane = 2.4f;
 
         static readonly HashSet<string> CurbedKinds = new HashSet<string>
         {
@@ -108,32 +116,28 @@ namespace Dogpatch.World
             public float Divider;
         }
 
-        public static LaneLayout Lanes(Road road)
+        static (int forward, int backward) LaneCounts(Road road)
         {
             int n = road.lanes, f = road.lanesForward, b = road.lanesBackward;
-            if (road.oneway)
-            {
-                f = Mathf.Max(n, f, 1);
-                b = 0;
-            }
-            else if (f + b > 0)
+            if (road.oneway) return (Mathf.Max(n, f, 1), 0);
+            if (f + b > 0)
             {
                 if (n < f + b) n = f + b;
                 if (f == 0) f = n - b;
                 if (b == 0) b = n - f;
+                return (f, b);
             }
-            else if (n > 1)
-            {
-                f = n - n / 2;
-                b = n / 2;
-            }
-            else
-            {
-                f = 1;
-                b = n == 1 ? 0 : 1;
-            }
+            if (n > 1) return (n - n / 2, n / 2);
+            return (1, n == 1 ? 0 : 1);
+        }
+
+        // Travel lanes sit centred between the parking lanes of a curbed street.
+        public static LaneLayout Lanes(Road road)
+        {
+            var (f, b) = LaneCounts(road);
             float hw = HalfWidth(road);
-            float lane = Mathf.Min(LaneWidth + 0.2f, 2f * hw / Mathf.Max(f + b, 1));
+            float travel = 2f * hw - (IsCurbed(road) ? 2f * ParkingLane : 0f);
+            float lane = Mathf.Min(LaneWidth + 0.2f, travel / Mathf.Max(f + b, 1));
             return new LaneLayout { Forward = f, Backward = b, Width = lane, Divider = road.oneway || b == 0 ? hw : (f - b) * lane * 0.5f };
         }
 
