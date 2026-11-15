@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace Dogpatch.Race
 {
-    // The spinning phones placed off the route at race setup (RaceCourse.PlaceAskPickups, tuned in
+    // The spinning phones placed on the racing line at race setup (RaceCourse.PlaceAskPickups, tuned in
     // asks.json). Driving or walking through one while racing collects it through
     // IRaceSession.CollectAskAsync and opens the mic at once for one hands-free Operator call. Each racer can take each token once a
     // race, and a token you have taken disappears for you until the rematch. Other systems, like the

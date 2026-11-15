@@ -1,11 +1,9 @@
 {
   "startAsks": 100,
   "pickupCount": 6,
-  "minDetour": 40,
   "maxDetour": 120,
-  "minOffRoute": 25,
-  "minSpacing": 60,
-  "pickupRadius": 4,
-  "botDetourChance": 0.35,
-  "seed": 7
+  "pickupRadius": 6,
+  "botDetourChance": 0,
+  "maxPickups": 10,
+  "pickupSpacing": 220
 }
