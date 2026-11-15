@@ -164,7 +164,7 @@ namespace Dogpatch.Ambient
                 if (ped.State == PedState.Dive)
                 {
                     dive++;
-                    Debug.Log($"[Ambient] capture: diver {ped.Pos} t={ped.StateTime:F2} tip={ped.Tip:F0} roll={ped.Roll:F0} from {ped.ThreatFrom}");
+                    Debug.Log($"[Ambient] capture: diver {ped.Pos} t={ped.StateTime:F2} phase={ped.Phase} pitch={ped.Pitch:F0} from {ped.ThreatFrom}");
                 }
                 if (ped.State == PedState.Tumble || ped.State == PedState.Down || ped.State == PedState.GetUp) tumble++;
             }

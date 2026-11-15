@@ -15,7 +15,7 @@ namespace Dogpatch.Traffic
     // platforms; e-bikes at the Bay Wheels docks; and a row of parked roster vehicles by the start.
     // Near agents move their kinematic bodies every physics step with colliders on; far ones step at
     // a third of the rate with colliders and shadows off.
-    public sealed class TrafficSystem : MonoBehaviour
+    public sealed partial class TrafficSystem : MonoBehaviour
     {
         const float NearRadius = 90f;
         const float SpawnMin = 80f;
@@ -331,7 +331,7 @@ namespace Dogpatch.Traffic
                 else if (a.Spec.Rider) riders++;
                 else everyday++;
             }
-            int dr = RobotaxiQuota - robotaxis, de = EverydayQuota - everyday, dd = RiderQuota - riders;
+            int dr = Quota(RobotaxiQuota) - robotaxis, de = Quota(EverydayQuota) - everyday, dd = Quota(RiderQuota) - riders;
             int best = Mathf.Max(dr, Mathf.Max(de, dd));
             type = best == dr ? RobotaxiTypes[Random.Range(0, RobotaxiTypes.Length)]
                 : best == de ? EverydayTypes[Random.Range(0, EverydayTypes.Length)]

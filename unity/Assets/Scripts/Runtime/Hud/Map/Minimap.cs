@@ -17,9 +17,9 @@ namespace Dogpatch.Map
     // The map is vector meshes (MapGeometry, built off the main thread) rendered each frame into a
     // 4x MSAA target exactly the circle's size in screen pixels, so it is 1:1 and antialiased at any
     // zoom, then drawn as a textured fan under the rim; there is no second camera. On top: the route
-    // (sunshine), the start ring, payphones (pink dots), ask pickups, the finish flag, your parked
-    // race car, the other racers as their colour blocks, and you. Racers and the objective outside
-    // the circle are pinned to its rim as small chevrons pointing their way.
+    // (sunshine), the start ring, ask pickups, the finish flag, your parked race car, the other
+    // racers as their colour blocks, and you. Racers and the objective outside the circle are
+    // pinned to its rim as small chevrons pointing their way.
     //
     // A tap on the circle opens the full map: north-up over the whole screen with pinch zoom and
     // pan, street names on the major streets, the landmarks, and the same marks with names on the
@@ -542,16 +542,6 @@ namespace Dogpatch.Map
                 if (Inside(ring, 6f * s)) Ring(ring, Mathf.Max(race.Course.RingRadius * pxPerMeter, 4.5f * s), 1.8f * s, Sunshine);
             }
 
-            if (raceUp && !FullOpen && race.Calls != null)
-                foreach (var phone in race.Calls.Phones)
-                {
-                    if (phone == null) continue;
-                    var p = ToMap(phone.transform.position);
-                    if (!Inside(p, 3f * s)) continue;
-                    Disc(p, 3.5f * s, Ink, 12);
-                    Disc(p, 2.5f * s, phone.Ringing ? Pink : new Color(Pink.r, Pink.g, Pink.b, 0.45f), 12);
-                }
-
             foreach (var (target, _) in MapMarkers.All)
             {
                 var p = ToMap(target.position);
@@ -568,10 +558,10 @@ namespace Dogpatch.Map
             if (nav != null && nav.HasObjective)
             {
                 var p = ToMap(nav.Objective);
-                var color = nav.Kind == NavKind.Payphone ? Pink : Sunshine;
+                var color = nav.Kind == NavKind.Mission ? Pink : Sunshine;
                 if (!Inside(p, 5f * s)) Pin(p, 4.4f * s, color);
                 else if (nav.Kind == NavKind.Waypoint) Flag(p, Sunshine);
-                else if (nav.Kind == NavKind.Payphone) Ring(p, (5.2f + Mathf.Sin(Time.unscaledTime * 6f) * 0.8f) * s, 1.4f * s, Pink);
+                else if (nav.Kind == NavKind.Mission) Ring(p, (5.2f + Mathf.Sin(Time.unscaledTime * 6f) * 0.8f) * s, 1.4f * s, Pink);
             }
 
             var mySlotColor = raceUp ? SpeedDial.Hex(RaceDirector.SlotHex[race.MySlot]) : White;
@@ -833,78 +823,3 @@ namespace Dogpatch.Map
         }
 
         // Distance to a free-roam objective, frameless white Exo 2 with a thin ink outline just
-        // above the rim (a race already has its meters to YC top right).
-        void DrawDistance()
-        {
-            var nav = NavService.Instance;
-            if (nav == null || !nav.HasObjective || nav.Arrived || nav.Kind == NavKind.Race) return;
-            int meters = Mathf.RoundToInt(nav.Remaining);
-            meters = meters < 100 ? Mathf.Max(5, Mathf.RoundToInt(meters / 5f) * 5) : Mathf.RoundToInt(meters / 10f) * 10;
-            EnsureStyle();
-            var num = meters.ToString();
-            style.fontSize = Mathf.RoundToInt(20f * s);
-            var numSize = style.CalcSize(new GUIContent(num));
-            float x = center.x + radius * 0.18f;
-            float baseline = Screen.height - (center.y + radius + 7f * s);
-            Outlined(new Rect(x, baseline - numSize.y, numSize.x, numSize.y), num, 1.6f * s);
-            style.fontSize = Mathf.RoundToInt(11f * s);
-            var mSize = style.CalcSize(new GUIContent("M"));
-            Outlined(new Rect(x + numSize.x + 2f * s, baseline - mSize.y - 2f * s, mSize.x, mSize.y), "M", 1.2f * s);
-        }
-
-        // IMGUI text is linearized once more than GL colours in a linear-space build, so text
-        // colours go in gamma-corrected (as in SlipstreamHud).
-        static Color TextColor(Color c) => QualitySettings.activeColorSpace == ColorSpace.Linear ? c.gamma : c;
-
-        void Outlined(Rect r, string text, float outline) => Outlined(r, text, outline, White, Ink);
-
-        void Outlined(Rect r, string text, float outline, Color fill, Color edge)
-        {
-            style.normal.textColor = TextColor(edge);
-            for (int i = 0; i < 12; i++)
-            {
-                float a = i * Mathf.PI * 2f / 12f;
-                GUI.Label(new Rect(r.x + Mathf.Cos(a) * outline, r.y + Mathf.Sin(a) * outline, r.width, r.height), text, style);
-            }
-            style.normal.textColor = TextColor(fill);
-            GUI.Label(r, text, style);
-        }
-
-        static void Tri(Vector2 a, Vector2 b, Vector2 c, Color color)
-        {
-            GL.Color(color);
-            GL.Vertex3(a.x, a.y, 0f);
-            GL.Vertex3(b.x, b.y, 0f);
-            GL.Vertex3(c.x, c.y, 0f);
-        }
-
-        static void Quad(Vector2 a, Vector2 b, Vector2 c, Vector2 d, Color color)
-        {
-            Tri(a, b, c, color);
-            Tri(a, c, d, color);
-        }
-
-        static void Parallelogram(Vector2 c, float w, float h, float lean, Color color) =>
-            Quad(c + new Vector2(-w - lean, -h), c + new Vector2(-w + lean, h), c + new Vector2(w + lean, h), c + new Vector2(w - lean, -h), color);
-
-        static void Disc(Vector2 c, float r, Color color, int segments = 20)
-        {
-            for (int i = 0; i < segments; i++)
-            {
-                float a0 = i * Mathf.PI * 2f / segments, a1 = (i + 1) * Mathf.PI * 2f / segments;
-                Tri(c, c + new Vector2(Mathf.Cos(a0), Mathf.Sin(a0)) * r, c + new Vector2(Mathf.Cos(a1), Mathf.Sin(a1)) * r, color);
-            }
-        }
-
-        static void Ring(Vector2 c, float r, float width, Color color, int segments = 64)
-        {
-            for (int i = 0; i < segments; i++)
-            {
-                float a0 = i * Mathf.PI * 2f / segments, a1 = (i + 1) * Mathf.PI * 2f / segments;
-                var d0 = new Vector2(Mathf.Cos(a0), Mathf.Sin(a0));
-                var d1 = new Vector2(Mathf.Cos(a1), Mathf.Sin(a1));
-                Quad(c + d0 * (r - width), c + d0 * r, c + d1 * r, c + d1 * (r - width), color);
-            }
-        }
-    }
-}
