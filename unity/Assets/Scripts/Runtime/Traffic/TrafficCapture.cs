@@ -102,11 +102,11 @@ namespace Dogpatch.Traffic
             overlay = line;
         }
 
-        // A robotaxi SUV 48 m before a stop-controlled junction near the start, filmed from the corner.
+        // A robotaxi SUV 48 m before the stop-controlled junction nearest the player, filmed from the corner.
         void StageStop()
         {
             var system = TrafficSystem.Instance;
-            var spawn = game.World.PlayerSpawn.Position;
+            var spawn = game.Focus != null ? game.Focus.position : game.World.PlayerSpawn.Position;
             float best = float.MaxValue;
             foreach (var l in system.Graph.Lanes)
             {
