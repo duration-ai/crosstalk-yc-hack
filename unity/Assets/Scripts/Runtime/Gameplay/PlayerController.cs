@@ -28,6 +28,7 @@ namespace Dogpatch.Gameplay
         Transform visual;
 
         public float Speed => speed;
+        public float VerticalVelocity { get => verticalVelocity; set => verticalVelocity = value; }
         public Transform Visual => visual;
         public event Action Jumped;
         public event Action<float> Landed;
