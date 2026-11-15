@@ -66,7 +66,9 @@ namespace Dogpatch.Gameplay
             GUI.Label(new Rect(left, top, width, 44 * s), string.IsNullOrEmpty(Game.StreetName) ? "Dogpatch, San Francisco" : Game.StreetName, label);
             GUI.Label(new Rect(left, top + 46 * s, width, 40 * s), Game.StatusLine, small);
 
-            string hint = Game.Driving
+            string hint = Game.Riding
+                ? "Riding along · tap the car to get out"
+                : Game.Driving
                 ? "Drag to steer and drive · release to stop · tap your car to get out"
                 : "Drag anywhere to walk · tap to jump · tap a car to get in";
             GUI.Label(new Rect(left, Screen.height - safe.yMin - 92 * s, width, 60 * s), hint, small);
