@@ -16,6 +16,8 @@ namespace Dogpatch.Vehicles
         public const string FlyingCar = "flying-car";
         public const string CableCar = "cable-car";
         public const string Lowrider = "lowrider";
+        public const string DuckBoat = "duck-boat";
+        public const string FireTruck = "fire-truck";
         public const string MuniBus = "muni-bus";
         public const string ShoppingCart = "shopping-cart";
         public const string BayWheels = "bay-wheels-ebike";
@@ -30,7 +32,7 @@ namespace Dogpatch.Vehicles
         public static readonly string[] All =
         {
             WaymoSuv, WaymoVan, Zoox, Cybertruck, RaceCar, SportsCar, FlyingCar, CableCar, Lowrider, MuniBus, ShoppingCart, BayWheels, Scooter,
-            DoorDashBike, UberEatsBike, Hatchback, Sedan, YellowCab, TThird,
+            DoorDashBike, UberEatsBike, Hatchback, Sedan, YellowCab, TThird, DuckBoat, FireTruck,
         };
     }
 
@@ -135,6 +137,10 @@ namespace Dogpatch.Vehicles
             var cable = H(11f, 2f, 5f, 28f, 1f, 16000f, 1e6f, 1f, false, 3f);
             cable.Coasting = 0.8f;
             Add(new VehicleSpec { Id = VehicleTypes.CableCar, Title = "Cable car", Source = ModelSource.Procedural, Handling = cable, CruiseSpeed = 6f });
+            var duck = H(19f, 6.5f, 12f, 58f, 0.9f, 3400f, 110f, 0.7f);
+            duck.Draft = 1.5f;
+            Add(new VehicleSpec { Id = VehicleTypes.DuckBoat, Title = "Duck boat", Source = ModelSource.Procedural, Handling = duck, CruiseSpeed = 9f, Ability = typeof(DuckBoat) });
+            Add(new VehicleSpec { Id = VehicleTypes.FireTruck, Title = "Fire truck", Source = ModelSource.Procedural, Handling = H(22f, 7f, 16f, 60f, 1.0f, 5200f, 140f, 0.85f), CruiseSpeed = 10f, Ability = typeof(FireTruck) });
             Add(new VehicleSpec
             {
                 Id = VehicleTypes.MuniBus, Title = "Muni bus", Source = ModelSource.Glb, Resource = "Vehicles/muni-bus", PolyforkId = "city-bus-49fd97",

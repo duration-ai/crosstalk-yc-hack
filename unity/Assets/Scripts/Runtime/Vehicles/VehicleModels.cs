@@ -81,6 +81,8 @@ namespace Dogpatch.Vehicles
                     case VehicleTypes.FlyingCar: return ProceduralModels.FlyingCar(material);
                     case VehicleTypes.CableCar: return ProceduralModels.CableCar(material);
                     case VehicleTypes.Lowrider: return ProceduralModels.Lowrider(material);
+                    case VehicleTypes.DuckBoat: return ServiceVehicles.DuckBoat(material);
+                    case VehicleTypes.FireTruck: return ServiceVehicles.FireTruck(material);
                 }
             }
 

@@ -74,6 +74,8 @@ const VEHICLE_DESCRIPTIONS: Record<string, string> = {
   scooter: "a scooter",
   delivery_bike: "a delivery bike (DoorDash, Uber Eats)",
   shopping_cart: "a shopping cart",
+  duck_boat: "a duck boat, amphibious tour boat or any boat (drives into the bay and floats)",
+  fire_truck: "a fire truck, fire engine or ladder truck (water cannon and siren)",
 };
 
 export function buildQuestions(view: View): Question[] {

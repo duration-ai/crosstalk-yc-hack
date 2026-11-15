@@ -34,6 +34,13 @@ namespace Dogpatch.Gameplay
         public Vector3 HoverGround { get; private set; }
         readonly RaycastHit[] hoverHits = new RaycastHit[16];
 
+        // Amphibious vehicles (HandlingProfile.Draft > 0, the duck boat): while Afloat, set by
+        // Vehicles.DuckBoat, the body is held on the water at WaterTop, steers looser and slower, and
+        // the model sits Draft lower so the hull rides in the water.
+        public bool Afloat;
+        public float WaterTop;
+        float sink;
+
         // While true, something else (the traffic AI) moves this car and FixedUpdate leaves the body
         // alone, even with the player aboard as a passenger.
         public bool Autopilot { get; set; }
@@ -195,7 +202,8 @@ namespace Dogpatch.Gameplay
         void FixedUpdate()
         {
             bool hover = Hovers;
-            body.useGravity = !hover || Stunned;
+            bool floating = Afloat && body.position.y < WaterTop + 0.05f;
+            body.useGravity = !(hover || floating) || Stunned;
             if (body.isKinematic || Stunned || Autopilot) return;
             float dt = Time.fixedDeltaTime;
             var forward = transform.forward;
@@ -248,7 +256,8 @@ namespace Dogpatch.Gameplay
 
             float target = throttle >= 0f ? throttle * handling.TopSpeed * SpeedScale * SpeedMul : throttle * handling.ReverseSpeed;
             bool opposing = Mathf.Sign(target) != Mathf.Sign(forwardSpeed) && Mathf.Abs(forwardSpeed) > 0.5f;
-            float grip = Mathf.Clamp01(handling.Grip * RoadConditions.GripMultiplier);
+            if (floating) target *= 0.8f;
+            float grip = floating ? 0.55f : Mathf.Clamp01(handling.Grip * RoadConditions.GripMultiplier);
             float rate = handbrake ? handling.Braking * 0.3f : brake ? handling.Braking : target == 0f ? handling.Coasting : opposing ? handling.Braking : handling.Acceleration;
             rate *= Mathf.Lerp(0.5f, 1f, grip);
             brakeHeld = handbrake || brake || opposing;
@@ -275,6 +284,7 @@ namespace Dogpatch.Gameplay
                 ? along * forwardSpeed + slide - groundNormal * (Mathf.Max(ground.distance - 0.5f, 0f) * 10f)
                 : forward * forwardSpeed + slide + Vector3.up * Mathf.Min(body.linearVelocity.y, 0f);
             if (hover) velocity.y = HoverVelocity(dt);
+            else if (floating) velocity.y = Mathf.Lerp(body.linearVelocity.y, Mathf.Clamp((WaterTop - body.position.y) * 4f, -4f, 3f), 1f - Mathf.Exp(-8f * dt));
             body.linearVelocity = velocity;
 
             if (!Driven && Mathf.Abs(forwardSpeed) < 0.05f && (!hover || HoverAltitude < 0.2f)) body.isKinematic = true;
@@ -328,6 +338,13 @@ namespace Dogpatch.Gameplay
                     float roll = steer * Mathf.Clamp01(Mathf.Abs(forwardSpeed) / 12f) * 4.5f;
                     float pitch = Mathf.Clamp(-accelSmooth * 0.3f, -3f, 3.5f);
                     tilt *= Quaternion.Euler(pitch, 0f, roll);
+                }
+                if (handling.Draft > 0f)
+                {
+                    sink = Mathf.MoveTowards(sink, Afloat ? handling.Draft : 0f, 3.5f * Time.deltaTime);
+                    float swell = Afloat ? 1f : 0f;
+                    visual.transform.localPosition = Vector3.down * (sink + Mathf.Sin(Time.time * 1.7f) * 0.08f * swell);
+                    tilt *= Quaternion.Euler(Mathf.Sin(Time.time * 1.3f) * 2.5f * swell - Mathf.Clamp01(Mathf.Abs(forwardSpeed) / 10f) * 4f * swell, 0f, Mathf.Sin(Time.time * 0.9f + 1f) * 3f * swell);
                 }
                 visual.transform.localRotation = Quaternion.Slerp(visual.transform.localRotation, tilt, 1f - Mathf.Exp(-10f * Time.deltaTime));
             }
