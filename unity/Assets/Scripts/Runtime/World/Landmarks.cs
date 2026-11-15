@@ -56,15 +56,6 @@ namespace Dogpatch.World
                             break;
                     }
                 }
-            if (data.props != null)
-                foreach (var prop in data.props)
-                    if (prop.kind == "billboard")
-                    {
-                        var p = new Vector2(prop.x, prop.z);
-                        Billboard(p, prop.headingKnown ? prop.heading : FaceStreet(p), 0f, 3.5f);
-                        Count("billboard (OSM)");
-                    }
-
             if (data.platforms != null)
                 foreach (var platform in data.platforms)
                 {

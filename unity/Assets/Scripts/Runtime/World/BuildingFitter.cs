@@ -143,11 +143,11 @@ namespace Dogpatch.World
                     {
                         var hr = right * cw * 0.5f;
                         var hf = forward * cd * 0.5f;
-                        statics.Generated(StaticModels.Layer.Buildings, c).Quad(MeshBuilder.At(c - hr - hf, height), MeshBuilder.At(c - hr + hf, height), MeshBuilder.At(c + hr + hf, height), MeshBuilder.At(c + hr - hf, height), roofColour, Vector3.up);
+                        statics.Generated(StaticModels.Layer.Buildings, centroid).Quad(MeshBuilder.At(c - hr - hf, height), MeshBuilder.At(c - hr + hf, height), MeshBuilder.At(c + hr + hf, height), MeshBuilder.At(c + hr - hf, height), roofColour, Vector3.up);
                         continue;
                     }
                     string cellVariant = terrace ? Recolour(pick, candidates, Hash(building.id + "/" + (i / 2)), colour) : variant;
-                    if (statics.Place(StaticModels.Layer.Buildings, cellVariant, c, Matrix4x4.TRS(MeshBuilder.At(c, 0f), rotation, scale), building.id) >= 0) placed++;
+                    if (statics.Place(StaticModels.Layer.Buildings, cellVariant, centroid, Matrix4x4.TRS(MeshBuilder.At(c, 0f), rotation, scale), building.id) >= 0) placed++;
                 }
 
             AddFar(poly, height, centroid, variant);

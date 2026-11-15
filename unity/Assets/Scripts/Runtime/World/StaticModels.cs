@@ -177,7 +177,7 @@ namespace Dogpatch.World
                 mesh.RecalculateBounds();
                 bool shadows = key.Item1 != Layer.BuildingsFar;
                 var go = WorldBuilder.Emit(parent, name, mesh, material, shadows);
-                lod.Add(key.Item1, go.GetComponent<MeshRenderer>());
+                lod.Add(key.Item1, key.Item2, go.GetComponent<MeshRenderer>());
                 var filter = go.GetComponent<MeshFilter>();
 
                 int[] solid = null;
