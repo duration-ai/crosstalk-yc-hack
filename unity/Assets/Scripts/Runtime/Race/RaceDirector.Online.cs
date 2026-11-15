@@ -145,7 +145,21 @@ namespace Dogpatch.Race
         async Task EnterMissionAsync()
         {
             if (RoomId != null) return;
-            var joined = await AsPlayer(() => convex.EnterMissionAsync(MyId, RouteWire(), Course.Data.finishRadius, AskTuning.startAsks, PickupWire(), AskTuning.pickupRadius));
+            RoomResponse joined;
+            for (int attempt = 1; ; attempt++)
+            {
+                try
+                {
+                    joined = await AsPlayer(() => convex.EnterMissionAsync(MyId, RouteWire(), Course.Data.finishRadius, AskTuning.startAsks, PickupWire(), AskTuning.pickupRadius));
+                    break;
+                }
+                catch (BackendException e) when (attempt < 3 && (e.Code == BackendErrorCodes.Internal || e.Code == ConvexSocket.Unavailable))
+                {
+                    Debug.LogWarning($"[SpeedDial] mission enter failed ({e.Code}), retrying");
+                    await Task.Delay(250 * attempt);
+                }
+            }
+            if (RoomId != null) return;
             EnterRoom(joined, false);
             Debug.Log($"[SpeedDial] mission lobby {joined.room.code} ({joined.room.id}): {joined.room.playerCount} in the ring, {joined.room.status}, you are {joined.you.color} (slot {joined.you.slot})");
         }
