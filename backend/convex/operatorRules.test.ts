@@ -313,7 +313,7 @@ describe("rule 10: object targets", () => {
     const vague = answers({ scope: "object", object_effect: "launch", target: "tree_3" });
     expect(decide(vague, onFoot, [])).toEqual(effect({ effect: "launch", target: "veh_12" }));
     const grow = answers({ scope: "object", object_effect: "grow" });
-    expect(decide(grow, driving, [])).toEqual(effect({ scope: "players", effect: "bigger", confirm: false }));
+    expect(decide(grow, driving, [])).toEqual(effect({ scope: "object", effect: "grow", target: "veh_me", confirm: false }));
   });
 
   it("finds your own car when the view left it out", () => {
@@ -321,7 +321,7 @@ describe("rule 10: object targets", () => {
     const a = answers({ scope: "object", object_effect: "recolor", class: "car", color: "gold", described: 0.9, target: "veh_me", self_ref: 0.9 });
     expect(decide(a, noOwnCar, [])).toEqual(effect({ target: "veh_me", color: "gold" }));
     const grow = answers({ scope: "object", object_effect: "grow" });
-    expect(decide(grow, noOwnCar, [])).toEqual(effect({ scope: "players", effect: "bigger" }));
+    expect(decide(grow, noOwnCar, [])).toEqual(effect({ scope: "object", effect: "grow", target: "veh_me" }));
   });
 
   it("recolors your own car locally", () => {
@@ -329,9 +329,25 @@ describe("rule 10: object targets", () => {
     expect(decide(a, driving, [])).toEqual(effect({ scope: "object", target: "veh_me", color: "rainbow", strength: "" }));
   });
 
-  it("promotes another player's car with confirm", () => {
+  it("puts car effects on another player's car, with confirm", () => {
     const a = answers({ scope: "object", object_effect: "shrink", described: 0.9, target: "car:p2" });
-    expect(decide(a, onFoot, [])).toEqual(effect({ scope: "players", effect: "smaller", confirm: true }));
+    expect(decide(a, onFoot, [])).toEqual(effect({ scope: "object", effect: "shrink", target: "car:p2", confirm: true }));
+    const slow = answers({ scope: "object", object_effect: "slow_down", described: 0.9, target: "car:p2" });
+    expect(decide(slow, onFoot, [])).toEqual(effect({ scope: "players", effect: "run_slower", confirm: true }));
+  });
+
+  it("ghosts, bounces and launches your own car; explode and demolish stay off it", () => {
+    for (const object_effect of ["ghost", "see_through", "bouncy", "icy", "rock_solid", "soft", "launch"]) {
+      const a = answers({ scope: "object", object_effect, described: 0.9, target: "veh_me", self_ref: 0.9 });
+      expect(decide(a, driving, []), object_effect).toEqual(effect({ scope: "object", effect: object_effect, target: "veh_me", confirm: false }));
+    }
+    const boom = answers({ scope: "object", object_effect: "explode", described: 0.9, target: "veh_me", self_ref: 0.9 });
+    expect(decide(boom, driving, [])).toEqual(refused("player_target"));
+  });
+
+  it("ghosts the nearest other racer's car when aimed at the other racers", () => {
+    const a = answers({ scope: "object", object_effect: "ghost", other_player: 0.9 });
+    expect(decide(a, onFoot, [])).toEqual(effect({ scope: "object", effect: "ghost", target: "car:p2", confirm: true }));
   });
 
   it("refuses protected and incompatible targets", () => {
