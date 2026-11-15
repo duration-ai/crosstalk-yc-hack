@@ -6,6 +6,7 @@
 //   node tools/race-bot/race-bot.mjs --join QMTX                 join a room by its code
 //   node tools/race-bot/race-bot.mjs --host --min 2              create a room and print its code
 //   node tools/race-bot/race-bot.mjs --join QMTX --name Rosa --fire rain --at 0.5 --speed 16
+//   node tools/race-bot/race-bot.mjs --mission --world-min 1     join the shared world, then walk into the ring
 //
 // Options:
 //   --url <base>       deployment (default $CONVEX_SITE_URL or https://rapid-gnat-965.convex.site)
@@ -20,6 +21,11 @@
 //   --races <n>        races to run, asking for a rematch between them (default 1)
 //   --hz <n>           update and poll rate (default 8)
 //   --code-file <path> with --host, also write the room code to this file
+//   --mission          shared world: post presence, walk into the start ring (POST /api/missions/enter),
+//                      race, then go back to free roam about 10 s after the results
+//   --world-min <n>    with --mission, wait until n other players are in the world before the ring
+//   --ring-after <s>   with --mission, seconds in free roam before walking into the ring (default 3)
+//   --linger <s>       with --mission, seconds in the world after the race before leaving (default 20)
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -106,12 +112,49 @@ function makePath(route) {
 
 const heading = (dir) => ((Math.atan2(dir.x, dir.z) * 180) / Math.PI + 360) % 360;
 
+// Shared-world presence, posted at hz in the background from whatever pose the bot is in.
+const pose = { position: { x: 0, y: 0, z: 0 }, heading: 0, speed: 0, mode: "onFoot" };
+let world = null;
+function presenceLoop(me) {
+  let stop = false;
+  (async () => {
+    let failures = 0;
+    while (!stop) {
+      try {
+        world = await call("POST", "/api/world/presence", { playerId: me, ...pose, vehicleType: pose.mode === "driving" ? "hatchback" : "" });
+        if (failures) log("presence back");
+        failures = 0;
+      } catch (e) {
+        if (!failures++) log("presence: " + e.message);
+      }
+      await sleep(failures ? Math.min(2000, 250 * 2 ** failures) : 1000 / hz);
+    }
+  })();
+  return () => (stop = true);
+}
+
 async function main() {
   const { player } = await call("POST", "/api/players", { displayName: name });
   log("player " + player.id + " on " + base);
 
+  const mission = opt("mission", false);
+  let stopPresence = () => {};
   let joined;
-  if (opt("host", false)) {
+  if (mission) {
+    const here = dirname(fileURLToPath(import.meta.url));
+    const route = JSON.parse(readFileSync(join(here, "route.json"), "utf8")).route;
+    pose.position = { x: route[0].x + 18, y: route[0].y + 0.3, z: route[0].z + 12 };
+    stopPresence = presenceLoop(player.id);
+    while (!world) await sleep(100);
+    log("in the world: shard " + world.shard + ", world room " + world.worldRoomId + ", colour " + world.you.color);
+    const want = Number(opt("world-min", 0));
+    while (world.players.length < want) await sleep(250);
+    log("sees " + world.players.map((p) => p.displayName + " (" + p.color + ", " + p.mode + ")").join(", "));
+    await sleep(Number(opt("ring-after", 3)) * 1000);
+    pose.position = { x: route[0].x, y: route[0].y + 0.3, z: route[0].z };
+    joined = await call("POST", "/api/missions/enter", { playerId: player.id, mission: "yc", route, finishRadius: 15 });
+    log("entered the ring: room " + joined.room.code + " (" + joined.room.status + ", " + joined.room.playerCount + " in the lobby) as " + joined.you.color);
+  } else if (opt("host", false)) {
     const here = dirname(fileURLToPath(import.meta.url));
     const route = JSON.parse(readFileSync(join(here, "route.json"), "utf8")).route;
     joined = await call("POST", "/api/rooms", { playerId: player.id, route, minPlayers: Number(opt("min", 2)), finishRadius: 15 });
@@ -168,11 +211,15 @@ async function main() {
         break;
       }
       const others = poll.racers.filter((r) => r.playerId !== me && !r.left).length;
-      if (!readied && room.status === "lobby" && (others > 0 || room.minPlayers <= 1)) {
+      if (!mission && !readied && room.status === "lobby" && (others > 0 || room.minPlayers <= 1)) {
         readied = true;
         await sleep(400 + slot * 300);
         await call("POST", "/api/rooms/ready", { playerId: me, roomId, ready: true }).catch((e) => log("ready: " + e.message));
         log("ready");
+      }
+      if (room.status === "countdown" && !readied) {
+        readied = true;
+        log("countdown: " + ((room.startsAt - poll.serverTime) / 1000).toFixed(1) + " s, " + room.playerCount + " racers");
       }
       if (room.status === "racing" && !gone) {
         gone = true;
@@ -197,6 +244,7 @@ async function main() {
         }
       }
       if (room.status !== "finished") {
+        Object.assign(pose, { position: path.at(progress, lane), heading: heading(path.dirAt(progress)), speed, mode: gone ? "driving" : "onFoot" });
         const up = await call("POST", "/api/race/update", { playerId: me, roomId, position: path.at(progress, lane), heading: heading(path.dirAt(progress)) });
         if (up.finished && !finished) {
           finished = true;
@@ -209,12 +257,25 @@ async function main() {
         for (const r of poll.results) log("  " + r.place + ". " + r.displayName.padEnd(12) + " " + (r.finished ? (r.finishMs / 1000).toFixed(1) + " s" : "DNF") + "  " + r.award + " (" + r.calls + " calls)");
         raced++;
         if (raced >= races) break;
+        if (mission) continue;
         await sleep(3000);
         await call("POST", "/api/rooms/ready", { playerId: me, roomId, ready: true }).catch((e) => log("rematch: " + e.message));
         log("asked for a rematch");
       }
       await sleep(Math.max(0, 1000 / hz - (Date.now() - t0)));
     }
+  }
+  if (mission) {
+    await sleep(10000);
+    await call("POST", "/api/rooms/leave", { playerId: me, roomId }).catch(() => {});
+    pose.mode = "onFoot";
+    pose.speed = 0;
+    log("back in the world at (" + pose.position.x.toFixed(0) + "," + pose.position.z.toFixed(0) + "), " + (world.players.length + 1) + " online");
+    await sleep(Number(opt("linger", 20)) * 1000);
+    stopPresence();
+    await call("POST", "/api/world/leave", { playerId: me }).catch(() => {});
+    log("done, left the world");
+    return;
   }
   await call("POST", "/api/rooms/leave", { playerId: me, roomId }).catch(() => {});
   log("done, left the room");

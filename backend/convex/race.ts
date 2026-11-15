@@ -90,7 +90,10 @@ export const collect = mutation({
   },
 });
 
-/** Spends one of the racer's asks for an Operator request; CONFLICT when none are left. operator.call runs it. */
+/**
+ * Spends one of the racer's asks for an Operator request; CONFLICT when none are left. operator.call runs
+ * it. A freeAsks room (the voice Operator's solo room, test rooms) never runs out.
+ */
 export const spendAsk = internalMutation({
   args: { playerId: v.id("players"), roomId: v.id("rooms") },
   handler: async (ctx, args) => {
@@ -99,6 +102,7 @@ export const spendAsk = internalMutation({
     if (row.left) fail("CONFLICT", "Player left this room");
     if (phase(room, Date.now()) === "finished") fail("CONFLICT", "The race is over");
     const asks = asksOf(room, row);
+    if (room.freeAsks) return { asks };
     if (asks <= 0) fail("CONFLICT", "No asks left");
     await ctx.db.patch(row._id, { asks: asks - 1 });
     return { asks: asks - 1 };

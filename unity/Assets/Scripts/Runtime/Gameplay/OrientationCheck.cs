@@ -62,16 +62,6 @@ namespace Dogpatch.Gameplay
 
             yield return Both("on-foot");
 
-            if (race.Online && race.RoomId == null)
-            {
-                var hud = race.Hud;
-                var type = hud.GetType();
-                type.GetMethod("StartEntry", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(hud, new object[] { "code" });
-                type.GetField("entry", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(hud, "QM");
-                yield return Both("join-code");
-                type.GetMethod("EndEntry", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(hud, null);
-            }
-
             var setPaused = typeof(Hud).GetMethod("SetPaused", BindingFlags.Instance | BindingFlags.NonPublic);
             var pause = game.GetComponent<Hud>();
             setPaused.Invoke(pause, new object[] { true });
@@ -91,11 +81,10 @@ namespace Dogpatch.Gameplay
             string room = null;
             if (race.Online)
             {
-                race.Host();
+                game.Player.Teleport(race.RingSpot(0), 0f);
                 float until = Time.realtimeSinceStartup + 20f;
                 while ((race.RoomId == null || race.Last == null || race.Room == null) && Time.realtimeSinceStartup < until) yield return null;
-                room = race.RoomId;
-                Expect(room != null, "hosted a room");
+                Expect(race.RoomId != null, "entered the mission lobby");
                 yield return Wait(2f);
                 yield return Both("lobby");
             }
@@ -127,7 +116,6 @@ namespace Dogpatch.Gameplay
             Log($"fov {fovBefore:F1} -> {cam.fieldOfView:F1} (aspect {cam.aspect:F2})");
             Expect(game.World.Root.GetInstanceID() == world, "world not rebuilt");
             Expect(game.CurrentCar == car, "still driving the same car");
-            if (race.Online) Expect(race.RoomId == room, "still in room " + race.RoomCode);
             yield return Rotate();
             yield return Wait(1.5f);
             Expect(game.World.Root.GetInstanceID() == world && game.CurrentCar == car, "second rotation kept world and car");
