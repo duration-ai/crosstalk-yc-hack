@@ -37,7 +37,7 @@ namespace Dogpatch.World
                     var p = new Vector2(l.x, l.z);
                     switch (l.kind)
                     {
-                        case "crane": Crane(p, l.heading >= 0f ? l.heading : 0f, l.heightM > 0f ? l.heightM : 40f); Count("crane"); break;
+                        case "crane": Crane(p, l.headingKnown ? l.heading : 0f, l.heightM > 0f ? l.heightM : 40f); Count("crane"); break;
                         case "smokestack":
                             float h = l.heightM > 0f ? l.heightM : 91f;
                             LandmarkMeshes.Smokestack(statics.Generated(StaticModels.Layer.Landmarks, p), p, h, h * 0.045f, h * 0.028f);
@@ -51,7 +51,7 @@ namespace Dogpatch.World
                             Count("drydock");
                             break;
                         case "billboard":
-                            Billboard(p, l.heading >= 0f ? l.heading : FaceStreet(p), 0f, 3.5f);
+                            Billboard(p, l.headingKnown ? l.heading : FaceStreet(p), 0f, 3.5f);
                             Count("billboard (OSM)");
                             break;
                     }
@@ -61,27 +61,31 @@ namespace Dogpatch.World
                     if (prop.kind == "billboard")
                     {
                         var p = new Vector2(prop.x, prop.z);
-                        Billboard(p, prop.heading >= 0f ? prop.heading : FaceStreet(p), 0f, 3.5f);
+                        Billboard(p, prop.headingKnown ? prop.heading : FaceStreet(p), 0f, 3.5f);
                         Count("billboard (OSM)");
                     }
 
             if (data.platforms != null)
                 foreach (var platform in data.platforms)
                 {
-                    var pts = platform.pts != null && platform.pts.Length >= 4 ? Geometry.ToPoints(platform.pts) : null;
-                    if (pts == null)
+                    if (platform.pts == null || platform.pts.Length < 4) { Notes.Add("platform " + platform.osmId + " has no geometry"); continue; }
+                    var pts = Geometry.ToPoints(platform.pts);
+                    float width = 3.5f;
+                    if (platform.closed && pts.Length >= 3)
                     {
-                        var c = new Vector2(platform.x, platform.z);
-                        var a = new Vector2(Mathf.Sin(platform.heading * Mathf.Deg2Rad), Mathf.Cos(platform.heading * Mathf.Deg2Rad)) * Mathf.Max(platform.length, 20f) * 0.5f;
-                        pts = new[] { c - a, c + a };
+                        var box = OrientedBox.Of(pts);
+                        bool alongAxis = box.ExtentAxis >= box.ExtentNormal;
+                        var axis = alongAxis ? box.Axis : box.Normal;
+                        float half = alongAxis ? box.ExtentAxis : box.ExtentNormal;
+                        width = Mathf.Clamp(2f * (alongAxis ? box.ExtentNormal : box.ExtentAxis), 2f, 10f);
+                        pts = new[] { box.Center - axis * half, box.Center + axis * half };
                     }
-                    float width = platform.width > 1f ? Mathf.Min(platform.width, 8f) : 3.5f;
                     var mid = pts[pts.Length / 2];
                     LandmarkMeshes.Platform(statics.Generated(StaticModels.Layer.Landmarks, mid), pts, width, platform.kind == "rail" ? 1.0f : 0.9f);
                     var dir = (pts[pts.Length - 1] - pts[0]).normalized;
                     var shelterAt = Vector2.Lerp(pts[0], pts[pts.Length - 1], 0.5f);
                     float yaw = Mathf.Atan2(-dir.y, dir.x) * Mathf.Rad2Deg;
-                    statics.PlaceAtOrigin(StaticModels.Layer.Landmarks, "p-shelter", shelterAt, Matrix4x4.TRS(MeshBuilder.At(shelterAt, platform.kind == "rail" ? 1.0f : 0.9f), Quaternion.Euler(0f, yaw, 0f), Vector3.one), platform.osmId);
+                    statics.PlaceAtOrigin(StaticModels.Layer.Landmarks, "p-shelter", shelterAt, Matrix4x4.TRS(MeshBuilder.At(shelterAt, platform.kind == "rail" ? 1.0f : 0.9f), Quaternion.Euler(0f, yaw, 0f), Vector3.one), "osm:" + platform.osmId);
                     Count("platform:" + platform.kind);
                 }
 

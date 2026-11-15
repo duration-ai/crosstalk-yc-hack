@@ -50,7 +50,7 @@ namespace Dogpatch.World
                 if (!ctx.Bounds.Contains(p)) { tally.Except("outside bounds"); continue; }
                 string form = TreeForm(tree.species);
                 uint h = Hash(tree.id);
-                float height = TreeHeight(form, tree.dbh);
+                float height = TreeHeight(form, tree.dbhKnown ? tree.dbh : 0f);
                 string id = form switch
                 {
                     "palm" => height > 11.5f ? "t-palm-14" : "t-palm-9",
@@ -101,9 +101,9 @@ namespace Dogpatch.World
 
         static readonly Dictionary<string, (string id, float radius)> PropModels = new Dictionary<string, (string, float)>
         {
-            ["street_lamp"] = ("p-lamp", 0.2f), ["stop"] = ("p-stop", 0.1f), ["give_way"] = ("p-signpost", 0.1f),
+            ["street_lamp"] = ("p-lamp", 0.2f), ["stop_sign"] = ("p-stop", 0.1f), ["give_way"] = ("p-signpost", 0.1f),
             ["fire_hydrant"] = ("p-hydrant", 0.25f), ["bench"] = ("p-bench", 0f), ["bollard"] = ("p-bollard", 0.2f),
-            ["bike_rack"] = ("p-bikerack", 0f), ["parking_meter"] = ("p-meter", 0.15f), ["trash_can"] = ("p-bin", 0.3f),
+            ["bike_rack"] = ("p-bikerack", 0f), ["parking_meter"] = ("p-meter", 0.15f), ["trash_can"] = ("p-bin", 0.3f), ["recycling"] = ("p-bin", 0.3f),
             ["post_box"] = ("p-mailbox", 0.35f), ["drinking_water"] = ("p-fountain", 0.3f), ["picnic_table"] = ("p-picnic", 0f),
             ["vending"] = ("p-newsbox", 0.3f), ["charging_station"] = ("p-charger", 0.3f), ["power_pole"] = ("p-pole", 0.2f),
             ["flagpole"] = ("p-flagpole", 0.15f),
@@ -111,7 +111,7 @@ namespace Dogpatch.World
 
         public static readonly HashSet<string> LandmarkKinds = new HashSet<string>
         {
-            "yc", "machine_shop", "cream_stone", "crane", "smokestack", "caltrain_22nd", "drydock", "billboard", "chimney",
+            "yc", "machine_shop", "cream_stone", "crane", "smokestack", "caltrain_22nd", "drydock", "billboard", "chimney", "bike_share",
         };
 
         public void PlaceProps(Prop[] props)
@@ -124,11 +124,19 @@ namespace Dogpatch.World
                 tally.Total++;
                 var p = new Vector2(prop.x, prop.z);
                 if (!ctx.Bounds.Contains(p)) { tally.Except("outside bounds"); continue; }
+                if (prop.kind == "stop_sign" && prop.source == "osm" && System.Array.Exists(prop.tags ?? System.Array.Empty<string>(), t => t.StartsWith("dsNearby=")))
+                {
+                    tally.Except("duplicate of a DataSF stop sign within 15 m (DataSF placed instead)");
+                    continue;
+                }
                 switch (prop.kind)
                 {
                     case "traffic_signal": PlaceSignal(prop, p, tally); continue;
                     case "crossing": PlaceCrossing(prop, p, tally); continue;
-                    case "bus_stop": PlaceSingle(Has(prop, "shelter=yes") ? "p-shelter" : "p-busstop", Has(prop, "shelter=yes") ? 0f : 0.15f, prop, p, tally); continue;
+                    case "bus_stop":
+                        bool shelter = Has(prop, "shelter=yes") || Has(prop, "shelter=1");
+                        PlaceSingle(shelter ? "p-shelter" : "p-busstop", shelter ? 0f : 0.15f, prop, p, tally);
+                        continue;
                     case "bicycle_rental": PlaceDock(prop, p, tally); continue;
                 }
                 if (!PropModels.TryGetValue(prop.kind, out var model)) { tally.Except("no Polyfork model for this kind"); continue; }
@@ -138,9 +146,9 @@ namespace Dogpatch.World
 
         void PlaceSingle(string id, float radius, Prop prop, Vector2 p, Tally tally)
         {
-            var q = ToCurb(p, tally, prop.kind == "stop" || prop.kind == "give_way" ? 0.6f : 0.5f);
-            float heading = prop.heading >= 0f ? prop.heading : FaceStreet(q);
-            if (prop.kind == "stop" || prop.kind == "give_way") q = StopSignSpot(p, heading, q);
+            var q = ToCurb(p, tally, prop.kind == "stop_sign" || prop.kind == "give_way" ? 0.6f : 0.5f);
+            float heading = prop.headingKnown ? prop.heading : FaceStreet(q);
+            if (prop.kind == "stop_sign" || prop.kind == "give_way") q = StopSignSpot(p, heading, q);
             if (statics.PlaceAtOrigin(StaticModels.Layer.Props, id, q, Matrix4x4.TRS(MeshBuilder.At(q, 0.03f), Quaternion.Euler(0f, heading, 0f), Vector3.one), prop.id, radius) < 0)
             {
                 tally.Except("model missing");
@@ -232,9 +240,9 @@ namespace Dogpatch.World
         {
             var mesh = statics.Mesh("p-bikerack");
             if (mesh == null) { tally.Except("model missing"); return; }
-            float heading = prop.heading >= 0f ? prop.heading : FaceStreet(p) + 90f;
+            float heading = prop.headingKnown ? prop.heading : FaceStreet(p) + 90f;
             var along = new Vector2(Mathf.Sin(heading * Mathf.Deg2Rad), Mathf.Cos(heading * Mathf.Deg2Rad));
-            int racks = Mathf.Clamp(Mathf.CeilToInt(Mathf.Max(prop.capacity, 6) / 6f), 1, 6);
+            int racks = Mathf.Clamp(Mathf.CeilToInt(Mathf.Max(Capacity(prop), 6) / 6f), 1, 6);
             float length = mesh.bounds.size.x;
             for (int i = 0; i < racks; i++)
             {
@@ -242,6 +250,14 @@ namespace Dogpatch.World
                 statics.PlaceAtOrigin(StaticModels.Layer.Props, "p-bikerack", q, Matrix4x4.TRS(MeshBuilder.At(q, 0.03f), Quaternion.Euler(0f, heading - 90f, 0f), Vector3.one), prop.id);
             }
             tally.Placed++;
+        }
+
+        static int Capacity(Prop prop)
+        {
+            if (prop.tags != null)
+                foreach (var t in prop.tags)
+                    if (t.StartsWith("capacity=") && int.TryParse(t.Substring(9), out int n)) return n;
+            return 0;
         }
 
         static bool Has(Prop prop, string kv) => prop.tags != null && System.Array.IndexOf(prop.tags, kv) >= 0;

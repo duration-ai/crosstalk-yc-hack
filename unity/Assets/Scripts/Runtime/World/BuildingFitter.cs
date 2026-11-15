@@ -46,7 +46,7 @@ namespace Dogpatch.World
             this.measure = measure;
             if (landmarkData != null)
                 foreach (var l in landmarkData)
-                    if (!string.IsNullOrEmpty(l.footprintId)) landmarks[l.footprintId] = l;
+                    if (!string.IsNullOrEmpty(l.footprintId) && (l.kind == "yc" || !landmarks.ContainsKey(l.footprintId))) landmarks[l.footprintId] = l;
         }
 
         public void Add(Building building, Vector2[] poly, float height)
