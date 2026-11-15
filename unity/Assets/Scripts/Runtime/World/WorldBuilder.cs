@@ -96,7 +96,6 @@ namespace Dogpatch.World
 
             var lod = ctx.Root.AddComponent<DistanceLod>();
             ctx.Statics.Emit(ctx.Root.transform, material, lod);
-            new PropPlacer(ctx, models, random).PlaceNpcs(ctx, material);
             return ctx;
         }
 
