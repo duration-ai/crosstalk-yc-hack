@@ -10,7 +10,7 @@ namespace Dogpatch.Operator
 {
     // A visible part for each car mechanic effect (boosters for speed, an anchor for slow, oil
     // for slidey tyres, springs for bouncy, hover rings for low gravity, chrome and an anvil for
-    // heavy, a wind-up key for tiny, monster-truck dress for giant, jump jets for hop), attached to every racer's
+    // heavy, a wind-up key for a shrunk car, monster-truck dress for a grown one, jump jets for hop), attached to every racer's
     // car the row reaches while it runs and popped off when it ends. Every device runs the same
     // activeEffects rows, so remote racers' cars wear the look too.
     public static class VehicleLooks
@@ -27,9 +27,9 @@ namespace Dogpatch.Operator
             ["bouncy"] = Springs,
             ["gravity_lower"] = HoverRings,
             ["gravity_higher"] = (car, box, k, m) => Anvil(box, k, m),
-            ["smaller"] = (car, box, k, m) => WindUpKey(box, k, m),
-            ["bigger"] = (car, box, k, m) => Stacks(box, k, m),
             ["vehicle_hop"] = (car, box, k, m) => HopJets(box, k, m),
+            ["shrink"] = (car, box, k, m) => WindUpKey(box, k, m),
+            ["grow"] = (car, box, k, m) => Stacks(box, k, m),
         };
 
         public static Action Attach(EffectContext context, ActiveEffect row, EffectTarget target)
