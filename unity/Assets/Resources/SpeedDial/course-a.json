@@ -1,0 +1,34 @@
+{
+  "routeName": "VIADUCT RUN",
+  "startName": "Indiana St at 26th (Viaduct Run)",
+  "start": {
+    "lat": 37.751244,
+    "lon": -122.390582
+  },
+  "finishName": "Crane Cove cranes",
+  "finish": {
+    "lat": 37.762756,
+    "lon": -122.387169
+  },
+  "via": [
+    {
+      "lat": 37.752881,
+      "lon": -122.39073
+    },
+    {
+      "lat": 37.75897,
+      "lon": -122.39222
+    },
+    {
+      "lat": 37.764117,
+      "lon": -122.392488
+    },
+    {
+      "lat": 37.764195,
+      "lon": -122.387795
+    }
+  ],
+  "finishRadius": 15,
+  "ringRadius": 7.2,
+  "freeway": true
+}

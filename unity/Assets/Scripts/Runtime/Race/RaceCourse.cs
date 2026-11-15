@@ -26,6 +26,7 @@ namespace Dogpatch.Race
         public GeoPoint[] via;
         public float finishRadius;
         public float ringRadius;
+        public bool freeway;
     }
 
     // Ask pickups (Resources/SpeedDial/asks.json): how many asks a racer starts with, and where the
@@ -122,6 +123,16 @@ namespace Dogpatch.Race
 
         Vector3 Ground(Vector2 p) => new Vector3(p.x, GroundY(p), p.y);
 
+        // The route's height d metres along it: the street, or the freeway deck and ramps on a course
+        // that takes I-280.
+        public float RouteY(float d)
+        {
+            var at = Route.Distance;
+            for (int i = 0; i < at.Length - 1; i++)
+                if (d <= at[i + 1]) return Mathf.Lerp(RouteWorld[i].y, RouteWorld[i + 1].y, Mathf.InverseLerp(at[i], at[i + 1], d));
+            return RouteWorld[RouteWorld.Count - 1].y;
+        }
+
         void Plan()
         {
             RingRadius = Data.ringRadius > 0f ? Data.ringRadius : 7f;
@@ -129,12 +140,12 @@ namespace Dogpatch.Race
             var finishTarget = Project(Data.finish);
             YcSite = Ground(finishTarget);
 
-            Graph = new StreetGraph(world.Roads, RaceKinds);
+            Graph = new StreetGraph(world.Roads, RaceKinds, Data.freeway);
             var stops = new List<Vector2> { startTarget };
             if (Data.via != null) foreach (var v in Data.via) stops.Add(Project(v));
             stops.Add(finishTarget);
             Route = new RoutePath(Simplify(Streets(stops)));
-            foreach (var p in Route.Points) RouteWorld.Add(Ground(p));
+            foreach (var p in Route.Points) RouteWorld.Add(new Vector3(p.x, Mathf.Max(GroundY(p), Graph.HeightAt(p)), p.y));
             Debug.Log($"[SpeedDial] route {Data.startName} -> {Data.finishName}: {Route.Length:F0} m, {Route.Points.Length} points");
 
             PlaceRing(startTarget);
@@ -170,7 +181,7 @@ namespace Dogpatch.Race
             var candidates = new List<(Vector2 p, float progress)>();
             foreach (var (p, detour) in detours)
             {
-                if (detour < tuning.minDetour) continue;
+                if (detour < tuning.minDetour || Graph.HeightAt(p) > 1f) continue;
                 float progress = Route.Project(p);
                 if (Vector2.Distance(p, Route.PointAt(progress)) < tuning.minOffRoute) continue;
                 if (progress < 40f || progress > Route.Length - 40f) continue;
@@ -340,8 +351,33 @@ namespace Dogpatch.Race
         readonly List<Vector2> nodes = new List<Vector2>();
         readonly List<List<(int to, float cost)>> edges = new List<List<(int, float)>>();
         readonly List<(int a, int b, bool oneway)> segments = new List<(int, int, bool)>();
+        readonly Dictionary<int, float> heights = new Dictionary<int, float>();
 
-        public StreetGraph(RoadNetwork roads, HashSet<string> kinds)
+        // freeway: also the I-280 deck and ramps, one way in their drawn direction, for a course over
+        // the viaduct; their nodes keep the deck height for HeightAt.
+        public StreetGraph(RoadNetwork roads, HashSet<string> kinds, bool freeway = false)
+        {
+            Streets(roads, kinds);
+            if (!freeway || roads.Freeway == null) return;
+            foreach (var way in roads.Freeway.Ways)
+            {
+                var pts = way.Points;
+                for (int i = 0; i < pts.Length - 1; i++)
+                {
+                    int a = Node(new Vector2(pts[i].x, pts[i].z));
+                    int b = Node(new Vector2(pts[i + 1].x, pts[i + 1].z));
+                    if (a == b) continue;
+                    if (pts[i].y > 0.5f) heights[a] = pts[i].y;
+                    if (pts[i + 1].y > 0.5f) heights[b] = pts[i + 1].y;
+                    edges[a].Add((b, Vector2.Distance(nodes[a], nodes[b])));
+                    segments.Add((a, b, true));
+                }
+            }
+        }
+
+        public float HeightAt(Vector2 p) => ids.TryGetValue(Vector2Int.RoundToInt(p * 2f), out int id) && heights.TryGetValue(id, out float h) ? h : 0f;
+
+        void Streets(RoadNetwork roads, HashSet<string> kinds)
         {
             for (int r = 0; r < roads.Roads.Length; r++)
             {
