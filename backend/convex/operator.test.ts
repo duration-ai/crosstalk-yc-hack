@@ -276,7 +276,7 @@ describe("operator.call", () => {
 
     const second = await say("shrink her", { scope: "object", object_effect: "shrink", other_player: 0.9 }, tim.id, "driving");
     expect(second).toMatchObject({ outcome: "pending" });
-    await expect(t.mutation(api.operator.confirm, { playerId: tim.id, effectId: second.effect!.id })).rejects.toThrow(/No asks/);
+    await expect(t.mutation(api.operator.confirm, { playerId: tim.id, effectId: second.effect!.id })).rejects.toThrow(/Grab a phone/);
     expect((await effects()).map((e) => e.effect)).toEqual(["vehicle_slower"]);
   });
 
