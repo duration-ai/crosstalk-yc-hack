@@ -193,6 +193,10 @@ namespace Dogpatch.Gameplay
 
         // ---- the rest ----
 
+        // Free roam only: the round avatar portrait in the top-left corner (a tap opens the selfie
+        // camera). The lobby panel and the race stack take this corner, and the portrait hides then.
+        public static Rect AvatarButton => new Rect(Left, Top + 4f * U, 58f * U, 58f * U);
+
         public static Rect Perf(float w, float h) => Option == HudOption.B
             ? new Rect(Right - w, ResultsTop + 120f * U, w, h)
             : new Rect(Right - w, Top + 70f * U, w, h);
