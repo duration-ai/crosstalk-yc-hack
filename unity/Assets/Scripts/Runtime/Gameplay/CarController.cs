@@ -16,6 +16,10 @@ namespace Dogpatch.Gameplay
         public float Speed => forwardSpeed;
         public Vector3 HalfExtents { get; private set; }
 
+        // While true, something else (the traffic AI) moves this car and FixedUpdate leaves the body
+        // alone, even with the player aboard as a passenger.
+        public bool Autopilot { get; set; }
+
         public HandlingProfile Handling
         {
             get => handling;
@@ -80,7 +84,7 @@ namespace Dogpatch.Gameplay
         public void SetDriven(bool driven)
         {
             Driven = driven;
-            if (driven) body.isKinematic = false;
+            if (driven && !Autopilot) body.isKinematic = false;
             desired = Vector3.zero;
             strength = 0f;
         }
@@ -89,6 +93,14 @@ namespace Dogpatch.Gameplay
         {
             desired = direction;
             strength = amount;
+        }
+
+        // Lets the autopilot report its motion so speed readouts and wheel animation stay right.
+        public void SetAutopilotMotion(float speed, float steerInput)
+        {
+            forwardSpeed = speed;
+            steer = Mathf.Clamp(steerInput, -1f, 1f);
+            reversing = speed < -0.1f;
         }
 
         public void Place(Vector3 position, float heading)
@@ -100,7 +112,7 @@ namespace Dogpatch.Gameplay
 
         void FixedUpdate()
         {
-            if (body.isKinematic) return;
+            if (body.isKinematic || Autopilot) return;
             float dt = Time.fixedDeltaTime;
             var forward = transform.forward;
             var right = transform.right;
