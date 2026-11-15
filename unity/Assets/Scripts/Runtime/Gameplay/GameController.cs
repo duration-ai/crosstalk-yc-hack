@@ -166,9 +166,6 @@ namespace Dogpatch.Gameplay
             lastSafe = player.transform.position;
 
             SmashWorld.Install(gameObject, world.Instances, models, material, view);
-            var smashHud = gameObject.AddComponent<SmashHud>();
-            smashHud.View = view;
-            smashHud.Focus = () => current;
             VehicleDamage.Wrecked += OnWrecked;
         }
 
