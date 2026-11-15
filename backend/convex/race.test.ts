@@ -377,81 +377,6 @@ describe("world-change events", () => {
   });
 });
 
-describe("Operator", () => {
-  const cases: [string, string, object, string][] = [
-    ["make every car yellow", "recolor", { color: "yellow", hex: "#FFCB1F" }, "Yellow it is!"],
-    ["turn off gravity", "gravity", { level: "low" }, "Gravity, off!"],
-    ["more gravity, crush them", "gravity", { level: "high" }, "Heavy it is!"],
-    ["make the roads icy", "ice", { level: "on" }, "Roads on ice!"],
-    ["bring in the fog", "fog", { level: "thick" }, "Fog's rolling in!"],
-    ["make it night", "time", { timeOfDay: "night" }, "Lights out!"],
-    ["rush hour traffic please", "traffic", { level: "heavy" }, "Rush hour!"],
-    ["shrink everyone", "resize", { size: "small" }, "Tiny cars!"],
-    ["give me ramps", "ramp", { count: 3 }, "Ramps ahead!"],
-    ["make it rain", "rain", { level: "on" }, "Make it rain!"],
-    ["stop the storm", "rain", { level: "off" }, "Rain's stopped."],
-    ["blizzard time", "snow", { level: "on" }, "Let it snow!"],
-    ["no more snow", "snow", { level: "off" }, "Snow's done."],
-  ];
-
-  it.each(cases)("maps %j to %s", async (text, type, params, line) => {
-    const { t, roomId, tim } = await fourPlayers();
-    const reply = await t.action(api.operator.call, { playerId: tim.id, roomId, text });
-    expect(reply).toMatchObject({ line, command: { type, params }, provider: "keyword" });
-    expect(reply.event).toMatchObject({ seq: 1, type, params, playerId: tim.id });
-    expect((await poll(t, roomId)).events).toEqual([reply.event]);
-  });
-
-  it("picks the earliest keyword, swaps with a named or the racer ahead, and always returns a change", async () => {
-    const setup = await fourPlayers();
-    const { t, roomId, tim, maya, jun } = setup;
-    await startRace(setup);
-    await t.mutation(api.race.update, { playerId: maya.id, roomId, position: at(300), heading: 0 });
-    await t.mutation(api.race.update, { playerId: jun.id, roomId, position: at(200), heading: 0 });
-    await t.mutation(api.race.update, { playerId: tim.id, roomId, position: at(100), heading: 0 });
-
-    const call = (text: string) => t.action(api.operator.call, { playerId: tim.id, roomId, text });
-    expect((await call("pink fog")).command).toEqual({ type: "recolor", params: { color: "pink", hex: "#FF3E8E" } });
-    expect(await call("swap me with maya")).toMatchObject({
-      line: "Swapping you with Maya!",
-      command: { type: "swap", params: { playerId: tim.id, targetPlayerId: maya.id } },
-    });
-    expect((await call("switch places")).command.params.targetPlayerId).toBe(jun.id);
-    expect((await call("swap me with maya")).event.news).toBe("TIM SWAPPED WITH MAYA");
-
-    const surprise = await call("uhh hello?");
-    expect(surprise.line).toMatch(/^Didn't catch that\. /);
-    expect((await call("uhh hello?")).command).toEqual(surprise.command);
-  });
-
-  it("ignores names that cannot be matched and matches non-ASCII names", async () => {
-    const t = convexTest(schema, modules);
-    const ids = [];
-    for (const displayName of ["Tim", "李", "Maya", "Zoë"]) ids.push((await t.mutation(api.players.create, { displayName })).id);
-    const { room } = await t.mutation(api.rooms.create, { playerId: ids[0] });
-    for (const id of ids.slice(1)) await t.mutation(api.rooms.join, { playerId: id, code: room.code });
-    const swap = (playerId: string, text: string) => t.action(api.operator.call, { playerId, roomId: room.id, text });
-    expect((await swap(ids[2], "swap me with tim")).command.params.targetPlayerId).toBe(ids[0]);
-    expect((await swap(ids[0], "swap with zoë")).command.params.targetPlayerId).toBe(ids[3]);
-    expect((await swap(ids[0], "swap me with 李")).command.params.targetPlayerId).toBe(ids[1]);
-  });
-
-  it("rejects empty text and refuses audio without a voice provider", async () => {
-    const { t, roomId, tim } = await fourPlayers();
-    await expect(t.action(api.operator.call, { playerId: tim.id, roomId, text: "  " })).rejects.toThrow(/text/);
-    await expect(
-      t.action(api.operator.call, { playerId: tim.id, roomId, audio: new Uint8Array([1, 2, 3]).buffer, mimeType: "audio/wav" }),
-    ).rejects.toThrow(/text only/);
-  });
-
-  it("falls back to the keyword provider for an unknown OPERATOR_PROVIDER", async () => {
-    vi.stubEnv("OPERATOR_PROVIDER", "some-llm");
-    const { t, roomId, tim } = await fourPlayers();
-    const reply = await t.action(api.operator.call, { playerId: tim.id, roomId, text: "yellow" });
-    expect(reply).toMatchObject({ provider: "keyword", command: { type: "recolor" } });
-  });
-});
-
 async function call(t: ReturnType<typeof convexTest>, method: string, path: string, body?: unknown, headers = {}) {
   const response = await t.fetch(path, {
     method,
@@ -495,9 +420,8 @@ describe("race HTTP API", () => {
     const fired = await call(t, "POST", "/api/rooms/events", { playerId: ids[2], roomId, type: "ramp" });
     expect(fired.status).toBe(201);
     expect(fired.body.event.news).toBe("JUN DROPPED RAMPS");
-    const op = await call(t, "POST", "/api/operator", { playerId: ids[3], roomId, text: "everything yellow!" });
-    expect(op.status).toBe(200);
-    expect(op.body).toMatchObject({ line: "Yellow it is!", command: { type: "recolor" }, event: { seq: 2 } });
+    const second = await call(t, "POST", "/api/rooms/events", { playerId: ids[3], roomId, type: "ramp" });
+    expect(second.body.event).toMatchObject({ seq: 2, news: "ROSA DROPPED RAMPS" });
 
     const polled = await call(t, "GET", `/api/rooms/poll?roomId=${roomId}&after=1`);
     expect(polled.status).toBe(200);
@@ -528,13 +452,5 @@ describe("race HTTP API", () => {
     expect(badType).toMatchObject({ status: 400, body: { error: { code: "INVALID_ARGUMENT" } } });
     expect((await call(t, "POST", "/api/operator", { playerId, roomId })).status).toBe(400);
 
-    const audio = await call(
-      t,
-      "POST",
-      `/api/operator/audio?playerId=${playerId}&roomId=${roomId}`,
-      new Uint8Array([82, 73, 70, 70]),
-      { "Content-Type": "audio/wav" },
-    );
-    expect(audio).toMatchObject({ status: 501, body: { error: { code: "NOT_IMPLEMENTED" } } });
   });
 });

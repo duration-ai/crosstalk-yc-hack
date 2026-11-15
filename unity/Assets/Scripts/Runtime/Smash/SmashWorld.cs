@@ -62,6 +62,7 @@ namespace Dogpatch.Smash
             host.AddComponent<ThreatMonitor>();
             Instance = world;
             world.AttachToVehicles();
+            world.PrecookHulls();
             return world;
         }
 
@@ -76,6 +77,17 @@ namespace Dogpatch.Smash
         void OnDestroy()
         {
             if (Instance == this) Instance = null;
+        }
+
+        // Cooks each breakable variant's convex hull up front, so the first smash of a kind doesn't
+        // pay for PhysX cooking mid-crash.
+        void PrecookHulls()
+        {
+            if (Index == null) return;
+            var seen = new HashSet<string>();
+            foreach (var instance in Index.All)
+                if (instance.Class == World.PhysicsClass.Breakable && seen.Add(instance.Variant))
+                    HullOf(instance, float.NegativeInfinity);
         }
 
         public SmashTuning TuningOf(StaticInstance instance) =>
@@ -169,6 +181,7 @@ namespace Dogpatch.Smash
                 mesh = new Mesh { name = key + " hull", indexFormat = UnityEngine.Rendering.IndexFormat.UInt32 };
                 mesh.SetVertices(pts);
                 mesh.SetTriangles(tris, 0);
+                Physics.BakeMesh(mesh.GetInstanceID(), true);
             }
             hulls[key] = mesh;
             return mesh;
