@@ -68,8 +68,11 @@ namespace Dogpatch.Operator
             {
                 if (car != null && !cars.Contains(car)) cars.Add(car);
             }
-            Add(context.Game != null ? context.Game.CurrentCar : null);
-            Add(context.Race != null ? context.Race.MyCar : null);
+            if (target == null || target.IncludesMe)
+            {
+                Add(context.Game != null ? context.Game.CurrentCar : null);
+                Add(context.Race != null ? context.Race.MyCar : null);
+            }
             if (target != null)
                 foreach (var tag in target.Entities)
                     if (tag != null) Add(tag.GetComponent<CarController>());
@@ -81,7 +84,7 @@ namespace Dogpatch.Operator
         {
             var bodies = new List<Transform>();
             var player = context.Game != null ? context.Game.Player : null;
-            if (player != null && player.Visual != null) bodies.Add(player.Visual);
+            if (player != null && player.Visual != null && (target == null || target.IncludesMe)) bodies.Add(player.Visual);
             if (target != null)
                 foreach (var tag in target.Entities)
                     if (tag != null && tag.GetComponent<Race.RacerAvatar>() != null && !bodies.Contains(tag.transform)) bodies.Add(tag.transform);
