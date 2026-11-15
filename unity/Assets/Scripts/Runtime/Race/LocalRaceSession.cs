@@ -344,7 +344,8 @@ namespace Dogpatch.Race
             racer.position = Copy(position);
             racer.heading = heading;
             racer.updatedAt = now;
-            if (state.Room.status != RoomStatus.Finished) racer.smash = Math.Max(racer.smash, Math.Max(0, smash));
+            if (smash < 0) throw Error(BackendErrorCodes.InvalidArgument, "smash must be a non-negative integer");
+            if (state.Room.status == RoomStatus.Racing) racer.smash = Math.Max(racer.smash, smash);
             var room = state.Room;
             if (!racer.finished && room.status != RoomStatus.Finished)
             {
