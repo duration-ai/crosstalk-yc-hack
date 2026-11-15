@@ -1,0 +1,450 @@
+{
+  "changes": [
+    {
+      "type": "gravity",
+      "pictogram": "gravity",
+      "param": "level",
+      "seconds": 18,
+      "options": [
+        {
+          "keywords": "gravity low float moon light floaty",
+          "params": {
+            "level": "low"
+          },
+          "news": "{name} LOWERED GRAVITY",
+          "line": "Floaty mode, sugar!",
+          "roulette": true
+        },
+        {
+          "keywords": "heavy high crush raise",
+          "params": {
+            "level": "high"
+          },
+          "news": "{name} RAISED GRAVITY",
+          "line": "Heavy it is!",
+          "roulette": false
+        },
+        {
+          "keywords": "normal gravity",
+          "params": {
+            "level": "normal"
+          },
+          "news": "{name} RESET GRAVITY",
+          "line": "Feet on the ground.",
+          "roulette": false
+        }
+      ]
+    },
+    {
+      "type": "ice",
+      "pictogram": "ice",
+      "param": "level",
+      "seconds": 15,
+      "options": [
+        {
+          "keywords": "ice icy slippery skate freeze",
+          "params": {
+            "level": "on"
+          },
+          "news": "{name} ICED THE ROADS",
+          "line": "Roads on ice!",
+          "roulette": true
+        },
+        {
+          "keywords": "melt thaw",
+          "params": {
+            "level": "off"
+          },
+          "news": "{name} MELTED THE ICE",
+          "line": "All thawed out.",
+          "roulette": false
+        }
+      ]
+    },
+    {
+      "type": "fog",
+      "pictogram": "fog",
+      "param": "level",
+      "seconds": 16,
+      "options": [
+        {
+          "keywords": "fog foggy karl mist cloud",
+          "params": {
+            "level": "thick"
+          },
+          "news": "{name} CALLED THE FOG",
+          "line": "Karl's rolling in!",
+          "roulette": true
+        },
+        {
+          "keywords": "clear sunny",
+          "params": {
+            "level": "clear"
+          },
+          "news": "{name} CLEARED THE FOG",
+          "line": "Sun's back out.",
+          "roulette": false
+        }
+      ]
+    },
+    {
+      "type": "rain",
+      "pictogram": "rain",
+      "param": "level",
+      "seconds": 18,
+      "options": [
+        {
+          "keywords": "rain rainy storm wet drizzle",
+          "params": {
+            "level": "on"
+          },
+          "news": "{name} MADE IT RAIN",
+          "line": "Grab an umbrella!",
+          "roulette": true
+        },
+        {
+          "keywords": "dry",
+          "params": {
+            "level": "off"
+          },
+          "news": "{name} STOPPED THE RAIN",
+          "line": "Dry as a bone.",
+          "roulette": false
+        }
+      ]
+    },
+    {
+      "type": "snow",
+      "pictogram": "snow",
+      "param": "level",
+      "seconds": 18,
+      "options": [
+        {
+          "keywords": "snow snowy blizzard flurries",
+          "params": {
+            "level": "on"
+          },
+          "news": "{name} MADE IT SNOW",
+          "line": "Let it snow, sugar!",
+          "roulette": true
+        },
+        {
+          "keywords": "thaw",
+          "params": {
+            "level": "off"
+          },
+          "news": "{name} STOPPED THE SNOW",
+          "line": "Snow's done.",
+          "roulette": false
+        }
+      ]
+    },
+    {
+      "type": "time",
+      "pictogram": "time",
+      "param": "timeOfDay",
+      "seconds": 0,
+      "options": [
+        {
+          "keywords": "day noon morning",
+          "params": {
+            "timeOfDay": "day"
+          },
+          "news": "{name} MADE IT DAY",
+          "line": "Rise and shine!",
+          "roulette": false
+        },
+        {
+          "keywords": "golden sunset",
+          "params": {
+            "timeOfDay": "golden"
+          },
+          "news": "{name} CALLED GOLDEN HOUR",
+          "line": "Golden hour, darling!",
+          "roulette": true
+        },
+        {
+          "keywords": "dusk evening",
+          "params": {
+            "timeOfDay": "dusk"
+          },
+          "news": "{name} MADE IT DUSK",
+          "line": "Dusk it is!",
+          "roulette": false
+        },
+        {
+          "keywords": "night dark midnight",
+          "params": {
+            "timeOfDay": "night"
+          },
+          "news": "{name} MADE IT NIGHT",
+          "line": "Lights out!",
+          "roulette": true
+        }
+      ]
+    },
+    {
+      "type": "traffic",
+      "pictogram": "traffic",
+      "param": "level",
+      "seconds": 20,
+      "options": [
+        {
+          "keywords": "traffic cars jam rush busy",
+          "params": {
+            "level": "heavy"
+          },
+          "news": "{name} CALLED IN TRAFFIC",
+          "line": "Cue the rush hour!",
+          "roulette": true
+        },
+        {
+          "keywords": "empty quiet",
+          "params": {
+            "level": "light"
+          },
+          "news": "{name} CLEARED TRAFFIC",
+          "line": "Streets are clear.",
+          "roulette": false
+        }
+      ]
+    },
+    {
+      "type": "recolor",
+      "pictogram": "recolor",
+      "param": "color",
+      "seconds": 0,
+      "options": [
+        {
+          "keywords": "yellow",
+          "params": {
+            "color": "yellow"
+          },
+          "news": "{name} PAINTED CARS {color}",
+          "line": "Yellow it is!",
+          "roulette": true
+        },
+        {
+          "keywords": "pink hot",
+          "params": {
+            "color": "pink"
+          },
+          "news": "{name} PAINTED CARS {color}",
+          "line": "Pink it is!",
+          "roulette": true
+        },
+        {
+          "keywords": "blue",
+          "params": {
+            "color": "blue"
+          },
+          "news": "{name} PAINTED CARS {color}",
+          "line": "Blue it is!",
+          "roulette": false
+        },
+        {
+          "keywords": "purple",
+          "params": {
+            "color": "purple"
+          },
+          "news": "{name} PAINTED CARS {color}",
+          "line": "Purple it is!",
+          "roulette": false
+        },
+        {
+          "keywords": "orange",
+          "params": {
+            "color": "orange"
+          },
+          "news": "{name} PAINTED CARS {color}",
+          "line": "Orange it is!",
+          "roulette": false
+        },
+        {
+          "keywords": "green",
+          "params": {
+            "color": "green"
+          },
+          "news": "{name} PAINTED CARS {color}",
+          "line": "Green it is!",
+          "roulette": false
+        },
+        {
+          "keywords": "red",
+          "params": {
+            "color": "red"
+          },
+          "news": "{name} PAINTED CARS {color}",
+          "line": "Red it is!",
+          "roulette": false
+        },
+        {
+          "keywords": "white",
+          "params": {
+            "color": "white"
+          },
+          "news": "{name} PAINTED CARS {color}",
+          "line": "White it is!",
+          "roulette": false
+        },
+        {
+          "keywords": "black",
+          "params": {
+            "color": "black"
+          },
+          "news": "{name} PAINTED CARS {color}",
+          "line": "Black it is!",
+          "roulette": false
+        },
+        {
+          "keywords": "mint",
+          "params": {
+            "color": "mint"
+          },
+          "news": "{name} PAINTED CARS {color}",
+          "line": "Mint it is!",
+          "roulette": true
+        },
+        {
+          "keywords": "lilac",
+          "params": {
+            "color": "lilac"
+          },
+          "news": "{name} PAINTED CARS {color}",
+          "line": "Lilac it is!",
+          "roulette": false
+        }
+      ]
+    },
+    {
+      "type": "swap",
+      "pictogram": "swap",
+      "param": "",
+      "seconds": 0,
+      "options": [
+        {
+          "keywords": "swap switch trade places",
+          "params": {},
+          "news": "{name} SWAPPED WITH {target}",
+          "line": "Swapping you now!",
+          "roulette": true
+        }
+      ]
+    },
+    {
+      "type": "resize",
+      "pictogram": "resize",
+      "param": "size",
+      "seconds": 16,
+      "options": [
+        {
+          "keywords": "small shrink tiny mini",
+          "params": {
+            "size": "small"
+          },
+          "news": "{name} SHRANK ALL CARS",
+          "line": "Honey, I shrunk 'em!",
+          "roulette": true
+        },
+        {
+          "keywords": "big grow huge giant",
+          "params": {
+            "size": "big"
+          },
+          "news": "{name} GREW ALL CARS",
+          "line": "Supersize it is!",
+          "roulette": true
+        },
+        {
+          "keywords": "normal size",
+          "params": {
+            "size": "normal"
+          },
+          "news": "{name} RESIZED ALL CARS",
+          "line": "Back to size.",
+          "roulette": false
+        }
+      ]
+    },
+    {
+      "type": "ramp",
+      "pictogram": "ramp",
+      "param": "",
+      "seconds": 0,
+      "options": [
+        {
+          "keywords": "ramp jump ramps launch",
+          "params": {
+            "count": 3
+          },
+          "news": "{name} DROPPED RAMPS",
+          "line": "Ramps incoming!",
+          "roulette": true
+        }
+      ]
+    }
+  ],
+  "colors": [
+    {
+      "name": "yellow",
+      "hex": "#FFCB1F"
+    },
+    {
+      "name": "pink",
+      "hex": "#FF3E8E"
+    },
+    {
+      "name": "blue",
+      "hex": "#2D8CFF"
+    },
+    {
+      "name": "purple",
+      "hex": "#A35BFF"
+    },
+    {
+      "name": "orange",
+      "hex": "#FF8A1E"
+    },
+    {
+      "name": "green",
+      "hex": "#2EC27E"
+    },
+    {
+      "name": "red",
+      "hex": "#E2603F"
+    },
+    {
+      "name": "white",
+      "hex": "#F7F8F9"
+    },
+    {
+      "name": "black",
+      "hex": "#1C2347"
+    },
+    {
+      "name": "mint",
+      "hex": "#8CE3BF"
+    },
+    {
+      "name": "lilac",
+      "hex": "#BBA6F7"
+    }
+  ],
+  "roulette": [
+    "recolor:yellow",
+    "gravity:low",
+    "fog:thick",
+    "ramp:",
+    "rain:on",
+    "ice:on",
+    "time:night",
+    "traffic:heavy",
+    "snow:on",
+    "resize:small",
+    "swap:",
+    "time:golden",
+    "resize:big",
+    "recolor:pink",
+    "recolor:mint"
+  ]
+}

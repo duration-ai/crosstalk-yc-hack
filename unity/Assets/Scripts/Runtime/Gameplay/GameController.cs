@@ -44,16 +44,28 @@ namespace Dogpatch.Gameplay
         public static event Action<CarController> VehicleExited;
 
         public bool Driving => current != null;
+        public bool IsReady => ready;
         public bool Riding => current != null && current.Handling.PassengerOnly;
         public CarController Current => current;
-        public CarController CurrentCar => current;
         public Transform Focus => current != null ? current.transform : player != null ? player.transform : null;
-        public WorldContext World => world;
-        public ModelLibrary Models => models;
-        public Material SharedMaterial => material;
         public CarController NearestCar { get; private set; }
         public Camera View => view;
+        public bool ExternalInput;
+        public IGameBackend Backend => backend;
+        public Player Profile => profile;
+        public WorldContext World => world;
+        public WorldData Data { get; private set; }
+        public ModelLibrary Models => models;
+        public Material SharedMaterial => material;
         public PlayerController Player => player;
+        public CarController CurrentCar => current;
+        public IReadOnlyDictionary<string, CarController> Cars => cars;
+        public FollowCamera Follow => follow;
+        public DragInput Drag => input;
+
+        public Task EnterCar(CarController car) => RunAsync(() => EnterCarAsync(car));
+
+        public Task ExitCar() => current == null ? Task.CompletedTask : RunAsync(ExitCarAsync);
         public string StreetName { get; private set; } = "";
         public string StatusLine { get; private set; } = "Loading Dogpatch…";
 
@@ -69,6 +81,7 @@ namespace Dogpatch.Gameplay
             SetupRendering();
 
             var data = JsonUtility.FromJson<WorldData>(Resources.Load<TextAsset>("World/dogpatch").text);
+            Data = data;
             models = new ModelLibrary();
             float t0 = Time.realtimeSinceStartup;
             world = WorldBuilder.Build(data, models, material);
@@ -184,7 +197,8 @@ namespace Dogpatch.Gameplay
             follow.Hold = input.Dragging && current == null;
             var dir2 = input.Direction;
             var dir = dir2 == Vector2.zero ? Vector3.zero : Quaternion.Euler(0f, follow.Yaw, 0f) * new Vector3(dir2.x, 0f, dir2.y);
-            if (current != null) current.SetInput(dir, input.Strength);
+            if (ExternalInput) { }
+            else if (current != null) current.SetInput(dir, input.Strength);
             else player.SetInput(dir, input.Strength);
 
             var focus = current != null ? current.transform : player.transform;
