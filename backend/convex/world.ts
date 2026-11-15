@@ -22,6 +22,7 @@ export const presenceArgs = {
   mode: v.optional(movementMode),
   vehicleType: v.optional(v.string()),
   protocol: v.optional(v.number()),
+  bump: v.optional(v.object({ target: v.string(), x: v.number(), z: v.number(), at: v.number() })),
 };
 
 function finite(value: number, name: string) {
@@ -56,6 +57,7 @@ export function toWorldPlayer(row: Doc<"worldPresence">) {
     mode: row.mode,
     vehicleType: row.vehicleType,
     protocol: row.protocol ?? 0,
+    bump: row.bump,
     updatedAt: row.updatedAt,
   };
 }
@@ -82,6 +84,7 @@ export async function beat(ctx: MutationCtx, args: ObjectType<typeof heartbeatAr
     mode: args.mode ?? ("onFoot" as const),
     vehicleType,
     protocol: args.protocol ?? 0,
+    bump: args.bump?.target ? args.bump : undefined,
     updatedAt: args.now,
   };
   const row = await findPresence(ctx, player._id);

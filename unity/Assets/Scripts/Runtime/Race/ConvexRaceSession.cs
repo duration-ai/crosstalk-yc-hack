@@ -121,7 +121,7 @@ namespace Dogpatch.Race
         [Serializable] public class FireRequest { public string playerId; public string roomId; public string type; public WorldChangeParams @params; }
         // Bumped whenever what presence means changes, so phones on another build can be told apart.
         public const int Protocol = 2;
-        [Serializable] public class PresenceRequest { public string playerId; public Vec3 position; public float heading; public float speed; public string mode; public string vehicleType; public int protocol; }
+        [Serializable] public class PresenceRequest { public string playerId; public Vec3 position; public float heading; public float speed; public string mode; public string vehicleType; public int protocol; public PresenceBump bump; }
         [Serializable] public class MissionRequest { public string playerId; public string mission; public List<Vec3> route; public float finishRadius; public int asks; public List<Vec3> pickups; public float pickupRadius; }
         [Serializable] public class ErrorBody { public ErrorDetail error; }
         [Serializable] public class ErrorDetail { public string code; public string message; }
@@ -188,8 +188,8 @@ namespace Dogpatch.Race
         public static Request Fire(string playerId, string roomId, WorldChangeCommand command) =>
             new Request("POST", "/api/rooms/events", JsonUtility.ToJson(new FireRequest { playerId = playerId, roomId = roomId, type = command?.type, @params = command?.@params ?? new WorldChangeParams() }));
 
-        public static Request Presence(string playerId, Vec3 position, float heading, float speed, string mode, string vehicleType) =>
-            new Request("POST", "/api/world/presence", JsonUtility.ToJson(new PresenceRequest { playerId = playerId, position = position, heading = Mathf.Repeat(heading, 360f), speed = speed, mode = mode, vehicleType = vehicleType ?? "", protocol = Protocol }));
+        public static Request Presence(string playerId, Vec3 position, float heading, float speed, string mode, string vehicleType, PresenceBump bump = null) =>
+            new Request("POST", "/api/world/presence", JsonUtility.ToJson(new PresenceRequest { playerId = playerId, position = position, heading = Mathf.Repeat(heading, 360f), speed = speed, mode = mode, vehicleType = vehicleType ?? "", protocol = Protocol, bump = bump }));
 
         public static Request EnterMission(string playerId, string mission, IReadOnlyList<Vec3> route, float finishRadius, int asks, IReadOnlyList<Vec3> pickups, float pickupRadius)
         {
@@ -434,10 +434,10 @@ namespace Dogpatch.Race
             return poll;
         }
 
-        public async Task<WorldPresenceResponse> PresenceAsync(string playerId, Vec3 position, float heading, float speed, string mode, string vehicleType)
+        public async Task<WorldPresenceResponse> PresenceAsync(string playerId, Vec3 position, float heading, float speed, string mode, string vehicleType, PresenceBump bump = null)
         {
             double sent = LocalMs;
-            var request = Presence(playerId, position, heading, speed, mode, vehicleType);
+            var request = Presence(playerId, position, heading, speed, mode, vehicleType, bump);
             WorldPresenceResponse world = null;
             var s = Socket();
             if (s != null)

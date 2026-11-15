@@ -229,7 +229,7 @@ namespace Dogpatch.Race
                     ApplyWorld(done.Result);
                 }
                 float now = Time.realtimeSinceStartup;
-                if (now >= nextSend && pending.Count < (failures > 0 ? 1 : MaxInFlight))
+                if ((now >= nextSend || presenceNow) && pending.Count < (failures > 0 ? 1 : MaxInFlight))
                 {
                     var car = Game.CurrentCar;
                     var body = car != null ? car.transform : Game.Player.transform;
@@ -240,7 +240,9 @@ namespace Dogpatch.Race
                     var mode = car != null ? PlayerModes.Driving : PlayerModes.OnFoot;
                     var type = car != null ? VehicleRoster.TypeOf(car) : "";
                     float heading = body.eulerAngles.y;
-                    pending.Add(AsPlayer(() => convex.PresenceAsync(MyId, position, heading, speed, mode, type)));
+                    var bump = now < outBumpUntil ? outBump : null;
+                    presenceNow = false;
+                    pending.Add(AsPlayer(() => convex.PresenceAsync(MyId, position, heading, speed, mode, type, bump)));
                     float every = Gridded && !ResultsIn ? WorldEveryRacing : WorldEvery;
                     nextSend = Mathf.Max(nextSend + every, now);
                 }
@@ -251,6 +253,32 @@ namespace Dogpatch.Race
                 }
                 yield return null;
             }
+        }
+
+        PresenceBump outBump;
+        float outBumpUntil;
+        bool presenceNow;
+
+        // A hit this phone felt goes out at once and rides along with presence for a second, so the
+        // other phone sees it even if one update is lost; it applies each bump once, by its time.
+        public void SendBump(string target, Vector3 impulse)
+        {
+            outBump = new PresenceBump { target = target, x = impulse.x, z = impulse.z, at = NowMs };
+            outBumpUntil = Time.realtimeSinceStartup + 1f;
+            presenceNow = true;
+        }
+
+        // Headless bump check: sit in the race car where the player stands, so a ramming bot can hit it.
+        IEnumerator SitInCar()
+        {
+            yield return Pause(3f);
+            var p = Game.Player.transform;
+            myCar.gameObject.SetActive(true);
+            myCar.Place(p.position + p.right * 4f, p.eulerAngles.y);
+            yield return Wait(Game.EnterCar(myCar));
+            myCar.SetDriven(true);
+            myCar.SetInput(Vector3.zero, 0f);
+            Debug.Log("[SpeedDial] sitting in the car for the bump check");
         }
 
         void ApplyWorld(WorldPresenceResponse world)
@@ -274,6 +302,7 @@ namespace Dogpatch.Race
             StartCoroutine(WorldLoop());
             if (Flag("-speeddial-mission")) Game.Player.Teleport(RingSpot(0), LobbyHeading);
             if (Flag("-speeddial-autopilot")) EnableAutopilot();
+            if (Flag("-speeddial-sit-in-car")) StartCoroutine(SitInCar());
         }
 
         void OnApplicationQuit()

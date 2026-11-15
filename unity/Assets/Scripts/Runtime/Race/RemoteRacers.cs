@@ -24,6 +24,11 @@ namespace Dogpatch.Race
         const float TeleportMeters = 40f;
         const float DrivingSpeed = 8f;
         const float PushEvery = 0.2f;
+        const float BumpShare = 0.6f;
+        const float MinShove = 1.5f;
+        const float MaxShove = 10f;
+        const float BumpDedupe = 0.6f;
+        const float BumpSnapHold = 0.3f;
         const float ForgetAfter = 15f;
         const float ModeFreshFor = 3f;
 
@@ -70,6 +75,10 @@ namespace Dogpatch.Race
             internal readonly List<Sample> Samples = new List<Sample>();
             internal long LastUpdatedAt;
             internal float NextPush;
+            internal float ContactAt = -10f;
+            internal float BumpedAt = -10f;
+            internal long LastBumpAt;
+            internal float SnapHoldUntil;
             internal float SeenAt;
             internal bool Placed;
             internal Vector3 Velocity;
@@ -132,6 +141,12 @@ namespace Dogpatch.Race
                 if (player.mode != remote.WorldMode) remote.ModeSince = player.updatedAt;
                 remote.WorldMode = player.mode;
                 remote.Protocol = player.protocol;
+                var bump = player.bump;
+                if (bump != null && bump.target == Race.MyId && bump.at > remote.LastBumpAt)
+                {
+                    remote.LastBumpAt = bump.at;
+                    if (world.serverTime - bump.at < 1500) Bumped(remote, new Vector3(bump.x, 0f, bump.z), world.serverTime - bump.at);
+                }
                 remote.SeenAt = Time.time;
                 if (player.updatedAt > remote.WorldUpdatedAt)
                 {
@@ -325,7 +340,8 @@ namespace Dogpatch.Race
                 if (!Predict(remote.Samples, now - remote.BufferMs, out var target, out float targetH, out var velocity)) continue;
                 float dt = Mathf.Max(Time.deltaTime, 1e-3f);
                 remote.Velocity = velocity;
-                if (!remote.Placed || Vector3.Distance(remote.Position, target) > SnapMeters)
+                float snapAt = Time.time < remote.SnapHoldUntil ? SnapMeters * 4f : SnapMeters;
+                if (!remote.Placed || Vector3.Distance(remote.Position, target) > snapAt)
                 {
                     remote.Placed = true;
                     remote.Position = target;
@@ -360,19 +376,64 @@ namespace Dogpatch.Race
             }
         }
 
-        // Overlapping boxes push this device's car out sideways, away from the remote car.
+        // Overlapping boxes shove this device's car away from the remote car, harder the faster the two
+        // were closing, like hitting a heavy traffic car; the first contact of a hit also sends the
+        // remote phone the matching shove. A hit their phone already sent us is not felt twice.
         void PushApart(Remote remote, CarController mine)
         {
             var other = remote.Car.transform;
             var rel = other.InverseTransformPoint(mine.transform.position);
             var reach = remote.Car.HalfExtents + mine.HalfExtents;
             if (Mathf.Abs(rel.x) > reach.x || Mathf.Abs(rel.z) > reach.z || Mathf.Abs(rel.y) > 3f) return;
+            if (Time.time - remote.BumpedAt < BumpDedupe) return;
             var away = mine.transform.position - other.position;
             away.y = 0f;
             if (away.sqrMagnitude < 1e-4f) away = other.right;
-            CarFx.On(mine).Push(away.normalized * 3.5f);
+            away.Normalize();
+            var before = Planar(mine);
+            float closing = Vector3.Dot(new Vector3(remote.Velocity.x, 0f, remote.Velocity.z) - before, away);
+            float shove = Mathf.Clamp(closing * BumpShare, MinShove, MaxShove);
+            CarFx.On(mine).Push(away * shove);
             remote.NextPush = Time.time + PushEvery;
-            Debug.Log($"[SpeedDial] bumped {remote.Name}'s car");
+            remote.SnapHoldUntil = Time.time + BumpSnapHold;
+            bool first = Time.time - remote.ContactAt > BumpDedupe;
+            remote.ContactAt = Time.time;
+            if (first) Race.SendBump(remote.Id, -away * shove);
+            Debug.Log($"[SpeedDial] bumped {remote.Name}'s car: closing {closing:F1} m/s, shove {shove:F1} m/s{(first ? ", sent them the bump" : "")}");
+            if (first) StartCoroutine(LogDeltaV(mine, before, "after hitting " + remote.Name));
+        }
+
+        // A hit the remote phone felt with this device's car: the matching shove, unless this device
+        // already felt the same contact itself.
+        void Bumped(Remote remote, Vector3 impulse, long ageMs)
+        {
+            remote.SnapHoldUntil = Time.time + BumpSnapHold;
+            var mine = Race.Game.CurrentCar;
+            if (mine == null) return;
+            if (Time.time - remote.ContactAt < BumpDedupe)
+            {
+                Debug.Log($"[SpeedDial] {remote.Name}'s bump ({ageMs} ms old) already felt here");
+                return;
+            }
+            remote.BumpedAt = Time.time;
+            var before = Planar(mine);
+            CarFx.On(mine).Push(impulse);
+            Debug.Log($"[SpeedDial] {remote.Name} bumped us: shove {impulse.magnitude:F1} m/s, {ageMs} ms after their hit");
+            StartCoroutine(LogDeltaV(mine, before, "after " + remote.Name + "'s bump"));
+        }
+
+        static Vector3 Planar(CarController car)
+        {
+            var v = car.GetComponent<Rigidbody>().linearVelocity;
+            return new Vector3(v.x, 0f, v.z);
+        }
+
+        System.Collections.IEnumerator LogDeltaV(CarController car, Vector3 before, string what)
+        {
+            yield return new WaitForSeconds(0.25f);
+            if (car == null) yield break;
+            var dv = Planar(car) - before;
+            Debug.Log($"[SpeedDial] velocity change {what}: {dv.magnitude:F1} m/s ({dv.x:F1},{dv.z:F1})");
         }
     }
 }

@@ -192,7 +192,19 @@ namespace Dogpatch.Race
         public string mode;
         public string vehicleType;
         public int protocol;
+        public PresenceBump bump;
         public long updatedAt;
+    }
+
+    // A car-to-car hit one phone felt, sent along with its presence so the other phone feels the
+    // matching shove: who was hit, the velocity change for them, and when (server ms).
+    [Serializable]
+    public class PresenceBump
+    {
+        public string target;
+        public float x;
+        public float z;
+        public long at;
     }
 
     [Serializable]
