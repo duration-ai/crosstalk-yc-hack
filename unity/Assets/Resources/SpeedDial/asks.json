@@ -1,5 +1,5 @@
 {
-  "startAsks": 2,
+  "startAsks": 100,
   "pickupCount": 6,
   "minDetour": 40,
   "maxDetour": 120,
