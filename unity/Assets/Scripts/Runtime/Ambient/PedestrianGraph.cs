@@ -613,11 +613,11 @@ namespace Dogpatch.Ambient
 
         void BuildSpots(WorldData data)
         {
-            foreach (var f in world.Furniture)
+            foreach (var f in world.Furniture.Seating)
             {
-                var fwd = new Vector2(Mathf.Sin(f.yaw * Mathf.Deg2Rad), Mathf.Cos(f.yaw * Mathf.Deg2Rad));
+                var fwd = new Vector2(Mathf.Sin(f.heading * Mathf.Deg2Rad), Mathf.Cos(f.heading * Mathf.Deg2Rad));
                 var right = new Vector2(fwd.y, -fwd.x);
-                bool bench = f.role == "bench";
+                bool bench = f.kind == "bench";
                 for (int k = -1; k <= 1; k += 2)
                 {
                     var spot = bench ? f.position + right * (k * 0.45f) + fwd * 0.05f : f.position + right * (k * 1.0f) + fwd * 0.3f;

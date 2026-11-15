@@ -77,6 +77,12 @@ namespace Dogpatch.Ambient
                 if (car != null && f == (int)car[4]) driven = Drive();
                 if (driven != null && f == (int)car[5]) driven.SetInput(Vector3.zero, 0f);
                 if (driven != null && f < (int)car[5]) Aim(driven);
+                if (driven != null)
+                {
+                    var ct = driven.transform;
+                    var back = Vector3.ProjectOnPlane(ct.forward, Vector3.up).normalized;
+                    cam.transform.SetPositionAndRotation(ct.position - back * 10f + Vector3.up * 4.5f, Quaternion.LookRotation(back, Vector3.up) * Quaternion.Euler(14f, 0f, 0f));
+                }
                 if (driven != null && f % 10 == 0) Debug.Log($"[Ambient] capture: frame {f} car at {driven.transform.position} speed {driven.Speed:F1} reacting {Reacting()}");
                 yield return new WaitForEndOfFrame();
                 if (f < 0) continue;
@@ -134,13 +140,14 @@ namespace Dogpatch.Ambient
             var p = new Vector2(t.position.x, t.position.z);
             var fwd = new Vector2(t.forward.x, t.forward.z);
             Pedestrian target = null;
-            float best = 35f;
+            float best = 40f;
             foreach (var ped in PedestrianSystem.Instance.Active)
             {
                 var to = ped.Pos - p;
                 float d = to.magnitude;
+                if (d < 0.1f || d > best || Vector2.Dot(to / d, fwd) < 0.82f) continue;
                 if (d < 15f) return;
-                if (d > best || Vector2.Dot(to / d, fwd) < 0.95f || ped.State != PedState.Walk) continue;
+                if (ped.State != PedState.Walk) continue;
                 best = d;
                 target = ped;
             }
