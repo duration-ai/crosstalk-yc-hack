@@ -282,6 +282,7 @@ function decideObject(a: Answers, view: View, active: ActiveSummary[]): Command 
   if (!OBJECT_EFFECTS[effect]) return refuse("vague");
   const visible = [...view.entities].sort((x, y) => x.view_rank - y.view_rank);
   if (view.mode === "driving" && !visible.some((e) => e.controlledBy === "me")) visible.unshift(OWN_CAR);
+  if (a.described >= 0.5 && a.target.choice === NONE) return refuse("not_visible");
   const described = a.described >= 0.5 ? visible.find((e) => e.id === a.target.choice) : undefined;
 
   let entity: ViewEntity | undefined;
