@@ -300,7 +300,7 @@ namespace Dogpatch.Race
                 string award = r.playerId == caller ? "CHAOS CALLER"
                     : photo ? "PHOTO FINISH"
                     : !r.finished ? "STILL DRIVING"
-                    : r.place == 1 ? "FIRST TO YC" : r.place == 2 ? "SO CLOSE" : r.place == 3 ? "PODIUM FINISH" : "SCENIC ROUTE";
+                    : r.place == 1 ? "FIRST PAST THE FLAG" : r.place == 2 ? "SO CLOSE" : r.place == 3 ? "PODIUM FINISH" : "SCENIC ROUTE";
                 results.Add(new RaceResult
                 {
                     place = r.place,

@@ -109,7 +109,7 @@ namespace Dogpatch.Operator
             Chips(chips.x, chips.y);
             Toasting();
             ConfirmSheet();
-            if (DebugInput) DebugField(Gameplay.HudLayout.Left, Gameplay.HudLayout.Call(72f * s, 72f * s).y - 2f * s);
+            if (DebugInput && !Slipstream.SlipstreamHud.ManualCallsLocked) DebugField(Gameplay.HudLayout.Left, Gameplay.HudLayout.Call(72f * s, 72f * s).y - 2f * s);
         }
 
         void Hearing()

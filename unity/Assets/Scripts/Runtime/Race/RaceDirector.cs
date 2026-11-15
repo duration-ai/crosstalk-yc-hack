@@ -130,9 +130,9 @@ namespace Dogpatch.Race
 
         // Every route is its own mission with its own start ring, all live at once: the classic
         // course.json plus Resources/SpeedDial/course-<id>.json for each id in Routes. Online, driving
-        // into another route's ring in free roam makes it the race course, and its mission (yc-<id>)
+        // into another route's ring in free roam makes it the race course, and its mission (race-<id>)
         // keeps its lobby apart. "-speeddial-route b" picks the starting course for headless runs.
-        public static readonly string[] Routes = { "", "b", "c" };
+        public static readonly string[] Routes = { "", "a", "b", "c" };
         static string RouteChoice()
         {
             var args = Environment.GetCommandLineArgs();
@@ -144,7 +144,7 @@ namespace Dogpatch.Race
         Transform courseRoot;
         Transform ringsRoot;
 
-        static string MissionOf(string route) => route.Length > 0 ? "yc-" + route : "yc";
+        static string MissionOf(string route) => route.Length > 0 ? "race-" + route : "yc";
 
         public string RouteName(string route) => courses.TryGetValue(route, out var c) && !string.IsNullOrEmpty(c.Data.routeName) ? c.Data.routeName : "RACE";
 
@@ -680,7 +680,7 @@ namespace Dogpatch.Race
             var bot = bots.FirstOrDefault(b => b.Car == car);
             float d = Mathf.Clamp(Course.Route.Project(RoutePath.Flat(car.transform.position)), 2f, Course.Route.Length - 3f);
             var p = Course.Route.PointAt(d) + Course.Route.RightAt(d) * RaceCourse.GridLane(bot != null ? bot.Slot : MySlot);
-            var spot = new Vector3(p.x, Dogpatch.World.RoadSurface.GroundY(p) + 0.4f, p.y);
+            var spot = new Vector3(p.x, Mathf.Max(Dogpatch.World.RoadSurface.GroundY(p), Course.RouteY(d)) + 0.4f, p.y);
             float heading = RoutePath.Heading(Course.Route.DirectionAt(d));
             if (bot != null)
             {

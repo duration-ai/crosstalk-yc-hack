@@ -1,27 +1,19 @@
 {
   "routeName": "IRON & STEAM",
-  "startName": "22nd Street Caltrain (Iron & Steam)",
+  "startName": "Muni Metro East yard (Cesar Chavez & 3rd)",
   "start": {
-    "lat": 37.757286,
-    "lon": -122.3924
+    "lat": 37.750345,
+    "lon": -122.386771
   },
-  "finishName": "YC (580 20th St)",
+  "finishName": "Pier 70 brick halls",
   "finish": {
-    "lat": 37.760777,
-    "lon": -122.386636
+    "lat": 37.760327,
+    "lon": -122.384838
   },
   "via": [
     {
-      "lat": 37.757854,
-      "lon": -122.388477
-    },
-    {
-      "lat": 37.755291,
-      "lon": -122.388477
-    },
-    {
-      "lat": 37.755291,
-      "lon": -122.383359
+      "lat": 37.752773,
+      "lon": -122.387113
     },
     {
       "lat": 37.760417,
