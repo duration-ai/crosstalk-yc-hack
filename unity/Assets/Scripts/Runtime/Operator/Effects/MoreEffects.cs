@@ -84,7 +84,149 @@ namespace Dogpatch.Operator
                 var car = tag.GetComponent<CarController>();
                 if (car != null && car.Driven && !car.GetComponent<Rigidbody>().isKinematic) CarFx.On(car).Launch(up * 0.6f);
                 else if (tag.Span == null) Launched.Start(tag.transform, up, null);
+                Blast(tag.WorldBounds.center, car, strength);
             }
+        }
+
+        // Racers' cars near the blast are thrown outward, stunned and scorched. Each phone moves its own car.
+        static void Blast(Vector3 center, CarController source, string strength)
+        {
+            float radius = Scale(strength, 6f, 8f, 10f), shove = Scale(strength, 4.5f, 6f, 8f), hurt = Scale(strength, 0.05f, 0.08f, 0.12f);
+            var all = Dogpatch.Smash.VehicleDamage.All;
+            for (int i = all.Count - 1; i >= 0; i--)
+            {
+                var damage = all[i];
+                var car = damage != null ? damage.Car : null;
+                if (car == null || car == source || !car.Driven || car.Autopilot || !car.TryGetComponent<Rigidbody>(out var body) || body.isKinematic) continue;
+                var away = car.transform.position - center;
+                away.y = 0f;
+                if (away.sqrMagnitude > radius * radius) continue;
+                away = away.sqrMagnitude > 0.01f ? away.normalized : -car.transform.forward;
+                car.Stun(0.5f);
+                CarFx.On(car).Push(away * shove + Vector3.up * (shove * 0.5f));
+                damage.Burn(hurt);
+                Dogpatch.Feel.Haptics.Impact(Dogpatch.Feel.HapticStyle.Heavy, 1f);
+            }
+        }
+    }
+
+    // nitro: bursts instead of a flat cap. A few seconds of hard acceleration and a higher top speed,
+    // then a recharge, repeating for as long as the row lasts.
+    public sealed class NitroEffect : OperatorEffect
+    {
+        const float Burst = 3f, Cycle = 6f;
+        EffectTicker ticker;
+        bool on;
+
+        public override void Apply(string strength, EffectTarget target)
+        {
+            float top = Scale(strength, 1.5f, 1.8f, 2.2f), accel = Scale(strength, 2f, 2.5f, 3f);
+            float start = Time.time;
+            ticker = EffectTicker.On(Context, () =>
+            {
+                bool burst = Mathf.Repeat(Time.time - start, Cycle) < Burst;
+                if (burst == on) return;
+                on = burst;
+                CarController.SpeedScale = burst ? top : 1f;
+                CarController.AccelScale = burst ? accel : 1f;
+                if (!burst) return;
+                Dogpatch.Feel.Haptics.Impact(Dogpatch.Feel.HapticStyle.Medium, 0.8f);
+                Dogpatch.Feel.CameraFeel.Instance?.AddTrauma(0.15f);
+                var car = Context.Game.CurrentCar;
+                if (car != null) MotionFx.Land(car.transform.position - car.transform.forward * car.HalfExtents.z, 0.6f);
+            });
+        }
+
+        public override void Revert()
+        {
+            if (ticker != null) Object.Destroy(ticker);
+            CarController.SpeedScale = 1f;
+            CarController.AccelScale = 1f;
+        }
+    }
+
+    // grip_down: the caller's car leaks oil. It keeps its own grip and lays a trail of slicks for the
+    // first few seconds; any other racer who drives over one slides on almost no traction for a moment.
+    // Runs on every phone: each draws the trail behind the caller's car and checks only its own car.
+    public sealed class OilSlickEffect : OperatorEffect
+    {
+        const float Every = 0.3f, Spacing = 2.5f, Radius = 1.8f, Slip = 1.5f, SlipGrip = 0.1f;
+        const int MaxSlicks = 48;
+        static Mesh blob;
+        readonly List<Vector3> slicks = new List<Vector3>();
+        readonly List<GameObject> decals = new List<GameObject>();
+        EffectTicker ticker;
+        CarController slipping;
+        float slipUntil;
+
+        public override void Apply(string strength, EffectTarget target)
+        {
+            float trail = Scale(strength, 7f, 10f, 14f);
+            float start = Time.time, next = 0f;
+            bool mine = target.IncludesMe;
+            ticker = EffectTicker.On(Context, () =>
+            {
+                float now = Time.time;
+                if (now - start < trail && now >= next && slicks.Count < MaxSlicks)
+                {
+                    next = now + Every;
+                    foreach (var car in Racers.Cars(Context, target)) Drop(car);
+                }
+                if (slipping != null && now > slipUntil) Recover();
+                if (mine) return;
+                var me = Context.Game.CurrentCar;
+                if (me == null || !Racers.Physical(me)) return;
+                var p = me.transform.position;
+                foreach (var s in slicks)
+                {
+                    if (Mathf.Abs(s.y - p.y) > 1.5f || (new Vector2(s.x - p.x, s.z - p.z)).sqrMagnitude > Radius * Radius) continue;
+                    if (slipping == null)
+                    {
+                        slipping = me;
+                        CarFx.On(me).Grip *= SlipGrip;
+                        Dogpatch.Feel.Haptics.Impact(Dogpatch.Feel.HapticStyle.Soft, 0.7f);
+                    }
+                    slipUntil = now + Slip;
+                    break;
+                }
+            });
+        }
+
+        void Drop(CarController car)
+        {
+            var at = car.transform.position - car.transform.forward * car.HalfExtents.z;
+            if (slicks.Count > 0 && (slicks[slicks.Count - 1] - at).sqrMagnitude < Spacing * Spacing) return;
+            at.y = Racers.GroundY(at) + 0.03f;
+            slicks.Add(at);
+            if (blob == null)
+            {
+                var mb = new Dogpatch.World.MeshBuilder();
+                var oil = PropMeshes.C("#14141B");
+                var sheen = PropMeshes.C("#3A3550");
+                mb.Box(Vector3.zero, new Vector3(2.4f, 0.02f, 1.6f), Quaternion.Euler(0f, 15f, 0f), oil);
+                mb.Box(new Vector3(0.7f, 0.005f, 0.5f), new Vector3(1.2f, 0.02f, 0.9f), Quaternion.Euler(0f, -30f, 0f), oil);
+                mb.Box(new Vector3(-0.3f, 0.01f, -0.2f), new Vector3(0.7f, 0.02f, 0.4f), Quaternion.Euler(0f, 40f, 0f), sheen);
+                blob = mb.ToMesh("oil slick");
+            }
+            var decal = PropMeshes.Attach(null, "Oil slick (operator)", blob, Context.Material, at, false);
+            decal.transform.rotation = Quaternion.Euler(0f, car.transform.eulerAngles.y + slicks.Count * 37f, 0f);
+            Pop.In(decal);
+            decals.Add(decal);
+        }
+
+        void Recover()
+        {
+            if (slipping != null) CarFx.On(slipping).Grip /= SlipGrip;
+            slipping = null;
+        }
+
+        public override void Revert()
+        {
+            if (ticker != null) Object.Destroy(ticker);
+            Recover();
+            foreach (var d in decals) Pop.Out(d);
+            decals.Clear();
+            slicks.Clear();
         }
     }
 
@@ -247,15 +389,24 @@ namespace Dogpatch.Operator
 
         public static void Register(EffectRegistry r)
         {
-            r.Register("vehicle_faster", () => new KnobEffect((e, s) => { CarController.SpeedScale = OperatorEffect.Scale(s, 2.5f, 4f, 6f); return () => CarController.SpeedScale = 1f; }));
+            r.Register("vehicle_faster", () => new KnobEffect((e, s) =>
+            {
+                CarController.SpeedScale = OperatorEffect.Scale(s, 2.5f, 4f, 6f);
+                CarController.AccelScale = OperatorEffect.Scale(s, 1.4f, 1.6f, 1.9f);
+                return () =>
+                {
+                    CarController.SpeedScale = 1f;
+                    CarController.AccelScale = 1f;
+                };
+            }));
             r.Register("vehicle_slower", () => new KnobEffect((e, s) => { CarController.SpeedScale = OperatorEffect.Scale(s, 0.4f, 0.25f, 0.15f); return () => CarController.SpeedScale = 1f; }));
-            r.Register("nitro", () => new KnobEffect((e, s) => { CarController.SpeedScale = OperatorEffect.Scale(s, 4f, 5f, 7f); return () => CarController.SpeedScale = 1f; }));
+            r.Register("nitro", () => new NitroEffect());
             r.Register("run_slower", () => new KnobEffect((e, s) => { PlayerController.RunScale = OperatorEffect.Scale(s, 0.4f, 0.25f, 0.15f); return () => PlayerController.RunScale = 1f; }));
             r.Register("jump_higher", () => new KnobEffect((e, s) => { PlayerController.JumpScale = OperatorEffect.Scale(s, 2f, 3f, 4.5f); return () => PlayerController.JumpScale = 1f; }));
             r.Register("slow_fall", () => new KnobEffect((e, s) => { PlayerController.GravityScale = OperatorEffect.Scale(s, 0.35f, 0.2f, 0.1f); return () => PlayerController.GravityScale = 1f; }));
             r.Register("bigger", () => new SizeEffect(1.8f, 2.5f, 3.5f));
             r.Register("smaller", () => new SizeEffect(0.5f, 0.35f, 0.25f));
-            r.Register("grip_down", () => new KnobEffect((e, s) => { CarFx.Traction = OperatorEffect.Scale(s, 0.1f, 0.05f, 0.025f); return () => CarFx.Traction = 1f; }));
+            r.Register("grip_down", () => new OilSlickEffect());
             r.Register("slippery_ground", () => new KnobEffect((e, s) => { CarFx.Traction = OperatorEffect.Scale(s, 0.06f, 0.03f, 0.015f); return () => CarFx.Traction = 1f; }));
             r.Register("gravity_higher", () => new KnobEffect((e, s) => Gravity(OperatorEffect.Scale(s, 2f, 3f, 4f))));
             r.Register("snow", () => new WeatherEffect(WeatherKind.Snow));
