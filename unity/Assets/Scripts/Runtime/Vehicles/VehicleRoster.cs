@@ -121,9 +121,7 @@ namespace Dogpatch.Vehicles
             identity.Paint = paint;
             if (identity.Rider != null) UnityEngine.Object.Destroy(identity.Rider);
             identity.Rider = null;
-            var audio = car.GetComponent<VehicleAudio>();
-            if (audio == null) audio = car.gameObject.AddComponent<VehicleAudio>();
-            audio.Configure(spec);
+            if (car.GetComponent<VehicleAudio>() == null) car.gameObject.AddComponent<VehicleAudio>();
             if (spec.Rider) identity.Rider = MountCourier(car, spec);
         }
 

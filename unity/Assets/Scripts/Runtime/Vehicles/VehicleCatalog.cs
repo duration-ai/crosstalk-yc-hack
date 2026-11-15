@@ -32,7 +32,6 @@ namespace Dogpatch.Vehicles
 
     public enum ModelSource { Glb, Procedural }
 
-    public enum SoundKind { Horn, Chime, Squeak, Bell, BikeBell }
 
     // Everything that defines one vehicle type: where its model comes from and how it's repainted,
     // which lamps glow at night, how it drives, and how it sounds.
@@ -53,7 +52,6 @@ namespace Dogpatch.Vehicles
         public bool Rider;
         public string RiderPack;
         public string RiderAccent;
-        public SoundKind Sound = SoundKind.Horn;
         public float CruiseSpeed = 11f;
     }
 
@@ -87,19 +85,19 @@ namespace Dogpatch.Vehicles
                 Id = VehicleTypes.WaymoSuv, Title = "Robotaxi SUV", Source = ModelSource.Glb, Resource = "Vehicles/waymo-suv", PolyforkId = "family-crossover-suv-42027f",
                 Recolor = { ["#55636d"] = "#f4f4f0", ["#3e4a52"] = "#26292e", ["#a9b4b9"] = "#2b2e33", ["#7b8a93"] = "#3a3f46", ["#8fbfd9"] = "#2c4fa3", ["#cfd6d6"] = "#f4f4f0" },
                 Lamps = { ["#e8e7e1"] = 0.8f, ["#b9553f"] = 0.55f },
-                Handling = H(17f, 4.5f, 12f, 62f, 0.95f, 2200f, 80f, 0.4f, true), Robotaxi = true, Sound = SoundKind.Chime, CruiseSpeed = 9f,
+                Handling = H(17f, 4.5f, 12f, 62f, 0.95f, 2200f, 80f, 0.4f, true), Robotaxi = true, CruiseSpeed = 9f,
             });
             Add(new VehicleSpec
             {
                 Id = VehicleTypes.WaymoVan, Title = "Robotaxi van", Source = ModelSource.Glb, Resource = "Vehicles/waymo-van", PolyforkId = "kei-van-211ed5",
                 Recolor = { ["#f5f6f7"] = "#c9def3", ["#2e3134"] = "#23356e", ["#f0c24b"] = "#f7f8f9", ["#4e5459"] = "#2b2e33", ["#3c4145"] = "#26292e" },
                 Lamps = { ["#5b6e8c"] = 0.8f, ["#d6452f"] = 0.55f },
-                Handling = H(16f, 4f, 12f, 60f, 0.95f, 2400f, 85f, 0.45f), Robotaxi = true, Sound = SoundKind.Chime, CruiseSpeed = 8.5f,
+                Handling = H(16f, 4f, 12f, 60f, 0.95f, 2400f, 85f, 0.45f), Robotaxi = true, CruiseSpeed = 8.5f,
             });
             Add(new VehicleSpec
             {
                 Id = VehicleTypes.Zoox, Title = "Robotaxi pod", Source = ModelSource.Procedural,
-                Handling = H(15f, 4.5f, 12f, 85f, 0.95f, 2000f, 70f, 0.35f, true), Robotaxi = true, Sound = SoundKind.Chime, CruiseSpeed = 8.5f,
+                Handling = H(15f, 4.5f, 12f, 85f, 0.95f, 2000f, 70f, 0.35f, true), Robotaxi = true, CruiseSpeed = 8.5f,
             });
             Add(new VehicleSpec
             {
@@ -118,38 +116,38 @@ namespace Dogpatch.Vehicles
                 Id = VehicleTypes.MuniBus, Title = "Muni bus", Source = ModelSource.Glb, Resource = "Vehicles/muni-bus", PolyforkId = "city-bus-49fd97",
                 Recolor = { ["#ece5d3"] = "#d5d9de", ["#6f8fa0"] = "#c8102e", ["#6f8fa2"] = "#2c4fa3", ["#b5aea0"] = "#d5d9de" },
                 Lamps = { ["#e8a825"] = 0.7f, ["#a34a38"] = 0.55f },
-                Handling = H(13f, 2.5f, 7f, 38f, 1f, 14000f, 1e6f, 1f, false, 4f), Sound = SoundKind.Bell, CruiseSpeed = 9f,
+                Handling = H(13f, 2.5f, 7f, 38f, 1f, 14000f, 1e6f, 1f, false, 4f), CruiseSpeed = 9f,
             });
             Add(new VehicleSpec
             {
                 Id = VehicleTypes.ShoppingCart, Title = "Shopping cart", Source = ModelSource.Procedural,
-                Handling = H(6f, 3.5f, 8f, 140f, 0.7f, 40f, 25f, 0f, false, 3f), Sound = SoundKind.Squeak, TwoWheeler = false, CruiseSpeed = 3f,
+                Handling = H(6f, 3.5f, 8f, 140f, 0.7f, 40f, 25f, 0f, false, 3f), CruiseSpeed = 3f,
             });
             Add(new VehicleSpec
             {
                 Id = VehicleTypes.BayWheels, Title = "Bike-share e-bike", Source = ModelSource.Glb, Resource = "Vehicles/bay-wheels-ebike", PolyforkId = "city-bicycle-5b67d1",
                 Recolor = { ["#5b6e8c"] = "#1c1d20", ["#d8dadd"] = "#ff4fa3", ["#4e5459"] = "#2a2c30", ["#b9a88c"] = "#1c1d20", ["#7e4b33"] = "#1c1d20" },
-                Handling = H(9.5f, 4f, 10f, 120f, 0.9f, 80f, 15f, 0f, false, 2f), TwoWheeler = true, Sound = SoundKind.BikeBell, CruiseSpeed = 6f,
+                Handling = H(9.5f, 4f, 10f, 120f, 0.9f, 80f, 15f, 0f, false, 2f), TwoWheeler = true, CruiseSpeed = 6f,
             });
             Add(new VehicleSpec
             {
                 Id = VehicleTypes.Scooter, Title = "Scooter", Source = ModelSource.Glb, Resource = "Vehicles/scooter", PolyforkId = "stunt-scooter-d98af3",
                 Recolor = { ["#2d8fbf"] = "#2ec27e", ["#b3643b"] = "#1c1d20", ["#ff7a1f"] = "#1c1d20", ["#6f2f22"] = "#f7f8f9" },
-                Handling = H(7f, 3.5f, 8f, 130f, 0.85f, 70f, 12f, 0f, false, 2f), TwoWheeler = true, Sound = SoundKind.BikeBell, CruiseSpeed = 5.5f,
+                Handling = H(7f, 3.5f, 8f, 130f, 0.85f, 70f, 12f, 0f, false, 2f), TwoWheeler = true, CruiseSpeed = 5.5f,
             });
             Add(new VehicleSpec
             {
                 Id = VehicleTypes.DoorDashBike, Title = "Delivery rider (red bag)", Source = ModelSource.Glb, Resource = "Vehicles/bay-wheels-ebike", PolyforkId = "city-bicycle-5b67d1",
                 Recolor = { ["#5b6e8c"] = "#3a3f46", ["#b9a88c"] = "#2a2c30", ["#7e4b33"] = "#1c1d20" },
                 Handling = H(8.5f, 4f, 10f, 120f, 0.9f, 85f, 15f, 0f, false, 2f), TwoWheeler = true, Rider = true, RiderPack = "#e3262e", RiderAccent = "#e3262e",
-                Sound = SoundKind.BikeBell, CruiseSpeed = 5.5f,
+                CruiseSpeed = 5.5f,
             });
             Add(new VehicleSpec
             {
                 Id = VehicleTypes.UberEatsBike, Title = "Delivery rider (black bag)", Source = ModelSource.Glb, Resource = "Vehicles/bay-wheels-ebike", PolyforkId = "city-bicycle-5b67d1",
                 Recolor = { ["#5b6e8c"] = "#2a2c30", ["#b9a88c"] = "#2a2c30", ["#7e4b33"] = "#1c1d20" },
                 Handling = H(8.5f, 4f, 10f, 120f, 0.9f, 85f, 15f, 0f, false, 2f), TwoWheeler = true, Rider = true, RiderPack = "#1c1d20", RiderAccent = "#2ec27e",
-                Sound = SoundKind.BikeBell, CruiseSpeed = 5.5f,
+                CruiseSpeed = 5.5f,
             });
             Add(new VehicleSpec
             {
@@ -179,7 +177,7 @@ namespace Dogpatch.Vehicles
                 Id = VehicleTypes.TThird, Title = "T Third light rail", Source = ModelSource.Glb, Resource = "Vehicles/lrv-car", PolyforkId = "city-tram-0d092d",
                 Recolor = { ["#2f6b4f"] = "#c8102e", ["#f7f5ef"] = "#d5d9de", ["#2e3134"] = "#2c4fa3" },
                 Lamps = { ["#f0efec"] = 0.85f, ["#b5462f"] = 0.55f, ["#ece9e2"] = 0.5f },
-                Handling = H(15f, 1.2f, 1.6f, 0f, 1f, 40000f, 1e6f, 1f, true), Sound = SoundKind.Bell, CruiseSpeed = 12f,
+                Handling = H(15f, 1.2f, 1.6f, 0f, 1f, 40000f, 1e6f, 1f, true), CruiseSpeed = 12f,
             });
         }
     }
