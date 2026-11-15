@@ -10,7 +10,7 @@ namespace Dogpatch.World
     public sealed class DistanceLod : MonoBehaviour
     {
         public float BuildingDetail = 240f;
-        public float Trees = 300f;
+        public float Trees = 500f;
         public float Props = 150f;
 
         readonly List<(StaticModels.Layer layer, Vector2Int chunk, Renderer renderer, Bounds bounds)> entries = new List<(StaticModels.Layer, Vector2Int, Renderer, Bounds)>();

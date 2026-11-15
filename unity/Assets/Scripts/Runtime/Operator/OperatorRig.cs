@@ -137,6 +137,8 @@ namespace Dogpatch.Operator
 
             if (queuedLink != null) OnDeepLink(queuedLink);
             var args = Environment.GetCommandLineArgs();
+            int pickupSay = Array.IndexOf(args, "-operator-pickup-say");
+            if (pickupSay >= 0 && pickupSay + 1 < args.Length) race.Calls.PickupSay = args[pickupSay + 1];
             int say = Array.IndexOf(args, "-operator-say");
             var words = say >= 0 && say + 1 < args.Length ? args[say + 1] : Environment.GetEnvironmentVariable("OPERATOR_SAY");
             if (!string.IsNullOrWhiteSpace(words))
@@ -166,6 +168,7 @@ namespace Dogpatch.Operator
 
             var voice = gameObject.AddComponent<ScribeVoice>();
             voice.Config = Config;
+            voice.AskPermission();
             voice.MintToken = () => convex.MintScribeTokenAsync(PlayerId);
             var calls = race.Calls;
             calls.Operator = convex;
@@ -231,8 +234,9 @@ namespace Dogpatch.Operator
             if (hud == null) return;
             var racer = race.Last?.racers?.FirstOrDefault(r => r.playerId == row.requestedBy);
             var who = row.requestedBy == PlayerId ? "YOU" : racer != null ? WorldChangeCatalog.ShortName(racer.displayName) : "SOMEONE";
-            var words = $"{who} CALLED {(row.label ?? row.effect).Replace('_', ' ')}".ToUpperInvariant().Split(' ');
-            var news = string.Join(" ", words.Take(4));
+            bool ride = row.effect == "change_vehicle";
+            var words = (ride ? $"{who} GOT A {row.vehicle}" : $"{who} CALLED {row.label ?? row.effect}").Replace('_', ' ').ToUpperInvariant().Split(' ');
+            var news = string.Join(" ", words.Take(ride ? 5 : 4));
             hud.PushNews(news, NewsPicto(row.effect), racer?.color ?? "blue");
             Debug.Log($"[Operator] news \"{news}\" for {row.effect} {row.id}");
         }

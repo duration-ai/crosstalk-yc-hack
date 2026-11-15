@@ -8,9 +8,9 @@ using UnityEngine;
 
 namespace Dogpatch.Race
 {
-    // The pink ask tokens placed off the route at race setup (RaceCourse.PlaceAskPickups, tuned in
+    // The spinning phones placed off the route at race setup (RaceCourse.PlaceAskPickups, tuned in
     // asks.json). Driving or walking through one while racing collects it through
-    // IRaceSession.CollectAskAsync: one more Operator request. Each racer can take each token once a
+    // IRaceSession.CollectAskAsync and opens the mic at once for one hands-free Operator call. Each racer can take each token once a
     // race, and a token you have taken disappears for you until the rematch. Other systems, like the
     // minimap, read Positions and Available and listen to Changed; each token the local player can
     // still take is tracked on the minimap through MapMarkers.
@@ -125,7 +125,7 @@ namespace Dogpatch.Race
                 Debug.Log($"[SpeedDial] {Race.NameOf(playerId)} collected ask pickup {pickup}: {result.asks} asks");
                 if (playerId != Race.MyId) return;
                 GameEvents.RaiseAskCollected(positions[pickup]);
-                Race.Calls.Buzz();
+                Race.Calls.Pickup();
             }
             catch (BackendException e)
             {

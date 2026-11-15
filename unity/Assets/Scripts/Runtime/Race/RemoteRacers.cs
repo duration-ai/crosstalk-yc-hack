@@ -109,6 +109,12 @@ namespace Dogpatch.Race
                 remote.WorldColorHex = player.colorHex;
                 remote.WorldMode = player.mode;
                 remote.SeenAt = Time.time;
+                if (Vehicles.VehicleCatalog.Has(player.vehicleType) && player.vehicleType != Vehicles.VehicleRoster.TypeOf(remote.Car))
+                {
+                    Vehicles.VehicleRoster.SwapInto(remote.Car, player.vehicleType);
+                    foreach (var c in remote.Car.GetComponents<Collider>()) c.isTrigger = true;
+                    remote.PaintedHex = null;
+                }
                 if (!remote.InRace) remote.Left = false;
                 if (!remote.InRace) AddSample(remote, player.updatedAt, player.position, player.heading, world.serverTime);
             }

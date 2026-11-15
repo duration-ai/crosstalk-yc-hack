@@ -13,7 +13,7 @@ const T0 = Date.UTC(2026, 10, 15, 20, 0, 0);
 
 const CHOICES = [
   "scope", "player_effect", "world_group", "sky_effect", "physics_effect", "population_effect", "object_effect",
-  "class", "target", "strength", "color", "theme", "reject_reason",
+  "class", "target", "strength", "color", "theme", "vehicle", "reject_reason",
 ];
 const DEFAULTS: Record<string, string> = { scope: "reject", strength: "medium" };
 
@@ -103,7 +103,7 @@ describe("operator.call", () => {
     expect(requests[0].body.input).toContain("protected landmark");
     expect(requests[0].body.questions.map((q: { name: string }) => q.name)).toEqual([
       "scope", "player_effect", "world_group", "sky_effect", "physics_effect", "population_effect", "object_effect",
-      "class", "target", "described", "self_ref", "other_player", "strength", "color", "theme", "reject_reason",
+      "class", "target", "described", "self_ref", "other_player", "strength", "color", "theme", "vehicle", "reject_reason",
     ]);
     expect(await effects()).toEqual([result.effect]);
 
@@ -241,7 +241,7 @@ describe("operator.call", () => {
         view: view(),
         input: "",
         answers: null,
-        command: { kind: "effect", scope: "world", effect: "rain", target: "", targetClass: "", strength: "medium", color: "", theme: "", confirm: false },
+        command: { kind: "effect", scope: "world", effect: "rain", target: "", targetClass: "", strength: "medium", color: "", theme: "", vehicle: "", confirm: false },
         timings: { jevMs: 0, attempts: 1, startedAt: Date.now() },
       }),
     ).rejects.toThrow(/not in room|left/);
@@ -258,7 +258,7 @@ describe("operator.call", () => {
     expect(await asksOf(tim.id)).toBe(0);
 
     const broke = await say("roll in the fog", { scope: "world", world_group: "sky", sky_effect: "fog" });
-    expect(broke).toMatchObject({ outcome: "refused", effect: null, refusal: { reason: "no_asks" }, line: "No asks! Find a pink token." });
+    expect(broke).toMatchObject({ outcome: "refused", effect: null, refusal: { reason: "no_asks" }, line: "Grab a phone first!" });
     expect((await effects()).map((e) => e.effect).sort()).toEqual(["night", "rain"]);
     expect(await asksOf(tim.id)).toBe(0);
     expect(await asksOf(maya.id)).toBe(2);
@@ -276,7 +276,7 @@ describe("operator.call", () => {
 
     const second = await say("shrink her", { scope: "object", object_effect: "shrink", other_player: 0.9 }, tim.id, "driving");
     expect(second).toMatchObject({ outcome: "pending" });
-    await expect(t.mutation(api.operator.confirm, { playerId: tim.id, effectId: second.effect!.id })).rejects.toThrow(/No asks/);
+    await expect(t.mutation(api.operator.confirm, { playerId: tim.id, effectId: second.effect!.id })).rejects.toThrow(/Grab a phone/);
     expect((await effects()).map((e) => e.effect)).toEqual(["vehicle_slower"]);
   });
 

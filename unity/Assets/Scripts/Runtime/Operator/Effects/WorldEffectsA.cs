@@ -970,6 +970,7 @@ namespace Dogpatch.Operator
         readonly Collider[] near = new Collider[48];
         EffectTicker ticker;
         float radius, seconds, rise;
+        bool floating;
 
         public override void Apply(string strength, EffectTarget target)
         {
@@ -1006,7 +1007,10 @@ namespace Dogpatch.Operator
 
         void Float(Vector3 at)
         {
-            MotionFx.Land(at, 0.8f);
+            if (floating) return;
+            floating = true;
+            try { MotionFx.Land(at, 0.8f); }
+            finally { floating = false; }
             int n = Physics.OverlapSphereNonAlloc(at, radius, near, ~0, QueryTriggerInteraction.Ignore);
             var bodies = new HashSet<Rigidbody>();
             for (int i = 0; i < n && bodies.Count < 12; i++)

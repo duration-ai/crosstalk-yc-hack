@@ -12,6 +12,7 @@ namespace Dogpatch.Vehicles
         public const string Zoox = "zoox";
         public const string Cybertruck = "cybertruck";
         public const string RaceCar = "race-car";
+        public const string SportsCar = "sports-car";
         public const string MuniBus = "muni-bus";
         public const string ShoppingCart = "shopping-cart";
         public const string BayWheels = "bay-wheels-ebike";
@@ -25,7 +26,7 @@ namespace Dogpatch.Vehicles
 
         public static readonly string[] All =
         {
-            WaymoSuv, WaymoVan, Zoox, Cybertruck, RaceCar, MuniBus, ShoppingCart, BayWheels, Scooter,
+            WaymoSuv, WaymoVan, Zoox, Cybertruck, RaceCar, SportsCar, MuniBus, ShoppingCart, BayWheels, Scooter,
             DoorDashBike, UberEatsBike, Hatchback, Sedan, YellowCab, TThird,
         };
     }
@@ -115,6 +116,13 @@ namespace Dogpatch.Vehicles
                 Recolor = { ["#e4e5e1"] = "#ffcb1f", ["#33a3c8"] = "#1c2347", ["#3a4247"] = "#2c4fa3" },
                 Lamps = { ["#3d454b"] = 0.8f, ["#6b1d1f"] = 0.6f },
                 Handling = H(36f, 15f, 22f, 95f, 1f, 1250f, 30f, 0.1f), CruiseSpeed = 14f,
+            });
+            Add(new VehicleSpec
+            {
+                Id = VehicleTypes.SportsCar, Title = "Sports car", Source = ModelSource.Glb, Resource = "Vehicles/race-car", PolyforkId = "model-of-a-gt3-32b70d",
+                Recolor = { ["#e4e5e1"] = "#e0182d", ["#33a3c8"] = "#15161a", ["#3a4247"] = "#15161a" },
+                Lamps = { ["#3d454b"] = 0.8f, ["#6b1d1f"] = 0.6f },
+                Handling = H(28f, 12f, 20f, 90f, 1.15f, 1050f, 45f, 0.2f), CruiseSpeed = 13f,
             });
             Add(new VehicleSpec
             {
