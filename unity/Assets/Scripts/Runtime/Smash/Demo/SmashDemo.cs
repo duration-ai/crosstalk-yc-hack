@@ -120,6 +120,7 @@ namespace Dogpatch.Smash.Demo
                 case "crash20": return Crash20();
                 case "parked": return Parked();
                 case "durability": return Durability();
+                case "speeds": return Speeds();
                 default: throw new ArgumentException("unknown smash demo " + name);
             }
         }
@@ -461,6 +462,32 @@ namespace Dogpatch.Smash.Demo
             Debug.Log($"[Durability] done: health {damage.Health01 * 100f:F0}%, wrecked={damage.IsWrecked}");
             drivers.Remove(car);
             yield return Capture(1.5f);
+        }
+
+        // Top speed and 0-20 m/s time of every drivable roster type, flat out down the demo street.
+        IEnumerator Speeds()
+        {
+            foreach (var type in Vehicles.VehicleTypes.All)
+            {
+                if (type == Vehicles.VehicleTypes.TThird) continue;
+                BuildStreet();
+                var car = Vehicles.VehicleRoster.Spawn(type, new Vector3(2f, 0.05f, -280f), 0f, root);
+                Finish(car);
+                Chase(car.transform, 11f, 4.6f, 0f);
+                yield return null;
+                Drive(car, Vector3.forward, 1f);
+                var body = car.GetComponent<Rigidbody>();
+                float top = 0f, to20 = -1f, t0 = Time.time;
+                while (Time.time - t0 < 9f)
+                {
+                    yield return new WaitForFixedUpdate();
+                    float v = new Vector3(body.linearVelocity.x, 0f, body.linearVelocity.z).magnitude;
+                    top = Mathf.Max(top, v);
+                    if (to20 < 0f && v >= 20f) to20 = Time.time - t0;
+                }
+                Debug.Log($"[Speeds] {type}: top {top:F1} m/s ({top * 3.6f:F0} km/h), profile {car.Handling.TopSpeed:F1} m/s, 0-20 m/s {(to20 < 0f ? "n/a" : to20.ToString("F1") + " s")}");
+                drivers.Remove(car);
+            }
         }
 
         // A car drives at two people standing in the road; they dive out of the way.

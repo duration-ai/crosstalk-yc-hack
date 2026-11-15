@@ -104,9 +104,16 @@ namespace Dogpatch.Gameplay
             string[] curbside = { VehicleTypes.Sedan, VehicleTypes.Sedan, VehicleTypes.Sedan, VehicleTypes.Hatchback, VehicleTypes.Hatchback, VehicleTypes.YellowCab, VehicleTypes.Cybertruck };
             var lot = new VehicleSpacing.Lot();
             lot.Add(VehicleSpacing.At(VehicleSpacing.BoundsOf(seed[0].Item1, models), new Vector2(world.HeroCar.Position.x, world.HeroCar.Position.z), world.HeroCar.Heading));
-            int crowded = 0;
-            foreach (var spot in world.ParkedCars)
+            int crowded = 0, thinned = 0;
+            float keep = Pace.Current.parkedKeepShare;
+            for (int i = 0; i < world.ParkedCars.Count; i++)
             {
+                var spot = world.ParkedCars[i];
+                if (Mathf.FloorToInt((i + 1) * keep) == Mathf.FloorToInt(i * keep))
+                {
+                    thinned++;
+                    continue;
+                }
                 string type = curbside[rng.Next(curbside.Length)];
                 string model = rng.NextDouble() < 0.7 && VehicleCatalog.Has(type) ? type : carModels[rng.Next(carModels.Count)].id;
                 var at = new Vector2(spot.Position.x, spot.Position.z);
@@ -124,7 +131,7 @@ namespace Dogpatch.Gameplay
                 lot.Add(foot);
                 seed.Add((model, ToVec(spot.Position), spot.Heading));
             }
-            Debug.Log($"[Dogpatch] parked {seed.Count - 1} cars with a {ParkedBumperGap} m bumper gap; {crowded} spaces left empty because the car would not fit");
+            Debug.Log($"[Dogpatch] parked {seed.Count - 1} cars with a {ParkedBumperGap} m bumper gap; {thinned} spaces thinned out, {crowded} left empty because the car would not fit");
             local.SeedVehicles(seed);
             backend = local;
 

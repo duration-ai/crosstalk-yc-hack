@@ -21,9 +21,9 @@ namespace Dogpatch.Traffic
         const float SpawnMin = 80f;
         const float SpawnMax = 210f;
         const float KeepRadius = 150f;
-        const int RobotaxiQuota = 12;
-        const int EverydayQuota = 12;
-        const int RiderQuota = 6;
+        static int RobotaxiQuota => Vehicles.Pace.Current.robotaxiQuota;
+        static int EverydayQuota => Vehicles.Pace.Current.everydayQuota;
+        static int RiderQuota => Vehicles.Pace.Current.riderQuota;
 
         static readonly string[] RobotaxiTypes = { VehicleTypes.WaymoSuv, VehicleTypes.WaymoSuv, VehicleTypes.WaymoSuv, VehicleTypes.WaymoVan, VehicleTypes.WaymoVan, VehicleTypes.Zoox, VehicleTypes.Zoox, VehicleTypes.Zoox };
         static readonly string[] EverydayTypes = { VehicleTypes.Hatchback, VehicleTypes.Hatchback, VehicleTypes.Sedan, VehicleTypes.Sedan, VehicleTypes.YellowCab, VehicleTypes.YellowCab, VehicleTypes.Cybertruck };
@@ -252,9 +252,15 @@ namespace Dogpatch.Traffic
             if (Time.time < nextLog) return;
             nextLog = Time.time + 5f;
             AverageMs = sumMs / Mathf.Max(1, sampleFrames);
-            int near = 0;
-            foreach (var a in Agents) if (!a.Far) near++;
-            Debug.Log($"[Traffic] agents={Agents.Count} near={near} parked={parked.Count} cost avg={AverageMs:F3} ms/frame max={MaxMs:F3} ms over {sampleFrames} frames");
+            int near = 0, trafficInView = 0, parkedInView = 0;
+            foreach (var a in Agents)
+            {
+                if (!a.Far) near++;
+                if (a.gameObject.activeSelf && Visible(a.transform.position)) trafficInView++;
+            }
+            foreach (var car in allCars)
+                if (car != null && car.gameObject.activeInHierarchy && !car.Autopilot && car != game.Current && Visible(car.transform.position)) parkedInView++;
+            Debug.Log($"[Traffic] agents={Agents.Count} near={near} parked={parked.Count} inView={trafficInView}+{parkedInView} cost avg={AverageMs:F3} ms/frame max={MaxMs:F3} ms over {sampleFrames} frames");
             sumMs = 0f;
             sampleFrames = 0;
             MaxMs = 0f;
