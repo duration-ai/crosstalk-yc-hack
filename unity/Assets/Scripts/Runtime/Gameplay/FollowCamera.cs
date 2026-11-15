@@ -17,6 +17,7 @@ namespace Dogpatch.Gameplay
 
         float yaw;
         float footPitch = FootPitch;
+        float orbitYaw;
         float distance = 7f;
         readonly RaycastHit[] hits = new RaycastHit[16];
 
@@ -36,7 +37,7 @@ namespace Dogpatch.Gameplay
         public void Orbit(Vector2 pixels)
         {
             float k = 200f / Mathf.Max(Screen.width, 1);
-            yaw += pixels.x * k;
+            orbitYaw += pixels.x * k;
             footPitch = Mathf.Clamp(footPitch - pixels.y * k, 4f, 55f);
         }
 
@@ -60,7 +61,9 @@ namespace Dogpatch.Gameplay
                 var toTarget = Target.position - transform.position;
                 if (toTarget.x * toTarget.x + toTarget.z * toTarget.z > 0.01f)
                     yaw += Mathf.DeltaAngle(yaw, Mathf.Atan2(toTarget.x, toTarget.z) * Mathf.Rad2Deg) * LazyFollow;
+                yaw += orbitYaw;
             }
+            orbitYaw = 0f;
 
             float wanted = Driving ? 10f : 6.5f;
             float pitch = Driving ? 16f : footPitch;
