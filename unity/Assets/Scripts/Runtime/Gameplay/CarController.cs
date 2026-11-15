@@ -36,6 +36,7 @@ namespace Dogpatch.Gameplay
         HandlingProfile handling = HandlingProfile.Default;
 
         Rigidbody body;
+        GameObject visual;
         Vector3 desired;
         float strength;
         float forwardSpeed;
@@ -45,23 +46,14 @@ namespace Dogpatch.Gameplay
         readonly List<Transform> steering = new List<Transform>();
         float wheelSpin;
 
-        public static CarController Create(string vehicleId, GlbAsset model, Material material, Vector3 position, float heading)
+        public static CarController Create(string vehicleId, GlbAsset model, Material material, Vector3 position, float heading) =>
+            Create(vehicleId, model.Id, model.Instantiate(material), model.ComputeBounds(), position, heading);
+
+        // Any vehicle body: a Polyfork model or one built in code, with its model-space bounds.
+        public static CarController Create(string vehicleId, string modelId, GameObject visual, Bounds bounds, Vector3 position, float heading)
         {
             var go = new GameObject("Car " + vehicleId);
             go.transform.SetPositionAndRotation(position, Quaternion.Euler(0f, heading, 0f));
-            var visual = model.Instantiate(material, go.transform);
-            var bounds = model.ComputeBounds();
-
-            var box = go.AddComponent<BoxCollider>();
-            float lift = 0.25f;
-            box.center = new Vector3(bounds.center.x, (bounds.max.y + lift) * 0.5f, bounds.center.z);
-            box.size = new Vector3(bounds.size.x * 0.95f, Mathf.Max(bounds.max.y - lift, 0.5f), bounds.size.z * 0.97f);
-            box.sharedMaterial = new PhysicsMaterial("car") { dynamicFriction = 0f, staticFriction = 0f, frictionCombine = PhysicsMaterialCombine.Minimum };
-
-            var wheel = go.AddComponent<SphereCollider>();
-            wheel.radius = lift;
-            wheel.center = new Vector3(bounds.center.x, lift, bounds.center.z);
-            wheel.sharedMaterial = box.sharedMaterial;
 
             var body = go.AddComponent<Rigidbody>();
             body.mass = HandlingProfile.Default.Mass;
@@ -72,14 +64,40 @@ namespace Dogpatch.Gameplay
 
             var car = go.AddComponent<CarController>();
             car.VehicleId = vehicleId;
-            car.ModelId = model.Id;
-            car.HalfExtents = bounds.extents;
+            car.Rebuild(modelId, visual, bounds);
+            return car;
+        }
+
+        // Swaps the body (model, colliders, wheels) in place; position, speed and driver are kept.
+        public void Rebuild(string modelId, GameObject visual, Bounds bounds)
+        {
+            if (this.visual != null) Destroy(this.visual);
+            this.visual = visual;
+            visual.transform.SetParent(transform, false);
+
+            var box = GetComponent<BoxCollider>();
+            if (box == null) box = gameObject.AddComponent<BoxCollider>();
+            float lift = Mathf.Min(0.25f, bounds.size.y * 0.25f);
+            box.center = new Vector3(bounds.center.x, (bounds.max.y + lift) * 0.5f, bounds.center.z);
+            box.size = new Vector3(bounds.size.x * 0.95f, Mathf.Max(bounds.max.y - lift, 0.5f), bounds.size.z * 0.97f);
+            if (box.sharedMaterial == null)
+                box.sharedMaterial = new PhysicsMaterial("car") { dynamicFriction = 0f, staticFriction = 0f, frictionCombine = PhysicsMaterialCombine.Minimum };
+
+            var wheel = GetComponent<SphereCollider>();
+            if (wheel == null) wheel = gameObject.AddComponent<SphereCollider>();
+            wheel.radius = lift;
+            wheel.center = new Vector3(bounds.center.x, lift, bounds.center.z);
+            wheel.sharedMaterial = box.sharedMaterial;
+
+            ModelId = modelId;
+            HalfExtents = bounds.extents;
+            wheels.Clear();
+            steering.Clear();
             foreach (var t in visual.GetComponentsInChildren<Transform>())
             {
-                if (t.name.StartsWith("wheel-") && !t.name.EndsWith("-mesh")) car.wheels.Add(t);
-                if (t.name.StartsWith("steer-f")) car.steering.Add(t);
+                if (t.name.StartsWith("wheel-") && !t.name.EndsWith("-mesh")) wheels.Add(t);
+                if (t.name.StartsWith("steer-f")) steering.Add(t);
             }
-            return car;
         }
 
         void Awake() => body = GetComponent<Rigidbody>();
