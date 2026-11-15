@@ -6,7 +6,8 @@ namespace Dogpatch.Gameplay
 {
     // Arcade car on a Rigidbody. The drag gives a world direction and a strength: the car steers
     // toward that direction, the strength sets the target speed, and dragging behind the car
-    // backs it up. With no input it rolls to a stop.
+    // backs it up. At speed, a drag more than 90 degrees off the nose pulls the handbrake: the tail
+    // swings round toward it in a slide. With no input it rolls to a stop.
     [RequireComponent(typeof(Rigidbody))]
     public sealed class CarController : MonoBehaviour
     {
@@ -51,6 +52,19 @@ namespace Dogpatch.Gameplay
         readonly List<Transform> steering = new List<Transform>();
         float wheelSpin;
         float stunnedUntil;
+        bool swinging;
+        float swingSign;
+        float recoverUntil;
+
+        const float FullLockAngle = 12f;
+        const float SwingSpeed = 6f;
+        const float SwingRate = 260f;
+
+        void EndSwing()
+        {
+            swinging = false;
+            recoverUntil = Time.time + 0.6f;
+        }
         Vector3 groundNormal = Vector3.up;
 
         public static CarController Create(string vehicleId, GlbAsset model, Material material, Vector3 position, float heading) =>
@@ -169,41 +183,66 @@ namespace Dogpatch.Gameplay
             var along = onDeck ? Vector3.ProjectOnPlane(forward, groundNormal).normalized : forward;
             forwardSpeed = Vector3.Dot(body.linearVelocity, along);
 
-            float target = 0f;
-            float steerAngle = 0f;
-            bool braking = false;
+            // The drag becomes abstract controls first (steer -1..1, throttle -1..1 with negative for
+            // reverse, brake, handbrake); everything after drives from those alone.
+            float steerInput = 0f, throttle = 0f;
+            bool brake = false;
+            var planar = Vector3.ProjectOnPlane(body.linearVelocity, Vector3.up);
             if (Driven && strength > 0f && desired.sqrMagnitude > 0.01f)
             {
                 float angle = Vector3.SignedAngle(forward, desired, Vector3.up);
-                bool pointingBack = Mathf.Abs(angle) > 125f;
-                if (!reversing && pointingBack && forwardSpeed < 1.5f) reversing = true;
-                else if (reversing && Mathf.Abs(angle) < 70f) reversing = false;
-                if (reversing)
+                if (!swinging && !reversing && forwardSpeed > SwingSpeed && Mathf.Abs(angle) > 90f)
                 {
-                    target = -strength * handling.ReverseSpeed;
-                    steerAngle = Vector3.SignedAngle(-forward, desired, Vector3.up);
+                    swinging = true;
+                    swingSign = Mathf.Sign(angle);
                 }
-                else if (pointingBack)
+                if (swinging && (Mathf.Abs(angle) < 30f || planar.magnitude < 1.5f)) EndSwing();
+                if (!swinging)
                 {
-                    target = 0f;
-                    braking = true;
-                }
-                else
-                {
-                    target = strength * handling.TopSpeed * SpeedScale;
-                    steerAngle = angle;
+                    bool pointingBack = Mathf.Abs(angle) > 125f;
+                    if (!reversing && pointingBack && forwardSpeed < 1.5f) reversing = true;
+                    else if (reversing && Mathf.Abs(angle) < 70f) reversing = false;
+                    if (reversing)
+                    {
+                        throttle = -strength;
+                        steerInput = Mathf.Clamp(Vector3.SignedAngle(-forward, desired, Vector3.up) / FullLockAngle, -1f, 1f);
+                    }
+                    else if (pointingBack) brake = true;
+                    else
+                    {
+                        throttle = strength;
+                        steerInput = Mathf.Clamp(angle / FullLockAngle, -1f, 1f);
+                    }
                 }
             }
+            else if (swinging) EndSwing();
+            bool handbrake = swinging;
+            if (handbrake) steerInput = swingSign;
 
+            float target = throttle >= 0f ? throttle * handling.TopSpeed * SpeedScale : throttle * handling.ReverseSpeed;
             bool opposing = Mathf.Sign(target) != Mathf.Sign(forwardSpeed) && Mathf.Abs(forwardSpeed) > 0.5f;
             float grip = Mathf.Clamp01(handling.Grip * RoadConditions.GripMultiplier);
-            float rate = braking ? handling.Braking : target == 0f ? handling.Coasting : opposing ? handling.Braking : handling.Acceleration;
+            float rate = handbrake ? handling.Braking * 0.3f : brake ? handling.Braking : target == 0f ? handling.Coasting : opposing ? handling.Braking : handling.Acceleration;
             rate *= Mathf.Lerp(0.5f, 1f, grip);
-            forwardSpeed = Mathf.MoveTowards(forwardSpeed, target, rate * dt);
-            steer = Mathf.MoveTowards(steer, Mathf.Clamp(steerAngle / 25f, -1f, 1f), 4f * dt);
-            float yaw = steer * handling.TurnRate * Mathf.Clamp01(Mathf.Abs(forwardSpeed) / 3f) * dt;
-            body.MoveRotation(body.rotation * Quaternion.Euler(0f, yaw, 0f));
-            var slide = grip >= 1f ? Vector3.zero : right * (Vector3.Dot(body.linearVelocity, right) * Mathf.Pow(1f - grip, dt * 10f));
+            forwardSpeed = Mathf.MoveTowards(forwardSpeed, handbrake ? 0f : target, rate * dt);
+            steer = Mathf.MoveTowards(steer, steerInput, 6f * dt);
+
+            // Full-lock yaw rate: a turning circle of minRadius up to 10 m/s, tightening toward a pivot at
+            // a crawl, easing to the profile's TurnRate by 20 m/s. The handbrake swings the tail out
+            // at a fixed rate instead, a little slower for long vehicles.
+            float minRadius = Mathf.Max(3.2f, HalfExtents.z * 1.1f);
+            float v = Mathf.Abs(forwardSpeed);
+            float yawRate;
+            if (handbrake) yawRate = SwingRate * Mathf.Min(1f, 3.2f / minRadius) * Mathf.Clamp01(planar.magnitude / 4f);
+            else if (v <= 10f) yawRate = v / Mathf.Lerp(1.5f, minRadius, Mathf.InverseLerp(1f, 5f, v)) * Mathf.Rad2Deg;
+            else yawRate = Mathf.Max(handling.TurnRate, Mathf.Lerp(10f / minRadius * Mathf.Rad2Deg, handling.TurnRate, (v - 10f) / 10f));
+            body.MoveRotation(body.rotation * Quaternion.Euler(0f, steer * yawRate * dt, 0f));
+
+            // Sideways velocity: kept through a swing so the car slides, shed over a moment after it, and
+            // otherwise cancelled by the tyres' grip.
+            float lateral = Vector3.Dot(body.linearVelocity, right);
+            float keep = handbrake ? Mathf.Exp(-1.2f * dt) : Time.time < recoverUntil ? Mathf.Exp(-5f * dt) : grip >= 1f ? 0f : Mathf.Pow(1f - grip, dt * 10f);
+            var slide = right * (lateral * keep);
             body.linearVelocity = onDeck
                 ? along * forwardSpeed + slide - groundNormal * (Mathf.Max(ground.distance - 0.5f, 0f) * 10f)
                 : forward * forwardSpeed + slide + Vector3.up * Mathf.Min(body.linearVelocity.y, 0f);
