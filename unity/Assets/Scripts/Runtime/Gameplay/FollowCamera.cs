@@ -4,7 +4,7 @@ namespace Dogpatch.Gameplay
 {
     // Third-person follow camera that pulls in when a building would block the view. Behind the
     // car it swings in behind the heading, at the same rate in reverse so it stays behind the
-    // nose. On foot it trails the walker like a lazy rope: it turns only as the walker moves
+    // nose, low and close like the style art (ref 01), set back further for long vehicles. On foot it trails the walker like a lazy rope: it turns only as the walker moves
     // sideways across the view, never swings round when they run toward it, and never recentres
     // on its own, so a held direction keeps its meaning. A right-side drag orbits it on foot
     // (Orbit).
@@ -64,9 +64,11 @@ namespace Dogpatch.Gameplay
             }
             orbitYaw = 0f;
 
-            float wanted = Driving ? 10f : 6.5f;
-            float pitch = Driving ? 16f : footPitch;
-            var pivot = Target.position + Vector3.up * (Driving ? 1.6f : 1.5f);
+            var size = Driving && Target.TryGetComponent<CarController>(out var car) ? car.HalfExtents : new Vector3(0.9f, 0.75f, 2.3f);
+            bool portrait = cam.aspect < 1f;
+            float wanted = Driving ? Mathf.Max(5.8f, size.z + 3.6f) * (portrait ? 1.6f : 1f) : 6.5f;
+            float pitch = Driving ? (portrait ? 12f : 8f) : footPitch;
+            var pivot = Target.position + Vector3.up * (Driving ? Mathf.Max(1.4f, size.y * 1.5f) : 1.5f);
             var dir = Quaternion.Euler(pitch, yaw, 0f) * Vector3.back;
 
             float allowed = wanted;
@@ -80,7 +82,7 @@ namespace Dogpatch.Gameplay
             distance = allowed < distance ? allowed : Mathf.Lerp(distance, allowed, 1f - Mathf.Exp(-2f * dt));
 
             transform.position = pivot + dir * distance;
-            transform.rotation = Quaternion.LookRotation(pivot + Vector3.up * 0.3f - transform.position, Vector3.up);
+            transform.rotation = Quaternion.LookRotation(pivot + Vector3.up * (Driving ? 0.5f : 0.3f) - transform.position, Vector3.up);
         }
     }
 }
