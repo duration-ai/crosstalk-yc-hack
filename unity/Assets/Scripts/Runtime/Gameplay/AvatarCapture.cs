@@ -120,6 +120,12 @@ namespace Dogpatch.Gameplay
 
         void OnDestroy() => StopFeed();
 
+        void OnEnable() => ScreenShape.Changed += CancelPress;
+
+        void OnDisable() => ScreenShape.Changed -= CancelPress;
+
+        void CancelPress() => pressed = null;
+
         static Avatar Parse(string json)
         {
             if (string.IsNullOrEmpty(json)) return null;

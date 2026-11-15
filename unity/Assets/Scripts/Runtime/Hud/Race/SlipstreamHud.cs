@@ -34,6 +34,7 @@ namespace Dogpatch.Slipstream
         GUIStyle style;
         float s;
         float left, right, top, bottom;
+        float band;
         readonly Queue<News> queue = new Queue<News>();
         News showing;
         int place;
@@ -68,6 +69,19 @@ namespace Dogpatch.Slipstream
         void Start()
         {
             Race.EventArrived += OnEvent;
+        }
+
+        void OnEnable() => Gameplay.ScreenShape.Changed += CancelPresses;
+
+        void OnDisable() => Gameplay.ScreenShape.Changed -= CancelPresses;
+
+        // A rotation moves every button, so presses that began in the old layout never land; a
+        // held Call keeps talking until its finger lifts.
+        void CancelPresses()
+        {
+            readyFinger = int.MinValue;
+            plateFinger = int.MinValue;
+            platePressed = -1;
         }
 
         void OnEvent(RaceEvent e)
@@ -236,6 +250,7 @@ namespace Dogpatch.Slipstream
             right = safe.xMax - 22f * s;
             top = Screen.height - safe.yMax + 14f * s;
             bottom = Screen.height - safe.yMin - 20f * s;
+            band = right - left < 700f * s ? top + 76f * s : top + 4f * s;
             readyVisible = false;
             callVisible = false;
             if (Race.Last == null)
@@ -250,6 +265,7 @@ namespace Dogpatch.Slipstream
 
             Markers();
             if (!Race.ResultsIn) NameTags();
+            if (racing) FindMe();
             if (lobby) Lobby(room);
             if (Race.Online && (lobby || Race.ResultsIn)) RoomCorner(room, lobby);
             if (Race.Gridded && !Race.ResultsIn) Countdown();
@@ -383,7 +399,7 @@ namespace Dogpatch.Slipstream
             if (since < 0.45f && previousPlace > 0)
             {
                 float a = 1f - since / 0.45f;
-                Panel(new Rect(left - 6f * s, top + 30f * s, digit.width + 70f * s, 14f * s), new Color(Sun.r, Sun.g, Sun.b, a));
+                Panel(new Rect(left - 6f * s, top + 58f * s, digit.width + 64f * s, 7f * s), new Color(Sun.r, Sun.g, Sun.b, a));
             }
             if (since < 0.28f && previousPlace > 0)
             {
@@ -395,8 +411,9 @@ namespace Dogpatch.Slipstream
                 GUI.EndGroup();
             }
             else Text(digit, place.ToString(), 64f, Sun, TextAnchor.UpperLeft, 2.6f * s);
-            var suffix = Measure(Ordinal(place), 22f);
-            Text(new Rect(digit.xMax - 2f * s, top + 4f * s, suffix.x, suffix.y), Ordinal(place), 22f, White, TextAnchor.UpperLeft, 1.6f * s);
+            int shown = since < 0.14f && previousPlace > 0 ? previousPlace : place;
+            var suffix = Measure(Ordinal(shown), 22f);
+            Text(new Rect(digit.xMax - 2f * s, top + 4f * s, suffix.x, suffix.y), Ordinal(shown), 22f, White, TextAnchor.UpperLeft, 1.6f * s);
             Text(new Rect(digit.xMax - 8f * s, top + 28f * s, 60f * s, suffix.y), "/" + total, 22f, White, TextAnchor.UpperLeft, 1.6f * s);
 
             float length = Mathf.Max(Race.Room.routeLength, 1f);
@@ -483,9 +500,9 @@ namespace Dogpatch.Slipstream
                 float t = Time.time - calls.StateSince;
                 float inP = EaseOut(Mathf.Clamp01(t / 0.18f));
                 float outP = Mathf.Clamp01((t - 2.3f) / 0.25f);
-                float baseX = Screen.width * 0.5f - 150f * s;
+                float baseX = band > top + 4f * s ? left : Screen.width * 0.5f - 150f * s;
                 float x = Mathf.Lerp(-360f * s, baseX, inP) - outP * outP * (baseX + 400f * s);
-                float lineY = top + 4f * s;
+                float lineY = band;
                 var size = Measure(calls.Line, 18f);
                 var handset = new Rect(x, lineY, 40f * s, 38f * s);
                 var line = new Rect(handset.xMax + 2f * s, lineY, size.x + 34f * s, 38f * s);
@@ -509,7 +526,7 @@ namespace Dogpatch.Slipstream
                 showing = null;
                 return;
             }
-            float baseLeft = Mathf.Max(left + 150f * s, Screen.width * 0.5f - 270f * s);
+            float baseLeft = band > top + 4f * s ? left : Mathf.Max(left + 150f * s, Screen.width * 0.5f - 270f * s);
             float offset;
             float lean;
             if (since < 0.12f)
@@ -535,7 +552,7 @@ namespace Dogpatch.Slipstream
                 offset = -p * p * (baseLeft + 500f * s);
                 lean = Mathf.Lerp(Lean, 0.45f, p);
             }
-            float y = top + 4f * s;
+            float y = band;
             var textSize = Measure(showing.Text, 15f);
             var block = new Rect(baseLeft + offset, y, 40f * s, 30f * s);
             var bar = new Rect(block.xMax + 2f * s, y, Mathf.Max(textSize.x + 28f * s, 150f * s), 30f * s);

@@ -95,8 +95,8 @@ namespace Dogpatch.Operator
             _ = SendAsync(null);
         }
 
-        // Typed words straight to the Operator (debug field, speeddial://operator?say=...): no
-        // payphone or microphone needed.
+        // Typed words straight to the Operator, for live tests only (the dev-flag text field,
+        // speeddial://operator?say=..., -operator-say): no payphone or microphone needed.
         public bool Say(string text)
         {
             if (State == CallState.Talking || State == CallState.Waiting || string.IsNullOrWhiteSpace(text)) return false;

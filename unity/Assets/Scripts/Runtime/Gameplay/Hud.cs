@@ -6,13 +6,12 @@ namespace Dogpatch.Gameplay
 {
     // Slipstream HUD (handoffs/style/STYLE-GUIDE.md): the world fills the screen, the middle is
     // left to the game, and only a small pause button sits in the top-right corner. Also draws the
-    // faint drag trace under the thumb, which fades as soon as the finger lifts, and speed lines at
-    // the screen edges that grow with speed. Everything is flat GL geometry in screen space; the
-    // only typeface is Exo 2 Black Italic.
+    // faint drag trace under the thumb, which fades as soon as the finger lifts. Everything is flat
+    // GL geometry in screen space; the only typeface is Exo 2 Black Italic. Speed lines are drawn
+    // by Look.SpeedLines.
     public sealed class Hud : MonoBehaviour
     {
         const float TraceFade = 0.3f;
-        const int SpeedLineCount = 18;
 
         public GameController Game;
         public DragInput Input;
@@ -33,19 +32,6 @@ namespace Dogpatch.Gameplay
         Vector2 traceTip;
         float traceAlpha;
 
-        struct Streak
-        {
-            public float Angle;
-            public float Radius;
-            public float Length;
-            public float Speed;
-        }
-
-        readonly Streak[] streaks = new Streak[SpeedLineCount];
-        float speedLines;
-        float smearSpin;
-        readonly System.Random random = new System.Random(5);
-
         // Gameplay feedback stays out of the middle of the screen (no sentences in the HUD), so
         // toasts only go to the log.
         public void Toast(string message, float seconds = 2.5f) => Debug.Log("[Hud] " + message);
@@ -55,12 +41,21 @@ namespace Dogpatch.Gameplay
             useGUILayout = false;
             material = new Material(Resources.Load<Shader>("Shaders/HudColor")) { name = "Hud" };
             font = Resources.Load<Font>("Fonts/Exo2-BlackItalic");
-            for (int i = 0; i < streaks.Length; i++) streaks[i] = NewStreak(true);
         }
 
         void Start()
         {
             if (Input != null) Input.IgnoreAt = p => Paused || PauseRect().Contains(p);
+        }
+
+        void OnEnable() => ScreenShape.Changed += CancelPress;
+
+        void OnDisable() => ScreenShape.Changed -= CancelPress;
+
+        void CancelPress()
+        {
+            pressing = false;
+            pressFinger = -1;
         }
 
         float Scale => Mathf.Min(Screen.width, Screen.height) / 720f;
@@ -89,15 +84,6 @@ namespace Dogpatch.Gameplay
                 traceAlpha = Mathf.MoveTowards(traceAlpha, 0f, Time.unscaledDeltaTime / TraceFade);
             }
 
-            float target = Mathf.Clamp01((MotionFx.SpeedFactor - 0.6f) / 0.4f + MotionFx.BoostFactor);
-            speedLines = Mathf.MoveTowards(speedLines, Paused ? 0f : target, Time.unscaledDeltaTime * 2.5f);
-            float dt = Paused ? 0f : Time.unscaledDeltaTime;
-            smearSpin += dt * (0.4f + speedLines);
-            for (int i = 0; i < streaks.Length; i++)
-            {
-                streaks[i].Radius += streaks[i].Speed * dt * (0.6f + speedLines);
-                if (streaks[i].Radius > 1.25f) streaks[i] = NewStreak(false);
-            }
         }
 
         void HandlePause()
@@ -143,26 +129,6 @@ namespace Dogpatch.Gameplay
             Debug.Log("[Hud] " + (paused ? "paused" : "resumed"));
         }
 
-        Streak NewStreak(bool scatter) => new Streak
-        {
-            Angle = PickAngle(),
-            Radius = scatter ? 0.62f + (float)random.NextDouble() * 0.6f : 0.62f + (float)random.NextDouble() * 0.15f,
-            Length = 0.12f + (float)random.NextDouble() * 0.22f,
-            Speed = 1.6f + (float)random.NextDouble() * 1.4f,
-        };
-
-        // Streaks fan out toward the four corners and sides, never straight down over the car or
-        // straight up the middle of the sky.
-        float PickAngle()
-        {
-            while (true)
-            {
-                float a = (float)random.NextDouble() * 360f;
-                if (Mathf.Abs(Mathf.DeltaAngle(a, 270f)) < 32f || Mathf.Abs(Mathf.DeltaAngle(a, 90f)) < 22f) continue;
-                return a * Mathf.Deg2Rad;
-            }
-        }
-
         void OnGUI()
         {
             float s = Scale;
@@ -172,8 +138,6 @@ namespace Dogpatch.Gameplay
             GL.PushMatrix();
             GL.LoadPixelMatrix();
             GL.Begin(GL.TRIANGLES);
-            if (speedLines > 0.01f) DrawSmear();
-            if (speedLines > 0.01f) DrawSpeedLines();
             DrawCarMarker(s);
             if (traceAlpha > 0.01f) DrawTrace(s);
             DrawPause(s);
@@ -181,49 +145,6 @@ namespace Dogpatch.Gameplay
             GL.PopMatrix();
             if (Paused) DrawPausedText(s);
             if (Paused) DrawEnvironmentMenu(s);
-        }
-
-        void DrawSpeedLines()
-        {
-            var center = new Vector2(Screen.width * 0.5f, Screen.height * 0.56f);
-            float reach = new Vector2(Screen.width, Screen.height).magnitude * 0.5f;
-            float width = Mathf.Max(1f, Scale * 1.7f * EffectsSettings.Scale);
-            foreach (var st in streaks)
-            {
-                var dir = new Vector2(Mathf.Cos(st.Angle), Mathf.Sin(st.Angle));
-                var normal = new Vector2(-dir.y, dir.x);
-                var inner = center + dir * st.Radius * reach;
-                var outer = center + dir * (st.Radius + st.Length) * reach;
-                float fadeIn = Mathf.Clamp01((st.Radius - 0.62f) / 0.2f);
-                var c = new Color(1f, 1f, 1f, Mathf.Min(0.35f * EffectsSettings.Scale, 0.6f) * speedLines * fadeIn);
-                Tri(inner, outer + normal * width, outer - normal * width, c);
-            }
-        }
-
-        // Cheap radial speed smear: a ring of translucent white wedges around the screen edge that
-        // fade to nothing toward the middle. Flat geometry, no post-processing.
-        void DrawSmear()
-        {
-            const int wedges = 36;
-            var center = new Vector2(Screen.width * 0.5f, Screen.height * 0.56f);
-            float outer = new Vector2(Screen.width, Screen.height).magnitude * 0.62f;
-            float inner = outer * 0.72f;
-            for (int i = 0; i < wedges; i++)
-            {
-                float a0 = (i + 0.15f) * Mathf.PI * 2f / wedges + smearSpin * 0.05f;
-                float a1 = (i + 0.85f) * Mathf.PI * 2f / wedges + smearSpin * 0.05f;
-                var d0 = new Vector2(Mathf.Cos(a0), Mathf.Sin(a0));
-                var d1 = new Vector2(Mathf.Cos(a1), Mathf.Sin(a1));
-                float pulse = 0.6f + 0.4f * Mathf.Sin(i * 2.3f + smearSpin * 3f);
-                var edge = new Color(1f, 1f, 1f, Mathf.Min(0.08f * EffectsSettings.Scale, 0.14f) * speedLines * pulse);
-                var clear = new Color(1f, 1f, 1f, 0f);
-                GL.Color(clear); GL.Vertex3(center.x + d0.x * inner, center.y + d0.y * inner, 0f);
-                GL.Color(edge); GL.Vertex3(center.x + d0.x * outer, center.y + d0.y * outer, 0f);
-                GL.Color(edge); GL.Vertex3(center.x + d1.x * outer, center.y + d1.y * outer, 0f);
-                GL.Color(clear); GL.Vertex3(center.x + d0.x * inner, center.y + d0.y * inner, 0f);
-                GL.Color(edge); GL.Vertex3(center.x + d1.x * outer, center.y + d1.y * outer, 0f);
-                GL.Color(clear); GL.Vertex3(center.x + d1.x * inner, center.y + d1.y * inner, 0f);
-            }
         }
 
         // The tap-a-car pictogram: a bobbing, forward-leaning sunshine chevron with an ink outline

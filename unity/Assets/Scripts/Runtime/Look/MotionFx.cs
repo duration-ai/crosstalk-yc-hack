@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using Dogpatch.Audio;
+using Dogpatch.Feel;
 using Dogpatch.Gameplay;
 using Dogpatch.Vehicles;
 using UnityEngine;
@@ -7,26 +9,22 @@ using UnityEngine.Rendering;
 
 namespace Dogpatch.Look
 {
-    // Speed Dial motion feel: faceted smoke from the rear wheels, tire marks, dust on landings and
-    // footsteps, sparks on scrapes and wind streaks at high speed. It watches the player and the car
-    // you drive and fires these itself; other systems (camera shake, hit-stop, haptics, audio) listen
-    // to the static events, or call the triggers to fire an effect themselves. Every effect is a
-    // fixed pool rebuilt into one dynamic mesh: puffs on the shared flat material, sparks and streaks
-    // on an unlit one, tire marks on the flat one. Three draw calls in total.
-    //
-    // Tuned as accents that add feel without blocking the view: small, short-lived and sparse. Wheel
-    // smoke (only on hard launches and wheelspin), landing dust (none on small hops) and footsteps are
-    // the lightest: a few faint see-through puffs. EffectsSettings.Intensity scales them all.
+    // Speed Dial motion feel, styled on the reference art: chunky faceted puffs behind the rear
+    // wheels on launches, drifts and hard braking, tire marks, a ring of puffs and shards on car
+    // landings, sparks on scrapes, wind streaks at speed, and squash and stretch on the car body
+    // for jumps. It watches the player and the car you drive and fires these itself; other systems
+    // (camera, speed lines, haptics, audio) read SpeedFactor, Rush, BoostFactor and Lateral or listen
+    // to the static events, and anything can call the triggers. Every effect is a fixed pool rebuilt
+    // into one dynamic mesh: four draw calls in total. Tunables are in MotionTuning
+    // (Resources/Look/motion.json); EffectsSettings.Intensity scales counts, sizes and opacity.
     public sealed class MotionFx : MonoBehaviour
     {
-        const int MaxPuffs = 96;
-        const int MaxSoftPuffs = 32;
-        const float SoftAlpha = 0.3f;
-        const int MaxSparks = 64;
-        const int MaxStreaks = 28;
+        const int MaxPuffs = 64;
+        const int MaxSoftPuffs = 96;
+        const int MaxSparks = 96;
+        const int MaxStreaks = 32;
         const int MaxMarks = 600;
-        const float MarkWidth = 0.18f;
-        const float CarTopSpeed = 22f;
+        const float MarkWidth = 0.2f;
 
         public static event Action<Vector3, float> Landed;
         public static event Action<Vector3> Stepped;
@@ -34,32 +32,44 @@ namespace Dogpatch.Look
         public static event Action<float> Boosted;
         public static event Action<Vector3, float> Splashed;
 
-        // 0 at a crawl, 1 at the car's top speed. Drives speed lines, field of view and wind streaks.
+        // 0 at a crawl, 1 at the driven car's own top speed.
         public static float SpeedFactor { get; private set; }
 
-        // 1 right after a boost, decaying to 0 over about a second.
+        // 1 right after a boost, decaying to 0 over MotionTuning.speed.boostSeconds.
         public static float BoostFactor { get; private set; }
+
+        // 0 to 1: how much the drive should feel like rushing. Speed past rushStart, plus boost and
+        // going downhill. Drives the speed lines and the wind streaks.
+        public static float Rush { get; private set; }
+
+        // Signed sideways acceleration of the driven car in m/s², positive when turning right.
+        public static float Lateral { get; private set; }
 
         public GameController Game;
 
         static MotionFx instance;
 
         static readonly Color Dust = SpeedDial.Hex("#EDE3D0").linear;
+        static readonly Color PuffWhite = SpeedDial.Hex("#E6E9F1");
+        static readonly Color ShardGrey = SpeedDial.Hex("#C9CEDB");
         static readonly Color SparkHot = SpeedDial.Hex("#FFF3DA");
         static readonly Color SparkCool = SpeedDial.Hex("#FFCB1F");
         static readonly Color SprayColor = SpeedDial.Hex("#DDEFFC").linear;
         static readonly Color Powder = SpeedDial.Hex("#F4F7FC").linear;
+        static readonly Vector3 PuffLight = new Vector3(-0.35f, 0.85f, -0.4f).normalized;
+
+        static MotionTuning Tune => MotionTuning.Current;
 
         public static void Land(Vector3 position, float strength)
         {
             strength = Mathf.Clamp01(strength);
-            if (instance != null && strength >= 0.45f) instance.SoftBurst(position, 2f + 2f * strength, Dust, 0.07f + 0.06f * strength, 0.9f + 0.8f * strength, 0.4f);
+            if (instance != null) instance.LandBurst(position, strength, 1f);
             Landed?.Invoke(position, strength);
         }
 
         public static void Footstep(Vector3 position)
         {
-            if (instance != null) instance.SoftBurst(position, 1f, Dust, 0.06f, 0.4f, 0.3f);
+            if (instance != null) instance.SoftBurst(position, 1, 0, Dust, 0.06f, 0.4f, 0.3f, 0.35f);
             Stepped?.Invoke(position);
         }
 
@@ -67,6 +77,7 @@ namespace Dogpatch.Look
         {
             strength = Mathf.Clamp01(strength);
             if (instance != null) instance.Sparks(position, normal, strength);
+            if (CameraFeel.Instance != null) CameraFeel.Instance.AddTrauma(Tune.camera.scrapeShake * (0.5f + strength));
             Scraped?.Invoke(position, normal, strength);
         }
 
@@ -84,7 +95,14 @@ namespace Dogpatch.Look
             strength = Mathf.Clamp01(strength);
             BoostFactor = Mathf.Max(BoostFactor, strength);
             if (instance != null && instance.car != null)
-                foreach (var wheel in instance.rearWheels) instance.SoftPuff(wheel.position + Vector3.up * 0.2f, -instance.car.transform.forward * 1.5f + Vector3.up * 0.5f, 0.2f, 0.45f, Color.white);
+            {
+                var t = instance.car.transform;
+                var p = Tune.puffs;
+                foreach (var wheel in instance.rearWheels)
+                    for (int i = 0; i < EffectsSettings.Count(p.boostPuffs * strength); i++)
+                        instance.WheelPuff(wheel.position, t, p.boostSize * instance.R(0.8f, 1.15f), p.kick * 1.6f);
+            }
+            if (CameraFeel.Instance != null) CameraFeel.Instance.AddTrauma(Tune.camera.boostShake * strength);
             Boosted?.Invoke(strength);
         }
 
@@ -93,9 +111,11 @@ namespace Dogpatch.Look
             public Vector3 Position;
             public Vector3 Velocity;
             public Quaternion Rotation;
+            public Vector3 Spin;
             public float Age;
             public float Life;
             public float Size;
+            public float Alpha;
             public Color Tint;
         }
 
@@ -122,21 +142,25 @@ namespace Dogpatch.Look
         Mesh softMesh;
         Vector3[] softVertices;
         Color[] softColors;
-        float[] facetShade;
+        bool softAlive;
         readonly Spark[] sparks = new Spark[MaxSparks];
         readonly Streak[] streaks = new Streak[MaxStreaks];
         int nextPuff, nextSpark, nextStreak;
         Mesh puffMesh, glowMesh, markMesh;
         Vector3[] puffVertices, glowVertices, markVertices;
         Color[] puffColors, glowColors;
-        bool puffColorsDirty, marksDirty;
+        bool puffColorsDirty, marksDirty, puffsAlive, glowAlive;
         List<(Vector3, Vector3, Vector3)> puffShape;
+        Vector3[] facetNormals;
         int nextMark;
         readonly Vector3?[] lastMark = new Vector3?[2];
 
         CarController car;
         readonly List<Transform> rearWheels = new List<Transform>();
-        float lastSpeed, lastYaw, lastCarY, carFall, emitDebt, streakDebt, sprayDebt;
+        float lastSpeed, lastYaw, lastCarY, carFall, steady, accel, emitDebt, streakDebt, sprayDebt, downhill;
+        bool carAirborne;
+        Transform carVisual;
+        float squash, squashVelocity;
 
         PlayerController player;
         CharacterController body;
@@ -153,12 +177,20 @@ namespace Dogpatch.Look
         {
             instance = this;
             VehicleRoster.Swapped += Retrack;
+            GameEvents.Countdown += OnCountdown;
         }
 
         void OnDestroy()
         {
             VehicleRoster.Swapped -= Retrack;
+            GameEvents.Countdown -= OnCountdown;
             if (instance == this) instance = null;
+        }
+
+        // The race start is the one built-in boost: GO with your foot down.
+        void OnCountdown(int left)
+        {
+            if (left == 0 && car != null) Boost(Tune.speed.raceStartBoost);
         }
 
         // SwapInto rebuilds the same car with new wheels, so the cached rear wheels are gone.
@@ -175,28 +207,24 @@ namespace Dogpatch.Look
             var glow = new Material(Resources.Load<Shader>("Shaders/FxUnlit")) { name = "Motion fx glow" };
 
             puffShape = SpeedDial.Icosphere(0);
+            facetNormals = new Vector3[puffShape.Count];
             for (int i = 0; i < puffShape.Count; i++)
             {
                 var (a, b, c) = puffShape[i];
                 if (Vector3.Dot(Vector3.Cross(b - a, c - a), a + b + c) < 0f) puffShape[i] = (a, c, b);
+                facetNormals[i] = ((a + b + c) / 3f).normalized;
             }
             puffVertices = new Vector3[MaxPuffs * puffShape.Count * 3];
             puffColors = new Color[puffVertices.Length];
             puffMesh = Dynamic("puffs", puffVertices, puffColors, Sequential(puffVertices.Length));
             Spawn("Puffs", puffMesh, flat, false);
 
-            // Wheel smoke: the lightest effect, a few faint see-through faceted puffs. Facets keep a
-            // fixed light-to-dark shade so they still read as faceted without lighting.
+            // Wheel puffs, landing rings and shards: see-through faceted lumps on the unlit material,
+            // each facet shaded from a fixed light so they read as faceted without lighting.
             softVertices = new Vector3[MaxSoftPuffs * puffShape.Count * 3];
             softColors = new Color[softVertices.Length];
             softMesh = Dynamic("soft puffs", softVertices, softColors, Sequential(softVertices.Length));
             Spawn("SoftPuffs", softMesh, glow, false);
-            facetShade = new float[puffShape.Count];
-            for (int i = 0; i < puffShape.Count; i++)
-            {
-                var (a, b, c) = puffShape[i];
-                facetShade[i] = 0.82f + 0.18f * Mathf.Clamp01(((a + b + c) / 3f).normalized.y * 0.5f + 0.5f);
-            }
 
             glowVertices = new Vector3[(MaxSparks + MaxStreaks) * 4];
             glowColors = new Color[glowVertices.Length];
@@ -256,15 +284,30 @@ namespace Dogpatch.Look
             float dt = Time.deltaTime;
             if (dt <= 0f || puffMesh == null) return;
             if (view == null) view = Camera.main;
-            BoostFactor = Mathf.MoveTowards(BoostFactor, 0f, dt / 1.1f);
+            var tune = Tune.speed;
+            BoostFactor = Mathf.MoveTowards(BoostFactor, 0f, dt / Mathf.Max(tune.boostSeconds, 0.05f));
 
             TrackCar(Game != null ? Game.CurrentCar : null);
-            float speedTarget = car != null ? Mathf.Clamp01((Mathf.Abs(car.Speed) - 4f) / (CarTopSpeed - 4f)) : 0f;
+            float speedTarget = 0f;
+            if (car != null)
+            {
+                float top = Mathf.Max(car.Handling.TopSpeed, tune.minTopSpeed);
+                speedTarget = Mathf.Clamp01((Mathf.Abs(car.Speed) - tune.floor) / Mathf.Max(top - tune.floor, 1f));
+                UpdateCar(dt);
+            }
+            else
+            {
+                lastMark[0] = lastMark[1] = null;
+                Lateral = Mathf.MoveTowards(Lateral, 0f, 40f * dt);
+                downhill = 0f;
+            }
             SpeedFactor = Mathf.MoveTowards(SpeedFactor, speedTarget, dt * 1.5f);
-            if (car != null) UpdateCar(dt);
-            else lastMark[0] = lastMark[1] = null;
+            float ramp = Mathf.Clamp01((SpeedFactor - tune.rushStart) / Mathf.Max(tune.rushFull - tune.rushStart, 0.01f));
+            float rushTarget = car != null ? Mathf.Clamp01(ramp + BoostFactor * tune.boostRush + downhill * tune.downhillRush * Mathf.Min(SpeedFactor * 2f, 1f)) : 0f;
+            Rush = Mathf.MoveTowards(Rush, rushTarget, dt * 2.5f);
             UpdatePlayer(dt);
             SpawnStreaks(dt);
+            UpdateSquash(dt);
 
             UpdatePuffs(dt);
             UpdateGlow(dt);
@@ -279,7 +322,11 @@ namespace Dogpatch.Look
         {
             if (next == car) return;
             if (car != null && car.GetComponent<ScrapeSensor>() is ScrapeSensor old) Destroy(old);
+            if (carVisual != null) carVisual.localScale = Vector3.one;
             car = next;
+            carVisual = null;
+            squash = squashVelocity = 0f;
+            carAirborne = false;
             rearWheels.Clear();
             lastMark[0] = lastMark[1] = null;
             if (car == null) return;
@@ -287,6 +334,7 @@ namespace Dogpatch.Look
             lastSpeed = car.Speed;
             lastYaw = car.transform.eulerAngles.y;
             lastCarY = car.transform.position.y;
+            accel = 0f;
             foreach (var t in car.GetComponentsInChildren<Transform>())
                 if (t.name.StartsWith("wheel-") && !t.name.EndsWith("-mesh") && car.transform.InverseTransformPoint(t.position).z < 0f)
                     rearWheels.Add(t);
@@ -301,47 +349,112 @@ namespace Dogpatch.Look
             }
         }
 
+        // The car's model is the direct child that holds its renderers; squash and stretch scale it
+        // about its own origin at the wheels, leaving the body, colliders and CarFx's root scale alone.
+        Transform FindVisual()
+        {
+            var renderer = car.GetComponentInChildren<MeshRenderer>();
+            if (renderer == null) return null;
+            var t = renderer.transform;
+            while (t.parent != null && t.parent != car.transform) t = t.parent;
+            return t.parent == car.transform ? t : null;
+        }
+
         void UpdateCar(float dt)
         {
             var t = car.transform;
+            var p = Tune.puffs;
             float speed = car.Speed;
             float yaw = t.eulerAngles.y;
-            float accel = (Mathf.Abs(speed) - Mathf.Abs(lastSpeed)) / dt;
+            float rawAccel = (Mathf.Abs(speed) - Mathf.Abs(lastSpeed)) / dt;
+            accel = Mathf.Lerp(accel, rawAccel, 1f - Mathf.Exp(-10f * dt));
             float yawRate = Mathf.DeltaAngle(lastYaw, yaw) / dt * Mathf.Deg2Rad;
             lastSpeed = speed;
             lastYaw = yaw;
+            Lateral = Mathf.Lerp(Lateral, yawRate * Mathf.Abs(speed), 1f - Mathf.Exp(-12f * dt));
 
             float vy = (t.position.y - lastCarY) / dt;
             lastCarY = t.position.y;
+            if (Mathf.Abs(vy) > 30f)
+            {
+                carFall = 0f;
+                carAirborne = false;
+                return;
+            }
+            steady = Mathf.Abs(vy) < 0.5f ? steady + dt : 0f;
+            downhill = Mathf.Lerp(downhill, carAirborne ? 0f : Mathf.Clamp01(-vy / Mathf.Max(Tune.speed.downhillFullDrop, 0.1f)), 1f - Mathf.Exp(-4f * dt));
+            if (!carAirborne && vy > 3f)
+            {
+                carAirborne = true;
+                Kick(Tune.squash.takeoffStretch);
+                Boost(Tune.speed.takeoffBoost);
+            }
             if (vy < -3f) carFall = Mathf.Min(carFall, vy);
             else if (carFall < -3f && vy > -0.5f)
             {
-                Land(t.position, -carFall / 10f);
+                float strength = Mathf.Clamp01(-carFall / 10f);
+                Kick(-Tune.squash.landSquash * Mathf.Lerp(0.4f, 1f, strength));
+                Land(t.position, strength);
                 carFall = 0f;
+                carAirborne = false;
             }
+            if (carAirborne && steady > 0.25f) carAirborne = false;
 
-            float lateral = Mathf.Abs(yawRate * speed);
-            float launch = Mathf.Abs(speed) < 9f ? Mathf.Clamp01((accel - 5f) / 4f) : 0f;
-            float wheelspin = Mathf.Clamp01((lateral - 9f) / 8f);
-            float braking = Mathf.Clamp01((-accel - 9f) / 6f);
-            float skid = Mathf.Max(launch, Mathf.Max(wheelspin, braking));
+            var handling = car.Handling;
+            float top = Mathf.Max(handling.TopSpeed, Tune.speed.minTopSpeed);
+            float share = Mathf.Abs(speed) / top;
+            float lateral = Mathf.Abs(Lateral);
+            float launch = share < p.launchMaxSpeedShare && accel > p.launchAccelShare * handling.Acceleration
+                ? 1f - share / p.launchMaxSpeedShare : 0f;
+            float drift = Mathf.Clamp01((lateral - p.driftStart) / Mathf.Max(p.driftFull - p.driftStart, 0.1f));
+            float braking = Mathf.Abs(speed) > p.brakeMinSpeed ? Mathf.Clamp01((-accel / Mathf.Max(handling.Braking, 1f) - p.brakeDecelShare) / (1f - p.brakeDecelShare + 0.01f)) : 0f;
+            bool grounded = !carAirborne;
+            float skidRate = Mathf.Max(launch * p.launchRate, Mathf.Max(drift * p.driftRate, braking * p.brakeRate));
+            float cruiseRate = Rush * p.cruiseRate;
+            float rate = grounded ? Mathf.Max(skidRate, cruiseRate) : 0f;
+            float skid = Mathf.Max(launch, Mathf.Max(drift, braking));
+            float puffSize = skidRate >= cruiseRate ? p.size * (0.75f + 0.45f * skid) : p.cruiseSize;
 
-            float spin = Mathf.Max(launch, wheelspin);
-            emitDebt = spin > 0f ? emitDebt + spin * 6f * EffectsSettings.Intensity * dt : 0f;
+            emitDebt = rate > 0f ? emitDebt + rate * EffectsSettings.Intensity * dt : 0f;
             while (emitDebt >= 1f)
             {
                 emitDebt -= 1f;
-                foreach (var wheel in rearWheels) EmitSmoke(wheel.position, t, spin);
+                foreach (var wheel in rearWheels) WheelPuff(wheel.position, t, puffSize * R(0.85f, 1.15f), p.kick);
             }
-            for (int w = 0; w < rearWheels.Count && w < 2; w++) Mark(w, rearWheels[w].position, skid > 0.35f);
+            for (int w = 0; w < rearWheels.Count && w < 2; w++) Mark(w, rearWheels[w].position, grounded && Mathf.Max(Mathf.Max(drift, braking), launch * 0.6f) > 0.3f);
 
             float wet = Mathf.Max(WorldEnvironment.Wetness, WorldEnvironment.SnowCover);
             sprayDebt += wet * Mathf.Clamp01((Mathf.Abs(speed) - 3f) / 12f) * 13f * EffectsSettings.Intensity * dt;
             while (sprayDebt >= 1f)
             {
                 sprayDebt -= 1f;
-                foreach (var wheel in rearWheels) Splash(new Vector3(wheel.position.x, t.position.y + 0.15f, wheel.position.z), Mathf.Clamp01(Mathf.Abs(speed) / CarTopSpeed));
+                foreach (var wheel in rearWheels) Splash(new Vector3(wheel.position.x, t.position.y + 0.15f, wheel.position.z), Mathf.Clamp01(share));
             }
+        }
+
+        void Kick(float amount)
+        {
+            squash = amount;
+            squashVelocity = 0f;
+        }
+
+        // A damped spring on the car body's vertical scale, volume kept roughly constant.
+        void UpdateSquash(float dt)
+        {
+            if (car == null) return;
+            if (carVisual == null)
+            {
+                carVisual = FindVisual();
+                if (carVisual == null) return;
+            }
+            var s = Tune.squash;
+            float omega = 2f * Mathf.PI / Mathf.Max(s.period, 0.05f);
+            squashVelocity += (-omega * omega * squash - 2f * s.damping * omega * squashVelocity) * dt;
+            squash += squashVelocity * dt;
+            if (Mathf.Abs(squash) < 0.001f && Mathf.Abs(squashVelocity) < 0.01f) squash = squashVelocity = 0f;
+            float y = 1f + squash;
+            float xz = 1f / Mathf.Sqrt(Mathf.Max(y, 0.5f));
+            carVisual.localScale = new Vector3(xz, y, xz);
         }
 
         void UpdatePlayer(float dt)
@@ -370,7 +483,12 @@ namespace Dogpatch.Look
             }
             else if (!wasGrounded)
             {
-                if (airTime > 0.25f) Land(p, Mathf.Clamp01(-playerFall / 9f));
+                if (airTime > 0.25f)
+                {
+                    float strength = Mathf.Clamp01(-playerFall / 9f);
+                    LandBurst(p, strength, Tune.landing.onFootScale);
+                    Landed?.Invoke(p, strength);
+                }
                 airTime = 0f;
                 playerFall = 0f;
             }
@@ -389,28 +507,57 @@ namespace Dogpatch.Look
             Footstep(p + player.transform.right * (leftFoot ? -0.13f : 0.13f) + Vector3.up * 0.05f);
         }
 
-        void EmitSmoke(Vector3 wheel, Transform t, float skid)
+        // One chunky puff off a rear wheel, carried along with the car so puffs bunch up behind the
+        // wheel instead of stringing out into a trail, plus now and then a small flying shard.
+        void WheelPuff(Vector3 wheel, Transform t, float size, float kick)
         {
-            SoftPuff(new Vector3(wheel.x, t.position.y + 0.2f, wheel.z) - t.forward * 0.3f,
-                -t.forward * R(1f, 2f) + t.right * R(-0.6f, 0.6f) + Vector3.up * 0.45f,
-                0.13f + 0.1f * skid + R(0f, 0.04f), 0.4f, Color.white);
+            var p = Tune.puffs;
+            var carry = car != null ? t.forward * car.Speed * p.carry : Vector3.zero;
+            var origin = new Vector3(wheel.x, t.position.y + size * 0.6f, wheel.z) - t.forward * R(0.15f, 0.45f) + t.right * R(-0.15f, 0.15f);
+            SoftPuff(origin, carry - t.forward * kick * R(0.6f, 1.2f) + t.right * R(-0.8f, 0.8f) + Vector3.up * R(0.5f, 1.1f),
+                size, p.life * R(0.85f, 1.15f), p.alpha, PuffWhite);
+            if (random.NextDouble() < p.shardChance)
+                SoftPuff(origin, carry - t.forward * kick * R(1f, 2f) + t.right * R(-2f, 2f) + Vector3.up * R(1.5f, 3f),
+                    p.shardSize * R(0.7f, 1.3f), R(0.25f, 0.4f), 0.95f, ShardGrey);
         }
 
-        void SoftBurst(Vector3 position, float baseCount, Color tint, float size, float spread, float life)
+        // Touchdown: a ring of chunky puffs rolling out along the ground, plus shards. Car landings
+        // use the full ring; on-foot landings a small one.
+        void LandBurst(Vector3 position, float strength, float scale)
         {
-            int count = EffectsSettings.Count(baseCount);
+            var l = Tune.landing;
+            if (strength < l.minStrength) return;
+            float k = Mathf.Lerp(0.5f, 1f, strength) * scale;
+            SoftBurst(position, Mathf.Max(2, Mathf.RoundToInt(l.puffs * k)), Mathf.RoundToInt(l.shards * k), PuffWhite, l.size * k, l.spread * Mathf.Lerp(0.6f, 1f, strength), l.life, Tune.puffs.alpha);
+        }
+
+        void SoftBurst(Vector3 position, int puffCount, int shardCount, Color tint, float size, float spread, float life, float alpha)
+        {
+            int count = EffectsSettings.Count(puffCount);
             for (int i = 0; i < count; i++)
             {
                 float a = (i + R(0f, 0.7f)) / count * Mathf.PI * 2f;
                 var outward = new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a));
-                SoftPuff(position + outward * size + Vector3.up * size * 0.5f, outward * spread * R(0.6f, 1f) + Vector3.up * R(0.2f, 0.5f), size * R(0.8f, 1.2f), life, tint);
+                SoftPuff(position + outward * size * 0.8f + Vector3.up * size * 0.5f, outward * spread * R(0.6f, 1f) + Vector3.up * R(0.2f, 0.7f), size * R(0.8f, 1.2f), life * R(0.85f, 1.15f), alpha, tint);
+            }
+            if (shardCount <= 0) return;
+            for (int i = 0; i < EffectsSettings.Count(shardCount); i++)
+            {
+                var outward = Quaternion.Euler(0f, R(0f, 360f), 0f) * Vector3.forward;
+                SoftPuff(position + Vector3.up * 0.2f, outward * spread * R(0.8f, 1.5f) + Vector3.up * R(2f, 4f), Tune.puffs.shardSize * R(0.7f, 1.3f), R(0.3f, 0.45f), 0.95f, ShardGrey);
             }
         }
 
-        void SoftPuff(Vector3 position, Vector3 velocity, float size, float life, Color tint)
+        void SoftPuff(Vector3 position, Vector3 velocity, float size, float life, float alpha, Color tint)
         {
-            softPuffs[nextSoftPuff] = new Puff { Position = position, Velocity = velocity, Rotation = UnityEngine.Random.rotationUniform, Size = size * EffectsSettings.Scale, Life = life, Tint = tint };
+            softPuffs[nextSoftPuff] = new Puff
+            {
+                Position = position, Velocity = velocity, Rotation = UnityEngine.Random.rotationUniform,
+                Spin = UnityEngine.Random.insideUnitSphere * 240f, Size = size * EffectsSettings.Scale, Life = life,
+                Alpha = Mathf.Min(alpha * Mathf.Sqrt(EffectsSettings.Scale), 0.95f), Tint = tint,
+            };
             nextSoftPuff = (nextSoftPuff + 1) % MaxSoftPuffs;
+            softAlive = true;
         }
 
         void Spray(Vector3 position, float strength)
@@ -421,19 +568,6 @@ namespace Dogpatch.Look
                 R(0.08f, 0.13f) * (0.7f + strength), R(0.3f, 0.45f), WorldEnvironment.SnowCover > WorldEnvironment.Wetness ? Powder : SprayColor);
         }
 
-        void Burst(Vector3 position, float baseCount, Color color, float size, float spread, float life)
-        {
-            int count = EffectsSettings.Count(baseCount);
-            for (int i = 0; i < count; i++)
-            {
-                float a = (i + R(0f, 0.7f)) / count * Mathf.PI * 2f;
-                var outward = new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a));
-                AddPuff(position + outward * size * 0.6f + Vector3.up * size * 0.4f,
-                    outward * spread * R(0.6f, 1f) + Vector3.up * R(0.4f, 1.2f),
-                    size * R(0.8f, 1.2f), life * R(0.8f, 1.1f), color);
-            }
-        }
-
         void AddPuff(Vector3 position, Vector3 velocity, float size, float life, Color color)
         {
             size *= EffectsSettings.Scale;
@@ -441,30 +575,32 @@ namespace Dogpatch.Look
             int v = nextPuff * puffShape.Count * 3;
             for (int i = 0; i < puffShape.Count * 3; i++) puffColors[v + i] = color;
             puffColorsDirty = true;
+            puffsAlive = true;
             nextPuff = (nextPuff + 1) % MaxPuffs;
         }
 
         void Sparks(Vector3 position, Vector3 normal, float strength)
         {
+            var s = Tune.sparks;
             var carry = car != null ? car.transform.forward * car.Speed * 0.45f : Vector3.zero;
-            int count = EffectsSettings.Count(3f + strength * 7f);
+            int count = EffectsSettings.Count(Mathf.Lerp(s.countMin, s.countMax, strength));
             for (int i = 0; i < count; i++)
             {
                 sparks[nextSpark] = new Spark
                 {
                     Position = position,
-                    Velocity = normal * R(1f, 3f) + Vector3.up * R(1.5f, 4f) + UnityEngine.Random.insideUnitSphere * 2.5f + carry,
-                    Life = R(0.15f, 0.32f),
+                    Velocity = normal * R(1.5f, 4f) + Vector3.up * R(2f, 5f) + UnityEngine.Random.insideUnitSphere * 3f + carry,
+                    Life = R(s.lifeMin, s.lifeMax),
                 };
                 nextSpark = (nextSpark + 1) % MaxSparks;
             }
+            glowAlive = true;
         }
 
         void SpawnStreaks(float dt)
         {
             if (view == null || car == null) return;
-            float rate = Mathf.Clamp01((SpeedFactor - 0.65f) / 0.35f + BoostFactor) * 14f * EffectsSettings.Intensity;
-            streakDebt += rate * dt;
+            streakDebt += Rush * Tune.streaks.rate * EffectsSettings.Intensity * dt;
             var cam = view.transform;
             var heading = car.transform.forward * Mathf.Sign(car.Speed == 0f ? 1f : car.Speed);
             while (streakDebt >= 1f)
@@ -476,63 +612,76 @@ namespace Dogpatch.Look
                 {
                     Position = cam.position + heading * R(14f, 30f) + offset,
                     Direction = heading,
-                    Length = R(2.5f, 6f),
-                    Life = R(0.35f, 0.6f),
+                    Length = R(3f, 7f),
+                    Life = R(0.3f, 0.55f),
                 };
                 nextStreak = (nextStreak + 1) % MaxStreaks;
+                glowAlive = true;
             }
         }
 
         void UpdatePuffs(float dt)
         {
-            int k = 0;
-            for (int i = 0; i < MaxPuffs; i++)
+            if (puffsAlive)
             {
-                ref var p = ref puffs[i];
-                float scale = 0f;
-                if (p.Size > 0f && p.Age < p.Life)
+                int k = 0;
+                bool any = false;
+                for (int i = 0; i < MaxPuffs; i++)
                 {
-                    p.Age += dt;
-                    p.Position += p.Velocity * dt;
-                    p.Velocity *= 1f - 2.5f * dt;
-                    float t = p.Age / p.Life;
-                    scale = p.Size * (t < 0.3f ? Mathf.Lerp(0.4f, 1f, t / 0.3f) : Mathf.Lerp(1f, 0f, (t - 0.3f) / 0.7f)) * (1f + t * 1.2f);
+                    ref var p = ref puffs[i];
+                    float scale = 0f;
+                    if (p.Size > 0f && p.Age < p.Life)
+                    {
+                        any = true;
+                        p.Age += dt;
+                        p.Position += p.Velocity * dt;
+                        p.Velocity *= 1f - 2.5f * dt;
+                        float t = p.Age / p.Life;
+                        scale = p.Size * (t < 0.3f ? Mathf.Lerp(0.4f, 1f, t / 0.3f) : Mathf.Lerp(1f, 0f, (t - 0.3f) / 0.7f)) * (1f + t * 1.2f);
+                    }
+                    foreach (var (a, b, c) in puffShape)
+                    {
+                        puffVertices[k++] = p.Position + p.Rotation * a * scale;
+                        puffVertices[k++] = p.Position + p.Rotation * b * scale;
+                        puffVertices[k++] = p.Position + p.Rotation * c * scale;
+                    }
                 }
-                foreach (var (a, b, c) in puffShape)
-                {
-                    puffVertices[k++] = p.Position + p.Rotation * a * scale;
-                    puffVertices[k++] = p.Position + p.Rotation * b * scale;
-                    puffVertices[k++] = p.Position + p.Rotation * c * scale;
-                }
+                puffMesh.vertices = puffVertices;
+                puffsAlive = any;
             }
-            puffMesh.vertices = puffVertices;
-            UpdateSoftPuffs(dt);
+            if (softAlive) UpdateSoftPuffs(dt);
             if (!puffColorsDirty) return;
             puffMesh.colors = puffColors;
             puffColorsDirty = false;
         }
 
+        // Puffs pop in, swell, then shrink away while fading, so they read as cartoon puffs rather
+        // than haze.
         void UpdateSoftPuffs(float dt)
         {
             int k = 0;
-            float alpha = Mathf.Min(SoftAlpha * EffectsSettings.Scale, 0.5f);
+            bool any = false;
             for (int i = 0; i < MaxSoftPuffs; i++)
             {
                 ref var p = ref softPuffs[i];
                 float scale = 0f, fade = 0f;
                 if (p.Size > 0f && p.Age < p.Life)
                 {
+                    any = true;
                     p.Age += dt;
+                    p.Velocity += Vector3.down * (p.Size < 0.12f ? 12f : 0f) * dt;
                     p.Position += p.Velocity * dt;
-                    p.Velocity *= 1f - 3f * dt;
-                    float t = p.Age / p.Life;
-                    scale = p.Size * (0.6f + 0.9f * t);
-                    fade = alpha * (1f - t) * (1f - t);
+                    p.Velocity *= 1f - 3.2f * dt;
+                    p.Rotation = Quaternion.Euler(p.Spin * dt) * p.Rotation;
+                    float t = Mathf.Clamp01(p.Age / p.Life);
+                    scale = p.Size * (t < 0.15f ? Mathf.Lerp(0.6f, 1f, t / 0.15f) : Mathf.Lerp(1f, 1.25f, Mathf.Min((t - 0.15f) / 0.35f, 1f)) * (t > 0.6f ? Mathf.Lerp(1f, 0.35f, (t - 0.6f) / 0.4f) : 1f));
+                    fade = p.Alpha * (t > 0.55f ? 1f - (t - 0.55f) / 0.45f : 1f);
                 }
                 for (int f = 0; f < puffShape.Count; f++)
                 {
                     var (a, b, c) = puffShape[f];
-                    var color = new Color(p.Tint.r * facetShade[f], p.Tint.g * facetShade[f], p.Tint.b * facetShade[f], fade);
+                    float shade = 0.68f + 0.32f * Mathf.Clamp01(Vector3.Dot(p.Rotation * facetNormals[f], PuffLight) * 0.5f + 0.5f);
+                    var color = new Color(p.Tint.r * shade, p.Tint.g * shade, p.Tint.b * shade, fade);
                     softColors[k] = softColors[k + 1] = softColors[k + 2] = color;
                     softVertices[k++] = p.Position + p.Rotation * a * scale;
                     softVertices[k++] = p.Position + p.Rotation * b * scale;
@@ -541,43 +690,51 @@ namespace Dogpatch.Look
             }
             softMesh.vertices = softVertices;
             softMesh.colors = softColors;
+            softAlive = any;
         }
 
         // Sparks and streaks are thin quads facing the camera, stretched along their motion.
         void UpdateGlow(float dt)
         {
+            if (!glowAlive) return;
             var eye = view != null ? view.transform.position : Vector3.zero;
+            var s = Tune.sparks;
+            var w = Tune.streaks;
+            bool any = false;
             int q = 0;
             for (int i = 0; i < MaxSparks; i++, q++)
             {
-                ref var s = ref sparks[i];
-                if (s.Life <= 0f || s.Age >= s.Life)
+                ref var sp = ref sparks[i];
+                if (sp.Life <= 0f || sp.Age >= sp.Life)
                 {
                     Hide(q);
                     continue;
                 }
-                s.Age += dt;
-                s.Velocity += Vector3.down * 14f * dt;
-                s.Position += s.Velocity * dt;
-                float t = s.Age / s.Life;
+                any = true;
+                sp.Age += dt;
+                sp.Velocity += Vector3.down * 14f * dt;
+                sp.Position += sp.Velocity * dt;
+                float t = sp.Age / sp.Life;
                 var color = Color.Lerp(SparkHot, SparkCool, t);
                 color.a = 1f - t * t;
-                Line(q, s.Position, s.Position - s.Velocity * 0.03f, 0.03f * EffectsSettings.Scale, eye, color);
+                Line(q, sp.Position, sp.Position - sp.Velocity * s.trail, s.width * EffectsSettings.Scale, eye, color);
             }
             for (int i = 0; i < MaxStreaks; i++, q++)
             {
-                ref var s = ref streaks[i];
-                if (s.Life <= 0f || s.Age >= s.Life)
+                ref var st = ref streaks[i];
+                if (st.Life <= 0f || st.Age >= st.Life)
                 {
                     Hide(q);
                     continue;
                 }
-                s.Age += dt;
-                float t = s.Age / s.Life;
-                Line(q, s.Position, s.Position - s.Direction * s.Length, 0.022f, eye, new Color(1f, 1f, 1f, Mathf.Min(0.3f * EffectsSettings.Scale, 0.5f) * Mathf.Sin(t * Mathf.PI)));
+                any = true;
+                st.Age += dt;
+                float t = st.Age / st.Life;
+                Line(q, st.Position, st.Position - st.Direction * st.Length, w.width, eye, new Color(1f, 1f, 1f, Mathf.Min(w.alpha * EffectsSettings.Scale, 0.8f) * Mathf.Sin(t * Mathf.PI)));
             }
             glowMesh.vertices = glowVertices;
             glowMesh.colors = glowColors;
+            glowAlive = any;
         }
 
         void Hide(int q)
