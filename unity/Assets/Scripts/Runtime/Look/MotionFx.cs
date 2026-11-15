@@ -25,6 +25,7 @@ namespace Dogpatch.Look
         public static event Action<Vector3> Stepped;
         public static event Action<Vector3, Vector3, float> Scraped;
         public static event Action<float> Boosted;
+        public static event Action<Vector3, float> Splashed;
 
         // 0 at a crawl, 1 at the car's top speed. Drives speed lines, field of view and wind streaks.
         public static float SpeedFactor { get; private set; }
@@ -39,6 +40,8 @@ namespace Dogpatch.Look
         static readonly Color Dust = SpeedDial.Hex("#EDE3D0").linear;
         static readonly Color SparkHot = SpeedDial.Hex("#FFF3DA");
         static readonly Color SparkCool = SpeedDial.Hex("#FFCB1F");
+        static readonly Color SprayColor = SpeedDial.Hex("#DDEFFC").linear;
+        static readonly Color Powder = SpeedDial.Hex("#F4F7FC").linear;
 
         public static void Land(Vector3 position, float strength)
         {
@@ -58,6 +61,15 @@ namespace Dogpatch.Look
             strength = Mathf.Clamp01(strength);
             if (instance != null) instance.Sparks(position, normal, strength);
             Scraped?.Invoke(position, normal, strength);
+        }
+
+        // Wheel spray: blue-white puffs kicked up and back, fired automatically behind the rear wheels
+        // on wet or snowy roads.
+        public static void Splash(Vector3 position, float strength)
+        {
+            strength = Mathf.Clamp01(strength);
+            if (instance != null) instance.Spray(position, strength);
+            Splashed?.Invoke(position, strength);
         }
 
         public static void Boost(float strength = 1f)
@@ -110,7 +122,7 @@ namespace Dogpatch.Look
 
         CarController car;
         readonly List<Transform> rearWheels = new List<Transform>();
-        float lastSpeed, lastYaw, lastCarY, carFall, emitDebt, streakDebt;
+        float lastSpeed, lastYaw, lastCarY, carFall, emitDebt, streakDebt, sprayDebt;
 
         PlayerController player;
         CharacterController body;
@@ -282,6 +294,14 @@ namespace Dogpatch.Look
                 foreach (var wheel in rearWheels) EmitSmoke(wheel.position, t, skid);
             }
             for (int w = 0; w < rearWheels.Count && w < 2; w++) Mark(w, rearWheels[w].position, skid > 0.25f);
+
+            float wet = Mathf.Max(WorldEnvironment.Wetness, WorldEnvironment.SnowCover);
+            sprayDebt += wet * Mathf.Clamp01((Mathf.Abs(speed) - 3f) / 12f) * 30f * dt;
+            while (sprayDebt >= 1f)
+            {
+                sprayDebt -= 1f;
+                foreach (var wheel in rearWheels) Splash(new Vector3(wheel.position.x, t.position.y + 0.15f, wheel.position.z), Mathf.Clamp01(Mathf.Abs(speed) / CarTopSpeed));
+            }
         }
 
         void UpdatePlayer(float dt)
@@ -334,6 +354,14 @@ namespace Dogpatch.Look
             AddPuff(new Vector3(wheel.x, t.position.y + 0.25f, wheel.z) - t.forward * 0.3f,
                 -t.forward * R(1f, 2.5f) + t.right * R(-0.8f, 0.8f) + Vector3.up * 0.6f,
                 0.35f + 0.35f * skid + R(0f, 0.15f), 0.9f, SpeedDial.Smoke);
+        }
+
+        void Spray(Vector3 position, float strength)
+        {
+            var back = car != null ? -car.transform.forward * Mathf.Sign(car.Speed == 0f ? 1f : car.Speed) : Vector3.zero;
+            var side = car != null ? car.transform.right : Vector3.right;
+            AddPuff(position + back * 0.4f, back * R(1.5f, 3f) * (0.5f + strength) + side * R(-0.9f, 0.9f) + Vector3.up * R(1.2f, 2.6f),
+                R(0.14f, 0.24f) * (0.7f + strength), R(0.45f, 0.7f), WorldEnvironment.SnowCover > WorldEnvironment.Wetness ? Powder : SprayColor);
         }
 
         void Burst(Vector3 position, int count, Color color, float size, float spread, float life)

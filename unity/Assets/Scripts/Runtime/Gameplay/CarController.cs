@@ -10,21 +10,34 @@ namespace Dogpatch.Gameplay
     [RequireComponent(typeof(Rigidbody))]
     public sealed class CarController : MonoBehaviour
     {
-        const float MaxSpeed = 22f;
-        const float MaxReverse = 7f;
-        const float Acceleration = 8f;
-        const float Braking = 16f;
-        const float Coasting = 5f;
-        const float TurnRate = 75f;
-
         public string VehicleId;
         public string ModelId;
         public bool Driven { get; private set; }
+
+        // False while the vehicle can't be taken, such as a delivery bike with its rider still on.
+        public bool Enterable = true;
         public float Speed => forwardSpeed;
         public Vector3 HalfExtents { get; private set; }
         public bool Stunned => Time.time < stunnedUntil;
 
+        // While true, something else (the traffic AI) moves this car and FixedUpdate leaves the body
+        // alone, even with the player aboard as a passenger.
+        public bool Autopilot { get; set; }
+
+        public HandlingProfile Handling
+        {
+            get => handling;
+            set
+            {
+                handling = value ?? HandlingProfile.Default;
+                if (body != null) body.mass = handling.Mass;
+            }
+        }
+
+        HandlingProfile handling = HandlingProfile.Default;
+
         Rigidbody body;
+        GameObject visual;
         Vector3 desired;
         float strength;
         float forwardSpeed;
@@ -35,26 +48,17 @@ namespace Dogpatch.Gameplay
         float wheelSpin;
         float stunnedUntil;
 
-        public static CarController Create(string vehicleId, GlbAsset model, Material material, Vector3 position, float heading)
+        public static CarController Create(string vehicleId, GlbAsset model, Material material, Vector3 position, float heading) =>
+            Create(vehicleId, model.Id, model.Instantiate(material), model.ComputeBounds(), position, heading);
+
+        // Any vehicle body: a Polyfork model or one built in code, with its model-space bounds.
+        public static CarController Create(string vehicleId, string modelId, GameObject visual, Bounds bounds, Vector3 position, float heading)
         {
             var go = new GameObject("Car " + vehicleId);
             go.transform.SetPositionAndRotation(position, Quaternion.Euler(0f, heading, 0f));
-            var visual = model.Instantiate(material, go.transform);
-            var bounds = model.ComputeBounds();
-
-            var box = go.AddComponent<BoxCollider>();
-            float lift = 0.25f;
-            box.center = new Vector3(bounds.center.x, (bounds.max.y + lift) * 0.5f, bounds.center.z);
-            box.size = new Vector3(bounds.size.x * 0.95f, Mathf.Max(bounds.max.y - lift, 0.5f), bounds.size.z * 0.97f);
-            box.sharedMaterial = new PhysicsMaterial("car") { dynamicFriction = 0f, staticFriction = 0f, frictionCombine = PhysicsMaterialCombine.Minimum };
-
-            var wheel = go.AddComponent<SphereCollider>();
-            wheel.radius = lift;
-            wheel.center = new Vector3(bounds.center.x, lift, bounds.center.z);
-            wheel.sharedMaterial = box.sharedMaterial;
 
             var body = go.AddComponent<Rigidbody>();
-            body.mass = 1200f;
+            body.mass = HandlingProfile.Default.Mass;
             body.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
             body.interpolation = RigidbodyInterpolation.Interpolate;
             body.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
@@ -62,14 +66,40 @@ namespace Dogpatch.Gameplay
 
             var car = go.AddComponent<CarController>();
             car.VehicleId = vehicleId;
-            car.ModelId = model.Id;
-            car.HalfExtents = bounds.extents;
+            car.Rebuild(modelId, visual, bounds);
+            return car;
+        }
+
+        // Swaps the body (model, colliders, wheels) in place; position, speed and driver are kept.
+        public void Rebuild(string modelId, GameObject visual, Bounds bounds)
+        {
+            if (this.visual != null) Destroy(this.visual);
+            this.visual = visual;
+            visual.transform.SetParent(transform, false);
+
+            var box = GetComponent<BoxCollider>();
+            if (box == null) box = gameObject.AddComponent<BoxCollider>();
+            float lift = Mathf.Min(0.25f, bounds.size.y * 0.25f);
+            box.center = new Vector3(bounds.center.x, (bounds.max.y + lift) * 0.5f, bounds.center.z);
+            box.size = new Vector3(bounds.size.x * 0.95f, Mathf.Max(bounds.max.y - lift, 0.5f), bounds.size.z * 0.97f);
+            if (box.sharedMaterial == null)
+                box.sharedMaterial = new PhysicsMaterial("car") { dynamicFriction = 0f, staticFriction = 0f, frictionCombine = PhysicsMaterialCombine.Minimum };
+
+            var wheel = GetComponent<SphereCollider>();
+            if (wheel == null) wheel = gameObject.AddComponent<SphereCollider>();
+            wheel.radius = lift;
+            wheel.center = new Vector3(bounds.center.x, lift, bounds.center.z);
+            wheel.sharedMaterial = box.sharedMaterial;
+
+            ModelId = modelId;
+            HalfExtents = bounds.extents;
+            wheels.Clear();
+            steering.Clear();
             foreach (var t in visual.GetComponentsInChildren<Transform>())
             {
-                if (t.name.StartsWith("wheel-") && !t.name.EndsWith("-mesh")) car.wheels.Add(t);
-                if (t.name.StartsWith("steer-f")) car.steering.Add(t);
+                if (t.name.StartsWith("wheel-") && !t.name.EndsWith("-mesh")) wheels.Add(t);
+                if (t.name.StartsWith("steer-f")) steering.Add(t);
             }
-            return car;
         }
 
         void Awake() => body = GetComponent<Rigidbody>();
@@ -77,7 +107,7 @@ namespace Dogpatch.Gameplay
         public void SetDriven(bool driven)
         {
             Driven = driven;
-            if (driven) body.isKinematic = false;
+            if (driven && !Autopilot) body.isKinematic = false;
             desired = Vector3.zero;
             strength = 0f;
         }
@@ -86,6 +116,14 @@ namespace Dogpatch.Gameplay
         {
             desired = direction;
             strength = amount;
+        }
+
+        // Lets the autopilot report its motion so speed readouts and wheel animation stay right.
+        public void SetAutopilotMotion(float speed, float steerInput)
+        {
+            forwardSpeed = speed;
+            steer = Mathf.Clamp(steerInput, -1f, 1f);
+            reversing = speed < -0.1f;
         }
 
         public void Place(Vector3 position, float heading)
@@ -112,9 +150,10 @@ namespace Dogpatch.Gameplay
 
         void FixedUpdate()
         {
-            if (body.isKinematic || Stunned) return;
+            if (body.isKinematic || Stunned || Autopilot) return;
             float dt = Time.fixedDeltaTime;
             var forward = transform.forward;
+            var right = transform.right;
             forwardSpeed = Vector3.Dot(body.linearVelocity, forward);
 
             float target = 0f;
@@ -128,7 +167,7 @@ namespace Dogpatch.Gameplay
                 else if (reversing && Mathf.Abs(angle) < 70f) reversing = false;
                 if (reversing)
                 {
-                    target = -strength * MaxReverse;
+                    target = -strength * handling.ReverseSpeed;
                     steerAngle = Vector3.SignedAngle(-forward, desired, Vector3.up);
                 }
                 else if (pointingBack)
@@ -138,18 +177,21 @@ namespace Dogpatch.Gameplay
                 }
                 else
                 {
-                    target = strength * MaxSpeed;
+                    target = strength * handling.TopSpeed;
                     steerAngle = angle;
                 }
             }
 
             bool opposing = Mathf.Sign(target) != Mathf.Sign(forwardSpeed) && Mathf.Abs(forwardSpeed) > 0.5f;
-            float rate = braking ? Braking : target == 0f ? Coasting : opposing ? Braking : Acceleration;
+            float grip = Mathf.Clamp01(handling.Grip * RoadConditions.GripMultiplier);
+            float rate = braking ? handling.Braking : target == 0f ? handling.Coasting : opposing ? handling.Braking : handling.Acceleration;
+            rate *= Mathf.Lerp(0.5f, 1f, grip);
             forwardSpeed = Mathf.MoveTowards(forwardSpeed, target, rate * dt);
             steer = Mathf.MoveTowards(steer, Mathf.Clamp(steerAngle / 25f, -1f, 1f), 4f * dt);
-            float yaw = steer * TurnRate * Mathf.Clamp01(Mathf.Abs(forwardSpeed) / 3f) * dt;
+            float yaw = steer * handling.TurnRate * Mathf.Clamp01(Mathf.Abs(forwardSpeed) / 3f) * dt;
             body.MoveRotation(body.rotation * Quaternion.Euler(0f, yaw, 0f));
-            body.linearVelocity = forward * forwardSpeed + Vector3.up * Mathf.Min(body.linearVelocity.y, 0f);
+            var slide = grip >= 1f ? Vector3.zero : right * (Vector3.Dot(body.linearVelocity, right) * Mathf.Pow(1f - grip, dt * 10f));
+            body.linearVelocity = forward * forwardSpeed + slide + Vector3.up * Mathf.Min(body.linearVelocity.y, 0f);
 
             if (!Driven && Mathf.Abs(forwardSpeed) < 0.05f) body.isKinematic = true;
         }
