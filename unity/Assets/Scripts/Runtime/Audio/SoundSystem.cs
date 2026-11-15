@@ -68,6 +68,7 @@ namespace Dogpatch.Audio
         AnimationCurve rolloff;
         float nextScan;
         Transform listener;
+        readonly HashSet<int> attached = new HashSet<int>();
         GameController game;
 
         public static GameController Game => Instance != null ? Instance.game : null;
@@ -340,10 +341,10 @@ namespace Dogpatch.Audio
             }
             foreach (var car in FindObjectsByType<CarController>(FindObjectsSortMode.None))
             {
-                if (car.GetComponent<VehicleSounds>() == null) car.gameObject.AddComponent<VehicleSounds>();
+                if (attached.Add(car.GetInstanceID()) && car.GetComponent<VehicleSounds>() == null) car.gameObject.AddComponent<VehicleSounds>();
             }
             var player = FindAnyObjectByType<PlayerController>();
-            if (player != null && player.GetComponent<PlayerSounds>() == null) player.gameObject.AddComponent<PlayerSounds>();
+            if (player != null && attached.Add(player.GetInstanceID()) && player.GetComponent<PlayerSounds>() == null) player.gameObject.AddComponent<PlayerSounds>();
         }
     }
 }

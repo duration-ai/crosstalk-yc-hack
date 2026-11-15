@@ -71,7 +71,7 @@ namespace Dogpatch.Audio
 
         void OnCarLanded(Vector3 position, float strength)
         {
-            if (strength < 0.15f) return;
+            if (strength < 0.15f || SoundSystem.Game == null || SoundSystem.Game.CurrentCar == null) return;
             GameEvents.RaiseImpact(new ImpactInfo { Position = position, Force = 3f + strength * 10f, Surface = Surface.Concrete, InvolvesPlayer = true });
         }
 
