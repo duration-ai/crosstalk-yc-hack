@@ -722,25 +722,38 @@ namespace Dogpatch.Operator
         }
     }
 
-    // Lets a moving ghost car through every other car around it, refreshed as it goes.
+    // A ghost car clips through everything but the floor: buildings, cars, traffic, props, trees,
+    // viaduct columns and people. Only streets, sidewalks, ground, freeway decks and ramps (the
+    // Drivable layer), the seabed, drivable water and the map edge stay solid. When the ghost ends it
+    // takes the car out of anything it is still inside.
     public sealed class GhostPass : MonoBehaviour
     {
         readonly List<(Collider a, Collider b)> ignored = new List<(Collider, Collider)>();
+        readonly HashSet<Collider> skipped = new HashSet<Collider>();
         Collider[] mine;
         float next;
 
         void Awake() => mine = GetComponentsInChildren<Collider>();
 
+        static bool IsFloor(Collider c)
+        {
+            if (c.gameObject.layer == World.Freeway.DrivableLayer) return true;
+            var n = c.name;
+            return n.StartsWith("Asphalt collider") || n.StartsWith("Sidewalks collider") || n.StartsWith("Ground collider")
+                || n == "Seabed" || n == "MapEdge" || n.StartsWith("Drivable water") || n == "Ramp";
+        }
+
         void Update()
         {
             if (Time.time < next) return;
-            next = Time.time + 0.3f;
-            foreach (var hit in Physics.OverlapSphere(transform.position, 25f, ~0, QueryTriggerInteraction.Ignore))
+            next = Time.time + 0.2f;
+            foreach (var hit in Physics.OverlapSphere(transform.position, 30f, ~0, QueryTriggerInteraction.Ignore))
             {
-                if (hit.GetComponentInParent<CarController>() == null || hit.transform.IsChildOf(transform)) continue;
+                if (skipped.Contains(hit) || hit.transform.IsChildOf(transform)) continue;
+                skipped.Add(hit);
+                if (IsFloor(hit)) continue;
                 foreach (var c in mine)
                 {
-                    if (ignored.Contains((c, hit))) continue;
                     Physics.IgnoreCollision(c, hit, true);
                     ignored.Add((c, hit));
                 }
@@ -751,6 +764,68 @@ namespace Dogpatch.Operator
         {
             foreach (var (a, b) in ignored)
                 if (a != null && b != null) Physics.IgnoreCollision(a, b, false);
+            if (this != null && gameObject != null && gameObject.activeInHierarchy) PushOut();
+        }
+
+        // Out of a building footprint first (merged building meshes are hollow, so a car fully inside
+        // one touches nothing), then out of whatever it still overlaps.
+        void PushOut()
+        {
+            var box = GetComponent<BoxCollider>();
+            var body = GetComponent<Rigidbody>();
+            if (box == null) return;
+            var start = transform.position;
+            if (InsideBuilding(start))
+            {
+                for (float r = 6f; r <= 90f; r += 6f)
+                {
+                    bool found = false;
+                    for (int i = 0; i < 12 && !found; i++)
+                    {
+                        var dir = Quaternion.Euler(0f, i * 30f, 0f) * transform.forward;
+                        var at = start + dir * r;
+                        if (InsideBuilding(at) || !FloorBelow(at, out var floor)) continue;
+                        transform.position = floor + Vector3.up * 0.3f;
+                        found = true;
+                    }
+                    if (found) break;
+                }
+            }
+            for (int step = 0; step < 6; step++)
+            {
+                bool moved = false;
+                var bounds = box.bounds;
+                foreach (var hit in Physics.OverlapBox(bounds.center, bounds.extents, transform.rotation, ~0, QueryTriggerInteraction.Ignore))
+                {
+                    if (hit == box || hit.transform.IsChildOf(transform) || IsFloor(hit)) continue;
+                    if (!Physics.ComputePenetration(box, box.transform.position, box.transform.rotation, hit, hit.transform.position, hit.transform.rotation, out var dir, out var dist)) continue;
+                    dir.y = 0f;
+                    if (dir.sqrMagnitude < 1e-4f) continue;
+                    transform.position += dir.normalized * (dist + 0.1f);
+                    moved = true;
+                }
+                if (!moved) break;
+            }
+            if (body != null && transform.position != start)
+            {
+                body.position = transform.position;
+                Debug.Log($"[Operator] ghost ended inside something: moved the car {Vector3.Distance(start, transform.position):F1} m to clear ground");
+            }
+        }
+
+        static bool InsideBuilding(Vector3 at)
+        {
+            foreach (var hit in Physics.RaycastAll(at + Vector3.up * 120f, Vector3.down, 119f, ~0, QueryTriggerInteraction.Ignore))
+                if (hit.collider.name.StartsWith("BuildingCollider") && hit.point.y > at.y + 1f) return true;
+            return false;
+        }
+
+        static bool FloorBelow(Vector3 at, out Vector3 floor)
+        {
+            floor = at;
+            if (!Physics.Raycast(at + Vector3.up * 60f, Vector3.down, out var hit, 120f, ~0, QueryTriggerInteraction.Ignore) || !IsFloor(hit.collider)) return false;
+            floor = hit.point;
+            return true;
         }
     }
 
