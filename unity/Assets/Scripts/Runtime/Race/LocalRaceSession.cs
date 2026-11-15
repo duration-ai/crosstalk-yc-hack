@@ -397,7 +397,7 @@ namespace Dogpatch.Race
             if (Vector2.Distance(new Vector2(position.x, position.z), new Vector2(at.x, at.z)) > room.pickupRadius + CollectSlack)
                 throw Error(BackendErrorCodes.Conflict, "Too far from the pickup");
             racer.collected.Add(pickup);
-            racer.asks++;
+            racer.asks = 1;
             return Task.FromResult(new AskResponse { collected = true, asks = racer.asks });
         }
 

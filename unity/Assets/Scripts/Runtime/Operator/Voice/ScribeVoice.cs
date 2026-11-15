@@ -46,16 +46,20 @@ namespace Dogpatch.Operator.Voice
             Connect();
         }
 
+        // Asked at launch so the iOS prompt never lands in the middle of a race.
+        public void AskPermission()
+        {
+            if (askedPermission || Application.HasUserAuthorization(UserAuthorization.Microphone)) return;
+            askedPermission = true;
+            Application.RequestUserAuthorization(UserAuthorization.Microphone);
+        }
+
         void StartMic()
         {
             if (mic.Running) return;
             if (!Application.HasUserAuthorization(UserAuthorization.Microphone))
             {
-                if (!askedPermission)
-                {
-                    askedPermission = true;
-                    Application.RequestUserAuthorization(UserAuthorization.Microphone);
-                }
+                AskPermission();
                 return;
             }
             if (mic.Start(48000)) resampler = new PcmResampler(mic.Rate, ScribeSession.SampleRate);

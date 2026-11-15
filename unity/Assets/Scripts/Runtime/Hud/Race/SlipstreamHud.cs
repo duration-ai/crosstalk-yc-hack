@@ -285,7 +285,7 @@ namespace Dogpatch.Slipstream
             if (racing) RaceCorners();
             if (Race.ResultsIn) Results();
             OperatorAndNews();
-            PhoneButton(lobby || Race.ResultsIn);
+            if (!Race.Gridded) PhoneButton(lobby || Race.ResultsIn);
         }
 
         void Lobby(Room room)
