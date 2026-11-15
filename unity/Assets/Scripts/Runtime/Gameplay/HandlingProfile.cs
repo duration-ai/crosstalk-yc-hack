@@ -5,8 +5,9 @@ namespace Dogpatch.Gameplay
 {
     // How a vehicle drives under the one-drag control. Default reproduces the original hatchback.
     // Grip is the share of sideways velocity the tyres cancel each step (1 = on rails, as before);
-    // RoadConditions scales it for weather. Durability is how much crash impulse (in m/s of
-    // velocity change) the body takes before it is wrecked.
+    // RoadConditions scales it for weather. Mass, Durability (crash budget in m/s of impact,
+    // scaled by the other body's mass over this one's) and BargeStrength (0..1 share of a
+    // collision's push it resists) feed CROS-23's damage and barging.
     [Serializable]
     public sealed class HandlingProfile
     {
@@ -19,6 +20,7 @@ namespace Dogpatch.Gameplay
         public float Grip = 1f;
         public float Mass = 1200f;
         public float Durability = 60f;
+        public float BargeStrength = 0.3f;
         public bool PassengerOnly;
 
         public static readonly HandlingProfile Default = new HandlingProfile();
