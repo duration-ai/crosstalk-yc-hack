@@ -143,7 +143,7 @@ namespace Dogpatch.Race
         async Task HostAsync(bool withBots, int minPlayers)
         {
             if (RoomId != null) return;
-            var created = await AsPlayer(() => Session.CreateRoomAsync(MyId, RouteWire(), Course.Data.finishRadius, minPlayers));
+            var created = await AsPlayer(() => Session.CreateRoomAsync(MyId, RouteWire(), Course.Data.finishRadius, minPlayers, AskTuning.startAsks, PickupWire(), AskTuning.pickupRadius));
             EnterRoom(created, true);
             Debug.Log($"[SpeedDial] hosting room {created.room.code} ({created.room.id}), route {created.room.routeLength:F0} m, min {created.room.minPlayers}");
             var file = Arg("-speeddial-code-file");

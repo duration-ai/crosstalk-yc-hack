@@ -31,6 +31,7 @@ namespace Dogpatch.Feel
             GameEvents.PlaceChanged += OnPlace;
             GameEvents.Boost += OnBoost;
             GameEvents.Shove += OnShove;
+            GameEvents.AskCollected += OnAskCollected;
         }
 
         void OnDisable()
@@ -44,6 +45,7 @@ namespace Dogpatch.Feel
             GameEvents.PlaceChanged -= OnPlace;
             GameEvents.Boost -= OnBoost;
             GameEvents.Shove -= OnShove;
+            GameEvents.AskCollected -= OnAskCollected;
             if (player != null) player.Landed -= OnLanded;
         }
 
@@ -123,6 +125,8 @@ namespace Dogpatch.Feel
         }
 
         void OnShove(Vector3 position) => Haptics.Impact(HapticStyle.Light, 0.6f);
+
+        void OnAskCollected(Vector3 position) => Haptics.Notify(HapticNotice.Success);
 
         // A subtle squash on touchdown; PlayerController's own scale easing springs it back. An ordinary
         // jump lands at about 6.5 m/s, so only real drops (over ~3 m, 11 m/s) add a light shake and
