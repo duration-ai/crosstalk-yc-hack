@@ -2,11 +2,11 @@ using UnityEngine;
 
 namespace Dogpatch.Nav
 {
-    public enum NavKind { Waypoint, Race, Payphone, Ask }
+    public enum NavKind { Waypoint, Race, Mission, Ask }
 
     // Something the direction arrow and the minimap route lead to. Set NavService.Instance.Target
-    // to one to override the automatic objective (the race route, else the nearest ringing
-    // payphone), and back to null to clear it.
+    // to one to override the automatic objective (the race route, else the nearest mission start),
+    // and back to null to clear it.
     public interface INavTarget
     {
         Vector3 Position { get; }

@@ -9,8 +9,8 @@ namespace Dogpatch.Nav
     // view, ahead of you and at your depth, on foot or driving, that swings smoothly toward the next
     // stretch of the street path to the current objective. It runs after the follow camera and
     // the camera feel (shake, speed FOV), so it stays pinned to the same spot on screen. It leans back toward the camera so its top face reads as an arrow from the
-    // low chase view. Sunshine for routes and waypoints, hotline pink when it leads to one of the
-    // Operator's payphones. It pops in when an objective appears and shrinks away on arrival.
+    // low chase view. Sunshine for routes and waypoints, hotline pink when it leads to a mission
+    // start (the race's start ring). It pops in when an objective appears and shrinks away on arrival.
     [DefaultExecutionOrder(10100)]
     public sealed class DirectionArrow : MonoBehaviour
     {
@@ -71,7 +71,7 @@ namespace Dogpatch.Nav
             }
             if (focus == null || cam == null) return;
 
-            filter.sharedMesh = Nav.Kind == NavKind.Payphone ? pink : sunshine;
+            filter.sharedMesh = Nav.Kind == NavKind.Mission ? pink : sunshine;
             float scale = game.CurrentCar != null ? 1f : 0.65f;
             var t = view.transform;
             float target = Mathf.Atan2(Nav.Heading.x, Nav.Heading.y) * Mathf.Rad2Deg;

@@ -131,15 +131,6 @@ namespace Dogpatch.Race
             CourseDressing.Finish(root, Course.Finish, Course.FinishHeading, Course.FinishHalfWidth, flagSpot, material);
             CourseDressing.TurnChevrons(root, Course.Route, Course.RouteWorld, material);
 
-            var phoneAsset = GlbAsset.Load("payphone-stand-f97728", Resources.Load<TextAsset>("SpeedDial/Models/payphone-stand-f97728").bytes);
-            var phones = new List<Payphone>();
-            foreach (var spot in Course.Payphones)
-            {
-                var phone = CourseDressing.Payphone(root, phoneAsset, spot, material).AddComponent<Payphone>();
-                phone.Spot = spot;
-                phones.Add(phone);
-            }
-
             MyId = Game.Profile.id;
             var url = ConvexRaceSession.ConfiguredUrl();
             if (!string.IsNullOrEmpty(url)) await ConnectAsync(url);
@@ -163,7 +154,6 @@ namespace Dogpatch.Race
             Calls.Operator = Operator;
             Calls.PlayerId = () => MyId;
             Calls.RoomId = () => RoomId;
-            Calls.Phones = phones;
 
             Hud = gameObject.AddComponent<SlipstreamHud>();
             Hud.Race = this;
@@ -172,7 +162,7 @@ namespace Dogpatch.Race
             Shove.IgnoreTouch = Hud.HitTest;
             Game.Drag.IgnoreTouch = Hud.HitTest;
 
-            Debug.Log($"[SpeedDial] {(Online ? "online at " + convex.BaseUrl : "offline")}: {Course.Data.startName} -> {Course.Data.finishName}, {Course.Route.Length:F0} m, ring at ({Course.RingCenter.x:F0},{Course.RingCenter.z:F0}), finish at ({Course.Finish.x:F0},{Course.Finish.z:F0}), {phones.Count} payphones");
+            Debug.Log($"[SpeedDial] {(Online ? "online at " + convex.BaseUrl : "offline")}: {Course.Data.startName} -> {Course.Data.finishName}, {Course.Route.Length:F0} m, ring at ({Course.RingCenter.x:F0},{Course.RingCenter.z:F0}), finish at ({Course.Finish.x:F0},{Course.Finish.z:F0})");
             if (!Online)
             {
                 var created = await Session.CreateRoomAsync(MyId, RouteWire(), Course.Data.finishRadius, 2);
@@ -390,6 +380,7 @@ namespace Dogpatch.Race
                 bot.NextCall = Time.time + 5f + (float)random.NextDouble() * 6f;
             }
             Game.ExternalInput = Autopilot;
+            Calls.Buzz();
             if (myPilot != null) myPilot.Active = Autopilot;
             Debug.Log("[SpeedDial] GO");
         }
@@ -611,16 +602,11 @@ namespace Dogpatch.Race
             {
                 float progress = bot.Driver.Progress;
                 if (Time.time >= bot.NextCall && Time.time >= botCallsAfter)
-                    foreach (var phone in Calls.Phones)
-                    {
-                        float at = phone.Spot.Progress;
-                        if (at <= bot.LastProgress || at > progress) continue;
-                        if (Vector3.Distance(phone.transform.position, bot.Car.transform.position) > 22f || random.NextDouble() > 0.7) continue;
-                        bot.NextCall = Time.time + 18f;
-                        botCallsAfter = Time.time + 8f;
-                        StartCoroutine(Wait(BotCallAsync(bot, null)));
-                        break;
-                    }
+                {
+                    bot.NextCall = Time.time + 18f + (float)random.NextDouble() * 10f;
+                    botCallsAfter = Time.time + 8f;
+                    StartCoroutine(Wait(BotCallAsync(bot, null)));
+                }
                 bot.LastProgress = progress;
 
                 if (Time.time < bot.NextShove) continue;

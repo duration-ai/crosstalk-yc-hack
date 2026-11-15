@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using Dogpatch.Glb;
 using Dogpatch.World;
 using Dogpatch.WorldChanges;
 using UnityEngine;
@@ -8,7 +7,7 @@ namespace Dogpatch.Race
 {
     // The race's own objects in the world, all flat vertex-colored geometry on the shared material:
     // the yellow start ring, the YC finish (checkered line, banner and a tall checkered flag), turn
-    // chevrons painted on the route, and the hotline-pink payphones.
+    // and chevrons painted on the route.
     public static class CourseDressing
     {
         static readonly Color Yellow = PaintJob.Linear("#FFCB1F");
@@ -147,19 +146,6 @@ namespace Dogpatch.Race
                 }
             }
             Emit(parent, "RouteChevrons", mb, Vector3.zero, 0f, material);
-        }
-
-        public static GameObject Payphone(Transform parent, GlbAsset model, Spot spot, Material material)
-        {
-            var go = model.Instantiate(material, parent);
-            go.name = "Payphone";
-            go.transform.SetPositionAndRotation(spot.Position, Quaternion.Euler(0f, spot.Heading, 0f));
-            go.transform.localScale = Vector3.one * 0.8f;
-            PaintJob.For(go, model.Id);
-            var box = go.AddComponent<BoxCollider>();
-            box.center = new Vector3(0f, 1.1f, 0f);
-            box.size = new Vector3(0.95f, 2.2f, 0.55f);
-            return go;
         }
     }
 

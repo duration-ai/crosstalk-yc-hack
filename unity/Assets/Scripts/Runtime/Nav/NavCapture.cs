@@ -10,7 +10,7 @@ namespace Dogpatch.Nav
 {
     // Headless check for the minimap and the direction arrow: run the player build with
     //   -offline -nav-capture <folder>
-    // and it shoots free roam on foot toward a ringing payphone, free roam driving at speed, the race
+    // and it shoots free roam on foot toward the start ring, free roam driving at speed, the race
     // on autopilot, the race after leaving the course (the A* reroute), and the map toggled off.
     public sealed class NavCapture : MonoBehaviour
     {
@@ -40,9 +40,8 @@ namespace Dogpatch.Nav
             var nav = NavService.Instance;
             yield return Seconds(1f);
 
-            var phone = race.Calls.Phones[race.Calls.Phones.Count / 2];
-            var phonePos = new Vector2(phone.transform.position.x, phone.transform.position.z);
-            if (game.World.Roads.Nearest(phonePos + new Vector2(90f, 60f), 80f, out var hit))
+            var anchor = new Vector2(race.Course.RingCenter.x, race.Course.RingCenter.z);
+            if (game.World.Roads.Nearest(anchor + new Vector2(90f, 60f), 80f, out var hit))
             {
                 game.Player.Teleport(new Vector3(hit.Point.x, 0.3f, hit.Point.y), 0f);
                 yield return Seconds(0.3f);
@@ -57,7 +56,7 @@ namespace Dogpatch.Nav
             CarController car = null;
             foreach (var candidate in game.Cars.Values)
                 if (candidate != race.MyCar) { car = candidate; break; }
-            if (game.World.Roads.Nearest(phonePos + new Vector2(-260f, -180f), 120f, out hit))
+            if (game.World.Roads.Nearest(anchor + new Vector2(-260f, -180f), 120f, out hit))
             {
                 car.Place(new Vector3(hit.Point.x, 0.3f, hit.Point.y), Mathf.Atan2(hit.Direction.x, hit.Direction.y) * Mathf.Rad2Deg);
                 game.Player.Teleport(car.transform.position + car.transform.right * 2.2f, car.transform.eulerAngles.y);
