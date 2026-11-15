@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Dogpatch.Audio;
 using Dogpatch.Backend;
+using Dogpatch.Map;
 using UnityEngine;
 
 namespace Dogpatch.Race
@@ -11,7 +12,8 @@ namespace Dogpatch.Race
     // asks.json). Driving or walking through one while racing collects it through
     // IRaceSession.CollectAskAsync: one more Operator request. Each racer can take each token once a
     // race, and a token you have taken disappears for you until the rematch. Other systems, like the
-    // minimap, read Positions and Available and listen to Changed.
+    // minimap, read Positions and Available and listen to Changed; each token the local player can
+    // still take is tracked on the minimap through MapMarkers.
     public sealed class AskPickups : MonoBehaviour
     {
         public static AskPickups Instance { get; private set; }
@@ -46,7 +48,9 @@ namespace Dogpatch.Race
             foreach (var spot in spots)
             {
                 positions.Add(spot);
-                tokens.Add(CourseDressing.AskToken(parent, spot, material));
+                var token = CourseDressing.AskToken(parent, spot, material);
+                tokens.Add(token);
+                MapMarkers.Track(token.transform, MapMarkerKind.Ask);
             }
         }
 
@@ -74,7 +78,13 @@ namespace Dogpatch.Race
             if (now != mask)
             {
                 mask = now;
-                for (int i = 0; i < tokens.Count; i++) tokens[i].SetActive((mask & (1UL << i)) != 0);
+                for (int i = 0; i < tokens.Count; i++)
+                {
+                    bool available = (mask & (1UL << i)) != 0;
+                    tokens[i].SetActive(available);
+                    if (available) MapMarkers.Track(tokens[i].transform, MapMarkerKind.Ask);
+                    else MapMarkers.Untrack(tokens[i].transform);
+                }
                 Changed?.Invoke();
             }
             float spin = Time.time * 120f;
