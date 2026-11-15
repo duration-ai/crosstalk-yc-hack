@@ -79,7 +79,7 @@ namespace Dogpatch.Slipstream
                 if (remote.InRace && Race.Last != null) continue;
                 var body = remote.Body;
                 if (body == null || !body.gameObject.activeInHierarchy) continue;
-                Tag(cam, body, remote.Name, remote.WorldColor);
+                Tag(cam, body, remote.Name + BuildNote(remote), remote.WorldColor);
             }
         }
 
@@ -98,9 +98,13 @@ namespace Dogpatch.Slipstream
                 if (!Race.Gridded && !Race.IsRemote(r.playerId)) continue;
                 var body = Race.BodyOf(r.playerId);
                 if (body == null || !body.gameObject.activeInHierarchy) continue;
-                Tag(cam, body, r.displayName, r.color);
+                Tag(cam, body, r.displayName + BuildNote(Race.Remotes.Get(r.playerId)), r.color);
             }
         }
+
+        // Players whose presence speaks another protocol get flagged, so a build mismatch is visible.
+        static string BuildNote(RemoteRacers.Remote remote) =>
+            remote == null || remote.WorldSeenAt < 0f || remote.Protocol == ConvexRaceSession.Protocol ? "" : remote.Protocol < ConvexRaceSession.Protocol ? "  OLD BUILD" : "  NEW BUILD";
 
         void Tag(Camera cam, Transform body, string displayName, string color)
         {
