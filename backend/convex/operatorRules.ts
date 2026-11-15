@@ -102,7 +102,7 @@ export const REFUSAL_MESSAGES: Record<RefusalReason, string> = {
   unavailable: "Operator busy. Retry.",
   undo: "No take-backs, sugar.",
   not_built: "Can't do that one yet.",
-  no_asks: "No asks! Find a pink token.",
+  no_asks: "Grab a phone first!",
   race_over: "The race is over.",
 };
 

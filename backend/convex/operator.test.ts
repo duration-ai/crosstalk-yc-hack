@@ -258,7 +258,7 @@ describe("operator.call", () => {
     expect(await asksOf(tim.id)).toBe(0);
 
     const broke = await say("roll in the fog", { scope: "world", world_group: "sky", sky_effect: "fog" });
-    expect(broke).toMatchObject({ outcome: "refused", effect: null, refusal: { reason: "no_asks" }, line: "No asks! Find a pink token." });
+    expect(broke).toMatchObject({ outcome: "refused", effect: null, refusal: { reason: "no_asks" }, line: "Grab a phone first!" });
     expect((await effects()).map((e) => e.effect).sort()).toEqual(["night", "rain"]);
     expect(await asksOf(tim.id)).toBe(0);
     expect(await asksOf(maya.id)).toBe(2);
@@ -276,7 +276,7 @@ describe("operator.call", () => {
 
     const second = await say("shrink her", { scope: "object", object_effect: "shrink", other_player: 0.9 }, tim.id, "driving");
     expect(second).toMatchObject({ outcome: "pending" });
-    await expect(t.mutation(api.operator.confirm, { playerId: tim.id, effectId: second.effect!.id })).rejects.toThrow(/No asks/);
+    await expect(t.mutation(api.operator.confirm, { playerId: tim.id, effectId: second.effect!.id })).rejects.toThrow(/Grab a phone/);
     expect((await effects()).map((e) => e.effect)).toEqual(["vehicle_slower"]);
   });
 

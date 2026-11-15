@@ -197,9 +197,9 @@ namespace Dogpatch.Race
             yield return Seconds(0.8f);
             yield return Shot("15a-ask-token");
             race.MoveBody(race.MyId, token + Vector3.up * 0.3f, RoutePath.Heading(-back));
-            yield return Until(() => race.Me.asks > before, 4f, $"ask pickup {pick} collected");
+            yield return Until(() => race.Me.collected != null && race.Me.collected.Contains(pick), 4f, $"ask pickup {pick} collected");
             yield return Seconds(0.25f);
-            yield return Shot("15b-ask-collected");
+            yield return Shot("15b-phone-grabbed");
             float d = Mathf.Min(progress + 5f, race.Course.Route.Length - 30f);
             var p = race.Course.Route.PointAt(d);
             race.MoveBody(race.MyId, new Vector3(p.x, me.position.y + 0.3f, p.y), RoutePath.Heading(race.Course.Route.DirectionAt(d)));

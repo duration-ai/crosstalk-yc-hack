@@ -45,6 +45,9 @@ namespace Dogpatch.Slipstream
         Rect callRect;
         bool readyVisible;
         bool callVisible;
+
+        // Off while Chris tests with 100 asks; on, races are hands-free only (phone pickups).
+        public static bool HidePhoneInRaces = false;
         int readyFinger = int.MinValue;
         int callFinger = int.MinValue;
         bool paused;
@@ -286,7 +289,7 @@ namespace Dogpatch.Slipstream
             if (racing && Race.CrossedFinish) FinishedBanner();
             if (Race.ResultsIn) Results();
             OperatorAndNews();
-            PhoneButton(lobby || Race.ResultsIn);
+            if (!(HidePhoneInRaces && Race.Gridded)) PhoneButton(lobby || Race.ResultsIn);
         }
 
         // The mission lobby only shows while you stand in or by the start ring.

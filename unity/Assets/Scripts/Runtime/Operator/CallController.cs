@@ -21,12 +21,13 @@ namespace Dogpatch.Operator
     // the microphone; letting go sends the final transcript, and the Operator answers with a world
     // change and a line. A tap (or a touch the OS cancels) latches the call instead: it keeps
     // listening and sends after a second of quiet once words arrive, at the latch window, or on the
-    // next press. Each call needs an ask (Asks, when set); with none the button turns her
-    // down in one line. Buzz is the phone ringing in your pocket (a new ask, the race's GO). Say
-    // sends typed words the same way, for live tests only.
+    // next press. Pickup is the hands-free call from a phone grabbed in a race: the mic opens at once
+    // and the call latches the same way. Each call needs an ask (Asks, when set); with none the
+    // button turns her down in one line. Buzz is the phone ringing in your pocket (the race's GO).
+    // Say sends typed words the same way, for live tests only.
     public sealed class CallController : MonoBehaviour
     {
-        public const string NoAsksLine = "No asks! Find a pink token.";
+        public const string NoAsksLine = "Grab a phone first!";
         const float HoldMinimum = 0.35f;
         const float AnswerShown = 2.6f;
         const float LatchWindow = 5f;
@@ -39,6 +40,9 @@ namespace Dogpatch.Operator
         public Func<int> Asks;
         public IVoiceInput Voice;
         public Func<OperatorView> View;
+
+        // Dev only (-operator-pickup-say): words that stand in for the microphone on a pickup.
+        public string PickupSay;
 
         public CallState State { get; private set; }
         public float StateSince { get; private set; }
@@ -57,6 +61,9 @@ namespace Dogpatch.Operator
         float partialAt;
 
         public event Action<OperatorResponse> Answered;
+
+        // The microphone just opened on a pickup: the hook for the Operator's spoken greeting.
+        public event Action MicOpened;
 
         void Set(CallState state)
         {
@@ -104,13 +111,38 @@ namespace Dogpatch.Operator
             if (State != CallState.Talking || latched) return;
             if (Time.time - StateSince < HoldMinimum)
             {
-                latched = true;
-                lastPartial = Voice?.Partial ?? "";
-                partialAt = Time.time;
+                Latch();
                 Debug.Log("[SpeedDial] short press: the call stays open until you stop talking");
                 return;
             }
             _ = SendAsync(null);
+        }
+
+        public void Pickup()
+        {
+            if (State == CallState.Talking || State == CallState.Waiting) return;
+            BuzzedAt = Time.time;
+            SoundSystem.Play2D("call_ring", Bus.Ui, 0.6f, 1f, 250);
+            Haptics.Notify(HapticNotice.Warning);
+            snapshot = View?.Invoke();
+            Debug.Log("[SpeedDial] phone grabbed: the mic is open for one call");
+            if (!string.IsNullOrEmpty(PickupSay))
+            {
+                _ = SendAsync(PickupSay);
+                return;
+            }
+            Voice?.Open();
+            Voice?.BeginTalk();
+            Set(CallState.Talking);
+            Latch();
+            MicOpened?.Invoke();
+        }
+
+        void Latch()
+        {
+            latched = true;
+            lastPartial = Voice?.Partial ?? "";
+            partialAt = Time.time;
         }
 
         // Typed words straight to the Operator, for live tests only (the dev-flag text field,
