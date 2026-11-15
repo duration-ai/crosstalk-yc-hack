@@ -187,7 +187,8 @@ namespace Dogpatch.EditorTools
             foreach (var id in EffectRegistry.Built) Check(!registry.IsStub(id), "built for real: " + id);
             foreach (var id in registry.Ids)
                 if (!registry.IsStub(id) && !EffectRegistry.Counters.Contains(id)) Check(EffectRegistry.Built.Contains(id), "listed in built-effects.json: " + id);
-            Check(registry.IsStub("sandstorm") && registry.Create("sandstorm", null, new ActiveEffect()) is StubEffect, "unbuilt ids are logged stubs");
+            var unbuilt = EffectRegistry.Catalogue.FirstOrDefault(id => registry.IsStub(id));
+            Check(unbuilt == null || registry.Create(unbuilt, null, new ActiveEffect()) is StubEffect, "unbuilt ids are logged stubs");
             Check(registry.Create("not_in_catalogue", null, new ActiveEffect()) is StubEffect, "unknown ids fall back to a stub");
         }
 

@@ -25,6 +25,12 @@ namespace Dogpatch.Operator
             r.Register("grip_up", () => new GripUpEffect());
             r.Register("tougher", () => new ToughEffect());
             r.Register("cars_fly", () => new CarsFlyEffect());
+            r.Register("fast_day_cycle", () => new TimeLapseEffect());
+            r.Register("sandstorm", () => new SkyEffect(SkyEffect.Kind.Sandstorm));
+            r.Register("heatwave", () => new SkyEffect(SkyEffect.Kind.Heatwave));
+            r.Register("blackout", () => new SkyEffect(SkyEffect.Kind.Blackout));
+            r.Register("slow_motion", () => new TimeScaleEffect(true));
+            r.Register("fast_forward", () => new TimeScaleEffect(false));
         }
 
         static float S(string s, float small, float medium, float large) => OperatorEffect.Scale(s, small, medium, large);
@@ -387,6 +393,183 @@ namespace Dogpatch.Operator
             lifted.Clear();
             props.Clear();
             done.Clear();
+        }
+    }
+
+    // fast_day_cycle: the sun races across the sky; whole days and nights go by in seconds.
+    public sealed class TimeLapseEffect : OperatorEffect
+    {
+        EffectTicker ticker;
+        float before;
+
+        public override void Apply(string strength, EffectTarget target)
+        {
+            before = WorldEnvironment.TimeOfDay;
+            float hoursPerSecond = Scale(strength, 1.5f, 3f, 6f);
+            ticker = EffectTicker.On(Context, () => WorldEnvironment.SetTime(WorldEnvironment.TimeOfDay + hoursPerSecond * Time.deltaTime, 0f));
+        }
+
+        public override void Revert()
+        {
+            if (ticker != null) Object.Destroy(ticker);
+            WorldEnvironment.SetTime(before, 2.5f);
+        }
+    }
+
+    // sandstorm, heatwave, blackout: a sky grade, plus what blows through it.
+    public sealed class SkyEffect : OperatorEffect
+    {
+        public enum Kind { Sandstorm, Heatwave, Blackout }
+
+        readonly Kind kind;
+        SkyGrade.Grade grade;
+        Material sand;
+        GameObject sandGo;
+        Swarm swarm;
+        Light lamp;
+        EffectTicker ticker;
+
+        public SkyEffect(Kind kind) => this.kind = kind;
+
+        static Color C(string hex) => PropMeshes.C(hex);
+
+        public override void Apply(string strength, EffectTarget target)
+        {
+            float k = Scale(strength, 0.65f, 1f, 1.35f);
+            var eye = Context.Game.View.transform;
+            int seed = Racers.Seed(Row?.id);
+            switch (kind)
+            {
+                case Kind.Sandstorm:
+                    grade = SkyGrade.Add(new SkyGrade.Grade
+                    {
+                        Top = C("#B9783F"), Mid = C("#D99A57"), Horizon = C("#EDC283"),
+                        Ambient = new Color(1.15f, 0.95f, 0.75f), Sun = new Color(1f, 0.78f, 0.52f), SunScale = Mathf.Lerp(1f, 0.5f, k),
+                        FogReach = Scale(strength, 0.3f, 0.16f, 0.09f), Fog = C("#E2B279"), FogWeight = 1f, Clouds = new Color(1f, 0.82f, 0.6f),
+                        Wind = new Vector4(16f * k, 0f, 5f * k, 0f), Seconds = 1.2f,
+                    });
+                    sand = Precipitation.Create(Context.Host.transform, true);
+                    sandGo = Context.Host.transform.GetChild(Context.Host.transform.childCount - 1).gameObject;
+                    sand.SetColor("_Color", new Color(0.93f, 0.74f, 0.47f, 0.9f));
+                    sand.SetFloat("_Fall", 0.5f);
+                    sand.SetFloat("_Box", 22f);
+                    sand.SetVector("_Size", new Vector4(0.05f, 0.05f, 0f, 0f));
+                    var weeds = new Mesh[] { PropMeshes.Tumbleweed(seed), PropMeshes.Tumbleweed(seed + 7) };
+                    swarm = Swarm.Create("Tumbleweeds (operator)", weeds[0], Mathf.RoundToInt(6 * k), Context.Material, i =>
+                    {
+                        float t = Time.time + i * 3.1f;
+                        float lap = 7f;
+                        float u = Mathf.Repeat(t, lap) / lap;
+                        var e = eye.position;
+                        var p = new Vector3(e.x - 30f + u * 60f, 0f, e.z - 18f + Racers.Hash(i, Mathf.Floor(t / lap)) * 36f);
+                        p.y = Racers.GroundY(p) + 0.7f + Mathf.Abs(Mathf.Sin(t * 3f)) * 1.2f;
+                        return Matrix4x4.TRS(p, Quaternion.Euler(0f, 20f * i, -t * 260f), Vector3.one * (0.8f + 0.4f * Racers.Hash(i, 3)));
+                    }, true);
+                    ticker = EffectTicker.On(Context, () => sand.SetFloat("_Amount", grade.Weight * k));
+                    break;
+                case Kind.Heatwave:
+                    grade = SkyGrade.Add(new SkyGrade.Grade
+                    {
+                        Top = C("#2F8DE8"), Mid = C("#9FD4F2"), Horizon = C("#FFE6A6"),
+                        Ambient = new Color(1.2f, 1.05f, 0.8f), Sun = new Color(1f, 0.85f, 0.6f), SunScale = Mathf.Lerp(1f, 1.45f, k),
+                        FogReach = Mathf.Lerp(1f, 0.6f, k), Fog = C("#FFE0A0"), FogWeight = 0.8f, Clouds = new Color(1f, 0.93f, 0.8f), Seconds = 1.2f,
+                    });
+                    var fx = new Material(Resources.Load<Shader>("Shaders/FxUnlit")) { name = "Heat haze (operator)" };
+                    var wisp = PropMeshes.Wisp(new Color(1f, 0.97f, 0.88f, 0.22f));
+                    swarm = Swarm.Create("Heat haze (operator)", wisp, Mathf.RoundToInt(26 * k), fx, i =>
+                    {
+                        float life = 2.6f + Racers.Hash(i, 1) * 1.4f;
+                        float t = Time.time + Racers.Hash(i, 2) * life;
+                        float u = Mathf.Repeat(t, life) / life;
+                        float cycle = Mathf.Floor(t / life);
+                        var e = eye.position;
+                        float a = Racers.Hash(i, cycle) * Mathf.PI * 2f, r = 5f + Racers.Hash(cycle, i) * 22f;
+                        var p = new Vector3(e.x + Mathf.Cos(a) * r, 0f, e.z + Mathf.Sin(a) * r);
+                        p.y = Racers.GroundY(p) + u * 2.5f;
+                        float s = Mathf.Sin(u * Mathf.PI) * grade.Weight;
+                        var face = Quaternion.LookRotation(new Vector3(p.x - e.x, 0f, p.z - e.z));
+                        return Matrix4x4.TRS(p, face * Quaternion.Euler(0f, 0f, Mathf.Sin(t * 5f + i) * 8f), new Vector3(1f + Mathf.Sin(t * 4f + i) * 0.3f, 1f, 1f) * (s * 1.4f));
+                    });
+                    break;
+                case Kind.Blackout:
+                    float start = Time.unscaledTime;
+                    grade = SkyGrade.Add(new SkyGrade.Grade
+                    {
+                        Top = C("#02040C"), Mid = C("#060B1E"), Horizon = C("#101A3A"),
+                        Ambient = new Color(0.3f, 0.34f, 0.5f) * Mathf.Lerp(1f, 0.7f, k - 0.65f), Sun = new Color(0.6f, 0.7f, 1f), SunScale = Scale(strength, 0.25f, 0.12f, 0.06f),
+                        FogReach = 0.55f, Fog = C("#0A1230"), FogWeight = 1f, Clouds = new Color(0.25f, 0.27f, 0.36f), Glow = 0f, Seconds = 0.6f,
+                    });
+                    grade.Flicker = () =>
+                    {
+                        float t = Time.unscaledTime - start;
+                        if (grade.Target <= 0f || t > 1f) return 1f;
+                        return Racers.Hash(Mathf.Floor(t * 14f), 5f) > 0.45f ? 1f : 0.15f;
+                    };
+                    ticker = EffectTicker.On(Context, () =>
+                    {
+                        var car = Context.Game.CurrentCar;
+                        if (car == null)
+                        {
+                            if (lamp != null) lamp.enabled = false;
+                            return;
+                        }
+                        if (lamp == null)
+                        {
+                            lamp = new GameObject("Blackout headlights (operator)").AddComponent<Light>();
+                            lamp.type = LightType.Spot;
+                            lamp.range = 34f;
+                            lamp.spotAngle = 70f;
+                            lamp.color = SpeedDial.Hex("#FFF3DA");
+                            lamp.shadows = LightShadows.None;
+                            lamp.renderMode = LightRenderMode.ForcePixel;
+                        }
+                        if (lamp.transform.parent != car.transform)
+                        {
+                            lamp.transform.SetParent(car.transform, false);
+                            lamp.transform.localPosition = new Vector3(0f, 0.9f, car.HalfExtents.z + 0.2f);
+                            lamp.transform.localRotation = Quaternion.Euler(12f, 0f, 0f);
+                        }
+                        lamp.enabled = true;
+                        lamp.intensity = 2.8f * grade.Weight;
+                    });
+                    break;
+            }
+        }
+
+        public override void Revert()
+        {
+            SkyGrade.Remove(grade);
+            if (ticker != null) Object.Destroy(ticker);
+            if (lamp != null) Object.Destroy(lamp.gameObject);
+            if (swarm != null) Object.Destroy(swarm.gameObject);
+            if (sandGo != null) Object.Destroy(sandGo);
+        }
+    }
+
+    // slow_motion / fast_forward: the whole world's clock runs slower or faster.
+    public sealed class TimeScaleEffect : OperatorEffect
+    {
+        readonly bool slow;
+        TimeWarp warp;
+        SkyGrade.Grade grade;
+
+        public TimeScaleEffect(bool slow) => this.slow = slow;
+
+        public override void Apply(string strength, EffectTarget target)
+        {
+            warp = TimeWarp.Begin(Context.Host.gameObject, slow ? Scale(strength, 0.6f, 0.4f, 0.25f) : Scale(strength, 1.4f, 1.8f, 2.4f));
+            if (slow)
+                grade = SkyGrade.Add(new SkyGrade.Grade
+                {
+                    Top = PropMeshes.C("#3C5FB0"), Mid = PropMeshes.C("#7393D2"), Horizon = PropMeshes.C("#CCD8F2"), Sky = 0.6f,
+                    Ambient = new Color(0.9f, 0.95f, 1.12f), Sun = new Color(0.85f, 0.92f, 1.1f), FogReach = 0.85f, Seconds = 0.5f,
+                });
+        }
+
+        public override void Revert()
+        {
+            if (warp != null) warp.End();
+            SkyGrade.Remove(grade);
         }
     }
 }
