@@ -353,7 +353,7 @@ namespace Dogpatch.Race
             foreach (var botName in BotNames)
             {
                 if (bots.Any(b => b.Name == botName)) continue;
-                if (Last != null && Last.racers.Count(r => !r.left) >= 4) break;
+                if (Last != null && Last.room.id == RoomId && Last.racers.Count(r => !r.left) >= 4) break;
                 var player = Online ? await convex.CreatePlayerAsync(botName) : await Game.Backend.CreatePlayerAsync(botName);
                 var joined = await Session.JoinRoomAsync(player.id, RoomCode);
                 var bot = new Bot { Name = botName, Id = player.id, Slot = joined.you.slot };
