@@ -1,11 +1,16 @@
 import { httpRouter } from "convex/server";
 import { ConvexError } from "convex/values";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import { httpAction, type ActionCtx } from "./_generated/server";
 
 type Handler = (ctx: ActionCtx, input: Record<string, any>) => Promise<unknown>;
 
-const STATUS: Record<string, number> = { INVALID_ARGUMENT: 400, NOT_FOUND: 404, CONFLICT: 409 };
+const STATUS: Record<string, number> = {
+  INVALID_ARGUMENT: 400,
+  NOT_FOUND: 404,
+  CONFLICT: 409,
+  NOT_IMPLEMENTED: 501,
+};
 
 function json(status: number, body: unknown) {
   return new Response(JSON.stringify(body), {
@@ -37,10 +42,22 @@ async function readInput(request: Request) {
   return body as Record<string, unknown>;
 }
 
-function endpoint(handler: Handler, successStatus = 200) {
+async function readAudio(request: Request) {
+  const mimeType = request.headers.get("Content-Type") ?? "";
+  if (!mimeType.startsWith("audio/")) {
+    throw new ConvexError({ code: "INVALID_ARGUMENT", message: "Content-Type must be audio/*" });
+  }
+  return {
+    ...Object.fromEntries(new URL(request.url).searchParams),
+    audio: await request.arrayBuffer(),
+    mimeType,
+  };
+}
+
+function endpoint(handler: Handler, successStatus = 200, read: (request: Request) => Promise<Record<string, any>> = readInput) {
   return httpAction(async (ctx, request) => {
     try {
-      return json(successStatus, await handler(ctx, await readInput(request)));
+      return json(successStatus, await handler(ctx, await read(request)));
     } catch (error) {
       return errorResponse(error);
     }
@@ -111,6 +128,86 @@ http.route({
   method: "POST",
   handler: endpoint((ctx, { playerId, vehicleId, position, heading }) =>
     ctx.runMutation(api.vehicles.update, { playerId, vehicleId, position, heading }),
+  ),
+});
+
+http.route({
+  path: "/api/rooms",
+  method: "POST",
+  handler: endpoint(
+    (ctx, { playerId, route, finishRadius, minPlayers }) =>
+      ctx.runMutation(api.rooms.create, { playerId, route, finishRadius, minPlayers }),
+    201,
+  ),
+});
+
+http.route({
+  path: "/api/rooms/join",
+  method: "POST",
+  handler: endpoint((ctx, { playerId, code }) => ctx.runMutation(api.rooms.join, { playerId, code })),
+});
+
+http.route({
+  path: "/api/rooms/leave",
+  method: "POST",
+  handler: endpoint((ctx, { playerId, roomId }) => ctx.runMutation(api.rooms.leave, { playerId, roomId })),
+});
+
+http.route({
+  path: "/api/rooms/ready",
+  method: "POST",
+  handler: endpoint((ctx, { playerId, roomId, ready }) =>
+    ctx.runMutation(api.rooms.setReady, { playerId, roomId, ready }),
+  ),
+});
+
+http.route({
+  path: "/api/rooms/poll",
+  method: "GET",
+  handler: endpoint((ctx, { roomId, after }) =>
+    ctx.runQuery(internal.rooms.poll, {
+      roomId,
+      after: after === undefined || after === "" ? undefined : Number(after),
+      now: Date.now(),
+    }),
+  ),
+});
+
+http.route({
+  path: "/api/rooms/events",
+  method: "POST",
+  handler: endpoint(
+    async (ctx, { playerId, roomId, type, params }) => ({
+      event: await ctx.runMutation(api.events.fire, { playerId, roomId, type, params: params ?? {} }),
+    }),
+    201,
+  ),
+});
+
+http.route({
+  path: "/api/race/update",
+  method: "POST",
+  handler: endpoint((ctx, { playerId, roomId, position, heading }) =>
+    ctx.runMutation(api.race.update, { playerId, roomId, position, heading }),
+  ),
+});
+
+http.route({
+  path: "/api/operator",
+  method: "POST",
+  handler: endpoint((ctx, { playerId, roomId, text }) =>
+    ctx.runAction(api.operator.call, { playerId, roomId, text: text ?? "" }),
+  ),
+});
+
+http.route({
+  path: "/api/operator/audio",
+  method: "POST",
+  handler: endpoint(
+    (ctx, { playerId, roomId, audio, mimeType }) =>
+      ctx.runAction(api.operator.call, { playerId, roomId, audio, mimeType }),
+    200,
+    readAudio,
   ),
 });
 
