@@ -54,6 +54,7 @@ namespace Dogpatch.Race
             public string WorldMode;
             public int Protocol;
             internal float WorldSeenAt = -1000f;
+            internal long ModeSince;
             public string RaceColorHex;
             public string WorldColor;
             public string WorldColorHex;
@@ -116,6 +117,7 @@ namespace Dogpatch.Race
                 remote.Name = player.displayName;
                 remote.WorldColor = player.color;
                 remote.WorldColorHex = player.colorHex;
+                if (player.mode != remote.WorldMode) remote.ModeSince = player.updatedAt;
                 remote.WorldMode = player.mode;
                 remote.Protocol = player.protocol;
                 remote.SeenAt = Time.time;
@@ -322,7 +324,7 @@ namespace Dogpatch.Race
                 remote.Driving = modeKnown
                     ? remote.WorldMode == Dogpatch.Backend.PlayerModes.Driving
                     : (remote.InRace && Race.Gridded) || remote.Speed > DrivingSpeed || (remote.Driving && remote.Speed > DrivingSpeed * 0.4f);
-                if (remote.Driving != wasDriving) Debug.Log($"[SpeedDial] remote player {remote.Name} is {(remote.Driving ? "driving" : "on foot")}");
+                if (remote.Driving != wasDriving) Debug.Log($"[SpeedDial] remote player {remote.Name} is {(remote.Driving ? "driving" : "on foot")}, {Race.NowMs - remote.ModeSince:F0} ms after they switched");
 
                 remote.Car.gameObject.SetActive(!remote.Left && remote.Driving);
                 remote.Avatar.gameObject.SetActive(!remote.Left && !remote.Driving);
