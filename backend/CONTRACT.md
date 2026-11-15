@@ -224,6 +224,7 @@ Players come from `POST /api/players`. A player is in at most one room: creating
   "place": 2,                // 1–4, computed by the server (see Places, finish and results)
   "finished": false,
   "finishMs": 0,             // race time in ms from startsAt, 0 until finished
+  "smash": 0,                // smash points this race, the best value the racer has sent
   "left": false,             // true if the player left after the start (DNF)
   "updatedAt": 1794768818366
 }
@@ -250,6 +251,7 @@ Players come from `POST /api/players`. A player is in at most one room: creating
   "finished": true,
   "finishMs": 74210,
   "calls": 3,                // world changes this racer fired this race
+  "smash": 12,               // smash points this race
   "award": "CHAOS CALLER"    // one award per racer
 }
 ```
@@ -292,9 +294,10 @@ Players come from `POST /api/players`. A player is in at most one room: creating
 - The room is **finished** when every racer still in it has finished, or at `closesAt` (60 s after the first finish), whichever is first. Anyone still driving is then a DNF (`finished: false`).
 - **Awards**, one per racer, the first rule that applies:
   1. **CHAOS CALLER**: the racer with the most calls this race (at least one); a tie goes to the better place.
-  2. **PHOTO FINISH**: finished within 1 s of the racer just ahead or just behind.
-  3. By place: 1st **FIRST TO YC**, 2nd **SO CLOSE**, 3rd **PODIUM FINISH**, 4th **SCENIC ROUTE**.
-  4. DNF: **STILL DRIVING**.
+  2. **WRECKING BALL**: the racer with the most smash points this race (at least 1); a tie goes to the better place.
+  3. **PHOTO FINISH**: finished within 1 s of the racer just ahead or just behind.
+  4. By place: 1st **FIRST TO YC**, 2nd **SO CLOSE**, 3rd **PODIUM FINISH**, 4th **SCENIC ROUTE**.
+  5. DNF: **STILL DRIVING**.
 
 ### Race endpoints
 
@@ -373,8 +376,10 @@ If `events` has 100 entries, poll again straight away. A typical four-racer resp
 #### Send my position: `POST /api/race/update`
 
 ```json
-{ "playerId": "jd7…", "roomId": "k57…", "position": { "x": 0, "y": 0.5, "z": 140 }, "heading": 0 }
+{ "playerId": "jd7…", "roomId": "k57…", "position": { "x": 0, "y": 0.5, "z": 140 }, "heading": 0, "smash": 12 }
 ```
+
+`smash` is optional: the racer's cumulative smash points this race (breaks, barges, dives, wrecks, combos), a non-negative integer. The server keeps the highest value sent, so a missing value, `0` or a lower number changes nothing. It counts only while `status` is `racing` and is frozen once the room is finished; the rematch resets it to 0.
 
 Send at 5–10 Hz from the lobby onward and await each call before sending the next. The response is small on purpose; places come from the poll.
 
@@ -382,7 +387,7 @@ Send at 5–10 Hz from the lobby onward and await each call before sending the n
 { "status": "racing", "progress": 140, "metersToFinish": 560, "finished": false, "finishMs": 0 }
 ```
 
-The update that reaches the finish returns `finished: true` and its `finishMs`, and the last finisher's update already returns `status: "finished"`. After finishing, or once the room is finished, updates still store the position but never change progress or the result. Errors: `400`, `404`, `409` (not in the room, or left).
+The update that reaches the finish returns `finished: true` and its `finishMs`, and the last finisher's update already returns `status: "finished"`. After finishing, or once the room is finished, updates still store the position but never change progress or the result. Errors: `400` (including a negative or fractional `smash`), `404`, `409` (not in the room, or left).
 
 #### Fire a world change: `POST /api/rooms/events`
 

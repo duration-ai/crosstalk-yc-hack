@@ -216,6 +216,41 @@ describe("race", () => {
     );
   });
 
+  it("keeps the best smash score and gives WRECKING BALL after CHAOS CALLER", async () => {
+    const setup = await fourPlayers();
+    const { t, roomId, tim, maya, jun, rosa } = setup;
+    await t.mutation(api.race.update, { playerId: tim.id, roomId, position: at(0), heading: 0, smash: 50 });
+    const room = await startRace(setup);
+    const smash = (playerId: string, z: number, points?: number) =>
+      t.mutation(api.race.update, { playerId, roomId, position: at(z), heading: 0, smash: points });
+
+    await smash(maya.id, 100, 4);
+    await smash(maya.id, 120, 2);
+    await smash(maya.id, 130);
+    await smash(jun.id, 90, 4);
+    await t.mutation(api.events.fire, { playerId: jun.id, roomId, type: "ramp", params: {} });
+    await expect(smash(rosa.id, 10, -1)).rejects.toThrow(/smash/);
+    await expect(smash(rosa.id, 10, 1.5)).rejects.toThrow(/smash/);
+    const mid = await poll(t, roomId);
+    expect(Object.fromEntries(mid.racers.map((r) => [r.displayName, r.smash]))).toEqual({ Tim: 0, Maya: 4, Jun: 4, Rosa: 0 });
+
+    for (const [i, p] of [tim, maya, jun, rosa].entries()) {
+      vi.setSystemTime(room.startsAt + 60_000 + i * 5_000);
+      await smash(p.id, 800);
+    }
+    await smash(tim.id, 800, 99);
+    const done = await poll(t, roomId);
+    expect(done.results.map((r) => [r.displayName, r.smash, r.calls, r.award])).toEqual([
+      ["Tim", 0, 0, "FIRST TO YC"],
+      ["Maya", 4, 0, "WRECKING BALL"],
+      ["Jun", 4, 1, "CHAOS CALLER"],
+      ["Rosa", 0, 0, "SCENIC ROUTE"],
+    ]);
+
+    await t.mutation(api.rooms.setReady, { playerId: tim.id, roomId, ready: true });
+    expect((await poll(t, roomId)).racers.every((r) => r.smash === 0)).toBe(true);
+  });
+
   it("does not finish anyone before the start", async () => {
     const setup = await fourPlayers();
     const { t, roomId, tim } = setup;

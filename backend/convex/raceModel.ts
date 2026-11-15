@@ -189,6 +189,7 @@ export function toRacer(room: Room, row: RoomPlayer, place: number) {
     place,
     finished: row.finishedAt > 0,
     finishMs: finishMs(room, row),
+    smash: row.smash ?? 0,
     left: row.left,
     updatedAt: row.updatedAt,
   };
@@ -199,8 +200,13 @@ const PLACE_AWARDS = ["FIRST TO YC", "SO CLOSE", "PODIUM FINISH", "SCENIC ROUTE"
 /** One award per racer, from rows already in place order. */
 export function results(room: Room, ordered: RoomPlayer[], calls: Map<Id<"players">, number>) {
   const callsOf = (row: RoomPlayer) => calls.get(row.playerId) ?? 0;
-  const most = Math.max(0, ...ordered.map(callsOf));
-  const chaosCaller = most > 0 ? ordered.find((row) => callsOf(row) === most) : undefined;
+  const smashOf = (row: RoomPlayer) => row.smash ?? 0;
+  const leader = (score: (row: RoomPlayer) => number) => {
+    const most = Math.max(0, ...ordered.map(score));
+    return most > 0 ? ordered.find((row) => score(row) === most) : undefined;
+  };
+  const chaosCaller = leader(callsOf);
+  const wreckingBall = leader(smashOf);
   const photoFinish = (i: number) =>
     [ordered[i - 1], ordered[i + 1]].some(
       (other) =>
@@ -218,10 +224,13 @@ export function results(room: Room, ordered: RoomPlayer[], calls: Map<Id<"player
     finished: row.finishedAt > 0,
     finishMs: finishMs(room, row),
     calls: callsOf(row),
+    smash: smashOf(row),
     award:
       row === chaosCaller
         ? "CHAOS CALLER"
-        : photoFinish(i)
+        : row === wreckingBall
+          ? "WRECKING BALL"
+          : photoFinish(i)
           ? "PHOTO FINISH"
           : row.finishedAt > 0
             ? PLACE_AWARDS[i]

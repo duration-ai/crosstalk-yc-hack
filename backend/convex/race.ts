@@ -13,12 +13,21 @@ import {
 } from "./raceModel";
 
 export const update = mutation({
-  args: { playerId: v.string(), roomId: v.string(), position: vec3, heading: v.number() },
+  args: {
+    playerId: v.string(),
+    roomId: v.string(),
+    position: vec3,
+    heading: v.number(),
+    smash: v.optional(v.number()),
+  },
   handler: async (ctx, args) => {
     const player = await getPlayer(ctx, args.playerId);
     const room = await getRoom(ctx, args.roomId);
     const row = await getMembership(ctx, room, player._id);
     if (row.left) fail("CONFLICT", "Player left this room");
+    if (args.smash !== undefined && !(Number.isInteger(args.smash) && args.smash >= 0)) {
+      fail("INVALID_ARGUMENT", "smash must be a non-negative integer");
+    }
 
     const now = Date.now();
     const status = phase(room, now);
@@ -30,6 +39,7 @@ export const update = mutation({
       heading: args.heading,
       progress: row.finishedAt > 0 || status === "finished" ? row.progress : progress,
       finishedAt: finishing ? now : row.finishedAt,
+      smash: status === "racing" ? Math.max(row.smash ?? 0, args.smash ?? 0) : row.smash,
       updatedAt: now,
     };
     await ctx.db.replace(row._id, next);

@@ -47,6 +47,7 @@ export default defineSchema({
     heading: v.number(),
     progress: v.number(),
     finishedAt: v.number(),
+    smash: v.optional(v.number()),
     left: v.boolean(),
     updatedAt: v.number(),
   })

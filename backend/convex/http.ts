@@ -187,8 +187,8 @@ http.route({
 http.route({
   path: "/api/race/update",
   method: "POST",
-  handler: endpoint((ctx, { playerId, roomId, position, heading }) =>
-    ctx.runMutation(api.race.update, { playerId, roomId, position, heading }),
+  handler: endpoint((ctx, { playerId, roomId, position, heading, smash }) =>
+    ctx.runMutation(api.race.update, { playerId, roomId, position, heading, smash }),
   ),
 });
 

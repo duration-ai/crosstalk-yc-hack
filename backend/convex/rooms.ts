@@ -180,7 +180,7 @@ export const setReady = mutation({
     if (status === "finished" && args.ready) {
       for (const other of await roomPlayers(ctx, room._id)) {
         if (other.left) await ctx.db.delete(other._id);
-        else await ctx.db.patch(other._id, { ready: other._id === row._id, progress: 0, finishedAt: 0 });
+        else await ctx.db.patch(other._id, { ready: other._id === row._id, progress: 0, finishedAt: 0, smash: 0 });
       }
       const reset = { status: "lobby" as const, raceNumber: room.raceNumber + 1, startsAt: 0, closesAt: 0 };
       await ctx.db.patch(room._id, reset);
