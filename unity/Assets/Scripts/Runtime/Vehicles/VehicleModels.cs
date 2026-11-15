@@ -97,7 +97,34 @@ namespace Dogpatch.Vehicles
             if (spec.Id == VehicleTypes.BayWheels) ProceduralModels.EbikeKit(visual.transform, material);
             if (spec.Robotaxi) bounds.Encapsulate(new Vector3(bounds.center.x, bounds.max.y + 0.6f, bounds.center.z));
             if (!spec.TwoWheeler) AddBrakeGlow(visual, material, spec, bounds);
+            if (spec.Id == VehicleTypes.YellowCab) AddRoofSign(visual, material, bounds);
             return (visual, bounds);
+        }
+
+        // The cab's roof sign as a lit lightbox (cream faces with a sunshine cap) fitted over the model's
+        // dark sign block, so a free cab reads from a block away like Crazy Taxi's roof lights.
+        static void AddRoofSign(GameObject visual, Material material, Bounds bounds)
+        {
+            var min = new Vector3(float.MaxValue, float.MaxValue, float.MaxValue);
+            var max = new Vector3(float.MinValue, float.MinValue, float.MinValue);
+            foreach (var mf in visual.GetComponentsInChildren<MeshFilter>())
+                foreach (var v in mf.sharedMesh.vertices)
+                {
+                    var p = visual.transform.InverseTransformPoint(mf.transform.TransformPoint(v));
+                    if (p.y < bounds.max.y - 0.2f) continue;
+                    min = Vector3.Min(min, p);
+                    max = Vector3.Max(max, p);
+                }
+            if (min.x > max.x || max.x - min.x > bounds.size.x * 0.8f) return;
+            var lp = new LowPoly();
+            var centre = (min + max) * 0.5f;
+            var size = max - min;
+            lp.Box(centre + new Vector3(0f, 0.01f, 0f), new Vector3(size.x + 0.05f, size.y * 0.8f, size.z + 0.05f), LowPoly.Hex("#fff3da", 0.9f));
+            lp.Box(new Vector3(centre.x, max.y + 0.025f, centre.z), new Vector3(size.x + 0.07f, 0.05f, size.z + 0.07f), LowPoly.Hex("#ffcb1f", 0.6f));
+            var go = new GameObject("roof-sign");
+            go.transform.SetParent(visual.transform, false);
+            go.AddComponent<MeshFilter>().sharedMesh = lp.ToMesh("cab roof sign");
+            go.AddComponent<MeshRenderer>().sharedMaterial = material;
         }
 
         static readonly Dictionary<Mesh, Mesh> brakeGlow = new Dictionary<Mesh, Mesh>();
