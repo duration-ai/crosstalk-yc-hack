@@ -3,6 +3,7 @@ import {
   OBJECT_EFFECTS,
   PLAYABLE,
   PLAYER_EFFECTS,
+  VEHICLES,
   WORLD_EFFECTS,
   isA,
   type Scope,
@@ -29,6 +30,9 @@ export type Answers = {
   theme: ChoiceAnswer;
   vehicle: ChoiceAnswer;
   reject_reason: ChoiceAnswer;
+  nearest: ChoiceAnswer;
+  nearest_vehicle: ChoiceAnswer;
+  stretch: number;
 };
 
 export type ViewEntity = {
@@ -79,6 +83,7 @@ export type EffectCommand = {
   theme: string;
   vehicle: string;
   confirm: boolean;
+  substitute?: boolean;
 };
 
 export type Command = EffectCommand | { kind: "refuse"; reason: RefusalReason };
@@ -302,6 +307,61 @@ export function decide(a: Answers, view: View, active: ActiveSummary[]): Command
     case "object":
       return decideObject(a, view, active);
   }
+}
+
+/** Refusals that only mean the game lacks the exact thing: the Operator hands over the closest built effect instead. */
+const SUBSTITUTED: ReadonlySet<RefusalReason> = new Set(["unsupported", "transformation", "spawning", "teleport", "vague", "not_built", "incompatible"]);
+
+/** Reasons that stay refusals; a stand-in is off when Jev gives them a real chance (an "undo that" it half reads as vague). */
+const KEPT_REASONS = ["undo", "cheat", "deferred", "not_a_request"];
+
+/** Built effects the Operator can hand over as a stand-in: no target, colour or theme needed, and never a counter. */
+export const STAND_INS = [...Object.keys(PLAYER_EFFECTS), ...Object.keys(WORLD_EFFECTS)].filter(
+  (effect) => PLAYABLE.has(effect) && !(effect in COUNTERS) && effect !== "ped_theme",
+);
+
+/**
+ * Never a dead end for an ask the game can't do exactly: a capability refusal becomes Jev's closest
+ * built effect, and a granted ask that only stretches toward the words is marked as a stand-in too,
+ * so the Operator's line owns up to the swap. Safety and scope refusals pass through.
+ */
+export function nextBest(a: Answers, command: Command): Command {
+  if (command.kind === "effect") return a.stretch >= 0.7 ? { ...command, substitute: true } : command;
+  if (!SUBSTITUTED.has(command.reason)) return command;
+  if (KEPT_REASONS.reduce((sum, reason) => sum + (a.reject_reason.probabilities[reason] ?? 0), 0) >= 0.25) return command;
+  const effect = a.nearest.choice;
+  if (!STAND_INS.includes(effect)) return command;
+  const vehicle = effect === "change_vehicle" ? a.nearest_vehicle.choice : "";
+  if (effect === "change_vehicle" && !(VEHICLES as readonly string[]).includes(vehicle)) return command;
+  const info = PLAYER_EFFECTS[effect] ?? WORLD_EFFECTS[effect];
+  return {
+    kind: "effect",
+    scope: PLAYER_EFFECTS[effect] ? "players" : "world",
+    effect,
+    target: "",
+    targetClass: "",
+    strength: info.duration ? strengthOf(a) : "",
+    color: "",
+    theme: "",
+    vehicle,
+    confirm: false,
+    substitute: true,
+  };
+}
+
+const STAND_IN_LINES = [
+  (thing: string) => `No can do, sugar. How about ${thing}?`,
+  (thing: string) => `Fresh out of those, sugar. Here's ${thing}!`,
+  (thing: string) => `Can't swing that, hon. Closest I've got: ${thing}!`,
+  (thing: string) => `That's not on my switchboard, sugar. Here's ${thing}!`,
+];
+
+/** The Operator owning up to a swap, playfully, in under a dozen words; the transcript picks the phrasing. */
+export function standInLine(transcript: string, label: string, vehicle: string) {
+  const thing = vehicle ? `a ${vehicle.replace(/_/g, " ")}` : label;
+  let hash = 0;
+  for (const ch of transcript) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+  return STAND_IN_LINES[hash % STAND_IN_LINES.length](thing);
 }
 
 const OWN_CAR: ViewEntity = {

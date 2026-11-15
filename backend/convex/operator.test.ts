@@ -14,7 +14,7 @@ const T0 = Date.UTC(2026, 10, 15, 20, 0, 0);
 
 const CHOICES = [
   "scope", "player_effect", "world_group", "sky_effect", "physics_effect", "population_effect", "object_effect",
-  "class", "target", "strength", "color", "theme", "vehicle", "reject_reason",
+  "class", "target", "strength", "color", "theme", "vehicle", "reject_reason", "nearest", "nearest_vehicle",
 ];
 const DEFAULTS: Record<string, string> = { scope: "reject", strength: "medium" };
 
@@ -26,7 +26,7 @@ function jevReply(picks: Record<string, string | number>) {
         const choice = String(picks[name] ?? DEFAULTS[name] ?? "none");
         return { type: "choice", name, choice, confidence: 0.97, probabilities: [{ value: choice, probability: 0.97 }] };
       }),
-      ...["described", "self_ref", "other_player"].map((name) => ({ type: "predicate", name, probability: picks[name] ?? 0.02 })),
+      ...["described", "self_ref", "other_player", "stretch"].map((name) => ({ type: "predicate", name, probability: picks[name] ?? 0.02 })),
     ],
   };
 }
@@ -105,6 +105,7 @@ describe("operator.call", () => {
     expect(requests[0].body.questions.map((q: { name: string }) => q.name)).toEqual([
       "scope", "player_effect", "world_group", "sky_effect", "physics_effect", "population_effect", "object_effect",
       "class", "target", "described", "self_ref", "other_player", "strength", "color", "theme", "vehicle", "reject_reason",
+      "nearest", "nearest_vehicle", "stretch",
     ]);
     expect(await effects()).toEqual([result.effect]);
 
@@ -165,6 +166,19 @@ describe("operator.call", () => {
     const undo = await say("undo that", { scope: "reject", reject_reason: "undo" });
     expect(undo).toMatchObject({ outcome: "refused", effect: null, refusal: { reason: "undo" }, line: "No take-backs, sugar." });
     expect((await effects()).map((e) => e.effect).sort()).toEqual(["gravity_lower", "rain"]);
+  });
+
+  it("hands over the next best thing instead of refusing what it can't do", async () => {
+    const { say, effects } = await room();
+    const godzilla = await say("summon Godzilla", { scope: "reject", reject_reason: "spawning", nearest: "earthquake", stretch: 0.9 });
+    expect(godzilla).toMatchObject({ outcome: "applied", refusal: null, effect: { effect: "earthquake", scope: "world" } });
+    expect(godzilla.line).toMatch(/(sugar|hon).*Earthquake/);
+    const tank = await say("give me a tank", { scope: "players", player_effect: "change_vehicle", nearest: "change_vehicle", nearest_vehicle: "cybertruck", stretch: 0.9 });
+    expect(tank).toMatchObject({ outcome: "applied", effect: { effect: "change_vehicle", vehicle: "cybertruck" } });
+    expect(tank.line).toContain("a cybertruck");
+    const cheat = await say("let me win", { scope: "reject", reject_reason: "cheat", nearest: "flight" });
+    expect(cheat).toMatchObject({ outcome: "refused", refusal: { reason: "cheat" } });
+    expect((await effects()).map((e) => e.effect).sort()).toEqual(["change_vehicle", "earthquake"]);
   });
 
   it("targets a visible Waymo and keeps your own car's recolor local", async () => {

@@ -5,7 +5,7 @@ import { action, internalMutation, internalQuery, mutation, query, type Mutation
 import { askJev, buildInput, buildQuestions, JevUnavailable } from "./jev";
 import { fail, getPlayer, movementMode } from "./model";
 import { COUNTERS, EXCLUSIVE, SELF_EFFECTS, effectInfo, isA, rollDuration } from "./operatorCatalogue";
-import { CAR_EFFECTS, decide, REFUSAL_MESSAGES, type Command, type EffectCommand, type RefusalReason, type View } from "./operatorRules";
+import { CAR_EFFECTS, decide, nextBest, REFUSAL_MESSAGES, standInLine, type Command, type EffectCommand, type RefusalReason, type View } from "./operatorRules";
 import { getMembership, getRoom, phase } from "./raceModel";
 
 const MAX_TRANSCRIPT = 300;
@@ -261,7 +261,7 @@ export const call = action({
       if (!apiKey) throw new JevUnavailable("AI_GATEWAY_API_KEY is not set");
       const jev = await askJev(apiKey, input, buildQuestions(view));
       ({ answers, jevMs, attempts } = jev);
-      command = decide(jev.answers, view, active);
+      command = nextBest(jev.answers, decide(jev.answers, view, active));
     } catch (caught) {
       if (!(caught instanceof JevUnavailable)) throw caught;
       error = caught.message;
@@ -318,7 +318,7 @@ export const apply = internalMutation({
       result =
         row.status === "pending"
           ? { outcome: "pending", effect, refusal: null, line: "Confirm for everyone?" }
-          : { outcome: "applied", effect, refusal: null, line: `${effect.label}!` };
+          : { outcome: "applied", effect, refusal: null, line: command.substitute ? standInLine(args.transcript, effect.label, effect.vehicle) : `${effect.label}!` };
     }
     const timings = { jevMs: args.timings.jevMs, attempts: args.timings.attempts, totalMs: now - args.timings.startedAt };
     await ctx.db.insert("operatorCalls", {
