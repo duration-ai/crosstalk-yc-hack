@@ -11,7 +11,8 @@ namespace Dogpatch.Race
     //   -speeddial-demo -speeddial-out <folder>
     // and it walks to a payphone, takes a call, steps onto the start ring, readies up, races to YC
     // on autopilot while calling the Operator and letting the bots fire every world change, then
-    // takes the results and a rematch, saving a screenshot of each UI state. Game time runs at a
+    // takes an ask pickup on the way, then the results and a rematch where a call with no asks left
+    // is turned down, saving a screenshot of each UI state. Game time runs at a
     // fixed 30 fps so animations land on the same frames however slow the renderer is.
     // Built with the SPEEDDIAL_DEMO define (BUILD_DEFINES=SPEEDDIAL_DEMO), the player runs it on launch,
     // for the iOS simulator check where there is no command line.
@@ -106,9 +107,11 @@ namespace Dogpatch.Race
                 yield return Until(() => race.Hud.NewsSince >= 0f, 3f, "news for my call");
                 yield return Seconds(0.5f);
                 yield return Shot("09b-news-my-call");
-                yield return Until(() => race.Hud.NewsSince < 0f, 4f, "news cleared");
+                yield return Until(() => race.Hud.NewsSince < 0f, 4f, "news cleared", fatal: false);
             }
             else Log("no call in hand for the mid-race call (state " + race.Calls.State + ")");
+
+            yield return AskPickup();
 
             race.BotCall("Maya", WorldChangeCatalog.Command("gravity", new WorldChangeParams { level = "low" }));
             yield return Until(() => race.Hud.NewsSince >= 0.06f, 3f, "news shooting in");
@@ -147,8 +150,57 @@ namespace Dogpatch.Race
             yield return Until(() => !race.ResultsIn && !race.Gridded && race.Room.raceNumber == 2, 6f, "rematch lobby");
             yield return Seconds(2.5f);
             yield return Shot("12b-rematch-lobby");
+
+            while (race.Me.asks > 0) yield return Wait(race.Session.SpendAskAsync(race.MyId, race.RoomId));
+            yield return Until(() => race.Me.asks == 0, 3f, "out of asks");
+            var phone2 = race.Calls.Phones[0];
+            var facing2 = -phone2.transform.forward;
+            race.Game.Player.Teleport(phone2.HandsetPoint + phone2.transform.forward * 0.5f, RoutePath.Heading(new Vector2(facing2.x, facing2.z)));
+            race.Game.Follow.Snap(race.Game.Player.transform, false);
+            phone2.ReadyAt = 0f;
+            yield return Until(() => race.Calls.Refused, 5f, "call turned down with no asks");
+            yield return Seconds(0.5f);
+            yield return Shot("08b-no-asks");
             Log($"done: {shots} screenshots");
             Quit(0);
+        }
+
+        // Drives through the next ask pickup ahead: a look at the token, then the counter going up.
+        IEnumerator AskPickup()
+        {
+            var me = race.MyCar.transform;
+            float progress = race.Course.Route.Project(RoutePath.Flat(me.position));
+            int pick = -1;
+            for (int i = 0; i < race.Course.AskPickups.Count && pick < 0; i++)
+                if (race.Course.Route.Project(RoutePath.Flat(race.Course.AskPickups[i])) > progress + 20f) pick = i;
+            if (pick < 0)
+            {
+                Log("no ask pickup ahead");
+                yield break;
+            }
+            int before = race.Me.asks;
+            var token = race.Course.AskPickups[pick];
+            var back = RoutePath.Flat(me.position) - RoutePath.Flat(token);
+            var from = token + new Vector3(back.x, 0f, back.y).normalized * 14f;
+            race.HoldAutopilot(true);
+            race.MoveBody(race.MyId, from + Vector3.up * 0.3f, RoutePath.Heading(-back));
+            race.Game.Follow.Snap(me, true);
+            yield return Seconds(0.8f);
+            yield return Shot("15a-ask-token");
+            race.MoveBody(race.MyId, token + Vector3.up * 0.3f, RoutePath.Heading(-back));
+            yield return Until(() => race.Me.asks > before, 4f, $"ask pickup {pick} collected");
+            yield return Seconds(0.25f);
+            yield return Shot("15b-ask-collected");
+            float d = Mathf.Min(progress + 5f, race.Course.Route.Length - 30f);
+            var p = race.Course.Route.PointAt(d);
+            race.MoveBody(race.MyId, new Vector3(p.x, me.position.y + 0.3f, p.y), RoutePath.Heading(race.Course.Route.DirectionAt(d)));
+            race.Game.Follow.Snap(me, true);
+            race.HoldAutopilot(false);
+        }
+
+        static IEnumerator Wait(System.Threading.Tasks.Task task)
+        {
+            while (!task.IsCompleted) yield return null;
         }
 
         IEnumerator Watchdog()
@@ -172,15 +224,15 @@ namespace Dogpatch.Race
             while (Time.time < until) yield return null;
         }
 
-        IEnumerator Until(Func<bool> condition, float timeout, string what)
+        IEnumerator Until(Func<bool> condition, float timeout, string what, bool fatal = true)
         {
             float until = Time.time + timeout;
             while (!condition())
             {
                 if (Time.time > until)
                 {
-                    Log("FAILED waiting for " + what);
-                    Quit(1);
+                    Log((fatal ? "FAILED" : "gave up") + " waiting for " + what);
+                    if (fatal) Quit(1);
                     yield break;
                 }
                 yield return null;

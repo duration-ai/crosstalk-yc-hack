@@ -45,6 +45,9 @@ namespace Dogpatch.Slipstream
         bool callVisible;
         int readyFinger = int.MinValue;
         int callFinger = int.MinValue;
+        bool paused;
+        int shownAsks = -1;
+        float asksBumpAt = -10f;
 
         public float NewsSince => showing == null || showing.Start < 0f ? -1f : Time.time - showing.Start;
 
@@ -68,7 +71,12 @@ namespace Dogpatch.Slipstream
         void Start()
         {
             Race.EventArrived += OnEvent;
+            Audio.GameEvents.Paused += OnPaused;
         }
+
+        void OnDestroy() => Audio.GameEvents.Paused -= OnPaused;
+
+        void OnPaused(bool on) => paused = on;
 
         void OnEvent(RaceEvent e)
         {
@@ -237,7 +245,8 @@ namespace Dogpatch.Slipstream
             bool racing = Race.Started && !Race.ResultsIn;
 
             Markers();
-            if (lobby) Lobby(room);
+            if (lobby && !paused) Lobby(room);
+            if (!Race.ResultsIn && !paused) AskCounter();
             if (Race.Gridded && !Race.ResultsIn) Countdown();
             if (racing) RaceCorners();
             if (Race.ResultsIn) Results();
@@ -411,6 +420,29 @@ namespace Dogpatch.Slipstream
             }
         }
 
+        // The caller's asks: a pink chip with the handset and the count under the distance, flaring
+        // when a pickup adds one; ink when there are none left.
+        void AskCounter()
+        {
+            var me = Race.Me;
+            if (me == null) return;
+            if (me.asks != shownAsks)
+            {
+                if (shownAsks >= 0 && me.asks > shownAsks) asksBumpAt = Time.time;
+                shownAsks = me.asks;
+            }
+            float bump = Mathf.Clamp01(1f - (Time.time - asksBumpAt) / 0.45f);
+            var label = "x" + me.asks;
+            var size = Measure(label, 22f);
+            float h = 28f * s;
+            float w = h + size.x + 16f * s;
+            var chip = new Rect(right - 64f * s - w, top + 58f * s, w, h);
+            if (bump > 0f) Panel(Inflate(chip, 5f * s * bump), new Color(Sun.r, Sun.g, Sun.b, bump));
+            Framed(chip, me.asks > 0 ? Pink : Ink, White, 1.6f * s);
+            Icon(new Rect(chip.x + 6f * s, chip.y + 3f * s, h - 6f * s, h - 6f * s), "call", White);
+            Text(new Rect(chip.x + h + 2f * s, chip.y, size.x + 8f * s, h), label, 22f, White, TextAnchor.MiddleLeft);
+        }
+
         void Results()
         {
             var results = Race.Last.results;
@@ -537,7 +569,7 @@ namespace Dogpatch.Slipstream
         void CallPlate(bool readyShowing)
         {
             var calls = Race.Calls;
-            if (calls.State == CallState.None) return;
+            if (calls.State == CallState.None || calls.Refused) return;
             float t = Time.time - calls.StateSince;
             bool live = calls.State == CallState.Talking || calls.State == CallState.Waiting;
             float width = (live ? 140f : 106f) * s;

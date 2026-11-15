@@ -30,9 +30,13 @@ namespace Dogpatch.Operator
     // talking; letting go sends the call to the Operator, whose answer is a world change and a line.
     // With a Voice, the plate opens the transcriber, pressing snapshots the View and streams the
     // microphone, and releasing sends the final transcript. Say sends typed words the same way.
+    // A payphone only picks up while the caller has an ask left (Asks); with none, the Operator turns
+    // them down in one line and the Call plate stays away.
     public sealed class CallController : MonoBehaviour
     {
+        public const string NoAsksLine = "No asks! Find a pink token.";
         const float Reach = 1.6f;
+        const float RefusedRest = 4f;
         const float HoldMinimum = 0.35f;
         const float CallLasts = 45f;
         const float PhoneRest = 20f;
@@ -43,12 +47,14 @@ namespace Dogpatch.Operator
         public Func<string> RoomId;
         public List<Payphone> Phones = new List<Payphone>();
         public IVoiceInput Voice;
+        public Func<int> Asks;
         public Func<OperatorView> View;
 
         public CallState State { get; private set; }
         public float StateSince { get; private set; }
         public string Line { get; private set; }
         public int Calls { get; private set; }
+        public bool Refused { get; private set; }
         public string Heard { get; private set; } = "";
         public string Partial => State == CallState.Talking || State == CallState.Waiting ? Voice?.Partial ?? "" : "";
 
@@ -60,6 +66,7 @@ namespace Dogpatch.Operator
         {
             State = state;
             StateSince = Time.time;
+            Refused = false;
             if (state == CallState.None) Voice?.Close();
         }
 
@@ -68,6 +75,15 @@ namespace Dogpatch.Operator
         public bool Grab(Payphone phone)
         {
             if (State != CallState.None || !phone.Ringing) return false;
+            if (Asks != null && Asks() <= 0)
+            {
+                phone.ReadyAt = Time.time + RefusedRest;
+                Line = NoAsksLine;
+                Set(CallState.Answered);
+                Refused = true;
+                Debug.Log("[SpeedDial] no asks left: the Operator turned the call down");
+                return false;
+            }
             phone.ReadyAt = Time.time + PhoneRest;
             Set(CallState.Holding);
             Voice?.Open();

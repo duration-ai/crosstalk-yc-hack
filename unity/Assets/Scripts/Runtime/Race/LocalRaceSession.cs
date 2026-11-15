@@ -20,6 +20,10 @@ namespace Dogpatch.Race
         const long AutoStartMs = 10000;
         const long LockMs = 3000;
         const long CloseAfterFirstFinishMs = 60000;
+        const int DefaultAsks = 2;
+        const int MaxPickups = 64;
+        const float DefaultPickupRadius = 4f;
+        const float CollectSlack = 3f;
 
         static readonly string[] Colors = { "blue", "purple", "orange", "green" };
         static readonly string[] ColorHex = { "#2D8CFF", "#A35BFF", "#FF8A1E", "#2EC27E" };
@@ -72,7 +76,8 @@ namespace Dogpatch.Race
 
         bool Locked(RoomState state, long now) => state.Room.status == RoomStatus.Countdown && state.Room.startsAt - now <= LockMs;
 
-        public async Task<RoomResponse> CreateRoomAsync(string playerId, IReadOnlyList<Vec3> route, float finishRadius, int minPlayers)
+        public async Task<RoomResponse> CreateRoomAsync(string playerId, IReadOnlyList<Vec3> route, float finishRadius, int minPlayers,
+            int asks = 0, IReadOnlyList<Vec3> pickups = null, float pickupRadius = 0f)
         {
             var player = await getPlayer(playerId);
             if (route != null && (route.Count < 2 || route.Count > 512)) throw Error(BackendErrorCodes.InvalidArgument, "route must have 2 to 512 points");
@@ -80,6 +85,11 @@ namespace Dogpatch.Race
             if (minPlayers == 0) minPlayers = 2;
             if (finishRadius < 1f || finishRadius > 100f) throw Error(BackendErrorCodes.InvalidArgument, "finishRadius must be 1 to 100");
             if (minPlayers < 1 || minPlayers > MaxPlayers) throw Error(BackendErrorCodes.InvalidArgument, "minPlayers must be 1 to 4");
+            if (asks == 0) asks = DefaultAsks;
+            if (pickupRadius == 0f) pickupRadius = DefaultPickupRadius;
+            if (asks < 1 || asks > 9) throw Error(BackendErrorCodes.InvalidArgument, "asks must be 1 to 9");
+            if (pickups != null && pickups.Count > MaxPickups) throw Error(BackendErrorCodes.InvalidArgument, $"pickups must have at most {MaxPickups} points");
+            if (pickupRadius < 1f || pickupRadius > 20f) throw Error(BackendErrorCodes.InvalidArgument, "pickupRadius must be 1 to 20");
             LeaveAll(playerId);
 
             var wire = route != null ? route.Select(Copy).ToList() : new List<Vec3> { new Vec3(0, 0, 0), new Vec3(0, 0, 800) };
@@ -100,6 +110,9 @@ namespace Dogpatch.Race
                     finish = Copy(last),
                     finishRadius = finishRadius,
                     createdAt = clock(),
+                    asks = asks,
+                    pickups = pickups != null ? pickups.Select(Copy).ToList() : new List<Vec3>(),
+                    pickupRadius = pickupRadius,
                 },
             };
             rooms[state.Room.id] = state;
@@ -131,6 +144,8 @@ namespace Dogpatch.Race
                 position = Copy(state.RouteWire[0]),
                 metersToFinish = state.Route.Length,
                 updatedAt = clock(),
+                asks = state.Room.asks,
+                collected = new List<int>(),
             };
             state.Racers.Add(racer);
             return racer;
@@ -220,6 +235,8 @@ namespace Dogpatch.Race
                 r.metersToFinish = state.Route.Length;
                 r.finished = false;
                 r.finishMs = 0;
+                r.asks = room.asks;
+                r.collected.Clear();
             }
             state.Calls.Clear();
             state.Results = new List<RaceResult>();
@@ -364,6 +381,35 @@ namespace Dogpatch.Race
                 finished = racer.finished,
                 finishMs = racer.finishMs,
             });
+        }
+
+        public Task<AskResponse> CollectAskAsync(string playerId, string roomId, int pickup, Vec3 position)
+        {
+            if (position == null) throw Error(BackendErrorCodes.InvalidArgument, "position is required");
+            var state = RoomById(roomId);
+            var racer = Member(state, playerId);
+            if (racer.left) throw Error(BackendErrorCodes.Conflict, "Player left the room");
+            var room = state.Room;
+            if (room.status != RoomStatus.Racing) throw Error(BackendErrorCodes.Conflict, "Pickups only count while racing");
+            if (pickup < 0 || pickup >= room.pickups.Count) throw Error(BackendErrorCodes.InvalidArgument, "pickup must index room.pickups");
+            if (racer.collected.Contains(pickup)) return Task.FromResult(new AskResponse { collected = false, asks = racer.asks });
+            var at = room.pickups[pickup];
+            if (Vector2.Distance(new Vector2(position.x, position.z), new Vector2(at.x, at.z)) > room.pickupRadius + CollectSlack)
+                throw Error(BackendErrorCodes.Conflict, "Too far from the pickup");
+            racer.collected.Add(pickup);
+            racer.asks++;
+            return Task.FromResult(new AskResponse { collected = true, asks = racer.asks });
+        }
+
+        public Task<AskResponse> SpendAskAsync(string playerId, string roomId)
+        {
+            var state = RoomById(roomId);
+            var racer = Member(state, playerId);
+            if (racer.left) throw Error(BackendErrorCodes.Conflict, "Player left the room");
+            if (state.Room.status == RoomStatus.Finished) throw Error(BackendErrorCodes.Conflict, "Race is over");
+            if (racer.asks <= 0) throw Error(BackendErrorCodes.Conflict, "No asks left");
+            racer.asks--;
+            return Task.FromResult(new AskResponse { collected = false, asks = racer.asks });
         }
 
         public Task<FireEventResponse> FireEventAsync(string playerId, string roomId, WorldChangeCommand command)

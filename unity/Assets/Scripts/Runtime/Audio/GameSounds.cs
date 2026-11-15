@@ -57,6 +57,7 @@ namespace Dogpatch.Audio
             GameEvents.UiReady += OnUiReady;
             GameEvents.Boost += OnBoost;
             GameEvents.Horn += OnHorn;
+            GameEvents.AskCollected += OnAskCollected;
         }
 
         void OnDisable()
@@ -76,6 +77,7 @@ namespace Dogpatch.Audio
             GameEvents.UiReady -= OnUiReady;
             GameEvents.Boost -= OnBoost;
             GameEvents.Horn -= OnHorn;
+            GameEvents.AskCollected -= OnAskCollected;
         }
 
         static float Jitter(float spread = 0.06f) => Random.Range(1f - spread, 1f + spread);
@@ -173,6 +175,9 @@ namespace Dogpatch.Audio
         }
 
         void OnUiTap() => SoundSystem.Play2D("ui_tap", Bus.Ui, 0.6f, Jitter(0.03f), 200);
+
+        // An ask pickup: the combo chime a fifth up, so it reads as a reward but not a smash.
+        void OnAskCollected(Vector3 position) => SoundSystem.Play2D("combo_chime", Bus.Ui, 0.8f, 1.5f, 220);
 
         void OnUiReady() => SoundSystem.Play2D("ui_ready", Bus.Ui, 0.8f, 1f, 230);
 
