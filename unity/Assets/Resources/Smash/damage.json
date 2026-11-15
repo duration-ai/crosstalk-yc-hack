@@ -1,0 +1,10 @@
+{
+  "playerDurabilityScale": 3.0,
+  "otherDurabilityScale": 1.5,
+  "minDamageImpact": 4.5,
+  "wallDamagePerImpact": 1.4,
+  "carDamageScale": 1.0,
+  "breakableDamageScale": 0.25,
+  "lightSmokeBelowHealth": 0.85,
+  "greySmokeBelowHealth": 0.45
+}
