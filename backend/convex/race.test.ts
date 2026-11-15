@@ -203,7 +203,7 @@ describe("race", () => {
     const done = await poll(t, roomId);
     expect(done.room.status).toBe("finished");
     expect(done.results.map((r) => [r.displayName, r.place, r.finished, r.calls, r.award])).toEqual([
-      ["Tim", 1, true, 0, "FIRST TO YC"],
+      ["Tim", 1, true, 0, "FIRST PAST THE FLAG"],
       ["Jun", 2, true, 2, "CHAOS CALLER"],
       ["Maya", 3, false, 0, "STILL DRIVING"],
       ["Rosa", 4, false, 1, "STILL DRIVING"],
@@ -242,7 +242,7 @@ describe("race", () => {
     await smash(tim.id, 800, 99);
     const done = await poll(t, roomId);
     expect(done.results.map((r) => [r.displayName, r.smash, r.calls, r.award])).toEqual([
-      ["Tim", 0, 0, "FIRST TO YC"],
+      ["Tim", 0, 0, "FIRST PAST THE FLAG"],
       ["Maya", 4, 0, "WRECKING BALL"],
       ["Jun", 4, 1, "CHAOS CALLER"],
       ["Rosa", 0, 0, "SCENIC ROUTE"],

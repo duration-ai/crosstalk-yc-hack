@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace Dogpatch.Slipstream
 {
-    // The online pieces of the Slipstream HUD: the mission plate over the ring lobby ("RACE TO YC",
+    // The online pieces of the Slipstream HUD: the mission plate over the ring lobby ("RACE: IRON & STEAM",
     // waiting for more racers), a name tag floating over every other player in the shared world
     // and every other racer, a YOU marker over your own car just after GO, and a small RECONNECTING
     // chip while the server can't be reached.
@@ -51,7 +51,7 @@ namespace Dogpatch.Slipstream
         {
             if (room.status != RoomStatus.Lobby) return;
             int more = Mathf.Max(1, room.minPlayers - room.playerCount);
-            var label = "RACE TO YC  ·  WAITING FOR " + more + " MORE";
+            var label = "RACE: " + Race.RouteName(Race.RouteId) + "  ·  WAITING FOR " + more + " MORE";
             var size = Measure(label, 16f);
             var r = new Rect(Screen.width * 0.5f - size.x * 0.5f - 18f * s, top + 2f * s, size.x + 36f * s, 32f * s);
             Panel(r, Ink);
