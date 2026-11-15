@@ -8,8 +8,7 @@ namespace Dogpatch.Backend
     // /api/player-state, GET /api/vehicles, POST /api/vehicles/enter|exit|update). Game code
     // depends only on it, so a Convex HTTP client can replace InMemoryGameBackend without
     // touching gameplay. Failures throw BackendException carrying the contract's error code.
-    // The avatar endpoints (POST /api/avatar/photo, GET /api/avatar) come from IAvatarBackend.
-    public interface IGameBackend : IAvatarBackend
+    public interface IGameBackend
     {
         Task<Player> CreatePlayerAsync(string displayName);
 
@@ -30,5 +29,13 @@ namespace Dogpatch.Backend
 
         // Moves the vehicle and its driver's state in one write; only the driver may call it.
         Task<VehicleResult> UpdateVehicleAsync(string playerId, string vehicleId, Vec3 position, float heading);
+
+        // POST /api/avatar/photo: jpeg is the raw photo (at most 8 MB, about 1024 px). Throws
+        // BackendException RETAKE when nobody is in the shot, DECISION_UNAVAILABLE when the
+        // server could not decide in time.
+        Task<AvatarResult> AnalyzeAvatarPhotoAsync(string playerId, byte[] jpeg);
+
+        // GET /api/avatar: null when the player has never taken a photo.
+        Task<Avatar> GetAvatarAsync(string playerId);
     }
 }
