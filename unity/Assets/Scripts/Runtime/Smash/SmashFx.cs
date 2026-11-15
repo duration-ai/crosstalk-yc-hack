@@ -105,8 +105,10 @@ namespace Dogpatch.Smash
         }
 
         public void Smoke(Vector3 point, Color color, float size, int count = 1, float rise = 1.2f, Vector3 drift = default)
+            => EmitSmoke(point, color, size, EffectsSettings.Count(count), rise, drift);
+
+        void EmitSmoke(Vector3 point, Color color, float size, int count, float rise, Vector3 drift)
         {
-            count = EffectsSettings.Count(count);
             size *= 0.55f * EffectsSettings.Scale;
             for (int i = 0; i < count; i++)
             {
@@ -133,7 +135,7 @@ namespace Dogpatch.Smash
             {
                 float a = i * Mathf.PI * 2f / count;
                 var dir = new Vector3(Mathf.Cos(a), 0.25f, Mathf.Sin(a));
-                Smoke(point + dir * radius * 0.4f, color, radius * 0.7f, 1, 0.8f, dir * radius * 2.2f);
+                EmitSmoke(point + dir * radius * 0.4f, color, radius * 0.7f, 1, 0.8f, dir * radius * 2.2f);
             }
         }
 
