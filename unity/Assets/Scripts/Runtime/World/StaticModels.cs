@@ -180,7 +180,7 @@ namespace Dogpatch.World
                 lod.Add(key.Item1, key.Item2, go.GetComponent<MeshRenderer>());
                 var filter = go.GetComponent<MeshFilter>();
 
-                int[] solid = null;
+                var breakableRanges = new List<(int start, int count)>();
                 foreach (var part in parts)
                 {
                     var instance = Index.Get(part.Instance);
@@ -192,24 +192,33 @@ namespace Dogpatch.World
                     instance.IndexCount = part.IndexCount;
                     if (part.Mesh == null) instance.WorldBounds = RangeBounds(mesh, part);
                     Index.Bound(instance, Collide(breakables, instance, part));
-                    if (key.Item1 == Layer.Landmarks && instance.Class != PhysicsClass.Static)
-                    {
-                        solid ??= mesh.GetTriangles(0);
-                        for (int i = 0; i < part.IndexCount; i++) solid[part.IndexStart + i] = solid[part.IndexStart];
-                    }
+                    if (key.Item1 == Layer.Landmarks && instance.Class != PhysicsClass.Static) breakableRanges.Add((part.IndexStart, part.IndexCount));
                 }
 
-                // Viaduct columns, the stack, crane gantries and platforms collide as built.
+                // Viaduct columns, the stack, crane gantries and platforms collide as built. Breakable
+                // parts (billboards, shelters) have their own colliders, so they are left out; a chunk
+                // holding only breakables gets no chunk collider.
                 if (key.Item1 == Layer.Landmarks)
                 {
                     var collider = mesh;
-                    if (solid != null)
+                    if (breakableRanges.Count > 0)
                     {
-                        collider = new Mesh { name = name + " collider", indexFormat = IndexFormat.UInt32 };
-                        collider.SetVertices(new List<Vector3>(mesh.vertices));
-                        collider.SetTriangles(solid, 0);
+                        var all = mesh.GetTriangles(0);
+                        var keep = new bool[all.Length];
+                        for (int i = 0; i < keep.Length; i++) keep[i] = true;
+                        foreach (var (start, count) in breakableRanges)
+                            for (int i = 0; i < count; i++) keep[start + i] = false;
+                        var solid = new List<int>();
+                        for (int i = 0; i < all.Length; i++) if (keep[i]) solid.Add(all[i]);
+                        collider = null;
+                        if (solid.Count > 0)
+                        {
+                            collider = new Mesh { name = name + " collider", indexFormat = IndexFormat.UInt32 };
+                            collider.SetVertices(new List<Vector3>(mesh.vertices));
+                            collider.SetTriangles(solid, 0);
+                        }
                     }
-                    go.AddComponent<MeshCollider>().sharedMesh = collider;
+                    if (collider != null) go.AddComponent<MeshCollider>().sharedMesh = collider;
                 }
             }
         }
