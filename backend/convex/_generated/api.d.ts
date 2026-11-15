@@ -26,6 +26,7 @@ import type * as players from "../players.js";
 import type * as race from "../race.js";
 import type * as raceModel from "../raceModel.js";
 import type * as rooms from "../rooms.js";
+import type * as sync from "../sync.js";
 import type * as vehicles from "../vehicles.js";
 import type * as world from "../world.js";
 import type * as worldChanges from "../worldChanges.js";
@@ -55,6 +56,7 @@ declare const fullApi: ApiFromModules<{
   race: typeof race;
   raceModel: typeof raceModel;
   rooms: typeof rooms;
+  sync: typeof sync;
   vehicles: typeof vehicles;
   world: typeof world;
   worldChanges: typeof worldChanges;
