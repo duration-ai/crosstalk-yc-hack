@@ -6,8 +6,9 @@ namespace Dogpatch.Operator
 {
     // The Operator's layer of the Slipstream HUD: what the transcriber hears while Call is held,
     // a countdown chip per active effect, refusal toasts, the confirm sheet for effects that hit
-    // everyone, and (debug) a text field that skips the microphone plus a TALK/SEND button that
-    // speaks without a payphone. IMGUI, same ink/sun/pink.
+    // everyone, and the transcript of the last call for a moment after the answer. The Call plate
+    // (SlipstreamHud) is the one talk button; typed input is a dev-flag text field for live tests.
+    // IMGUI, same ink/sun/pink.
     public sealed class OperatorHud : MonoBehaviour
     {
         const float ConfirmWindow = 10f;
@@ -116,10 +117,13 @@ namespace Dogpatch.Operator
 
         void Hearing(float right, float bottom)
         {
-            string words = Calls.State == CallState.Talking ? Calls.Partial : Calls.State == CallState.Waiting ? (string.IsNullOrEmpty(Calls.Heard) ? Calls.Partial : Calls.Heard) : "";
-            if (Calls.State == CallState.Talking && string.IsNullOrEmpty(words)) words = "…";
+            string words = Calls.State == CallState.Talking ? Calls.Partial
+                : Calls.State == CallState.Waiting || Calls.State == CallState.Answered ? (string.IsNullOrEmpty(Calls.Heard) ? Calls.Partial : Calls.Heard)
+                : "";
+            if (Calls.State == CallState.Talking && Calls.Voice != null && Calls.Voice.MicBlocked) words = "MIC OFF IN SETTINGS";
+            else if (Calls.State == CallState.Talking && string.IsNullOrEmpty(words)) words = "LISTENING…";
+            else if (!string.IsNullOrEmpty(words)) words = "“" + words + "”";
             if (string.IsNullOrEmpty(words)) return;
-            words = "“" + words + "”";
             float w = Mathf.Min(Width(words, 15f) + 28f * s, Screen.width * 0.6f);
             var r = new Rect(right - w, bottom - 150f * s, w, 30f * s);
             Panel(r, new Color(Ink.r, Ink.g, Ink.b, 0.9f));
@@ -210,12 +214,6 @@ namespace Dogpatch.Operator
             {
                 typed = "";
                 GUI.FocusControl(null);
-            }
-            if (Calls.Voice != null)
-            {
-                bool listening = Calls.State == CallState.Talking;
-                var talk = new Rect(r.xMax + 64f * s, r.y, 64f * s, r.height);
-                if (Button(talk, listening ? "SEND" : "TALK", listening ? Pink : Sun, listening ? Color.white : Ink)) Calls.ToggleTalk();
             }
             string room = Room();
             if (!string.IsNullOrEmpty(room)) Text(new Rect(left, r.y - 20f * s, 260f * s, 18f * s), room, 11f, Color.white);

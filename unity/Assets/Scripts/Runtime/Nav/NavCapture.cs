@@ -137,6 +137,14 @@ namespace Dogpatch.Nav
             if (arrow != null)
             {
                 var cam = RaceDirector.Instance.Game.View;
+                var b = arrow.GetComponent<MeshFilter>().sharedMesh.bounds;
+                float x0 = float.MaxValue, y0 = float.MaxValue, x1 = float.MinValue, y1 = float.MinValue;
+                for (int i = 0; i < 8; i++)
+                {
+                    var p = cam.WorldToScreenPoint(arrow.transform.TransformPoint(b.center + Vector3.Scale(b.extents, new Vector3((i & 1) == 0 ? -1 : 1, (i & 2) == 0 ? -1 : 1, (i & 4) == 0 ? -1 : 1))));
+                    x0 = Mathf.Min(x0, p.x); x1 = Mathf.Max(x1, p.x); y0 = Mathf.Min(y0, p.y); y1 = Mathf.Max(y1, p.y);
+                }
+                Log($"arrow screen rect x {x0:F0}-{x1:F0} y {y0:F0}-{y1:F0} of {Screen.width}x{Screen.height} (origin bottom left)");
                 Log($"arrow enabled={arrow.enabled} active={arrow.gameObject.activeInHierarchy} at {arrow.transform.position} scale {arrow.transform.localScale.x:F2} viewport {cam.WorldToViewportPoint(arrow.transform.position)} mesh {arrow.GetComponent<MeshFilter>().sharedMesh?.name} bounds {arrow.bounds}");
             }
             var tex = ScreenCapture.CaptureScreenshotAsTexture();

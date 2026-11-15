@@ -21,7 +21,7 @@ namespace Dogpatch.Look
     {
         const int MaxPuffs = 64;
         const int MaxSoftPuffs = 96;
-        const int MaxSparks = 64;
+        const int MaxSparks = 96;
         const int MaxStreaks = 32;
         const int MaxMarks = 600;
         const float MarkWidth = 0.2f;
@@ -50,7 +50,7 @@ namespace Dogpatch.Look
         static MotionFx instance;
 
         static readonly Color Dust = SpeedDial.Hex("#EDE3D0").linear;
-        static readonly Color PuffWhite = SpeedDial.Hex("#F4F6FB");
+        static readonly Color PuffWhite = SpeedDial.Hex("#E6E9F1");
         static readonly Color ShardGrey = SpeedDial.Hex("#C9CEDB");
         static readonly Color SparkHot = SpeedDial.Hex("#FFF3DA");
         static readonly Color SparkCool = SpeedDial.Hex("#FFCB1F");
@@ -409,14 +409,17 @@ namespace Dogpatch.Look
             float drift = Mathf.Clamp01((lateral - p.driftStart) / Mathf.Max(p.driftFull - p.driftStart, 0.1f));
             float braking = Mathf.Abs(speed) > p.brakeMinSpeed ? Mathf.Clamp01((-accel / Mathf.Max(handling.Braking, 1f) - p.brakeDecelShare) / (1f - p.brakeDecelShare + 0.01f)) : 0f;
             bool grounded = !carAirborne;
-            float rate = grounded ? Mathf.Max(launch * p.launchRate, Mathf.Max(drift * p.driftRate, braking * p.brakeRate)) : 0f;
+            float skidRate = Mathf.Max(launch * p.launchRate, Mathf.Max(drift * p.driftRate, braking * p.brakeRate));
+            float cruiseRate = Rush * p.cruiseRate;
+            float rate = grounded ? Mathf.Max(skidRate, cruiseRate) : 0f;
             float skid = Mathf.Max(launch, Mathf.Max(drift, braking));
+            float puffSize = skidRate >= cruiseRate ? p.size * (0.75f + 0.45f * skid) : p.cruiseSize;
 
             emitDebt = rate > 0f ? emitDebt + rate * EffectsSettings.Intensity * dt : 0f;
             while (emitDebt >= 1f)
             {
                 emitDebt -= 1f;
-                foreach (var wheel in rearWheels) WheelPuff(wheel.position, t, p.size * (0.75f + 0.45f * skid) * R(0.85f, 1.15f), p.kick);
+                foreach (var wheel in rearWheels) WheelPuff(wheel.position, t, puffSize * R(0.85f, 1.15f), p.kick);
             }
             for (int w = 0; w < rearWheels.Count && w < 2; w++) Mark(w, rearWheels[w].position, grounded && Mathf.Max(Mathf.Max(drift, braking), launch * 0.6f) > 0.3f);
 
@@ -510,7 +513,7 @@ namespace Dogpatch.Look
         {
             var p = Tune.puffs;
             var carry = car != null ? t.forward * car.Speed * p.carry : Vector3.zero;
-            var origin = new Vector3(wheel.x, t.position.y + size * 0.6f, wheel.z) - t.forward * 0.25f;
+            var origin = new Vector3(wheel.x, t.position.y + size * 0.6f, wheel.z) - t.forward * R(0.15f, 0.45f) + t.right * R(-0.15f, 0.15f);
             SoftPuff(origin, carry - t.forward * kick * R(0.6f, 1.2f) + t.right * R(-0.8f, 0.8f) + Vector3.up * R(0.5f, 1.1f),
                 size, p.life * R(0.85f, 1.15f), p.alpha, PuffWhite);
             if (random.NextDouble() < p.shardChance)
@@ -671,13 +674,13 @@ namespace Dogpatch.Look
                     p.Velocity *= 1f - 3.2f * dt;
                     p.Rotation = Quaternion.Euler(p.Spin * dt) * p.Rotation;
                     float t = Mathf.Clamp01(p.Age / p.Life);
-                    scale = p.Size * (t < 0.15f ? Mathf.Lerp(0.45f, 1f, t / 0.15f) : Mathf.Lerp(1f, 1.25f, Mathf.Min((t - 0.15f) / 0.35f, 1f)) * (t > 0.6f ? Mathf.Lerp(1f, 0.35f, (t - 0.6f) / 0.4f) : 1f));
+                    scale = p.Size * (t < 0.15f ? Mathf.Lerp(0.6f, 1f, t / 0.15f) : Mathf.Lerp(1f, 1.25f, Mathf.Min((t - 0.15f) / 0.35f, 1f)) * (t > 0.6f ? Mathf.Lerp(1f, 0.35f, (t - 0.6f) / 0.4f) : 1f));
                     fade = p.Alpha * (t > 0.55f ? 1f - (t - 0.55f) / 0.45f : 1f);
                 }
                 for (int f = 0; f < puffShape.Count; f++)
                 {
                     var (a, b, c) = puffShape[f];
-                    float shade = 0.74f + 0.26f * Mathf.Clamp01(Vector3.Dot(p.Rotation * facetNormals[f], PuffLight) * 0.5f + 0.5f);
+                    float shade = 0.68f + 0.32f * Mathf.Clamp01(Vector3.Dot(p.Rotation * facetNormals[f], PuffLight) * 0.5f + 0.5f);
                     var color = new Color(p.Tint.r * shade, p.Tint.g * shade, p.Tint.b * shade, fade);
                     softColors[k] = softColors[k + 1] = softColors[k + 2] = color;
                     softVertices[k++] = p.Position + p.Rotation * a * scale;
