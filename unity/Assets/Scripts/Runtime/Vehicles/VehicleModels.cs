@@ -95,8 +95,74 @@ namespace Dogpatch.Vehicles
             var bounds = asset.ComputeBounds();
             if (spec.Robotaxi) ProceduralModels.RobotaxiSensors(visual.transform, material, bounds.max.y - 0.02f, bounds.center.z - bounds.size.z * 0.05f, bounds.extents.x, bounds.extents.z, bounds.min.y + bounds.size.y * 0.42f);
             if (spec.Id == VehicleTypes.BayWheels) ProceduralModels.EbikeKit(visual.transform, material);
-            if (spec.Robotaxi) bounds.Encapsulate(new Vector3(bounds.center.x, bounds.max.y + 0.5f, bounds.center.z));
+            if (spec.Robotaxi) bounds.Encapsulate(new Vector3(bounds.center.x, bounds.max.y + 0.6f, bounds.center.z));
+            if (!spec.TwoWheeler) AddBrakeGlow(visual, material, spec, bounds);
             return (visual, bounds);
+        }
+
+        static readonly Dictionary<Mesh, Mesh> brakeGlow = new Dictionary<Mesh, Mesh>();
+
+        // Brake lights that come on while braking (CarController toggles every "brake-glow" child): the
+        // model's own red tail-lamp facets, copied a little bigger and proud of the body in a bright
+        // full-glow red, so they read in daylight and bloom at night like Forza Horizon's tail lamps.
+        static void AddBrakeGlow(GameObject visual, Material material, VehicleSpec spec, Bounds bounds)
+        {
+            var reds = new List<Color32>();
+            foreach (var pair in spec.Lamps)
+            {
+                var c = Parse(pair.Key);
+                if (c.r > 90 && c.r > c.g * 1.6f && c.r > c.b * 1.6f) reds.Add(c);
+            }
+            if (reds.Count == 0) return;
+            foreach (var mf in visual.GetComponentsInChildren<MeshFilter>())
+            {
+                var source = mf.sharedMesh;
+                if (source == null) continue;
+                if (!brakeGlow.TryGetValue(source, out var glow))
+                {
+                    glow = BuildBrakeGlow(source, reds, mf.transform, visual.transform, bounds);
+                    brakeGlow[source] = glow;
+                }
+                if (glow == null) continue;
+                var go = new GameObject("brake-glow");
+                go.transform.SetParent(mf.transform, false);
+                go.AddComponent<MeshFilter>().sharedMesh = glow;
+                go.AddComponent<MeshRenderer>().sharedMaterial = material;
+                go.SetActive(false);
+            }
+        }
+
+        static Mesh BuildBrakeGlow(Mesh source, List<Color32> reds, Transform node, Transform root, Bounds bounds)
+        {
+            var colors = source.colors;
+            var vertices = source.vertices;
+            var triangles = source.triangles;
+            if (colors.Length != vertices.Length) return null;
+            var lit = LowPoly.Hex("#ff2a1f", 1f);
+            var lp = new LowPoly();
+            int count = 0;
+            for (int t = 0; t < triangles.Length; t += 3)
+            {
+                bool red = true;
+                for (int k = 0; k < 3 && red; k++)
+                {
+                    var c = Srgb(colors[triangles[t + k]]);
+                    bool match = false;
+                    foreach (var r in reds) if (Near(c, r)) { match = true; break; }
+                    red = match;
+                }
+                if (!red) continue;
+                var a = vertices[triangles[t]];
+                var b = vertices[triangles[t + 1]];
+                var d = vertices[triangles[t + 2]];
+                var centre = (a + b + d) / 3f;
+                var world = root.InverseTransformPoint(node.TransformPoint(centre));
+                if (world.z > bounds.center.z) continue;
+                var push = node.InverseTransformVector(root.TransformVector(new Vector3(0f, 0f, -0.025f)));
+                lp.Tri(centre + (a - centre) * 1.12f + push, centre + (b - centre) * 1.12f + push, centre + (d - centre) * 1.12f + push, lit);
+                count++;
+            }
+            return count == 0 ? null : lp.ToMesh(source.name + " brake-glow");
         }
 
         // Two light-rail cars coupled back to back, as the T Third runs them.

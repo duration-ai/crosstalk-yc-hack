@@ -12,6 +12,8 @@ namespace Dogpatch.EditorTools
     // sun from the southwest, sky fill), one PNG per type plus a contact sheet:
     //   xvfb-run Unity -batchmode -force-glcore -projectPath unity -executeMethod Dogpatch.EditorTools.VehicleGallery.Render
     // GALLERY_OUTPUT names the folder (default ../Builds/gallery). NIGHT=1 renders with the lamps lit.
+    // GALLERY_TYPES (comma-separated ids) limits the set; GALLERY_REAR=1 shoots from behind with the
+    // brake lights on.
     public static class VehicleGallery
     {
         const int Width = 1200;
@@ -21,6 +23,8 @@ namespace Dogpatch.EditorTools
         {
             string output = Path.GetFullPath(Environment.GetEnvironmentVariable("GALLERY_OUTPUT") ?? "../Builds/gallery");
             bool night = Environment.GetEnvironmentVariable("NIGHT") == "1";
+            bool rear = Environment.GetEnvironmentVariable("GALLERY_REAR") == "1";
+            var only = Environment.GetEnvironmentVariable("GALLERY_TYPES");
             Directory.CreateDirectory(output);
             var material = new Material(Resources.Load<Shader>("Shaders/FlatVertexColor")) { name = "FlatVertexColor" };
             VehicleRoster.Configure(material, VehicleModels.Asset("Polyfork/commuter-381e7f"));
@@ -54,16 +58,21 @@ namespace Dogpatch.EditorTools
 
             foreach (var type in VehicleTypes.All)
             {
+                if (!string.IsNullOrEmpty(only) && Array.IndexOf(only.Split(','), type) < 0) continue;
                 var car = VehicleRoster.Spawn(type, Vector3.zero, 0f, null, 1);
+                if (rear)
+                    foreach (var t in car.GetComponentsInChildren<Transform>(true))
+                        if (t.name == "brake-glow") t.gameObject.SetActive(true);
                 var b = new Bounds(car.transform.position, Vector3.zero);
                 foreach (var r in car.GetComponentsInChildren<Renderer>()) b.Encapsulate(r.bounds);
                 float size = Mathf.Max(b.size.x, b.size.y * 1.4f, b.size.z);
                 float distance = size / (2f * Mathf.Tan(cam.fieldOfView * 0.5f * Mathf.Deg2Rad)) * 1.25f + 0.5f;
-                var dir = Quaternion.Euler(18f, 145f, 0f) * Vector3.back;
+                float yaw = float.TryParse(Environment.GetEnvironmentVariable("GALLERY_YAW"), out var y) ? y : rear ? 35f : 145f;
+                var dir = Quaternion.Euler(18f, yaw, 0f) * Vector3.back;
                 cam.transform.position = b.center + dir * distance;
                 cam.transform.LookAt(b.center);
                 cam.Render();
-                Save(rt, Path.Combine(output, type + (night ? "-night" : "") + ".png"));
+                Save(rt, Path.Combine(output, type + (night ? "-night" : "") + (rear ? "-rear" : "") + ".png"));
                 UnityEngine.Object.DestroyImmediate(car.gameObject);
                 Debug.Log("[Gallery] " + type + " size " + b.size.ToString("F2"));
             }

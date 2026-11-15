@@ -191,6 +191,7 @@ namespace Dogpatch.Race
         public float speed;
         public string mode;
         public string vehicleType;
+        public int protocol;
         public long updatedAt;
     }
 
