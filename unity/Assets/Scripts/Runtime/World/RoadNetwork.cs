@@ -79,7 +79,82 @@ namespace Dogpatch.World
 
         public static bool IsDriveable(Road road) => road.kind != "path";
 
-        public static float HalfWidth(Road road) => Mathf.Max(road.width, 2f) * 0.5f;
+        // Never narrower than its lanes: OSM gives lane counts on most arterials, and its width is a per-kind default.
+        public static float HalfWidth(Road road)
+        {
+            float width = Mathf.Max(road.width, 2f);
+            if (road.lanes > 0 && IsDriveable(road)) width = Mathf.Max(width, road.lanes * LaneWidth);
+            return width * 0.5f;
+        }
+
+        public const float LaneWidth = 3.1f;
+
+        static readonly HashSet<string> CurbedKinds = new HashSet<string>
+        {
+            "primary", "primary_link", "secondary", "secondary_link", "tertiary", "tertiary_link", "residential", "unclassified", "living_street",
+        };
+
+        // City streets at grade: the asphalt sits below raised sidewalks with a curb. Service roads, tracks,
+        // bridges and tunnels stay flush.
+        public static bool IsCurbed(Road road) => CurbedKinds.Contains(road.kind) && !road.bridge && !road.tunnel && road.layer == 0;
+
+        // Travel lanes in the way's direction (forward) and against it (backward), and where the two directions
+        // meet: Divider is the lateral offset of that line, positive to the left of the way's direction.
+        public struct LaneLayout
+        {
+            public int Forward;
+            public int Backward;
+            public float Width;
+            public float Divider;
+        }
+
+        public static LaneLayout Lanes(Road road)
+        {
+            int n = road.lanes, f = road.lanesForward, b = road.lanesBackward;
+            if (road.oneway)
+            {
+                f = Mathf.Max(n, f, 1);
+                b = 0;
+            }
+            else if (f + b > 0)
+            {
+                if (n < f + b) n = f + b;
+                if (f == 0) f = n - b;
+                if (b == 0) b = n - f;
+            }
+            else if (n > 1)
+            {
+                f = n - n / 2;
+                b = n / 2;
+            }
+            else
+            {
+                f = 1;
+                b = n == 1 ? 0 : 1;
+            }
+            float hw = HalfWidth(road);
+            float lane = Mathf.Min(LaneWidth + 0.2f, 2f * hw / Mathf.Max(f + b, 1));
+            return new LaneLayout { Forward = f, Backward = b, Width = lane, Divider = road.oneway || b == 0 ? hw : (f - b) * lane * 0.5f };
+        }
+
+        // True when p lies on the asphalt of a curbed street (a capsule of HalfWidth + margin around each segment).
+        public bool OnCurbedCarriageway(Vector2 p, float margin, int excludeRoad = -1)
+        {
+            var c = CellOf(p);
+            for (int x = c.x - 1; x <= c.x + 1; x++)
+                for (int z = c.y - 1; z <= c.y + 1; z++)
+                {
+                    if (!grid.TryGetValue(new Vector2Int(x, z), out var list)) continue;
+                    foreach (int s in list)
+                    {
+                        var seg = segments[s];
+                        if (seg.Road == excludeRoad || !IsCurbed(Roads[seg.Road])) continue;
+                        float reach = HalfWidth(Roads[seg.Road]) + margin;
+                        if ((p - Geometry.ClosestPointOnSegment(p, seg.A, seg.B, out _)).sqrMagnitude < reach * reach) return true;
+                    }
+                }
+            return false;
+        }
 
         static Vector2Int CellOf(Vector2 p) => new Vector2Int(Mathf.FloorToInt(p.x / Cell), Mathf.FloorToInt(p.y / Cell));
 
