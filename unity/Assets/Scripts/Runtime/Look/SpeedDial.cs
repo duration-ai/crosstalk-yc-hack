@@ -78,7 +78,10 @@ namespace Dogpatch.Look
             Shader.SetGlobalColor("_SideAmbient", SideFill);
             Shader.SetGlobalColor("_GroundAmbient", Bounce);
 
-            SkyRig.Create(view);
+            Shader.SetGlobalColor("_SkyTop", SkyTop);
+            Shader.SetGlobalColor("_SkyMid", SkyMid);
+            Shader.SetGlobalColor("_SkyHorizon", SkyHorizon);
+            EnvironmentRig.Create(view, sun, SkyRig.Create(view));
             view.gameObject.AddComponent<CameraFx>();
             return sun;
         }
