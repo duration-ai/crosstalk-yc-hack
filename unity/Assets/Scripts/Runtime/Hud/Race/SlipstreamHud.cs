@@ -413,7 +413,7 @@ namespace Dogpatch.Slipstream
         }
 
         // Once you're over the line: your place and time, and how long until the results at the latest.
-        // Your car is a wreck: the word slams in, and after a second you can tap to get going again.
+        // Your car is a wreck: the word slams in for the second before you're back on the route.
         void WreckedBanner()
         {
             float since = Time.time - Race.WreckedAt;
@@ -422,10 +422,6 @@ namespace Dogpatch.Slipstream
             var size = Measure(label, 72f * scale);
             var r = new Rect(Screen.width * 0.5f - size.x * 0.5f, Screen.height * 0.3f - size.y * 0.5f, size.x, size.y);
             Text(r, label, 72f * scale, Pink, TextAnchor.UpperLeft, 3.5f * s * scale);
-            if (since < RaceDirector.WreckSkipAfter) return;
-            var hint = "TAP TO SKIP";
-            var hintSize = Measure(hint, 20f);
-            Text(new Rect(Screen.width * 0.5f - hintSize.x * 0.5f, r.yMax + 6f * s, hintSize.x, hintSize.y), hint, 20f, White, TextAnchor.UpperLeft, 1.6f * s);
         }
 
         void FinishedBanner()
