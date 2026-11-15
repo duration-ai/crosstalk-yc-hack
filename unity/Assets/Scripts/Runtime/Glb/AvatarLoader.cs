@@ -45,7 +45,7 @@ namespace Dogpatch.Glb
             if (string.IsNullOrEmpty(url)) return null;
             var bundled = Bundled(url);
             if (bundled != null) return bundled;
-            string path = Path.Combine(CacheDirectory, Hash(url) + ".glb");
+            string path = CachePath(url);
             if (File.Exists(path)) return File.ReadAllBytes(path);
 
             using var request = UnityWebRequest.Get(url);
@@ -74,6 +74,9 @@ namespace Dogpatch.Glb
         }
 
         public static bool IsGlb(byte[] data) => data != null && data.Length > 20 && BitConverter.ToUInt32(data, 0) == 0x46546C67;
+
+        // Remix bakes are budgeted per IP, so every glbUrl is downloaded once and kept here.
+        public static string CachePath(string url) => Path.Combine(CacheDirectory, Hash(url) + ".glb");
 
         public static string Hash(string url)
         {

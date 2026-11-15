@@ -16,6 +16,10 @@ namespace Dogpatch.EditorTools
     // or a full upload response) writes RENDER_DIR/<name>.png showing the avatar (remix GLB,
     // recoloured, retargeted Idle) on the left and the stock model on the right, lit like the game.
     // A photo next to the JSON with the same name (.jpg/.jpeg/.png) is placed to the left of both.
+    // AVATAR_PLAYERS=id1,id2 fetches those players' avatars from AVATAR_URL (default the live
+    // deployment) instead, writing <id>.json beside <id>.png; a photo <id>.jpg/.jpeg/.png in
+    // PHOTO_DIR goes on the left. GLBs share the game's disk cache (AvatarLoader.CachePath), so
+    // each remix is baked and downloaded once.
     // AVATAR_DIR=stub runs the offline path instead: the bundled test photo goes through
     // InMemoryGameBackend's stub (AnalyzeAvatarPhotoAsync, then GetAvatarAsync) and the avatar it
     // returns is loaded and rendered as RENDER_DIR/stub.png.
@@ -32,6 +36,8 @@ namespace Dogpatch.EditorTools
             try
             {
                 string input = Environment.GetEnvironmentVariable("AVATAR_DIR") ?? "../Builds/avatars";
+                string players = Environment.GetEnvironmentVariable("AVATAR_PLAYERS") ?? "";
+                string photos = Environment.GetEnvironmentVariable("PHOTO_DIR");
                 string output = Environment.GetEnvironmentVariable("RENDER_DIR") ?? "../Builds/avatar-renders";
                 Directory.CreateDirectory(output);
                 var library = new ModelLibrary();
@@ -39,7 +45,9 @@ namespace Dogpatch.EditorTools
                 var material = new Material(Resources.Load<Shader>("Shaders/FlatVertexColor")) { name = "FlatVertexColor" };
                 var cam = SetupScene();
                 using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(90) };
-                var jobs = input == "stub" ? new[] { ("stub", StubAvatar(), (string)null) } : Jobs(input);
+                var jobs = players.Trim().Length > 0 ? Players(http, players, output, photos)
+                    : input == "stub" ? new[] { ("stub", StubAvatar(), (string)null) }
+                    : Jobs(input);
                 foreach (var (name, avatar, file) in jobs)
                 {
                     var (remixBytes, remixNote) = Fetch(http, avatar.glbUrl);
@@ -52,12 +60,12 @@ namespace Dogpatch.EditorTools
                     int changed = AvatarLoader.Recolor(GlbAsset.Load("count", remixBytes), avatar.recolor);
 
                     var root = new GameObject("Avatars");
-                    if (stock != null) Pose(stock.Instantiate(material, root.transform), stock, new Vector3(0.7f, 0f, 0f), -18f);
-                    Pose(figure.Instantiate(material, root.transform), figure, stock != null ? new Vector3(-0.7f, 0f, 0f) : Vector3.zero, 18f);
+                    if (stock != null) Pose(stock.Instantiate(material, root.transform), stock, new Vector3(-0.7f, 0f, 0f), 18f);
+                    Pose(figure.Instantiate(material, root.transform), figure, stock != null ? new Vector3(0.7f, 0f, 0f) : Vector3.zero, -18f);
                     var shot = Shoot(cam);
                     UnityEngine.Object.DestroyImmediate(root);
 
-                    var photo = file != null ? Photo(file) : TestPhoto();
+                    var photo = file == null ? TestPhoto() : file.Length > 0 ? Photo(file) : null;
                     var final = photo != null ? SideBySide(photo, shot) : shot;
                     string path = Path.Combine(output, name + ".png");
                     File.WriteAllBytes(path, final.EncodeToPNG());
@@ -77,6 +85,29 @@ namespace Dogpatch.EditorTools
             var files = Directory.GetFiles(input, "*.json").OrderBy(f => f).ToArray();
             if (files.Length == 0) throw new Exception("no avatar JSON in " + Path.GetFullPath(input));
             return files.Select(f => (Path.GetFileNameWithoutExtension(f), Parse(File.ReadAllText(f)), f)).ToArray();
+        }
+
+        // GET /api/avatar for each id; the photo lookup path is PHOTO_DIR/<id>.json ("" for none).
+        static (string, Avatar, string)[] Players(HttpClient http, string ids, string output, string photos)
+        {
+            string baseUrl = (Environment.GetEnvironmentVariable("AVATAR_URL") ?? AvatarHttpClient.DefaultBaseUrl).TrimEnd('/');
+            var jobs = new List<(string, Avatar, string)>();
+            foreach (var raw in ids.Split(','))
+            {
+                string id = raw.Trim();
+                if (id.Length == 0) continue;
+                string json = http.GetStringAsync(baseUrl + "/api/avatar?playerId=" + Uri.EscapeDataString(id)).Result;
+                var avatar = JsonUtility.FromJson<Envelope>(json)?.avatar;
+                if (avatar == null || avatar.IsEmpty)
+                {
+                    Debug.LogWarning("[AvatarRenders] " + id + ": no avatar on the server");
+                    continue;
+                }
+                File.WriteAllText(Path.Combine(output, id + ".json"), json);
+                jobs.Add((id, avatar, string.IsNullOrEmpty(photos) ? "" : Path.Combine(photos, id + ".json")));
+            }
+            if (jobs.Count == 0) throw new Exception("none of " + ids + " has an avatar");
+            return jobs.ToArray();
         }
 
         // The game's stub path, as a phone with no server would run it.
@@ -112,11 +143,16 @@ namespace Dogpatch.EditorTools
             if (string.IsNullOrEmpty(url)) return (null, "none");
             var bundled = AvatarLoader.Bundled(url);
             if (bundled != null) return (bundled, "bundled");
+            string cached = AvatarLoader.CachePath(url);
+            if (File.Exists(cached)) return (File.ReadAllBytes(cached), "cached");
             var response = http.GetAsync(url).Result;
             var bytes = response.Content.ReadAsByteArrayAsync().Result;
             string remix = response.Headers.TryGetValues("x-remix", out var values) ? values.First() : "-";
             string note = $"{(int)response.StatusCode} x-remix={remix}";
-            return ((int)response.StatusCode == 200 && AvatarLoader.IsGlb(bytes) ? bytes : null, note);
+            if ((int)response.StatusCode != 200 || !AvatarLoader.IsGlb(bytes)) return (null, note);
+            Directory.CreateDirectory(AvatarLoader.CacheDirectory);
+            File.WriteAllBytes(cached, bytes);
+            return (bytes, note);
         }
 
         // Idle at half a second, sampled the way GlbAnimator samples it.
