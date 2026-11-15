@@ -192,7 +192,8 @@ namespace Dogpatch.World
         }
 
         // OSM puts most signals on the junction itself: one junction gets a mast at two opposite
-        // corners, reaching over the road.
+        // corners, reaching over the road. A corner that finds no kerb spot (the median of a divided street)
+        // gets none.
         void PlaceSignal(Prop prop, Vector2 p, Tally tally)
         {
             if (!ctx.Roads.Nearest(p, 3f, out var hit) || hit.Distance > 0.5f)
@@ -208,10 +209,38 @@ namespace Dogpatch.World
             var n = new Vector2(-d.y, d.x);
             foreach (var side in new[] { 1f, -1f })
             {
-                var corner = hit.Point + n * side * (hw + 1f) - d * side * (hw + 2.5f);
-                float yaw = Mathf.Atan2(d.x * side, d.y * side) * Mathf.Rad2Deg;
-                statics.PlaceAtOrigin(StaticModels.Layer.Props, "p-signal", corner, Matrix4x4.TRS(MeshBuilder.At(corner, 0.03f), Quaternion.Euler(0f, yaw, 0f), Vector3.one), prop.id, 0.2f, 3f);
+                if (KerbSpot(hit.Point, n * side, -d * side, hw, out var corner))
+                {
+                    float yaw = Mathf.Atan2(d.x * side, d.y * side) * Mathf.Rad2Deg;
+                    statics.PlaceAtOrigin(StaticModels.Layer.Props, "p-signal", corner, Matrix4x4.TRS(MeshBuilder.At(corner, 0.03f), Quaternion.Euler(0f, yaw, 0f), Vector3.one), prop.id, 0.2f, 3f);
+                }
+                else tally.Except("signal corner without a kerb spot (dropped)");
             }
+        }
+
+        // The nearest spot off every carriageway at a junction corner: across the street from its centre,
+        // then walking along it, back from the junction first and past it if the cross street is in the way.
+        bool KerbSpot(Vector2 centre, Vector2 across, Vector2 back, float hw, out Vector2 corner)
+        {
+            for (float along = hw + 1f; along <= hw + 16f; along += 0.5f)
+                foreach (float off in new[] { 1.2f, 2.5f })
+                    foreach (float dir in new[] { 1f, -1f })
+                    {
+                        corner = centre + across * (hw + off) + back * dir * along;
+                        if (!OnCarriageway(corner)) return true;
+                    }
+            corner = default;
+            return false;
+        }
+
+        // True when a pole at p (with its 0.2 m collider and a little room) would stand on any street's
+        // asphalt, curbed or flush.
+        bool OnCarriageway(Vector2 p)
+        {
+            if (ctx.Roads.OnCurbedCarriageway(p, 0.6f)) return true;
+            if (!ctx.Roads.Nearest(p, 0.6f, out var near)) return false;
+            if (ctx.Roads.Roads[near.Road].kind != "path") return true;
+            return ctx.Roads.Nearest(p, 0.6f, out near, near.Road) && ctx.Roads.Roads[near.Road].kind != "path";
         }
 
         // Crosswalks are painted by RoadSurface (curb to curb, with curb ramps), so a crossing node is
