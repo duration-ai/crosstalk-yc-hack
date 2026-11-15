@@ -17,6 +17,7 @@ namespace Dogpatch.Gameplay
         // False while the vehicle can't be taken, such as a delivery bike with its rider still on.
         public bool Enterable = true;
         public float Speed => forwardSpeed;
+        public bool Reversing => reversing;
         public Vector3 HalfExtents { get; private set; }
         public bool Stunned => Time.time < stunnedUntil;
 

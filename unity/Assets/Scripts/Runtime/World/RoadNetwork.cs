@@ -158,6 +158,22 @@ namespace Dogpatch.World
             return false;
         }
 
+        // True when p is on the asphalt of a curbed street other than road and not of the same name, so a
+        // street's own continuation past a junction doesn't count.
+        public bool OnOtherStreet(Vector2 p, int road, string name)
+        {
+            if (curbGrid == null) BuildCurbGrid();
+            if (!curbGrid.TryGetValue(new Vector2Int(Mathf.FloorToInt(p.x / CurbCell), Mathf.FloorToInt(p.y / CurbCell)), out var list)) return false;
+            foreach (int s in list)
+            {
+                var seg = segments[s];
+                if (seg.Road == road || (!string.IsNullOrEmpty(name) && Roads[seg.Road].name == name)) continue;
+                float reach = HalfWidth(Roads[seg.Road]) - 0.1f;
+                if ((p - Geometry.ClosestPointOnSegment(p, seg.A, seg.B, out _)).sqrMagnitude < reach * reach) return true;
+            }
+            return false;
+        }
+
         const float CurbCell = 8f;
         const float CurbReach = 1f;
         Dictionary<Vector2Int, List<int>> curbGrid;
