@@ -15,6 +15,7 @@ namespace Dogpatch.Data
         public string id;
         public string role;
         public string title;
+        public string asset;
         public float sizeX;
         public float sizeY;
         public float sizeZ;

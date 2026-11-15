@@ -5,6 +5,8 @@ using UnityEngine;
 namespace Dogpatch.Glb
 {
     // Loads Polyfork GLBs committed under Resources/Polyfork and caches the parsed assets.
+    // catalog.json lists the stock models (player, cars, NPCs); variants.json lists the world's
+    // recoloured, knob-built variants (buildings, trees, props) written by tools/PolyforkBake.
     public sealed class ModelLibrary
     {
         readonly Dictionary<string, GlbAsset> cache = new Dictionary<string, GlbAsset>();
@@ -12,11 +14,15 @@ namespace Dogpatch.Glb
 
         public ModelLibrary()
         {
-            var catalog = JsonUtility.FromJson<ModelCatalog>(Resources.Load<TextAsset>("Polyfork/catalog").text);
-            foreach (var entry in catalog.models)
+            foreach (var file in new[] { "Polyfork/catalog", "Polyfork/variants" })
             {
-                if (!byRole.TryGetValue(entry.role, out var list)) byRole[entry.role] = list = new List<ModelEntry>();
-                list.Add(entry);
+                var text = Resources.Load<TextAsset>(file);
+                if (text == null) continue;
+                foreach (var entry in JsonUtility.FromJson<ModelCatalog>(text.text).models)
+                {
+                    if (!byRole.TryGetValue(entry.role, out var list)) byRole[entry.role] = list = new List<ModelEntry>();
+                    list.Add(entry);
+                }
             }
         }
 

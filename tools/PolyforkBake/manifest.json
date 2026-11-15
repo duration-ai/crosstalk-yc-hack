@@ -1,0 +1,5847 @@
+{
+ "generatedBy": "node tools/PolyforkBake/bake.mjs",
+ "source": "https://polyfork.dev",
+ "palette": {
+  "sky": "#1C9BF2",
+  "bay": "#17B2D0",
+  "cloud": "#FFFFFF",
+  "asphalt": "#A9ADB4",
+  "shadow": "#6C758B",
+  "shade": "#A3AEC4",
+  "brick": "#E2603F",
+  "brickDeep": "#C94A32",
+  "sunshine": "#FFCB1F",
+  "crane": "#FFC21A",
+  "lemon": "#FFE27A",
+  "mint": "#8CE3BF",
+  "coral": "#FF9C86",
+  "lilac": "#BBA6F7",
+  "powder": "#9ED7FF",
+  "cream": "#FFF3DA",
+  "hotline": "#FF3E8E",
+  "ink": "#1C2347",
+  "navy": "#2C4FA3",
+  "sidewalk": "#EEE7DA",
+  "tree": "#48C26A",
+  "treeDeep": "#2FA35A",
+  "bark": "#8B5A3C"
+ },
+ "derivedColours": [
+  "bark"
+ ],
+ "nightRule": "night[] per variant is the asset's Polyfork night map with each zone's albedo replaced by the recoloured knob value (sRGB hex). Vertices whose COLOR_0, converted to sRGB, equals that albedo are the zone: make them emissive at color x intensity after dark. The bake fails if a zone shares its colour with another knob.",
+ "colourRule": "Every colour knob of every variant is set to a Speed Dial palette colour (STYLE-GUIDE.md); none is left at its stock value.",
+ "assets": {
+  "townhouse-row-unit-b9544b": {
+   "title": "Townhouse Row Unit",
+   "kit": "neighborhood-pathways-kit-a992cf",
+   "page": "https://polyfork.dev/asset/townhouse-row-unit-b9544b",
+   "credit": "Townhouse Row Unit by Polyfork (https://polyfork.dev/asset/townhouse-row-unit-b9544b), CC BY 4.0",
+   "license": "Mesh files (GLB, FBX, USD, OBJ): CC BY 4.0 with the line in `credit`, or the Polyfork licence with no credit and no redistribution, your choice. The .mjs source and the HD edition: Polyfork licence only, commercial use, no attribution, no redistribution. https://polyfork.dev/licensing",
+   "stockSize": {
+    "x": 4,
+    "y": 7.46,
+    "z": 8
+   },
+   "stockTriangles": 822
+  },
+  "brownstone-row-house-1b84fd": {
+   "title": "Brownstone Row House",
+   "kit": "nyc-city-kit-fbca88",
+   "page": "https://polyfork.dev/asset/brownstone-row-house-1b84fd",
+   "credit": "Brownstone Row House by Polyfork (https://polyfork.dev/asset/brownstone-row-house-1b84fd), CC BY 4.0",
+   "license": "Mesh files (GLB, FBX, USD, OBJ): CC BY 4.0 with the line in `credit`, or the Polyfork licence with no credit and no redistribution, your choice. The .mjs source and the HD edition: Polyfork licence only, commercial use, no attribution, no redistribution. https://polyfork.dev/licensing",
+   "stockSize": {
+    "x": 8,
+    "y": 17.06,
+    "z": 8
+   },
+   "stockTriangles": 3050
+  },
+  "slab-apartment-block-1b02a2": {
+   "title": "Slab Apartment Block",
+   "kit": "chrome-arcology-transit-kit-87a0e1",
+   "page": "https://polyfork.dev/asset/slab-apartment-block-1b02a2",
+   "credit": "Slab Apartment Block by Polyfork (https://polyfork.dev/asset/slab-apartment-block-1b02a2), CC BY 4.0",
+   "license": "Mesh files (GLB, FBX, USD, OBJ): CC BY 4.0 with the line in `credit`, or the Polyfork licence with no credit and no redistribution, your choice. The .mjs source and the HD edition: Polyfork licence only, commercial use, no attribution, no redistribution. https://polyfork.dev/licensing",
+   "stockSize": {
+    "x": 12,
+    "y": 24.9,
+    "z": 12
+   },
+   "stockTriangles": 1216
+  },
+  "cast-iron-loft-b04b5a": {
+   "title": "Cast Iron Loft",
+   "kit": "nyc-city-kit-fbca88",
+   "page": "https://polyfork.dev/asset/cast-iron-loft-b04b5a",
+   "credit": "Cast Iron Loft by Polyfork (https://polyfork.dev/asset/cast-iron-loft-b04b5a), CC BY 4.0",
+   "license": "Mesh files (GLB, FBX, USD, OBJ): CC BY 4.0 with the line in `credit`, or the Polyfork licence with no credit and no redistribution, your choice. The .mjs source and the HD edition: Polyfork licence only, commercial use, no attribution, no redistribution. https://polyfork.dev/licensing",
+   "stockSize": {
+    "x": 12,
+    "y": 20.06,
+    "z": 8.95
+   },
+   "stockTriangles": 3212
+  },
+  "department-store-ffbd58": {
+   "title": "Department Store",
+   "kit": "nyc-city-kit-fbca88",
+   "page": "https://polyfork.dev/asset/department-store-ffbd58",
+   "credit": "Department Store by Polyfork (https://polyfork.dev/asset/department-store-ffbd58), CC BY 4.0",
+   "license": "Mesh files (GLB, FBX, USD, OBJ): CC BY 4.0 with the line in `credit`, or the Polyfork licence with no credit and no redistribution, your choice. The .mjs source and the HD edition: Polyfork licence only, commercial use, no attribution, no redistribution. https://polyfork.dev/licensing",
+   "stockSize": {
+    "x": 16,
+    "y": 23.06,
+    "z": 12.75
+   },
+   "stockTriangles": 3108
+  },
+  "corner-shop-5aec8c": {
+   "title": "Corner Shop",
+   "kit": "nyc-city-kit-fbca88",
+   "page": "https://polyfork.dev/asset/corner-shop-5aec8c",
+   "credit": "Corner Shop by Polyfork (https://polyfork.dev/asset/corner-shop-5aec8c), CC BY 4.0",
+   "license": "Mesh files (GLB, FBX, USD, OBJ): CC BY 4.0 with the line in `credit`, or the Polyfork licence with no credit and no redistribution, your choice. The .mjs source and the HD edition: Polyfork licence only, commercial use, no attribution, no redistribution. https://polyfork.dev/licensing",
+   "stockSize": {
+    "x": 8.85,
+    "y": 7,
+    "z": 8.85
+   },
+   "stockTriangles": 2887
+  },
+  "one-storey-shop-row-83c958": {
+   "title": "One-Storey Shop Row",
+   "kit": "nyc-city-kit-fbca88",
+   "page": "https://polyfork.dev/asset/one-storey-shop-row-83c958",
+   "credit": "One-Storey Shop Row by Polyfork (https://polyfork.dev/asset/one-storey-shop-row-83c958), CC BY 4.0",
+   "license": "Mesh files (GLB, FBX, USD, OBJ): CC BY 4.0 with the line in `credit`, or the Polyfork licence with no credit and no redistribution, your choice. The .mjs source and the HD edition: Polyfork licence only, commercial use, no attribution, no redistribution. https://polyfork.dev/licensing",
+   "stockSize": {
+    "x": 12,
+    "y": 4.66,
+    "z": 8.92
+   },
+   "stockTriangles": 2410
+  },
+  "auto-repair-garage-b91464": {
+   "title": "Auto Repair Garage",
+   "kit": "nyc-city-kit-fbca88",
+   "page": "https://polyfork.dev/asset/auto-repair-garage-b91464",
+   "credit": "Auto Repair Garage by Polyfork (https://polyfork.dev/asset/auto-repair-garage-b91464), CC BY 4.0",
+   "license": "Mesh files (GLB, FBX, USD, OBJ): CC BY 4.0 with the line in `credit`, or the Polyfork licence with no credit and no redistribution, your choice. The .mjs source and the HD edition: Polyfork licence only, commercial use, no attribution, no redistribution. https://polyfork.dev/licensing",
+   "stockSize": {
+    "x": 12,
+    "y": 7.2,
+    "z": 8
+   },
+   "stockTriangles": 2782
+  },
+  "skate-hall-bay-197a78": {
+   "title": "Skate Hall Bay",
+   "kit": "skatepark-0922a9",
+   "page": "https://polyfork.dev/asset/skate-hall-bay-197a78",
+   "credit": "Skate Hall Bay by Polyfork (https://polyfork.dev/asset/skate-hall-bay-197a78), CC BY 4.0",
+   "license": "Mesh files (GLB, FBX, USD, OBJ): CC BY 4.0 with the line in `credit`, or the Polyfork licence with no credit and no redistribution, your choice. The .mjs source and the HD edition: Polyfork licence only, commercial use, no attribution, no redistribution. https://polyfork.dev/licensing",
+   "stockSize": {
+    "x": 16,
+    "y": 7.91,
+    "z": 6
+   },
+   "stockTriangles": 1178
+  },
+  "brick-depot-warehouse-3dd642": {
+   "title": "Brick Depot Warehouse",
+   "kit": "world-war-ii-ba2289",
+   "page": "https://polyfork.dev/asset/brick-depot-warehouse-3dd642",
+   "credit": "Brick Depot Warehouse by Polyfork (https://polyfork.dev/asset/brick-depot-warehouse-3dd642), CC BY 4.0",
+   "license": "Mesh files (GLB, FBX, USD, OBJ): CC BY 4.0 with the line in `credit`, or the Polyfork licence with no credit and no redistribution, your choice. The .mjs source and the HD edition: Polyfork licence only, commercial use, no attribution, no redistribution. https://polyfork.dev/licensing",
+   "stockSize": {
+    "x": 12,
+    "y": 7.23,
+    "z": 8
+   },
+   "stockTriangles": 1456
+  },
+  "engine-shed-eff627": {
+   "title": "Engine Shed",
+   "kit": "countryside-railway-9b4c57",
+   "page": "https://polyfork.dev/asset/engine-shed-eff627",
+   "credit": "Engine Shed by Polyfork (https://polyfork.dev/asset/engine-shed-eff627), CC BY 4.0",
+   "license": "Mesh files (GLB, FBX, USD, OBJ): CC BY 4.0 with the line in `credit`, or the Polyfork licence with no credit and no redistribution, your choice. The .mjs source and the HD edition: Polyfork licence only, commercial use, no attribution, no redistribution. https://polyfork.dev/licensing",
+   "stockSize": {
+    "x": 12,
+    "y": 9.56,
+    "z": 16
+   },
+   "stockTriangles": 1906
+  },
+  "backyard-garden-shed-38d79f": {
+   "title": "Backyard Garden Shed",
+   "kit": "neighborhood-pathways-kit-a992cf",
+   "page": "https://polyfork.dev/asset/backyard-garden-shed-38d79f",
+   "credit": "Backyard Garden Shed by Polyfork (https://polyfork.dev/asset/backyard-garden-shed-38d79f), CC BY 4.0",
+   "license": "Mesh files (GLB, FBX, USD, OBJ): CC BY 4.0 with the line in `credit`, or the Polyfork licence with no credit and no redistribution, your choice. The .mjs source and the HD edition: Polyfork licence only, commercial use, no attribution, no redistribution. https://polyfork.dev/licensing",
+   "stockSize": {
+    "x": 4,
+    "y": 4.11,
+    "z": 4
+   },
+   "stockTriangles": 984
+  },
+  "detached-garage-38a178": {
+   "title": "Detached Garage",
+   "kit": "neighborhood-pathways-kit-a992cf",
+   "page": "https://polyfork.dev/asset/detached-garage-38a178",
+   "credit": "Detached Garage by Polyfork (https://polyfork.dev/asset/detached-garage-38a178), CC BY 4.0",
+   "license": "Mesh files (GLB, FBX, USD, OBJ): CC BY 4.0 with the line in `credit`, or the Polyfork licence with no credit and no redistribution, your choice. The .mjs source and the HD edition: Polyfork licence only, commercial use, no attribution, no redistribution. https://polyfork.dev/licensing",
+   "stockSize": {
+    "x": 8,
+    "y": 4.64,
+    "z": 4
+   },
+   "stockTriangles": 696
+  },
+  "parking-garage-6e4f2c": {
+   "title": "Parking Garage",
+   "kit": "nyc-city-kit-fbca88",
+   "page": "https://polyfork.dev/asset/parking-garage-6e4f2c",
+   "credit": "Parking Garage by Polyfork (https://polyfork.dev/asset/parking-garage-6e4f2c), CC BY 4.0",
+   "license": "Mesh files (GLB, FBX, USD, OBJ): CC BY 4.0 with the line in `credit`, or the Polyfork licence with no credit and no redistribution, your choice. The .mjs source and the HD edition: Polyfork licence only, commercial use, no attribution, no redistribution. https://polyfork.dev/licensing",
+   "stockSize": {
+    "x": 12,
+    "y": 17.06,
+    "z": 12
+   },
+   "stockTriangles": 2229
+  },
+  "public-school-19ade5": {
+   "title": "Public School",
+   "kit": "nyc-city-kit-fbca88",
+   "page": "https://polyfork.dev/asset/public-school-19ade5",
+   "credit": "Public School by Polyfork (https://polyfork.dev/asset/public-school-19ade5), CC BY 4.0",
+   "license": "Mesh files (GLB, FBX, USD, OBJ): CC BY 4.0 with the line in `credit`, or the Polyfork licence with no credit and no redistribution, your choice. The .mjs source and the HD edition: Polyfork licence only, commercial use, no attribution, no redistribution. https://polyfork.dev/licensing",
+   "stockSize": {
+    "x": 20,
+    "y": 13.2,
+    "z": 12
+   },
+   "stockTriangles": 3074
+  },
+  "brick-church-322885": {
+   "title": "Brick Church",
+   "kit": "nyc-city-kit-fbca88",
+   "page": "https://polyfork.dev/asset/brick-church-322885",
+   "credit": "Brick Church by Polyfork (https://polyfork.dev/asset/brick-church-322885), CC BY 4.0",
+   "license": "Mesh files (GLB, FBX, USD, OBJ): CC BY 4.0 with the line in `credit`, or the Polyfork licence with no credit and no redistribution, your choice. The .mjs source and the HD edition: Polyfork licence only, commercial use, no attribution, no redistribution. https://polyfork.dev/licensing",
+   "stockSize": {
+    "x": 8,
+    "y": 16.4,
+    "z": 12
+   },
+   "stockTriangles": 2952
+  },
+  "fire-station-e2b756": {
+   "title": "Fire Station",
+   "kit": "nyc-city-kit-fbca88",
+   "page": "https://polyfork.dev/asset/fire-station-e2b756",
+   "credit": "Fire Station by Polyfork (https://polyfork.dev/asset/fire-station-e2b756), CC BY 4.0",
+   "license": "Mesh files (GLB, FBX, USD, OBJ): CC BY 4.0 with the line in `credit`, or the Polyfork licence with no credit and no redistribution, your choice. The .mjs source and the HD edition: Polyfork licence only, commercial use, no attribution, no redistribution. https://polyfork.dev/licensing",
+   "stockSize": {
+    "x": 8,
+    "y": 7,
+    "z": 8
+   },
+   "stockTriangles": 2282
+  },
+  "fuel-farm-tank-ed67f0": {
+   "title": "Fuel Farm Tank",
+   "kit": "airport-43b137",
+   "page": "https://polyfork.dev/asset/fuel-farm-tank-ed67f0",
+   "credit": "Fuel Farm Tank by Polyfork (https://polyfork.dev/asset/fuel-farm-tank-ed67f0), CC BY 4.0",
+   "license": "Mesh files (GLB, FBX, USD, OBJ): CC BY 4.0 with the line in `credit`, or the Polyfork licence with no credit and no redistribution, your choice. The .mjs source and the HD edition: Polyfork licence only, commercial use, no attribution, no redistribution. https://polyfork.dev/licensing",
+   "stockSize": {
+    "x": 16,
+    "y": 13.52,
+    "z": 16
+   },
+   "stockTriangles": 1762
+  },
+  "office-tower-1538cc": {
+   "title": "Office Tower",
+   "kit": "nyc-city-kit-fbca88",
+   "page": "https://polyfork.dev/asset/office-tower-1538cc",
+   "credit": "Office Tower by Polyfork (https://polyfork.dev/asset/office-tower-1538cc), CC BY 4.0",
+   "license": "Mesh files (GLB, FBX, USD, OBJ): CC BY 4.0 with the line in `credit`, or the Polyfork licence with no credit and no redistribution, your choice. The .mjs source and the HD edition: Polyfork licence only, commercial use, no attribution, no redistribution. https://polyfork.dev/licensing",
+   "stockSize": {
+    "x": 8,
+    "y": 32.06,
+    "z": 8
+   },
+   "stockTriangles": 2676
+  },
+  "street-tree-0d33f3": {
+   "title": "Street Tree",
+   "kit": "nyc-city-kit-fbca88",
+   "page": "https://polyfork.dev/asset/street-tree-0d33f3",
+   "credit": "Street Tree by Polyfork (https://polyfork.dev/asset/street-tree-0d33f3), CC BY 4.0",
+   "license": "Mesh files (GLB, FBX, USD, OBJ): CC BY 4.0 with the line in `credit`, or the Polyfork licence with no credit and no redistribution, your choice. The .mjs source and the HD edition: Polyfork licence only, commercial use, no attribution, no redistribution. https://polyfork.dev/licensing",
+   "stockSize": {
+    "x": 3.05,
+    "y": 6,
+    "z": 3.05
+   },
+   "stockTriangles": 272
+  },
+  "broad-canopy-shade-tree-e7c4a2": {
+   "title": "Broad Canopy Shade Tree",
+   "kit": "neighborhood-pathways-kit-a992cf",
+   "page": "https://polyfork.dev/asset/broad-canopy-shade-tree-e7c4a2",
+   "credit": "Broad Canopy Shade Tree by Polyfork (https://polyfork.dev/asset/broad-canopy-shade-tree-e7c4a2), CC BY 4.0",
+   "license": "Mesh files (GLB, FBX, USD, OBJ): CC BY 4.0 with the line in `credit`, or the Polyfork licence with no credit and no redistribution, your choice. The .mjs source and the HD edition: Polyfork licence only, commercial use, no attribution, no redistribution. https://polyfork.dev/licensing",
+   "stockSize": {
+    "x": 7.34,
+    "y": 8.54,
+    "z": 6.63
+   },
+   "stockTriangles": 394
+  },
+  "ornamental-front-yard-tree-c6781a": {
+   "title": "Ornamental Front-Yard Tree",
+   "kit": "neighborhood-pathways-kit-a992cf",
+   "page": "https://polyfork.dev/asset/ornamental-front-yard-tree-c6781a",
+   "credit": "Ornamental Front-Yard Tree by Polyfork (https://polyfork.dev/asset/ornamental-front-yard-tree-c6781a), CC BY 4.0",
+   "license": "Mesh files (GLB, FBX, USD, OBJ): CC BY 4.0 with the line in `credit`, or the Polyfork licence with no credit and no redistribution, your choice. The .mjs source and the HD edition: Polyfork licence only, commercial use, no attribution, no redistribution. https://polyfork.dev/licensing",
+   "stockSize": {
+    "x": 3.12,
+    "y": 4.5,
+    "z": 2.71
+   },
+   "stockTriangles": 526
+  },
+  "chilean-palm-45fef5": {
+   "title": "Chilean Palm",
+   "kit": "chile-fiestas-patrias-87e847",
+   "page": "https://polyfork.dev/asset/chilean-palm-45fef5",
+   "credit": "Chilean Palm by Polyfork (https://polyfork.dev/asset/chilean-palm-45fef5), CC BY 4.0",
+   "license": "Mesh files (GLB, FBX, USD, OBJ): CC BY 4.0 with the line in `credit`, or the Polyfork licence with no credit and no redistribution, your choice. The .mjs source and the HD edition: Polyfork licence only, commercial use, no attribution, no redistribution. https://polyfork.dev/licensing",
+   "stockSize": {
+    "x": 8.35,
+    "y": 12,
+    "z": 7.26
+   },
+   "stockTriangles": 910
+  },
+  "tall-pine-tree-ab4108": {
+   "title": "Tall Pine Tree",
+   "kit": "nature-forest-kit-f29d6a",
+   "page": "https://polyfork.dev/asset/tall-pine-tree-ab4108",
+   "credit": "Tall Pine Tree by Polyfork (https://polyfork.dev/asset/tall-pine-tree-ab4108), CC BY 4.0",
+   "license": "Mesh files (GLB, FBX, USD, OBJ): CC BY 4.0 with the line in `credit`, or the Polyfork licence with no credit and no redistribution, your choice. The .mjs source and the HD edition: Polyfork licence only, commercial use, no attribution, no redistribution. https://polyfork.dev/licensing",
+   "stockSize": {
+    "x": 3.67,
+    "y": 9,
+    "z": 3.56
+   },
+   "stockTriangles": 350
+  },
+  "cobra-head-street-light-3e25b8": {
+   "title": "Cobra-Head Street Light",
+   "kit": "neighborhood-pathways-kit-a992cf",
+   "page": "https://polyfork.dev/asset/cobra-head-street-light-3e25b8",
+   "credit": "Cobra-Head Street Light by Polyfork (https://polyfork.dev/asset/cobra-head-street-light-3e25b8), CC BY 4.0",
+   "license": "Mesh files (GLB, FBX, USD, OBJ): CC BY 4.0 with the line in `credit`, or the Polyfork licence with no credit and no redistribution, your choice. The .mjs source and the HD edition: Polyfork licence only, commercial use, no attribution, no redistribution. https://polyfork.dev/licensing",
+   "stockSize": {
+    "x": 1.05,
+    "y": 8.01,
+    "z": 3.13
+   },
+   "stockTriangles": 464
+  },
+  "traffic-light-b217a2": {
+   "title": "Traffic Light",
+   "kit": "nyc-city-kit-fbca88",
+   "page": "https://polyfork.dev/asset/traffic-light-b217a2",
+   "credit": "Traffic Light by Polyfork (https://polyfork.dev/asset/traffic-light-b217a2), CC BY 4.0",
+   "license": "Mesh files (GLB, FBX, USD, OBJ): CC BY 4.0 with the line in `credit`, or the Polyfork licence with no credit and no redistribution, your choice. The .mjs source and the HD edition: Polyfork licence only, commercial use, no attribution, no redistribution. https://polyfork.dev/licensing",
+   "stockSize": {
+    "x": 2.68,
+    "y": 5.28,
+    "z": 0.72
+   },
+   "stockTriangles": 714
+  },
+  "street-sign-post-c621b4": {
+   "title": "Street Sign Post",
+   "kit": "neighborhood-pathways-kit-a992cf",
+   "page": "https://polyfork.dev/asset/street-sign-post-c621b4",
+   "credit": "Street Sign Post by Polyfork (https://polyfork.dev/asset/street-sign-post-c621b4), CC BY 4.0",
+   "license": "Mesh files (GLB, FBX, USD, OBJ): CC BY 4.0 with the line in `credit`, or the Polyfork licence with no credit and no redistribution, your choice. The .mjs source and the HD edition: Polyfork licence only, commercial use, no attribution, no redistribution. https://polyfork.dev/licensing",
+   "stockSize": {
+    "x": 0.72,
+    "y": 2.4,
+    "z": 0.4
+   },
+   "stockTriangles": 242
+  },
+  "fire-hydrant-b68b17": {
+   "title": "Fire Hydrant",
+   "kit": "nyc-city-kit-fbca88",
+   "page": "https://polyfork.dev/asset/fire-hydrant-b68b17",
+   "credit": "Fire Hydrant by Polyfork (https://polyfork.dev/asset/fire-hydrant-b68b17), CC BY 4.0",
+   "license": "Mesh files (GLB, FBX, USD, OBJ): CC BY 4.0 with the line in `credit`, or the Polyfork licence with no credit and no redistribution, your choice. The .mjs source and the HD edition: Polyfork licence only, commercial use, no attribution, no redistribution. https://polyfork.dev/licensing",
+   "stockSize": {
+    "x": 0.51,
+    "y": 0.81,
+    "z": 0.5
+   },
+   "stockTriangles": 525
+  },
+  "park-bench-dc8b62": {
+   "title": "Park Bench",
+   "kit": "nyc-city-kit-fbca88",
+   "page": "https://polyfork.dev/asset/park-bench-dc8b62",
+   "credit": "Park Bench by Polyfork (https://polyfork.dev/asset/park-bench-dc8b62), CC BY 4.0",
+   "license": "Mesh files (GLB, FBX, USD, OBJ): CC BY 4.0 with the line in `credit`, or the Polyfork licence with no credit and no redistribution, your choice. The .mjs source and the HD edition: Polyfork licence only, commercial use, no attribution, no redistribution. https://polyfork.dev/licensing",
+   "stockSize": {
+    "x": 1.8,
+    "y": 0.94,
+    "z": 0.73
+   },
+   "stockTriangles": 756
+  },
+  "bus-shelter-f786b4": {
+   "title": "Bus Shelter",
+   "kit": "nyc-city-kit-fbca88",
+   "page": "https://polyfork.dev/asset/bus-shelter-f786b4",
+   "credit": "Bus Shelter by Polyfork (https://polyfork.dev/asset/bus-shelter-f786b4), CC BY 4.0",
+   "license": "Mesh files (GLB, FBX, USD, OBJ): CC BY 4.0 with the line in `credit`, or the Polyfork licence with no credit and no redistribution, your choice. The .mjs source and the HD edition: Polyfork licence only, commercial use, no attribution, no redistribution. https://polyfork.dev/licensing",
+   "stockSize": {
+    "x": 4,
+    "y": 2.6,
+    "z": 1.9
+   },
+   "stockTriangles": 308
+  },
+  "street-sign-pole-1e9551": {
+   "title": "Street Sign Pole",
+   "kit": "nyc-city-kit-fbca88",
+   "page": "https://polyfork.dev/asset/street-sign-pole-1e9551",
+   "credit": "Street Sign Pole by Polyfork (https://polyfork.dev/asset/street-sign-pole-1e9551), CC BY 4.0",
+   "license": "Mesh files (GLB, FBX, USD, OBJ): CC BY 4.0 with the line in `credit`, or the Polyfork licence with no credit and no redistribution, your choice. The .mjs source and the HD edition: Polyfork licence only, commercial use, no attribution, no redistribution. https://polyfork.dev/licensing",
+   "stockSize": {
+    "x": 1.34,
+    "y": 3,
+    "z": 1.24
+   },
+   "stockTriangles": 353
+  },
+  "sidewalk-bollard-c2567e": {
+   "title": "Sidewalk Bollard",
+   "kit": "nyc-city-kit-fbca88",
+   "page": "https://polyfork.dev/asset/sidewalk-bollard-c2567e",
+   "credit": "Sidewalk Bollard by Polyfork (https://polyfork.dev/asset/sidewalk-bollard-c2567e), CC BY 4.0",
+   "license": "Mesh files (GLB, FBX, USD, OBJ): CC BY 4.0 with the line in `credit`, or the Polyfork licence with no credit and no redistribution, your choice. The .mjs source and the HD edition: Polyfork licence only, commercial use, no attribution, no redistribution. https://polyfork.dev/licensing",
+   "stockSize": {
+    "x": 0.44,
+    "y": 1,
+    "z": 0.44
+   },
+   "stockTriangles": 568
+  },
+  "bike-rack-a1e7c3": {
+   "title": "Bike Rack",
+   "kit": "nyc-city-kit-fbca88",
+   "page": "https://polyfork.dev/asset/bike-rack-a1e7c3",
+   "credit": "Bike Rack by Polyfork (https://polyfork.dev/asset/bike-rack-a1e7c3), CC BY 4.0",
+   "license": "Mesh files (GLB, FBX, USD, OBJ): CC BY 4.0 with the line in `credit`, or the Polyfork licence with no credit and no redistribution, your choice. The .mjs source and the HD edition: Polyfork licence only, commercial use, no attribution, no redistribution. https://polyfork.dev/licensing",
+   "stockSize": {
+    "x": 3.59,
+    "y": 0.9,
+    "z": 0.19
+   },
+   "stockTriangles": 480
+  },
+  "parking-meter-e9cf71": {
+   "title": "Parking Meter",
+   "kit": "nyc-city-kit-fbca88",
+   "page": "https://polyfork.dev/asset/parking-meter-e9cf71",
+   "credit": "Parking Meter by Polyfork (https://polyfork.dev/asset/parking-meter-e9cf71), CC BY 4.0",
+   "license": "Mesh files (GLB, FBX, USD, OBJ): CC BY 4.0 with the line in `credit`, or the Polyfork licence with no credit and no redistribution, your choice. The .mjs source and the HD edition: Polyfork licence only, commercial use, no attribution, no redistribution. https://polyfork.dev/licensing",
+   "stockSize": {
+    "x": 0.41,
+    "y": 1.3,
+    "z": 0.34
+   },
+   "stockTriangles": 386
+  },
+  "metal-trash-can-f57043": {
+   "title": "Metal Trash Can",
+   "kit": "nyc-city-kit-fbca88",
+   "page": "https://polyfork.dev/asset/metal-trash-can-f57043",
+   "credit": "Metal Trash Can by Polyfork (https://polyfork.dev/asset/metal-trash-can-f57043), CC BY 4.0",
+   "license": "Mesh files (GLB, FBX, USD, OBJ): CC BY 4.0 with the line in `credit`, or the Polyfork licence with no credit and no redistribution, your choice. The .mjs source and the HD edition: Polyfork licence only, commercial use, no attribution, no redistribution. https://polyfork.dev/licensing",
+   "stockSize": {
+    "x": 0.72,
+    "y": 0.9,
+    "z": 0.62
+   },
+   "stockTriangles": 720
+  },
+  "mailbox-8e36e8": {
+   "title": "Mailbox",
+   "kit": "nyc-city-kit-fbca88",
+   "page": "https://polyfork.dev/asset/mailbox-8e36e8",
+   "credit": "Mailbox by Polyfork (https://polyfork.dev/asset/mailbox-8e36e8), CC BY 4.0",
+   "license": "Mesh files (GLB, FBX, USD, OBJ): CC BY 4.0 with the line in `credit`, or the Polyfork licence with no credit and no redistribution, your choice. The .mjs source and the HD edition: Polyfork licence only, commercial use, no attribution, no redistribution. https://polyfork.dev/licensing",
+   "stockSize": {
+    "x": 0.71,
+    "y": 1.2,
+    "z": 0.69
+   },
+   "stockTriangles": 450
+  },
+  "park-drinking-fountain-b1c25b": {
+   "title": "Park Drinking Fountain",
+   "kit": "neighborhood-pathways-kit-a992cf",
+   "page": "https://polyfork.dev/asset/park-drinking-fountain-b1c25b",
+   "credit": "Park Drinking Fountain by Polyfork (https://polyfork.dev/asset/park-drinking-fountain-b1c25b), CC BY 4.0",
+   "license": "Mesh files (GLB, FBX, USD, OBJ): CC BY 4.0 with the line in `credit`, or the Polyfork licence with no credit and no redistribution, your choice. The .mjs source and the HD edition: Polyfork licence only, commercial use, no attribution, no redistribution. https://polyfork.dev/licensing",
+   "stockSize": {
+    "x": 0.67,
+    "y": 1.1,
+    "z": 0.64
+   },
+   "stockTriangles": 742
+  },
+  "picnic-table-4ee33a": {
+   "title": "Picnic-table",
+   "kit": "racing-cars-kit-660d53",
+   "page": "https://polyfork.dev/asset/picnic-table-4ee33a",
+   "credit": "Picnic-table by Polyfork (https://polyfork.dev/asset/picnic-table-4ee33a), CC BY 4.0",
+   "license": "Mesh files (GLB, FBX, USD, OBJ): CC BY 4.0 with the line in `credit`, or the Polyfork licence with no credit and no redistribution, your choice. The .mjs source and the HD edition: Polyfork licence only, commercial use, no attribution, no redistribution. https://polyfork.dev/licensing",
+   "stockSize": {
+    "x": 1.8,
+    "y": 0.75,
+    "z": 1.51
+   },
+   "stockTriangles": 484
+  },
+  "newspaper-box-3f2c0e": {
+   "title": "Newspaper Box",
+   "kit": "nyc-city-kit-fbca88",
+   "page": "https://polyfork.dev/asset/newspaper-box-3f2c0e",
+   "credit": "Newspaper Box by Polyfork (https://polyfork.dev/asset/newspaper-box-3f2c0e), CC BY 4.0",
+   "license": "Mesh files (GLB, FBX, USD, OBJ): CC BY 4.0 with the line in `credit`, or the Polyfork licence with no credit and no redistribution, your choice. The .mjs source and the HD edition: Polyfork licence only, commercial use, no attribution, no redistribution. https://polyfork.dev/licensing",
+   "stockSize": {
+    "x": 0.5,
+    "y": 1.1,
+    "z": 0.49
+   },
+   "stockTriangles": 474
+  },
+  "vehicle-charging-post-45cbb8": {
+   "title": "Vehicle Charging Post",
+   "kit": "chrome-arcology-transit-kit-87a0e1",
+   "page": "https://polyfork.dev/asset/vehicle-charging-post-45cbb8",
+   "credit": "Vehicle Charging Post by Polyfork (https://polyfork.dev/asset/vehicle-charging-post-45cbb8), CC BY 4.0",
+   "license": "Mesh files (GLB, FBX, USD, OBJ): CC BY 4.0 with the line in `credit`, or the Polyfork licence with no credit and no redistribution, your choice. The .mjs source and the HD edition: Polyfork licence only, commercial use, no attribution, no redistribution. https://polyfork.dev/licensing",
+   "stockSize": {
+    "x": 0.6,
+    "y": 1.4,
+    "z": 0.6
+   },
+   "stockTriangles": 482
+  },
+  "timber-utility-pole-a93693": {
+   "title": "Timber Utility Pole",
+   "kit": "neighborhood-pathways-kit-a992cf",
+   "page": "https://polyfork.dev/asset/timber-utility-pole-a93693",
+   "credit": "Timber Utility Pole by Polyfork (https://polyfork.dev/asset/timber-utility-pole-a93693), CC BY 4.0",
+   "license": "Mesh files (GLB, FBX, USD, OBJ): CC BY 4.0 with the line in `credit`, or the Polyfork licence with no credit and no redistribution, your choice. The .mjs source and the HD edition: Polyfork licence only, commercial use, no attribution, no redistribution. https://polyfork.dev/licensing",
+   "stockSize": {
+    "x": 4,
+    "y": 9,
+    "z": 8.1
+   },
+   "stockTriangles": 588
+  },
+  "flag-pole-015e53": {
+   "title": "Flag Pole",
+   "kit": "stadium-5db167",
+   "page": "https://polyfork.dev/asset/flag-pole-015e53",
+   "credit": "Flag Pole by Polyfork (https://polyfork.dev/asset/flag-pole-015e53), CC BY 4.0",
+   "license": "Mesh files (GLB, FBX, USD, OBJ): CC BY 4.0 with the line in `credit`, or the Polyfork licence with no credit and no redistribution, your choice. The .mjs source and the HD edition: Polyfork licence only, commercial use, no attribution, no redistribution. https://polyfork.dev/licensing",
+   "stockSize": {
+    "x": 3.61,
+    "y": 9,
+    "z": 1
+   },
+   "stockTriangles": 588
+  },
+  "tower-crane-mast-1784a3": {
+   "title": "Tower Crane Mast",
+   "kit": "construction-site-9e40b0",
+   "page": "https://polyfork.dev/asset/tower-crane-mast-1784a3",
+   "credit": "Tower Crane Mast by Polyfork (https://polyfork.dev/asset/tower-crane-mast-1784a3), CC BY 4.0",
+   "license": "Mesh files (GLB, FBX, USD, OBJ): CC BY 4.0 with the line in `credit`, or the Polyfork licence with no credit and no redistribution, your choice. The .mjs source and the HD edition: Polyfork licence only, commercial use, no attribution, no redistribution. https://polyfork.dev/licensing",
+   "stockSize": {
+    "x": 4,
+    "y": 15,
+    "z": 4
+   },
+   "stockTriangles": 1242
+  },
+  "tower-crane-top-d8d9c9": {
+   "title": "Tower Crane Top",
+   "kit": "construction-site-9e40b0",
+   "page": "https://polyfork.dev/asset/tower-crane-top-d8d9c9",
+   "credit": "Tower Crane Top by Polyfork (https://polyfork.dev/asset/tower-crane-top-d8d9c9), CC BY 4.0",
+   "license": "Mesh files (GLB, FBX, USD, OBJ): CC BY 4.0 with the line in `credit`, or the Polyfork licence with no credit and no redistribution, your choice. The .mjs source and the HD edition: Polyfork licence only, commercial use, no attribution, no redistribution. https://polyfork.dev/licensing",
+   "stockSize": {
+    "x": 43.53,
+    "y": 17.1,
+    "z": 4.36
+   },
+   "stockTriangles": 2521
+  }
+ },
+ "variants": [
+  {
+   "key": "b-rowhouse-lemon",
+   "role": "building:victorian-low",
+   "asset": "townhouse-row-unit-b9544b",
+   "knobs": {
+    "piece": "mid",
+    "lights": 2,
+    "siding": "#FFE27A",
+    "brick": "#FFF3DA",
+    "trim": "#FFFFFF",
+    "roof": "#6C758B",
+    "pane": "#2C4FA3",
+    "door": "#1C2347",
+    "plinth": "#EEE7DA",
+    "stoop": "#FFFFFF",
+    "interior": "#1C2347"
+   },
+   "night": [
+    {
+     "zone": "pane",
+     "albedo": "#2c4fa3",
+     "color": "#FFC98A",
+     "intensity": 0.6,
+     "describe": "warm tungsten light from inside the house, leaking through the upper paired window, the back windows, a finished gable end's window and the small light in the front door; soft, because it is seen through glazing at the back of a 0.13 m reveal"
+    }
+   ],
+   "why": "Neighborhood Pathways row unit: a 4 m terrace module with blank party walls, so units butt along a block like SF rowhouses. Two storeys (7.5 m) for the low Victorians and post-war rowhouses; pastel upper storey over a cream base per the guide.",
+   "size": {
+    "x": 4,
+    "y": 7.46,
+    "z": 8
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 822,
+   "vertices": 806,
+   "bytes": 29996
+  },
+  {
+   "key": "b-rowhouse-mint",
+   "role": "building:victorian-low",
+   "asset": "townhouse-row-unit-b9544b",
+   "knobs": {
+    "piece": "mid",
+    "lights": 2,
+    "siding": "#8CE3BF",
+    "brick": "#FFF3DA",
+    "trim": "#FFFFFF",
+    "roof": "#6C758B",
+    "pane": "#2C4FA3",
+    "door": "#1C2347",
+    "plinth": "#EEE7DA",
+    "stoop": "#FFFFFF",
+    "interior": "#1C2347"
+   },
+   "night": [
+    {
+     "zone": "pane",
+     "albedo": "#2c4fa3",
+     "color": "#FFC98A",
+     "intensity": 0.6,
+     "describe": "warm tungsten light from inside the house, leaking through the upper paired window, the back windows, a finished gable end's window and the small light in the front door; soft, because it is seen through glazing at the back of a 0.13 m reveal"
+    }
+   ],
+   "why": "Neighborhood Pathways row unit: a 4 m terrace module with blank party walls, so units butt along a block like SF rowhouses. Two storeys (7.5 m) for the low Victorians and post-war rowhouses; pastel upper storey over a cream base per the guide.",
+   "size": {
+    "x": 4,
+    "y": 7.46,
+    "z": 8
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 822,
+   "vertices": 806,
+   "bytes": 29992
+  },
+  {
+   "key": "b-rowhouse-coral",
+   "role": "building:victorian-low",
+   "asset": "townhouse-row-unit-b9544b",
+   "knobs": {
+    "piece": "mid",
+    "lights": 2,
+    "siding": "#FF9C86",
+    "brick": "#FFF3DA",
+    "trim": "#FFFFFF",
+    "roof": "#6C758B",
+    "pane": "#2C4FA3",
+    "door": "#1C2347",
+    "plinth": "#EEE7DA",
+    "stoop": "#FFFFFF",
+    "interior": "#1C2347"
+   },
+   "night": [
+    {
+     "zone": "pane",
+     "albedo": "#2c4fa3",
+     "color": "#FFC98A",
+     "intensity": 0.6,
+     "describe": "warm tungsten light from inside the house, leaking through the upper paired window, the back windows, a finished gable end's window and the small light in the front door; soft, because it is seen through glazing at the back of a 0.13 m reveal"
+    }
+   ],
+   "why": "Neighborhood Pathways row unit: a 4 m terrace module with blank party walls, so units butt along a block like SF rowhouses. Two storeys (7.5 m) for the low Victorians and post-war rowhouses; pastel upper storey over a cream base per the guide.",
+   "size": {
+    "x": 4,
+    "y": 7.46,
+    "z": 8
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 822,
+   "vertices": 806,
+   "bytes": 29996
+  },
+  {
+   "key": "b-rowhouse-lilac",
+   "role": "building:victorian-low",
+   "asset": "townhouse-row-unit-b9544b",
+   "knobs": {
+    "piece": "mid",
+    "lights": 2,
+    "siding": "#BBA6F7",
+    "brick": "#FFF3DA",
+    "trim": "#FFFFFF",
+    "roof": "#6C758B",
+    "pane": "#2C4FA3",
+    "door": "#1C2347",
+    "plinth": "#EEE7DA",
+    "stoop": "#FFFFFF",
+    "interior": "#1C2347"
+   },
+   "night": [
+    {
+     "zone": "pane",
+     "albedo": "#2c4fa3",
+     "color": "#FFC98A",
+     "intensity": 0.6,
+     "describe": "warm tungsten light from inside the house, leaking through the upper paired window, the back windows, a finished gable end's window and the small light in the front door; soft, because it is seen through glazing at the back of a 0.13 m reveal"
+    }
+   ],
+   "why": "Neighborhood Pathways row unit: a 4 m terrace module with blank party walls, so units butt along a block like SF rowhouses. Two storeys (7.5 m) for the low Victorians and post-war rowhouses; pastel upper storey over a cream base per the guide.",
+   "size": {
+    "x": 4,
+    "y": 7.46,
+    "z": 8
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 822,
+   "vertices": 806,
+   "bytes": 29996
+  },
+  {
+   "key": "b-rowhouse-powder",
+   "role": "building:victorian-low",
+   "asset": "townhouse-row-unit-b9544b",
+   "knobs": {
+    "piece": "mid",
+    "lights": 2,
+    "siding": "#9ED7FF",
+    "brick": "#FFF3DA",
+    "trim": "#FFFFFF",
+    "roof": "#6C758B",
+    "pane": "#2C4FA3",
+    "door": "#1C2347",
+    "plinth": "#EEE7DA",
+    "stoop": "#FFFFFF",
+    "interior": "#1C2347"
+   },
+   "night": [
+    {
+     "zone": "pane",
+     "albedo": "#2c4fa3",
+     "color": "#FFC98A",
+     "intensity": 0.6,
+     "describe": "warm tungsten light from inside the house, leaking through the upper paired window, the back windows, a finished gable end's window and the small light in the front door; soft, because it is seen through glazing at the back of a 0.13 m reveal"
+    }
+   ],
+   "why": "Neighborhood Pathways row unit: a 4 m terrace module with blank party walls, so units butt along a block like SF rowhouses. Two storeys (7.5 m) for the low Victorians and post-war rowhouses; pastel upper storey over a cream base per the guide.",
+   "size": {
+    "x": 4,
+    "y": 7.46,
+    "z": 8
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 822,
+   "vertices": 806,
+   "bytes": 29996
+  },
+  {
+   "key": "b-rowhouse-cream",
+   "role": "building:victorian-low",
+   "asset": "townhouse-row-unit-b9544b",
+   "knobs": {
+    "piece": "mid",
+    "lights": 2,
+    "siding": "#FFF3DA",
+    "brick": "#FF9C86",
+    "trim": "#FFFFFF",
+    "roof": "#6C758B",
+    "pane": "#2C4FA3",
+    "door": "#1C2347",
+    "plinth": "#EEE7DA",
+    "stoop": "#FFFFFF",
+    "interior": "#1C2347"
+   },
+   "night": [
+    {
+     "zone": "pane",
+     "albedo": "#2c4fa3",
+     "color": "#FFC98A",
+     "intensity": 0.6,
+     "describe": "warm tungsten light from inside the house, leaking through the upper paired window, the back windows, a finished gable end's window and the small light in the front door; soft, because it is seen through glazing at the back of a 0.13 m reveal"
+    }
+   ],
+   "why": "Neighborhood Pathways row unit: a 4 m terrace module with blank party walls, so units butt along a block like SF rowhouses. Two storeys (7.5 m) for the low Victorians and post-war rowhouses; pastel upper storey over a cream base per the guide.",
+   "size": {
+    "x": 4,
+    "y": 7.46,
+    "z": 8
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 822,
+   "vertices": 806,
+   "bytes": 29996
+  },
+  {
+   "key": "b-italianate-lemon-3",
+   "role": "building:victorian",
+   "asset": "brownstone-row-house-1b84fd",
+   "knobs": {
+    "floors": 3,
+    "entrance": "stoop",
+    "areaway": false,
+    "hoods": "cap",
+    "brackets": 6,
+    "fireEscape": false,
+    "waterTank": false,
+    "tone": 0.15,
+    "stone": "#FFE27A",
+    "brick": "#FFE27A",
+    "soot": "#A3AEC4",
+    "trim": "#FFF3DA",
+    "sash": "#FFF3DA",
+    "door": "#1C2347",
+    "glass": "#2C4FA3",
+    "roof": "#6C758B",
+    "tar": "#1C2347",
+    "dark": "#1C2347",
+    "timber": "#FFF3DA"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffd9a0",
+     "intensity": 0.7,
+     "describe": "Warm lamplight behind every window pane, the door transom and the stairwell skylight."
+    }
+   ],
+   "why": "Closest catalogue match to an SF Italianate Victorian: flat front, bracketed cornice, two-window bay and a raised stoop on an 8 m lot. Fire escape and water tank are switched off (New York details); facade painted in the six Victorian pastels with cream trim and navy windows.",
+   "size": {
+    "x": 8,
+    "y": 10,
+    "z": 8
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 2034,
+   "vertices": 2296,
+   "bytes": 80296
+  },
+  {
+   "key": "b-italianate-lemon-4",
+   "role": "building:victorian",
+   "asset": "brownstone-row-house-1b84fd",
+   "knobs": {
+    "floors": 4,
+    "entrance": "stoop",
+    "areaway": false,
+    "hoods": "cap",
+    "brackets": 6,
+    "fireEscape": false,
+    "waterTank": false,
+    "tone": 0.15,
+    "stone": "#FFE27A",
+    "brick": "#FFE27A",
+    "soot": "#A3AEC4",
+    "trim": "#FFF3DA",
+    "sash": "#FFF3DA",
+    "door": "#1C2347",
+    "glass": "#2C4FA3",
+    "roof": "#6C758B",
+    "tar": "#1C2347",
+    "dark": "#1C2347",
+    "timber": "#FFF3DA"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffd9a0",
+     "intensity": 0.7,
+     "describe": "Warm lamplight behind every window pane, the door transom and the stairwell skylight."
+    }
+   ],
+   "why": "Closest catalogue match to an SF Italianate Victorian: flat front, bracketed cornice, two-window bay and a raised stoop on an 8 m lot. Fire escape and water tank are switched off (New York details); facade painted in the six Victorian pastels with cream trim and navy windows.",
+   "size": {
+    "x": 8,
+    "y": 13,
+    "z": 8
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 2450,
+   "vertices": 2812,
+   "bytes": 97672
+  },
+  {
+   "key": "b-italianate-mint-3",
+   "role": "building:victorian",
+   "asset": "brownstone-row-house-1b84fd",
+   "knobs": {
+    "floors": 3,
+    "entrance": "stoop",
+    "areaway": false,
+    "hoods": "cap",
+    "brackets": 6,
+    "fireEscape": false,
+    "waterTank": false,
+    "tone": 0.15,
+    "stone": "#8CE3BF",
+    "brick": "#8CE3BF",
+    "soot": "#A3AEC4",
+    "trim": "#FFF3DA",
+    "sash": "#FFF3DA",
+    "door": "#1C2347",
+    "glass": "#2C4FA3",
+    "roof": "#6C758B",
+    "tar": "#1C2347",
+    "dark": "#1C2347",
+    "timber": "#FFF3DA"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffd9a0",
+     "intensity": 0.7,
+     "describe": "Warm lamplight behind every window pane, the door transom and the stairwell skylight."
+    }
+   ],
+   "why": "Closest catalogue match to an SF Italianate Victorian: flat front, bracketed cornice, two-window bay and a raised stoop on an 8 m lot. Fire escape and water tank are switched off (New York details); facade painted in the six Victorian pastels with cream trim and navy windows.",
+   "size": {
+    "x": 8,
+    "y": 10,
+    "z": 8
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 2034,
+   "vertices": 2296,
+   "bytes": 80296
+  },
+  {
+   "key": "b-italianate-mint-4",
+   "role": "building:victorian",
+   "asset": "brownstone-row-house-1b84fd",
+   "knobs": {
+    "floors": 4,
+    "entrance": "stoop",
+    "areaway": false,
+    "hoods": "cap",
+    "brackets": 6,
+    "fireEscape": false,
+    "waterTank": false,
+    "tone": 0.15,
+    "stone": "#8CE3BF",
+    "brick": "#8CE3BF",
+    "soot": "#A3AEC4",
+    "trim": "#FFF3DA",
+    "sash": "#FFF3DA",
+    "door": "#1C2347",
+    "glass": "#2C4FA3",
+    "roof": "#6C758B",
+    "tar": "#1C2347",
+    "dark": "#1C2347",
+    "timber": "#FFF3DA"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffd9a0",
+     "intensity": 0.7,
+     "describe": "Warm lamplight behind every window pane, the door transom and the stairwell skylight."
+    }
+   ],
+   "why": "Closest catalogue match to an SF Italianate Victorian: flat front, bracketed cornice, two-window bay and a raised stoop on an 8 m lot. Fire escape and water tank are switched off (New York details); facade painted in the six Victorian pastels with cream trim and navy windows.",
+   "size": {
+    "x": 8,
+    "y": 13,
+    "z": 8
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 2450,
+   "vertices": 2812,
+   "bytes": 97672
+  },
+  {
+   "key": "b-italianate-coral-3",
+   "role": "building:victorian",
+   "asset": "brownstone-row-house-1b84fd",
+   "knobs": {
+    "floors": 3,
+    "entrance": "stoop",
+    "areaway": false,
+    "hoods": "cap",
+    "brackets": 6,
+    "fireEscape": false,
+    "waterTank": false,
+    "tone": 0.15,
+    "stone": "#FF9C86",
+    "brick": "#FF9C86",
+    "soot": "#A3AEC4",
+    "trim": "#FFF3DA",
+    "sash": "#FFF3DA",
+    "door": "#1C2347",
+    "glass": "#2C4FA3",
+    "roof": "#6C758B",
+    "tar": "#1C2347",
+    "dark": "#1C2347",
+    "timber": "#FFF3DA"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffd9a0",
+     "intensity": 0.7,
+     "describe": "Warm lamplight behind every window pane, the door transom and the stairwell skylight."
+    }
+   ],
+   "why": "Closest catalogue match to an SF Italianate Victorian: flat front, bracketed cornice, two-window bay and a raised stoop on an 8 m lot. Fire escape and water tank are switched off (New York details); facade painted in the six Victorian pastels with cream trim and navy windows.",
+   "size": {
+    "x": 8,
+    "y": 10,
+    "z": 8
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 2034,
+   "vertices": 2296,
+   "bytes": 80296
+  },
+  {
+   "key": "b-italianate-coral-4",
+   "role": "building:victorian",
+   "asset": "brownstone-row-house-1b84fd",
+   "knobs": {
+    "floors": 4,
+    "entrance": "stoop",
+    "areaway": false,
+    "hoods": "cap",
+    "brackets": 6,
+    "fireEscape": false,
+    "waterTank": false,
+    "tone": 0.15,
+    "stone": "#FF9C86",
+    "brick": "#FF9C86",
+    "soot": "#A3AEC4",
+    "trim": "#FFF3DA",
+    "sash": "#FFF3DA",
+    "door": "#1C2347",
+    "glass": "#2C4FA3",
+    "roof": "#6C758B",
+    "tar": "#1C2347",
+    "dark": "#1C2347",
+    "timber": "#FFF3DA"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffd9a0",
+     "intensity": 0.7,
+     "describe": "Warm lamplight behind every window pane, the door transom and the stairwell skylight."
+    }
+   ],
+   "why": "Closest catalogue match to an SF Italianate Victorian: flat front, bracketed cornice, two-window bay and a raised stoop on an 8 m lot. Fire escape and water tank are switched off (New York details); facade painted in the six Victorian pastels with cream trim and navy windows.",
+   "size": {
+    "x": 8,
+    "y": 13,
+    "z": 8
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 2450,
+   "vertices": 2812,
+   "bytes": 97672
+  },
+  {
+   "key": "b-italianate-lilac-3",
+   "role": "building:victorian",
+   "asset": "brownstone-row-house-1b84fd",
+   "knobs": {
+    "floors": 3,
+    "entrance": "stoop",
+    "areaway": false,
+    "hoods": "cap",
+    "brackets": 6,
+    "fireEscape": false,
+    "waterTank": false,
+    "tone": 0.15,
+    "stone": "#BBA6F7",
+    "brick": "#BBA6F7",
+    "soot": "#A3AEC4",
+    "trim": "#FFF3DA",
+    "sash": "#FFF3DA",
+    "door": "#1C2347",
+    "glass": "#2C4FA3",
+    "roof": "#6C758B",
+    "tar": "#1C2347",
+    "dark": "#1C2347",
+    "timber": "#FFF3DA"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffd9a0",
+     "intensity": 0.7,
+     "describe": "Warm lamplight behind every window pane, the door transom and the stairwell skylight."
+    }
+   ],
+   "why": "Closest catalogue match to an SF Italianate Victorian: flat front, bracketed cornice, two-window bay and a raised stoop on an 8 m lot. Fire escape and water tank are switched off (New York details); facade painted in the six Victorian pastels with cream trim and navy windows.",
+   "size": {
+    "x": 8,
+    "y": 10,
+    "z": 8
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 2034,
+   "vertices": 2296,
+   "bytes": 80296
+  },
+  {
+   "key": "b-italianate-lilac-4",
+   "role": "building:victorian",
+   "asset": "brownstone-row-house-1b84fd",
+   "knobs": {
+    "floors": 4,
+    "entrance": "stoop",
+    "areaway": false,
+    "hoods": "cap",
+    "brackets": 6,
+    "fireEscape": false,
+    "waterTank": false,
+    "tone": 0.15,
+    "stone": "#BBA6F7",
+    "brick": "#BBA6F7",
+    "soot": "#A3AEC4",
+    "trim": "#FFF3DA",
+    "sash": "#FFF3DA",
+    "door": "#1C2347",
+    "glass": "#2C4FA3",
+    "roof": "#6C758B",
+    "tar": "#1C2347",
+    "dark": "#1C2347",
+    "timber": "#FFF3DA"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffd9a0",
+     "intensity": 0.7,
+     "describe": "Warm lamplight behind every window pane, the door transom and the stairwell skylight."
+    }
+   ],
+   "why": "Closest catalogue match to an SF Italianate Victorian: flat front, bracketed cornice, two-window bay and a raised stoop on an 8 m lot. Fire escape and water tank are switched off (New York details); facade painted in the six Victorian pastels with cream trim and navy windows.",
+   "size": {
+    "x": 8,
+    "y": 13,
+    "z": 8
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 2450,
+   "vertices": 2812,
+   "bytes": 97672
+  },
+  {
+   "key": "b-italianate-powder-3",
+   "role": "building:victorian",
+   "asset": "brownstone-row-house-1b84fd",
+   "knobs": {
+    "floors": 3,
+    "entrance": "stoop",
+    "areaway": false,
+    "hoods": "cap",
+    "brackets": 6,
+    "fireEscape": false,
+    "waterTank": false,
+    "tone": 0.15,
+    "stone": "#9ED7FF",
+    "brick": "#9ED7FF",
+    "soot": "#A3AEC4",
+    "trim": "#FFF3DA",
+    "sash": "#FFF3DA",
+    "door": "#1C2347",
+    "glass": "#2C4FA3",
+    "roof": "#6C758B",
+    "tar": "#1C2347",
+    "dark": "#1C2347",
+    "timber": "#FFF3DA"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffd9a0",
+     "intensity": 0.7,
+     "describe": "Warm lamplight behind every window pane, the door transom and the stairwell skylight."
+    }
+   ],
+   "why": "Closest catalogue match to an SF Italianate Victorian: flat front, bracketed cornice, two-window bay and a raised stoop on an 8 m lot. Fire escape and water tank are switched off (New York details); facade painted in the six Victorian pastels with cream trim and navy windows.",
+   "size": {
+    "x": 8,
+    "y": 10,
+    "z": 8
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 2034,
+   "vertices": 2296,
+   "bytes": 80300
+  },
+  {
+   "key": "b-italianate-powder-4",
+   "role": "building:victorian",
+   "asset": "brownstone-row-house-1b84fd",
+   "knobs": {
+    "floors": 4,
+    "entrance": "stoop",
+    "areaway": false,
+    "hoods": "cap",
+    "brackets": 6,
+    "fireEscape": false,
+    "waterTank": false,
+    "tone": 0.15,
+    "stone": "#9ED7FF",
+    "brick": "#9ED7FF",
+    "soot": "#A3AEC4",
+    "trim": "#FFF3DA",
+    "sash": "#FFF3DA",
+    "door": "#1C2347",
+    "glass": "#2C4FA3",
+    "roof": "#6C758B",
+    "tar": "#1C2347",
+    "dark": "#1C2347",
+    "timber": "#FFF3DA"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffd9a0",
+     "intensity": 0.7,
+     "describe": "Warm lamplight behind every window pane, the door transom and the stairwell skylight."
+    }
+   ],
+   "why": "Closest catalogue match to an SF Italianate Victorian: flat front, bracketed cornice, two-window bay and a raised stoop on an 8 m lot. Fire escape and water tank are switched off (New York details); facade painted in the six Victorian pastels with cream trim and navy windows.",
+   "size": {
+    "x": 8,
+    "y": 13,
+    "z": 8
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 2450,
+   "vertices": 2812,
+   "bytes": 97676
+  },
+  {
+   "key": "b-italianate-cream-3",
+   "role": "building:victorian",
+   "asset": "brownstone-row-house-1b84fd",
+   "knobs": {
+    "floors": 3,
+    "entrance": "stoop",
+    "areaway": false,
+    "hoods": "cap",
+    "brackets": 6,
+    "fireEscape": false,
+    "waterTank": false,
+    "tone": 0.15,
+    "stone": "#FFF3DA",
+    "brick": "#FFF3DA",
+    "soot": "#A3AEC4",
+    "trim": "#FFF3DA",
+    "sash": "#FFF3DA",
+    "door": "#1C2347",
+    "glass": "#2C4FA3",
+    "roof": "#6C758B",
+    "tar": "#1C2347",
+    "dark": "#1C2347",
+    "timber": "#FFF3DA"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffd9a0",
+     "intensity": 0.7,
+     "describe": "Warm lamplight behind every window pane, the door transom and the stairwell skylight."
+    }
+   ],
+   "why": "Closest catalogue match to an SF Italianate Victorian: flat front, bracketed cornice, two-window bay and a raised stoop on an 8 m lot. Fire escape and water tank are switched off (New York details); facade painted in the six Victorian pastels with cream trim and navy windows.",
+   "size": {
+    "x": 8,
+    "y": 10,
+    "z": 8
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 2034,
+   "vertices": 2258,
+   "bytes": 79384
+  },
+  {
+   "key": "b-italianate-cream-4",
+   "role": "building:victorian",
+   "asset": "brownstone-row-house-1b84fd",
+   "knobs": {
+    "floors": 4,
+    "entrance": "stoop",
+    "areaway": false,
+    "hoods": "cap",
+    "brackets": 6,
+    "fireEscape": false,
+    "waterTank": false,
+    "tone": 0.15,
+    "stone": "#FFF3DA",
+    "brick": "#FFF3DA",
+    "soot": "#A3AEC4",
+    "trim": "#FFF3DA",
+    "sash": "#FFF3DA",
+    "door": "#1C2347",
+    "glass": "#2C4FA3",
+    "roof": "#6C758B",
+    "tar": "#1C2347",
+    "dark": "#1C2347",
+    "timber": "#FFF3DA"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffd9a0",
+     "intensity": 0.7,
+     "describe": "Warm lamplight behind every window pane, the door transom and the stairwell skylight."
+    }
+   ],
+   "why": "Closest catalogue match to an SF Italianate Victorian: flat front, bracketed cornice, two-window bay and a raised stoop on an 8 m lot. Fire escape and water tank are switched off (New York details); facade painted in the six Victorian pastels with cream trim and navy windows.",
+   "size": {
+    "x": 8,
+    "y": 13,
+    "z": 8
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 2450,
+   "vertices": 2768,
+   "bytes": 96616
+  },
+  {
+   "key": "b-condo-cream-4",
+   "role": "building:apartment",
+   "asset": "slab-apartment-block-1b02a2",
+   "knobs": {
+    "floors": 4,
+    "bays": 1,
+    "groundFloor": "lobby",
+    "shell": "#FFF3DA",
+    "trim": "#FFFFFF",
+    "reveal": "#FFFFFF",
+    "recess": "#A3AEC4",
+    "glass": "#2C4FA3",
+    "light": "#FFE27A",
+    "base": "#1C2347"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffe9b3",
+     "intensity": 0.6,
+     "describe": "warm room light behind the tinted panes — soft, because it is seen through glass at the back of a recess, and it fills the pane of every balcony bay, the lobby screen and both wide rear windows on every floor"
+    },
+    {
+     "zone": "light",
+     "albedo": "#ffe27a",
+     "color": "#ffcfe9",
+     "intensity": 1,
+     "describe": "the pink band sunk into the head of every opening, front and back, burning at full strength: after dark all four elevations read as stacks of lit openings"
+    }
+   ],
+   "why": "Modern flat-roofed residential block with ribbon windows, the shape of the post-2000 Dogpatch condos; floors chosen from DataSF height.",
+   "size": {
+    "x": 12,
+    "y": 16.9,
+    "z": 12
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 880,
+   "vertices": 1023,
+   "bytes": 35904
+  },
+  {
+   "key": "b-condo-cream-6",
+   "role": "building:apartment",
+   "asset": "slab-apartment-block-1b02a2",
+   "knobs": {
+    "floors": 6,
+    "bays": 1,
+    "groundFloor": "lobby",
+    "shell": "#FFF3DA",
+    "trim": "#FFFFFF",
+    "reveal": "#FFFFFF",
+    "recess": "#A3AEC4",
+    "glass": "#2C4FA3",
+    "light": "#FFE27A",
+    "base": "#1C2347"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffe9b3",
+     "intensity": 0.6,
+     "describe": "warm room light behind the tinted panes — soft, because it is seen through glass at the back of a recess, and it fills the pane of every balcony bay, the lobby screen and both wide rear windows on every floor"
+    },
+    {
+     "zone": "light",
+     "albedo": "#ffe27a",
+     "color": "#ffcfe9",
+     "intensity": 1,
+     "describe": "the pink band sunk into the head of every opening, front and back, burning at full strength: after dark all four elevations read as stacks of lit openings"
+    }
+   ],
+   "why": "Modern flat-roofed residential block with ribbon windows, the shape of the post-2000 Dogpatch condos; floors chosen from DataSF height.",
+   "size": {
+    "x": 12,
+    "y": 24.9,
+    "z": 12
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 1216,
+   "vertices": 1447,
+   "bytes": 50112
+  },
+  {
+   "key": "b-condo-lemon-4",
+   "role": "building:apartment",
+   "asset": "slab-apartment-block-1b02a2",
+   "knobs": {
+    "floors": 4,
+    "bays": 1,
+    "groundFloor": "lobby",
+    "shell": "#FFE27A",
+    "trim": "#FFFFFF",
+    "reveal": "#FFFFFF",
+    "recess": "#A3AEC4",
+    "glass": "#2C4FA3",
+    "light": "#FFF3DA",
+    "base": "#1C2347"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffe9b3",
+     "intensity": 0.6,
+     "describe": "warm room light behind the tinted panes — soft, because it is seen through glass at the back of a recess, and it fills the pane of every balcony bay, the lobby screen and both wide rear windows on every floor"
+    },
+    {
+     "zone": "light",
+     "albedo": "#fff3da",
+     "color": "#ffcfe9",
+     "intensity": 1,
+     "describe": "the pink band sunk into the head of every opening, front and back, burning at full strength: after dark all four elevations read as stacks of lit openings"
+    }
+   ],
+   "why": "Modern flat-roofed residential block with ribbon windows, the shape of the post-2000 Dogpatch condos; floors chosen from DataSF height.",
+   "size": {
+    "x": 12,
+    "y": 16.9,
+    "z": 12
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 880,
+   "vertices": 1023,
+   "bytes": 35904
+  },
+  {
+   "key": "b-condo-lemon-6",
+   "role": "building:apartment",
+   "asset": "slab-apartment-block-1b02a2",
+   "knobs": {
+    "floors": 6,
+    "bays": 1,
+    "groundFloor": "lobby",
+    "shell": "#FFE27A",
+    "trim": "#FFFFFF",
+    "reveal": "#FFFFFF",
+    "recess": "#A3AEC4",
+    "glass": "#2C4FA3",
+    "light": "#FFF3DA",
+    "base": "#1C2347"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffe9b3",
+     "intensity": 0.6,
+     "describe": "warm room light behind the tinted panes — soft, because it is seen through glass at the back of a recess, and it fills the pane of every balcony bay, the lobby screen and both wide rear windows on every floor"
+    },
+    {
+     "zone": "light",
+     "albedo": "#fff3da",
+     "color": "#ffcfe9",
+     "intensity": 1,
+     "describe": "the pink band sunk into the head of every opening, front and back, burning at full strength: after dark all four elevations read as stacks of lit openings"
+    }
+   ],
+   "why": "Modern flat-roofed residential block with ribbon windows, the shape of the post-2000 Dogpatch condos; floors chosen from DataSF height.",
+   "size": {
+    "x": 12,
+    "y": 24.9,
+    "z": 12
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 1216,
+   "vertices": 1447,
+   "bytes": 50112
+  },
+  {
+   "key": "b-condo-coral-4",
+   "role": "building:apartment",
+   "asset": "slab-apartment-block-1b02a2",
+   "knobs": {
+    "floors": 4,
+    "bays": 1,
+    "groundFloor": "lobby",
+    "shell": "#FF9C86",
+    "trim": "#FFFFFF",
+    "reveal": "#FFFFFF",
+    "recess": "#A3AEC4",
+    "glass": "#2C4FA3",
+    "light": "#FFE27A",
+    "base": "#1C2347"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffe9b3",
+     "intensity": 0.6,
+     "describe": "warm room light behind the tinted panes — soft, because it is seen through glass at the back of a recess, and it fills the pane of every balcony bay, the lobby screen and both wide rear windows on every floor"
+    },
+    {
+     "zone": "light",
+     "albedo": "#ffe27a",
+     "color": "#ffcfe9",
+     "intensity": 1,
+     "describe": "the pink band sunk into the head of every opening, front and back, burning at full strength: after dark all four elevations read as stacks of lit openings"
+    }
+   ],
+   "why": "Modern flat-roofed residential block with ribbon windows, the shape of the post-2000 Dogpatch condos; floors chosen from DataSF height.",
+   "size": {
+    "x": 12,
+    "y": 16.9,
+    "z": 12
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 880,
+   "vertices": 1023,
+   "bytes": 35904
+  },
+  {
+   "key": "b-condo-coral-6",
+   "role": "building:apartment",
+   "asset": "slab-apartment-block-1b02a2",
+   "knobs": {
+    "floors": 6,
+    "bays": 1,
+    "groundFloor": "lobby",
+    "shell": "#FF9C86",
+    "trim": "#FFFFFF",
+    "reveal": "#FFFFFF",
+    "recess": "#A3AEC4",
+    "glass": "#2C4FA3",
+    "light": "#FFE27A",
+    "base": "#1C2347"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffe9b3",
+     "intensity": 0.6,
+     "describe": "warm room light behind the tinted panes — soft, because it is seen through glass at the back of a recess, and it fills the pane of every balcony bay, the lobby screen and both wide rear windows on every floor"
+    },
+    {
+     "zone": "light",
+     "albedo": "#ffe27a",
+     "color": "#ffcfe9",
+     "intensity": 1,
+     "describe": "the pink band sunk into the head of every opening, front and back, burning at full strength: after dark all four elevations read as stacks of lit openings"
+    }
+   ],
+   "why": "Modern flat-roofed residential block with ribbon windows, the shape of the post-2000 Dogpatch condos; floors chosen from DataSF height.",
+   "size": {
+    "x": 12,
+    "y": 24.9,
+    "z": 12
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 1216,
+   "vertices": 1447,
+   "bytes": 50112
+  },
+  {
+   "key": "b-condo-powder-4",
+   "role": "building:apartment",
+   "asset": "slab-apartment-block-1b02a2",
+   "knobs": {
+    "floors": 4,
+    "bays": 1,
+    "groundFloor": "lobby",
+    "shell": "#9ED7FF",
+    "trim": "#FFFFFF",
+    "reveal": "#FFFFFF",
+    "recess": "#A3AEC4",
+    "glass": "#2C4FA3",
+    "light": "#FFE27A",
+    "base": "#1C2347"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffe9b3",
+     "intensity": 0.6,
+     "describe": "warm room light behind the tinted panes — soft, because it is seen through glass at the back of a recess, and it fills the pane of every balcony bay, the lobby screen and both wide rear windows on every floor"
+    },
+    {
+     "zone": "light",
+     "albedo": "#ffe27a",
+     "color": "#ffcfe9",
+     "intensity": 1,
+     "describe": "the pink band sunk into the head of every opening, front and back, burning at full strength: after dark all four elevations read as stacks of lit openings"
+    }
+   ],
+   "why": "Modern flat-roofed residential block with ribbon windows, the shape of the post-2000 Dogpatch condos; floors chosen from DataSF height.",
+   "size": {
+    "x": 12,
+    "y": 16.9,
+    "z": 12
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 880,
+   "vertices": 1023,
+   "bytes": 35904
+  },
+  {
+   "key": "b-condo-powder-6",
+   "role": "building:apartment",
+   "asset": "slab-apartment-block-1b02a2",
+   "knobs": {
+    "floors": 6,
+    "bays": 1,
+    "groundFloor": "lobby",
+    "shell": "#9ED7FF",
+    "trim": "#FFFFFF",
+    "reveal": "#FFFFFF",
+    "recess": "#A3AEC4",
+    "glass": "#2C4FA3",
+    "light": "#FFE27A",
+    "base": "#1C2347"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffe9b3",
+     "intensity": 0.6,
+     "describe": "warm room light behind the tinted panes — soft, because it is seen through glass at the back of a recess, and it fills the pane of every balcony bay, the lobby screen and both wide rear windows on every floor"
+    },
+    {
+     "zone": "light",
+     "albedo": "#ffe27a",
+     "color": "#ffcfe9",
+     "intensity": 1,
+     "describe": "the pink band sunk into the head of every opening, front and back, burning at full strength: after dark all four elevations read as stacks of lit openings"
+    }
+   ],
+   "why": "Modern flat-roofed residential block with ribbon windows, the shape of the post-2000 Dogpatch condos; floors chosen from DataSF height.",
+   "size": {
+    "x": 12,
+    "y": 24.9,
+    "z": 12
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 1216,
+   "vertices": 1447,
+   "bytes": 50112
+  },
+  {
+   "key": "b-loft-brick-3",
+   "role": "building:loft",
+   "asset": "cast-iron-loft-b04b5a",
+   "knobs": {
+    "floors": 3,
+    "archHead": "segmental",
+    "fireEscape": false,
+    "waterTank": false,
+    "tone": 0.25,
+    "front": "#E2603F",
+    "trim": "#FFF3DA",
+    "wall": "#C94A32",
+    "soot": "#6C758B",
+    "iron": "#1C2347",
+    "frame": "#1C2347",
+    "glass": "#2C4FA3",
+    "door": "#1C2347",
+    "roof": "#6C758B",
+    "tar": "#1C2347",
+    "metal": "#A3AEC4",
+    "timber": "#FFF3DA"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffd9a0",
+     "intensity": 0.7,
+     "describe": "Every window, shop light, door light and the roof skylight glow warm amber: an inhabited loft after dark."
+    }
+   ],
+   "why": "Pre-war masonry loft with arched bays: older mixed-use and office buildings along 3rd and Illinois. Brick in the Pier 70 reds or cream stucco.",
+   "size": {
+    "x": 12,
+    "y": 10,
+    "z": 8
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 1776,
+   "vertices": 2308,
+   "bytes": 77476
+  },
+  {
+   "key": "b-loft-brick-5",
+   "role": "building:loft",
+   "asset": "cast-iron-loft-b04b5a",
+   "knobs": {
+    "floors": 5,
+    "archHead": "segmental",
+    "fireEscape": false,
+    "waterTank": false,
+    "tone": 0.25,
+    "front": "#E2603F",
+    "trim": "#FFF3DA",
+    "wall": "#C94A32",
+    "soot": "#6C758B",
+    "iron": "#1C2347",
+    "frame": "#1C2347",
+    "glass": "#2C4FA3",
+    "door": "#1C2347",
+    "roof": "#6C758B",
+    "tar": "#1C2347",
+    "metal": "#A3AEC4",
+    "timber": "#FFF3DA"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffd9a0",
+     "intensity": 0.7,
+     "describe": "Every window, shop light, door light and the roof skylight glow warm amber: an inhabited loft after dark."
+    }
+   ],
+   "why": "Pre-war masonry loft with arched bays: older mixed-use and office buildings along 3rd and Illinois. Brick in the Pier 70 reds or cream stucco.",
+   "size": {
+    "x": 12,
+    "y": 16,
+    "z": 8
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 2616,
+   "vertices": 3452,
+   "bytes": 115016
+  },
+  {
+   "key": "b-loft-brickDeep-3",
+   "role": "building:loft",
+   "asset": "cast-iron-loft-b04b5a",
+   "knobs": {
+    "floors": 3,
+    "archHead": "segmental",
+    "fireEscape": false,
+    "waterTank": false,
+    "tone": 0.25,
+    "front": "#C94A32",
+    "trim": "#FFF3DA",
+    "wall": "#C94A32",
+    "soot": "#6C758B",
+    "iron": "#1C2347",
+    "frame": "#1C2347",
+    "glass": "#2C4FA3",
+    "door": "#1C2347",
+    "roof": "#6C758B",
+    "tar": "#1C2347",
+    "metal": "#A3AEC4",
+    "timber": "#FFF3DA"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffd9a0",
+     "intensity": 0.7,
+     "describe": "Every window, shop light, door light and the roof skylight glow warm amber: an inhabited loft after dark."
+    }
+   ],
+   "why": "Pre-war masonry loft with arched bays: older mixed-use and office buildings along 3rd and Illinois. Brick in the Pier 70 reds or cream stucco.",
+   "size": {
+    "x": 12,
+    "y": 10,
+    "z": 8
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 1776,
+   "vertices": 2300,
+   "bytes": 77292
+  },
+  {
+   "key": "b-loft-brickDeep-5",
+   "role": "building:loft",
+   "asset": "cast-iron-loft-b04b5a",
+   "knobs": {
+    "floors": 5,
+    "archHead": "segmental",
+    "fireEscape": false,
+    "waterTank": false,
+    "tone": 0.25,
+    "front": "#C94A32",
+    "trim": "#FFF3DA",
+    "wall": "#C94A32",
+    "soot": "#6C758B",
+    "iron": "#1C2347",
+    "frame": "#1C2347",
+    "glass": "#2C4FA3",
+    "door": "#1C2347",
+    "roof": "#6C758B",
+    "tar": "#1C2347",
+    "metal": "#A3AEC4",
+    "timber": "#FFF3DA"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffd9a0",
+     "intensity": 0.7,
+     "describe": "Every window, shop light, door light and the roof skylight glow warm amber: an inhabited loft after dark."
+    }
+   ],
+   "why": "Pre-war masonry loft with arched bays: older mixed-use and office buildings along 3rd and Illinois. Brick in the Pier 70 reds or cream stucco.",
+   "size": {
+    "x": 12,
+    "y": 16,
+    "z": 8
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 2616,
+   "vertices": 3444,
+   "bytes": 114832
+  },
+  {
+   "key": "b-loft-cream-3",
+   "role": "building:loft",
+   "asset": "cast-iron-loft-b04b5a",
+   "knobs": {
+    "floors": 3,
+    "archHead": "segmental",
+    "fireEscape": false,
+    "waterTank": false,
+    "tone": 0.25,
+    "front": "#FFF3DA",
+    "trim": "#FFF3DA",
+    "wall": "#A3AEC4",
+    "soot": "#6C758B",
+    "iron": "#1C2347",
+    "frame": "#1C2347",
+    "glass": "#2C4FA3",
+    "door": "#1C2347",
+    "roof": "#6C758B",
+    "tar": "#1C2347",
+    "metal": "#A3AEC4",
+    "timber": "#FFF3DA"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffd9a0",
+     "intensity": 0.7,
+     "describe": "Every window, shop light, door light and the roof skylight glow warm amber: an inhabited loft after dark."
+    }
+   ],
+   "why": "Pre-war masonry loft with arched bays: older mixed-use and office buildings along 3rd and Illinois. Brick in the Pier 70 reds or cream stucco.",
+   "size": {
+    "x": 12,
+    "y": 10,
+    "z": 8
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 1776,
+   "vertices": 2310,
+   "bytes": 77524
+  },
+  {
+   "key": "b-loft-cream-5",
+   "role": "building:loft",
+   "asset": "cast-iron-loft-b04b5a",
+   "knobs": {
+    "floors": 5,
+    "archHead": "segmental",
+    "fireEscape": false,
+    "waterTank": false,
+    "tone": 0.25,
+    "front": "#FFF3DA",
+    "trim": "#FFF3DA",
+    "wall": "#A3AEC4",
+    "soot": "#6C758B",
+    "iron": "#1C2347",
+    "frame": "#1C2347",
+    "glass": "#2C4FA3",
+    "door": "#1C2347",
+    "roof": "#6C758B",
+    "tar": "#1C2347",
+    "metal": "#A3AEC4",
+    "timber": "#FFF3DA"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffd9a0",
+     "intensity": 0.7,
+     "describe": "Every window, shop light, door light and the roof skylight glow warm amber: an inhabited loft after dark."
+    }
+   ],
+   "why": "Pre-war masonry loft with arched bays: older mixed-use and office buildings along 3rd and Illinois. Brick in the Pier 70 reds or cream stucco.",
+   "size": {
+    "x": 12,
+    "y": 16,
+    "z": 8
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 2616,
+   "vertices": 3438,
+   "bytes": 114680
+  },
+  {
+   "key": "b-midrise-cream-4",
+   "role": "building:midrise",
+   "asset": "department-store-ffbd58",
+   "knobs": {
+    "floors": 4,
+    "display": "empty",
+    "cornice": "plain",
+    "waterTank": false,
+    "awnings": false,
+    "tone": 0.3,
+    "masonry": "#FFF3DA",
+    "trim": "#FFFFFF",
+    "iron": "#1C2347",
+    "frame": "#1C2347",
+    "glass": "#2C4FA3",
+    "door": "#1C2347",
+    "sign": "#FFE27A",
+    "canvas": "#FFF3DA",
+    "roof": "#6C758B",
+    "tar": "#1C2347",
+    "dark": "#6C758B",
+    "party": "#A3AEC4",
+    "timber": "#FFF3DA",
+    "mannequin": "#FF9C86",
+    "paper": "#FFF3DA"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffc979",
+     "intensity": 0.7,
+     "describe": "Every window, shop window and display case glows warm amber after dark."
+    },
+    {
+     "zone": "sign",
+     "albedo": "#ffe27a",
+     "color": "#ffe2b0",
+     "intensity": 0.45,
+     "describe": "The fascia over the shopfront, floodlit in its own pale colour."
+    }
+   ],
+   "why": "Large-plate mid-rise with a regular window grid for wide mixed-use and office blocks.",
+   "size": {
+    "x": 16,
+    "y": 13.2,
+    "z": 12
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 1968,
+   "vertices": 2844,
+   "bytes": 92668
+  },
+  {
+   "key": "b-midrise-cream-6",
+   "role": "building:midrise",
+   "asset": "department-store-ffbd58",
+   "knobs": {
+    "floors": 6,
+    "display": "empty",
+    "cornice": "plain",
+    "waterTank": false,
+    "awnings": false,
+    "tone": 0.3,
+    "masonry": "#FFF3DA",
+    "trim": "#FFFFFF",
+    "iron": "#1C2347",
+    "frame": "#1C2347",
+    "glass": "#2C4FA3",
+    "door": "#1C2347",
+    "sign": "#FFE27A",
+    "canvas": "#FFF3DA",
+    "roof": "#6C758B",
+    "tar": "#1C2347",
+    "dark": "#6C758B",
+    "party": "#A3AEC4",
+    "timber": "#FFF3DA",
+    "mannequin": "#FF9C86",
+    "paper": "#FFF3DA"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffc979",
+     "intensity": 0.7,
+     "describe": "Every window, shop window and display case glows warm amber after dark."
+    },
+    {
+     "zone": "sign",
+     "albedo": "#ffe27a",
+     "color": "#ffe2b0",
+     "intensity": 0.45,
+     "describe": "The fascia over the shopfront, floodlit in its own pale colour."
+    }
+   ],
+   "why": "Large-plate mid-rise with a regular window grid for wide mixed-use and office blocks.",
+   "size": {
+    "x": 16,
+    "y": 19.2,
+    "z": 12
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 2498,
+   "vertices": 3788,
+   "bytes": 121684
+  },
+  {
+   "key": "b-midrise-coral-4",
+   "role": "building:midrise",
+   "asset": "department-store-ffbd58",
+   "knobs": {
+    "floors": 4,
+    "display": "empty",
+    "cornice": "plain",
+    "waterTank": false,
+    "awnings": false,
+    "tone": 0.3,
+    "masonry": "#FF9C86",
+    "trim": "#FFFFFF",
+    "iron": "#1C2347",
+    "frame": "#1C2347",
+    "glass": "#2C4FA3",
+    "door": "#1C2347",
+    "sign": "#FFE27A",
+    "canvas": "#FFF3DA",
+    "roof": "#6C758B",
+    "tar": "#1C2347",
+    "dark": "#6C758B",
+    "party": "#A3AEC4",
+    "timber": "#FFF3DA",
+    "mannequin": "#FF9C86",
+    "paper": "#FFF3DA"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffc979",
+     "intensity": 0.7,
+     "describe": "Every window, shop window and display case glows warm amber after dark."
+    },
+    {
+     "zone": "sign",
+     "albedo": "#ffe27a",
+     "color": "#ffe2b0",
+     "intensity": 0.45,
+     "describe": "The fascia over the shopfront, floodlit in its own pale colour."
+    }
+   ],
+   "why": "Large-plate mid-rise with a regular window grid for wide mixed-use and office blocks.",
+   "size": {
+    "x": 16,
+    "y": 13.2,
+    "z": 12
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 1968,
+   "vertices": 2840,
+   "bytes": 92572
+  },
+  {
+   "key": "b-midrise-coral-6",
+   "role": "building:midrise",
+   "asset": "department-store-ffbd58",
+   "knobs": {
+    "floors": 6,
+    "display": "empty",
+    "cornice": "plain",
+    "waterTank": false,
+    "awnings": false,
+    "tone": 0.3,
+    "masonry": "#FF9C86",
+    "trim": "#FFFFFF",
+    "iron": "#1C2347",
+    "frame": "#1C2347",
+    "glass": "#2C4FA3",
+    "door": "#1C2347",
+    "sign": "#FFE27A",
+    "canvas": "#FFF3DA",
+    "roof": "#6C758B",
+    "tar": "#1C2347",
+    "dark": "#6C758B",
+    "party": "#A3AEC4",
+    "timber": "#FFF3DA",
+    "mannequin": "#FF9C86",
+    "paper": "#FFF3DA"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffc979",
+     "intensity": 0.7,
+     "describe": "Every window, shop window and display case glows warm amber after dark."
+    },
+    {
+     "zone": "sign",
+     "albedo": "#ffe27a",
+     "color": "#ffe2b0",
+     "intensity": 0.45,
+     "describe": "The fascia over the shopfront, floodlit in its own pale colour."
+    }
+   ],
+   "why": "Large-plate mid-rise with a regular window grid for wide mixed-use and office blocks.",
+   "size": {
+    "x": 16,
+    "y": 19.2,
+    "z": 12
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 2498,
+   "vertices": 3784,
+   "bytes": 121588
+  },
+  {
+   "key": "b-cornershop-brick-1",
+   "role": "building:corner-shop",
+   "asset": "corner-shop-5aec8c",
+   "knobs": {
+    "floors": 1,
+    "entrance": "corner",
+    "bayWindows": "paired",
+    "awnings": true,
+    "tone": 0.25,
+    "brick": "#E2603F",
+    "trim": "#FFF3DA",
+    "plinth": "#1C2347",
+    "sign": "#FFFFFF",
+    "frame": "#1C2347",
+    "panel": "#A3AEC4",
+    "glass": "#2C4FA3",
+    "shopGlass": "#2C4FA3",
+    "roof": "#6C758B",
+    "tar": "#1C2347",
+    "iron": "#1C2347",
+    "interior": "#1C2347",
+    "metal": "#A3AEC4",
+    "party": "#C94A32",
+    "soot": "#6C758B",
+    "awning": "#8CE3BF",
+    "awningStripe": "#FFF3DA"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffc979",
+     "intensity": 0.7,
+     "describe": "Every pane: shop windows, shop door and transom, the flats above and the back windows, lit warm amber."
+    },
+    {
+     "zone": "sign",
+     "albedo": "#ffffff",
+     "color": "#f4ecdc",
+     "intensity": 0.5,
+     "describe": "The sign panels, lit from behind their faces."
+    }
+   ],
+   "why": "Corner shop with a cut corner entrance: one- and two-storey retail on street corners (22nd and 3rd).",
+   "size": {
+    "x": 8.85,
+    "y": 4,
+    "z": 8.85
+   },
+   "center": {
+    "x": 0.425,
+    "z": 0.425
+   },
+   "minY": 0,
+   "triangles": 1939,
+   "vertices": 2099,
+   "bytes": 74460
+  },
+  {
+   "key": "b-cornershop-brick-2",
+   "role": "building:corner-shop",
+   "asset": "corner-shop-5aec8c",
+   "knobs": {
+    "floors": 2,
+    "entrance": "corner",
+    "bayWindows": "paired",
+    "awnings": true,
+    "tone": 0.25,
+    "brick": "#E2603F",
+    "trim": "#FFF3DA",
+    "plinth": "#1C2347",
+    "sign": "#FFFFFF",
+    "frame": "#1C2347",
+    "panel": "#A3AEC4",
+    "glass": "#2C4FA3",
+    "shopGlass": "#2C4FA3",
+    "roof": "#6C758B",
+    "tar": "#1C2347",
+    "iron": "#1C2347",
+    "interior": "#1C2347",
+    "metal": "#A3AEC4",
+    "party": "#C94A32",
+    "soot": "#6C758B",
+    "awning": "#8CE3BF",
+    "awningStripe": "#FFF3DA"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffc979",
+     "intensity": 0.7,
+     "describe": "Every pane: shop windows, shop door and transom, the flats above and the back windows, lit warm amber."
+    },
+    {
+     "zone": "sign",
+     "albedo": "#ffffff",
+     "color": "#f4ecdc",
+     "intensity": 0.5,
+     "describe": "The sign panels, lit from behind their faces."
+    }
+   ],
+   "why": "Corner shop with a cut corner entrance: one- and two-storey retail on street corners (22nd and 3rd).",
+   "size": {
+    "x": 8.85,
+    "y": 7,
+    "z": 8.85
+   },
+   "center": {
+    "x": 0.425,
+    "z": 0.425
+   },
+   "minY": 0,
+   "triangles": 2887,
+   "vertices": 3115,
+   "bytes": 110220
+  },
+  {
+   "key": "b-cornershop-coral-1",
+   "role": "building:corner-shop",
+   "asset": "corner-shop-5aec8c",
+   "knobs": {
+    "floors": 1,
+    "entrance": "corner",
+    "bayWindows": "paired",
+    "awnings": true,
+    "tone": 0.25,
+    "brick": "#FF9C86",
+    "trim": "#FFF3DA",
+    "plinth": "#1C2347",
+    "sign": "#FFFFFF",
+    "frame": "#1C2347",
+    "panel": "#A3AEC4",
+    "glass": "#2C4FA3",
+    "shopGlass": "#2C4FA3",
+    "roof": "#6C758B",
+    "tar": "#1C2347",
+    "iron": "#1C2347",
+    "interior": "#1C2347",
+    "metal": "#A3AEC4",
+    "party": "#A3AEC4",
+    "soot": "#6C758B",
+    "awning": "#8CE3BF",
+    "awningStripe": "#FFF3DA"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffc979",
+     "intensity": 0.7,
+     "describe": "Every pane: shop windows, shop door and transom, the flats above and the back windows, lit warm amber."
+    },
+    {
+     "zone": "sign",
+     "albedo": "#ffffff",
+     "color": "#f4ecdc",
+     "intensity": 0.5,
+     "describe": "The sign panels, lit from behind their faces."
+    }
+   ],
+   "why": "Corner shop with a cut corner entrance: one- and two-storey retail on street corners (22nd and 3rd).",
+   "size": {
+    "x": 8.85,
+    "y": 4,
+    "z": 8.85
+   },
+   "center": {
+    "x": 0.425,
+    "z": 0.425
+   },
+   "minY": 0,
+   "triangles": 1939,
+   "vertices": 2099,
+   "bytes": 74460
+  },
+  {
+   "key": "b-cornershop-coral-2",
+   "role": "building:corner-shop",
+   "asset": "corner-shop-5aec8c",
+   "knobs": {
+    "floors": 2,
+    "entrance": "corner",
+    "bayWindows": "paired",
+    "awnings": true,
+    "tone": 0.25,
+    "brick": "#FF9C86",
+    "trim": "#FFF3DA",
+    "plinth": "#1C2347",
+    "sign": "#FFFFFF",
+    "frame": "#1C2347",
+    "panel": "#A3AEC4",
+    "glass": "#2C4FA3",
+    "shopGlass": "#2C4FA3",
+    "roof": "#6C758B",
+    "tar": "#1C2347",
+    "iron": "#1C2347",
+    "interior": "#1C2347",
+    "metal": "#A3AEC4",
+    "party": "#A3AEC4",
+    "soot": "#6C758B",
+    "awning": "#8CE3BF",
+    "awningStripe": "#FFF3DA"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffc979",
+     "intensity": 0.7,
+     "describe": "Every pane: shop windows, shop door and transom, the flats above and the back windows, lit warm amber."
+    },
+    {
+     "zone": "sign",
+     "albedo": "#ffffff",
+     "color": "#f4ecdc",
+     "intensity": 0.5,
+     "describe": "The sign panels, lit from behind their faces."
+    }
+   ],
+   "why": "Corner shop with a cut corner entrance: one- and two-storey retail on street corners (22nd and 3rd).",
+   "size": {
+    "x": 8.85,
+    "y": 7,
+    "z": 8.85
+   },
+   "center": {
+    "x": 0.425,
+    "z": 0.425
+   },
+   "minY": 0,
+   "triangles": 2887,
+   "vertices": 3115,
+   "bytes": 110220
+  },
+  {
+   "key": "b-cornershop-lemon-1",
+   "role": "building:corner-shop",
+   "asset": "corner-shop-5aec8c",
+   "knobs": {
+    "floors": 1,
+    "entrance": "corner",
+    "bayWindows": "paired",
+    "awnings": true,
+    "tone": 0.25,
+    "brick": "#FFE27A",
+    "trim": "#FFF3DA",
+    "plinth": "#1C2347",
+    "sign": "#FFFFFF",
+    "frame": "#1C2347",
+    "panel": "#A3AEC4",
+    "glass": "#2C4FA3",
+    "shopGlass": "#2C4FA3",
+    "roof": "#6C758B",
+    "tar": "#1C2347",
+    "iron": "#1C2347",
+    "interior": "#1C2347",
+    "metal": "#A3AEC4",
+    "party": "#A3AEC4",
+    "soot": "#6C758B",
+    "awning": "#8CE3BF",
+    "awningStripe": "#FFF3DA"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffc979",
+     "intensity": 0.7,
+     "describe": "Every pane: shop windows, shop door and transom, the flats above and the back windows, lit warm amber."
+    },
+    {
+     "zone": "sign",
+     "albedo": "#ffffff",
+     "color": "#f4ecdc",
+     "intensity": 0.5,
+     "describe": "The sign panels, lit from behind their faces."
+    }
+   ],
+   "why": "Corner shop with a cut corner entrance: one- and two-storey retail on street corners (22nd and 3rd).",
+   "size": {
+    "x": 8.85,
+    "y": 4,
+    "z": 8.85
+   },
+   "center": {
+    "x": 0.425,
+    "z": 0.425
+   },
+   "minY": 0,
+   "triangles": 1939,
+   "vertices": 2099,
+   "bytes": 74460
+  },
+  {
+   "key": "b-cornershop-lemon-2",
+   "role": "building:corner-shop",
+   "asset": "corner-shop-5aec8c",
+   "knobs": {
+    "floors": 2,
+    "entrance": "corner",
+    "bayWindows": "paired",
+    "awnings": true,
+    "tone": 0.25,
+    "brick": "#FFE27A",
+    "trim": "#FFF3DA",
+    "plinth": "#1C2347",
+    "sign": "#FFFFFF",
+    "frame": "#1C2347",
+    "panel": "#A3AEC4",
+    "glass": "#2C4FA3",
+    "shopGlass": "#2C4FA3",
+    "roof": "#6C758B",
+    "tar": "#1C2347",
+    "iron": "#1C2347",
+    "interior": "#1C2347",
+    "metal": "#A3AEC4",
+    "party": "#A3AEC4",
+    "soot": "#6C758B",
+    "awning": "#8CE3BF",
+    "awningStripe": "#FFF3DA"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffc979",
+     "intensity": 0.7,
+     "describe": "Every pane: shop windows, shop door and transom, the flats above and the back windows, lit warm amber."
+    },
+    {
+     "zone": "sign",
+     "albedo": "#ffffff",
+     "color": "#f4ecdc",
+     "intensity": 0.5,
+     "describe": "The sign panels, lit from behind their faces."
+    }
+   ],
+   "why": "Corner shop with a cut corner entrance: one- and two-storey retail on street corners (22nd and 3rd).",
+   "size": {
+    "x": 8.85,
+    "y": 7,
+    "z": 8.85
+   },
+   "center": {
+    "x": 0.425,
+    "z": 0.425
+   },
+   "minY": 0,
+   "triangles": 2887,
+   "vertices": 3115,
+   "bytes": 110220
+  },
+  {
+   "key": "b-shoprow-brick-2",
+   "role": "building:shop-row",
+   "asset": "one-storey-shop-row-83c958",
+   "knobs": {
+    "bays": 2,
+    "shutter": "open",
+    "awnings": true,
+    "tone": 0.25,
+    "brick": "#E2603F",
+    "trim": "#FFF3DA",
+    "plinth": "#1C2347",
+    "frame": "#1C2347",
+    "glass": "#2C4FA3",
+    "sign": "#FFF3DA",
+    "steel": "#A3AEC4",
+    "roof": "#6C758B",
+    "tar": "#1C2347",
+    "party": "#A3AEC4",
+    "course": "#6C758B",
+    "iron": "#1C2347",
+    "awning1": "#FF9C86",
+    "awning2": "#9ED7FF",
+    "awning3": "#8CE3BF",
+    "awning4": "#FFE27A"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffc979",
+     "intensity": 0.7,
+     "describe": "Shop windows, vestibule returns, door and transom glass, rear windows: warm amber interior light after dark."
+    }
+   ],
+   "why": "One-storey retail frontage in 4 m bays for single-storey commercial buildings.",
+   "size": {
+    "x": 8,
+    "y": 4.66,
+    "z": 8.92
+   },
+   "center": {
+    "x": 0,
+    "z": 0.46
+   },
+   "minY": 0,
+   "triangles": 1716,
+   "vertices": 2470,
+   "bytes": 80684
+  },
+  {
+   "key": "b-shoprow-brick-3",
+   "role": "building:shop-row",
+   "asset": "one-storey-shop-row-83c958",
+   "knobs": {
+    "bays": 3,
+    "shutter": "open",
+    "awnings": true,
+    "tone": 0.25,
+    "brick": "#E2603F",
+    "trim": "#FFF3DA",
+    "plinth": "#1C2347",
+    "frame": "#1C2347",
+    "glass": "#2C4FA3",
+    "sign": "#FFF3DA",
+    "steel": "#A3AEC4",
+    "roof": "#6C758B",
+    "tar": "#1C2347",
+    "party": "#A3AEC4",
+    "course": "#6C758B",
+    "iron": "#1C2347",
+    "awning1": "#FF9C86",
+    "awning2": "#9ED7FF",
+    "awning3": "#8CE3BF",
+    "awning4": "#FFE27A"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffc979",
+     "intensity": 0.7,
+     "describe": "Shop windows, vestibule returns, door and transom glass, rear windows: warm amber interior light after dark."
+    }
+   ],
+   "why": "One-storey retail frontage in 4 m bays for single-storey commercial buildings.",
+   "size": {
+    "x": 12,
+    "y": 4.66,
+    "z": 8.92
+   },
+   "center": {
+    "x": 0,
+    "z": 0.46
+   },
+   "minY": 0,
+   "triangles": 2332,
+   "vertices": 3360,
+   "bytes": 109436
+  },
+  {
+   "key": "b-shoprow-brick-4",
+   "role": "building:shop-row",
+   "asset": "one-storey-shop-row-83c958",
+   "knobs": {
+    "bays": 4,
+    "shutter": "open",
+    "awnings": true,
+    "tone": 0.25,
+    "brick": "#E2603F",
+    "trim": "#FFF3DA",
+    "plinth": "#1C2347",
+    "frame": "#1C2347",
+    "glass": "#2C4FA3",
+    "sign": "#FFF3DA",
+    "steel": "#A3AEC4",
+    "roof": "#6C758B",
+    "tar": "#1C2347",
+    "party": "#A3AEC4",
+    "course": "#6C758B",
+    "iron": "#1C2347",
+    "awning1": "#FF9C86",
+    "awning2": "#9ED7FF",
+    "awning3": "#8CE3BF",
+    "awning4": "#FFE27A"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffc979",
+     "intensity": 0.7,
+     "describe": "Shop windows, vestibule returns, door and transom glass, rear windows: warm amber interior light after dark."
+    }
+   ],
+   "why": "One-storey retail frontage in 4 m bays for single-storey commercial buildings.",
+   "size": {
+    "x": 16,
+    "y": 4.66,
+    "z": 8.92
+   },
+   "center": {
+    "x": 0,
+    "z": 0.46
+   },
+   "minY": 0,
+   "triangles": 2948,
+   "vertices": 4258,
+   "bytes": 138380
+  },
+  {
+   "key": "b-shoprow-cream-2",
+   "role": "building:shop-row",
+   "asset": "one-storey-shop-row-83c958",
+   "knobs": {
+    "bays": 2,
+    "shutter": "open",
+    "awnings": true,
+    "tone": 0.25,
+    "brick": "#FFF3DA",
+    "trim": "#FFF3DA",
+    "plinth": "#1C2347",
+    "frame": "#1C2347",
+    "glass": "#2C4FA3",
+    "sign": "#FFF3DA",
+    "steel": "#A3AEC4",
+    "roof": "#6C758B",
+    "tar": "#1C2347",
+    "party": "#A3AEC4",
+    "course": "#6C758B",
+    "iron": "#1C2347",
+    "awning1": "#FF9C86",
+    "awning2": "#9ED7FF",
+    "awning3": "#8CE3BF",
+    "awning4": "#FFE27A"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffc979",
+     "intensity": 0.7,
+     "describe": "Shop windows, vestibule returns, door and transom glass, rear windows: warm amber interior light after dark."
+    }
+   ],
+   "why": "One-storey retail frontage in 4 m bays for single-storey commercial buildings.",
+   "size": {
+    "x": 8,
+    "y": 4.66,
+    "z": 8.92
+   },
+   "center": {
+    "x": 0,
+    "z": 0.46
+   },
+   "minY": 0,
+   "triangles": 1716,
+   "vertices": 2426,
+   "bytes": 79628
+  },
+  {
+   "key": "b-shoprow-cream-3",
+   "role": "building:shop-row",
+   "asset": "one-storey-shop-row-83c958",
+   "knobs": {
+    "bays": 3,
+    "shutter": "open",
+    "awnings": true,
+    "tone": 0.25,
+    "brick": "#FFF3DA",
+    "trim": "#FFF3DA",
+    "plinth": "#1C2347",
+    "frame": "#1C2347",
+    "glass": "#2C4FA3",
+    "sign": "#FFF3DA",
+    "steel": "#A3AEC4",
+    "roof": "#6C758B",
+    "tar": "#1C2347",
+    "party": "#A3AEC4",
+    "course": "#6C758B",
+    "iron": "#1C2347",
+    "awning1": "#FF9C86",
+    "awning2": "#9ED7FF",
+    "awning3": "#8CE3BF",
+    "awning4": "#FFE27A"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffc979",
+     "intensity": 0.7,
+     "describe": "Shop windows, vestibule returns, door and transom glass, rear windows: warm amber interior light after dark."
+    }
+   ],
+   "why": "One-storey retail frontage in 4 m bays for single-storey commercial buildings.",
+   "size": {
+    "x": 12,
+    "y": 4.66,
+    "z": 8.92
+   },
+   "center": {
+    "x": 0,
+    "z": 0.46
+   },
+   "minY": 0,
+   "triangles": 2332,
+   "vertices": 3300,
+   "bytes": 107996
+  },
+  {
+   "key": "b-shoprow-cream-4",
+   "role": "building:shop-row",
+   "asset": "one-storey-shop-row-83c958",
+   "knobs": {
+    "bays": 4,
+    "shutter": "open",
+    "awnings": true,
+    "tone": 0.25,
+    "brick": "#FFF3DA",
+    "trim": "#FFF3DA",
+    "plinth": "#1C2347",
+    "frame": "#1C2347",
+    "glass": "#2C4FA3",
+    "sign": "#FFF3DA",
+    "steel": "#A3AEC4",
+    "roof": "#6C758B",
+    "tar": "#1C2347",
+    "party": "#A3AEC4",
+    "course": "#6C758B",
+    "iron": "#1C2347",
+    "awning1": "#FF9C86",
+    "awning2": "#9ED7FF",
+    "awning3": "#8CE3BF",
+    "awning4": "#FFE27A"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffc979",
+     "intensity": 0.7,
+     "describe": "Shop windows, vestibule returns, door and transom glass, rear windows: warm amber interior light after dark."
+    }
+   ],
+   "why": "One-storey retail frontage in 4 m bays for single-storey commercial buildings.",
+   "size": {
+    "x": 16,
+    "y": 4.66,
+    "z": 8.92
+   },
+   "center": {
+    "x": 0,
+    "z": 0.46
+   },
+   "minY": 0,
+   "triangles": 2948,
+   "vertices": 4182,
+   "bytes": 136556
+  },
+  {
+   "key": "b-workshop-shade-1",
+   "role": "building:workshop",
+   "asset": "auto-repair-garage-b91464",
+   "knobs": {
+    "floors": 1,
+    "shutter": "closed",
+    "patches": 0.2,
+    "tone": 0.25,
+    "brick": "#A3AEC4",
+    "trim": "#FFFFFF",
+    "sign": "#FFF3DA",
+    "plinth": "#6C758B",
+    "frame": "#1C2347",
+    "door": "#FFCB1F",
+    "glass": "#2C4FA3",
+    "steel": "#A9ADB4",
+    "roof": "#6C758B",
+    "tar": "#1C2347",
+    "concrete": "#EEE7DA",
+    "interior": "#1C2347",
+    "equip": "#FF9C86",
+    "party": "#6C758B",
+    "course": "#6C758B"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffd9a0",
+     "intensity": 0.7,
+     "describe": "Office windows, office door and back windows lit warm amber."
+    }
+   ],
+   "why": "Concrete light-industrial building with roll-up doors: the PDR workshops, auto shops and studios that fill Dogpatch blocks.",
+   "size": {
+    "x": 12,
+    "y": 4.2,
+    "z": 8
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 2014,
+   "vertices": 1909,
+   "bytes": 70780
+  },
+  {
+   "key": "b-workshop-shade-2",
+   "role": "building:workshop",
+   "asset": "auto-repair-garage-b91464",
+   "knobs": {
+    "floors": 2,
+    "shutter": "closed",
+    "patches": 0.2,
+    "tone": 0.25,
+    "brick": "#A3AEC4",
+    "trim": "#FFFFFF",
+    "sign": "#FFF3DA",
+    "plinth": "#6C758B",
+    "frame": "#1C2347",
+    "door": "#FFCB1F",
+    "glass": "#2C4FA3",
+    "steel": "#A9ADB4",
+    "roof": "#6C758B",
+    "tar": "#1C2347",
+    "concrete": "#EEE7DA",
+    "interior": "#1C2347",
+    "equip": "#FF9C86",
+    "party": "#6C758B",
+    "course": "#6C758B"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffd9a0",
+     "intensity": 0.7,
+     "describe": "Office windows, office door and back windows lit warm amber."
+    }
+   ],
+   "why": "Concrete light-industrial building with roll-up doors: the PDR workshops, auto shops and studios that fill Dogpatch blocks.",
+   "size": {
+    "x": 12,
+    "y": 7.2,
+    "z": 8
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 2632,
+   "vertices": 2589,
+   "bytes": 94516
+  },
+  {
+   "key": "b-workshop-shade-3",
+   "role": "building:workshop",
+   "asset": "auto-repair-garage-b91464",
+   "knobs": {
+    "floors": 3,
+    "shutter": "closed",
+    "patches": 0.2,
+    "tone": 0.25,
+    "brick": "#A3AEC4",
+    "trim": "#FFFFFF",
+    "sign": "#FFF3DA",
+    "plinth": "#6C758B",
+    "frame": "#1C2347",
+    "door": "#FFCB1F",
+    "glass": "#2C4FA3",
+    "steel": "#A9ADB4",
+    "roof": "#6C758B",
+    "tar": "#1C2347",
+    "concrete": "#EEE7DA",
+    "interior": "#1C2347",
+    "equip": "#FF9C86",
+    "party": "#6C758B",
+    "course": "#6C758B"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffd9a0",
+     "intensity": 0.7,
+     "describe": "Office windows, office door and back windows lit warm amber."
+    }
+   ],
+   "why": "Concrete light-industrial building with roll-up doors: the PDR workshops, auto shops and studios that fill Dogpatch blocks.",
+   "size": {
+    "x": 12,
+    "y": 10.2,
+    "z": 8
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 3240,
+   "vertices": 3261,
+   "bytes": 117944
+  },
+  {
+   "key": "b-workshop-cream-1",
+   "role": "building:workshop",
+   "asset": "auto-repair-garage-b91464",
+   "knobs": {
+    "floors": 1,
+    "shutter": "closed",
+    "patches": 0.2,
+    "tone": 0.25,
+    "brick": "#FFF3DA",
+    "trim": "#FFFFFF",
+    "sign": "#FFF3DA",
+    "plinth": "#6C758B",
+    "frame": "#1C2347",
+    "door": "#FFCB1F",
+    "glass": "#2C4FA3",
+    "steel": "#A9ADB4",
+    "roof": "#6C758B",
+    "tar": "#1C2347",
+    "concrete": "#EEE7DA",
+    "interior": "#1C2347",
+    "equip": "#FF9C86",
+    "party": "#6C758B",
+    "course": "#6C758B"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffd9a0",
+     "intensity": 0.7,
+     "describe": "Office windows, office door and back windows lit warm amber."
+    }
+   ],
+   "why": "Concrete light-industrial building with roll-up doors: the PDR workshops, auto shops and studios that fill Dogpatch blocks.",
+   "size": {
+    "x": 12,
+    "y": 4.2,
+    "z": 8
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 2014,
+   "vertices": 1907,
+   "bytes": 70732
+  },
+  {
+   "key": "b-workshop-cream-2",
+   "role": "building:workshop",
+   "asset": "auto-repair-garage-b91464",
+   "knobs": {
+    "floors": 2,
+    "shutter": "closed",
+    "patches": 0.2,
+    "tone": 0.25,
+    "brick": "#FFF3DA",
+    "trim": "#FFFFFF",
+    "sign": "#FFF3DA",
+    "plinth": "#6C758B",
+    "frame": "#1C2347",
+    "door": "#FFCB1F",
+    "glass": "#2C4FA3",
+    "steel": "#A9ADB4",
+    "roof": "#6C758B",
+    "tar": "#1C2347",
+    "concrete": "#EEE7DA",
+    "interior": "#1C2347",
+    "equip": "#FF9C86",
+    "party": "#6C758B",
+    "course": "#6C758B"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffd9a0",
+     "intensity": 0.7,
+     "describe": "Office windows, office door and back windows lit warm amber."
+    }
+   ],
+   "why": "Concrete light-industrial building with roll-up doors: the PDR workshops, auto shops and studios that fill Dogpatch blocks.",
+   "size": {
+    "x": 12,
+    "y": 7.2,
+    "z": 8
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 2632,
+   "vertices": 2587,
+   "bytes": 94468
+  },
+  {
+   "key": "b-workshop-cream-3",
+   "role": "building:workshop",
+   "asset": "auto-repair-garage-b91464",
+   "knobs": {
+    "floors": 3,
+    "shutter": "closed",
+    "patches": 0.2,
+    "tone": 0.25,
+    "brick": "#FFF3DA",
+    "trim": "#FFFFFF",
+    "sign": "#FFF3DA",
+    "plinth": "#6C758B",
+    "frame": "#1C2347",
+    "door": "#FFCB1F",
+    "glass": "#2C4FA3",
+    "steel": "#A9ADB4",
+    "roof": "#6C758B",
+    "tar": "#1C2347",
+    "concrete": "#EEE7DA",
+    "interior": "#1C2347",
+    "equip": "#FF9C86",
+    "party": "#6C758B",
+    "course": "#6C758B"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffd9a0",
+     "intensity": 0.7,
+     "describe": "Office windows, office door and back windows lit warm amber."
+    }
+   ],
+   "why": "Concrete light-industrial building with roll-up doors: the PDR workshops, auto shops and studios that fill Dogpatch blocks.",
+   "size": {
+    "x": 12,
+    "y": 10.2,
+    "z": 8
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 3240,
+   "vertices": 3259,
+   "bytes": 117896
+  },
+  {
+   "key": "b-metalshed-asphalt",
+   "role": "building:metal-shed",
+   "asset": "skate-hall-bay-197a78",
+   "knobs": {
+    "piece": "end",
+    "cladding": "corrugated",
+    "pitch": 8,
+    "kickWall": 0.6,
+    "windows": true,
+    "sign": false,
+    "frame": "#1C2347",
+    "walls": "#A9ADB4",
+    "roof": "#6C758B",
+    "trim": "#FFFFFF",
+    "concrete": "#EEE7DA",
+    "door": "#FFCB1F",
+    "glass": "#2C4FA3",
+    "polycarb": "#FFFFFF",
+    "liner": "#A3AEC4"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffe2b0",
+     "intensity": 0.7,
+     "describe": "the lit hall seen through the clerestory window ribbon"
+    }
+   ],
+   "why": "Corrugated steel portal-frame hall with a roll-up door: the catalogue's nearest modern warehouse (reported as a gap: no light-industrial metal building).",
+   "size": {
+    "x": 16,
+    "y": 7.351,
+    "z": 6
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 1168,
+   "vertices": 1143,
+   "bytes": 42248
+  },
+  {
+   "key": "b-metalshed-powder",
+   "role": "building:metal-shed",
+   "asset": "skate-hall-bay-197a78",
+   "knobs": {
+    "piece": "end",
+    "cladding": "corrugated",
+    "pitch": 8,
+    "kickWall": 0.6,
+    "windows": true,
+    "sign": false,
+    "frame": "#1C2347",
+    "walls": "#9ED7FF",
+    "roof": "#6C758B",
+    "trim": "#FFFFFF",
+    "concrete": "#EEE7DA",
+    "door": "#FFCB1F",
+    "glass": "#2C4FA3",
+    "polycarb": "#FFFFFF",
+    "liner": "#A3AEC4"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffe2b0",
+     "intensity": 0.7,
+     "describe": "the lit hall seen through the clerestory window ribbon"
+    }
+   ],
+   "why": "Corrugated steel portal-frame hall with a roll-up door: the catalogue's nearest modern warehouse (reported as a gap: no light-industrial metal building).",
+   "size": {
+    "x": 16,
+    "y": 7.351,
+    "z": 6
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 1168,
+   "vertices": 1143,
+   "bytes": 42244
+  },
+  {
+   "key": "b-metalshed-cream",
+   "role": "building:metal-shed",
+   "asset": "skate-hall-bay-197a78",
+   "knobs": {
+    "piece": "end",
+    "cladding": "corrugated",
+    "pitch": 8,
+    "kickWall": 0.6,
+    "windows": true,
+    "sign": false,
+    "frame": "#1C2347",
+    "walls": "#FFF3DA",
+    "roof": "#6C758B",
+    "trim": "#FFFFFF",
+    "concrete": "#EEE7DA",
+    "door": "#FFCB1F",
+    "glass": "#2C4FA3",
+    "polycarb": "#FFFFFF",
+    "liner": "#A3AEC4"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffe2b0",
+     "intensity": 0.7,
+     "describe": "the lit hall seen through the clerestory window ribbon"
+    }
+   ],
+   "why": "Corrugated steel portal-frame hall with a roll-up door: the catalogue's nearest modern warehouse (reported as a gap: no light-industrial metal building).",
+   "size": {
+    "x": 16,
+    "y": 7.351,
+    "z": 6
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 1168,
+   "vertices": 1143,
+   "bytes": 42244
+  },
+  {
+   "key": "b-metalshed-mint",
+   "role": "building:metal-shed",
+   "asset": "skate-hall-bay-197a78",
+   "knobs": {
+    "piece": "end",
+    "cladding": "corrugated",
+    "pitch": 8,
+    "kickWall": 0.6,
+    "windows": true,
+    "sign": false,
+    "frame": "#1C2347",
+    "walls": "#8CE3BF",
+    "roof": "#6C758B",
+    "trim": "#FFFFFF",
+    "concrete": "#EEE7DA",
+    "door": "#FFCB1F",
+    "glass": "#2C4FA3",
+    "polycarb": "#FFFFFF",
+    "liner": "#A3AEC4"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffe2b0",
+     "intensity": 0.7,
+     "describe": "the lit hall seen through the clerestory window ribbon"
+    }
+   ],
+   "why": "Corrugated steel portal-frame hall with a roll-up door: the catalogue's nearest modern warehouse (reported as a gap: no light-industrial metal building).",
+   "size": {
+    "x": 16,
+    "y": 7.351,
+    "z": 6
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 1168,
+   "vertices": 1143,
+   "bytes": 42240
+  },
+  {
+   "key": "b-depot-brick-3x1",
+   "role": "building:brick-industrial",
+   "asset": "brick-depot-warehouse-3dd642",
+   "knobs": {
+    "bays": 3,
+    "storeys": 1,
+    "damage": 0,
+    "rafters": 7,
+    "tone": 0.3,
+    "brick": "#E2603F",
+    "dressing": "#FFF3DA",
+    "iron": "#1C2347",
+    "pane": "#2C4FA3",
+    "timber": "#FFE27A",
+    "deck": "#A3AEC4",
+    "inside": "#6C758B"
+   },
+   "night": [
+    {
+     "zone": "pane",
+     "albedo": "#2c4fa3",
+     "color": "#FFCF8A",
+     "intensity": 0.7,
+     "describe": "gas-lit warehouse floor behind the arched glazing"
+    },
+    {
+     "zone": "inside",
+     "albedo": "#6c758b",
+     "color": "#C98A4A",
+     "intensity": 0.45,
+     "describe": "dim interior spilling out of the freight opening and any breach"
+    }
+   ],
+   "why": "Brick freight depot with stone string courses and freight doors: the historic brick industrial buildings (Pier 70, American Industrial Center era). Damage off; bays and storeys picked per footprint.",
+   "size": {
+    "x": 12,
+    "y": 4.23,
+    "z": 8
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 828,
+   "vertices": 1122,
+   "bytes": 37656
+  },
+  {
+   "key": "b-depot-brick-3x2",
+   "role": "building:brick-industrial",
+   "asset": "brick-depot-warehouse-3dd642",
+   "knobs": {
+    "bays": 3,
+    "storeys": 2,
+    "damage": 0,
+    "rafters": 7,
+    "tone": 0.3,
+    "brick": "#E2603F",
+    "dressing": "#FFF3DA",
+    "iron": "#1C2347",
+    "pane": "#2C4FA3",
+    "timber": "#FFE27A",
+    "deck": "#A3AEC4",
+    "inside": "#6C758B"
+   },
+   "night": [
+    {
+     "zone": "pane",
+     "albedo": "#2c4fa3",
+     "color": "#FFCF8A",
+     "intensity": 0.7,
+     "describe": "gas-lit warehouse floor behind the arched glazing"
+    },
+    {
+     "zone": "inside",
+     "albedo": "#6c758b",
+     "color": "#C98A4A",
+     "intensity": 0.45,
+     "describe": "dim interior spilling out of the freight opening and any breach"
+    }
+   ],
+   "why": "Brick freight depot with stone string courses and freight doors: the historic brick industrial buildings (Pier 70, American Industrial Center era). Damage off; bays and storeys picked per footprint.",
+   "size": {
+    "x": 12,
+    "y": 7.23,
+    "z": 8
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 1332,
+   "vertices": 1971,
+   "bytes": 64084
+  },
+  {
+   "key": "b-depot-brick-3x3",
+   "role": "building:brick-industrial",
+   "asset": "brick-depot-warehouse-3dd642",
+   "knobs": {
+    "bays": 3,
+    "storeys": 3,
+    "damage": 0,
+    "rafters": 7,
+    "tone": 0.3,
+    "brick": "#E2603F",
+    "dressing": "#FFF3DA",
+    "iron": "#1C2347",
+    "pane": "#2C4FA3",
+    "timber": "#FFE27A",
+    "deck": "#A3AEC4",
+    "inside": "#6C758B"
+   },
+   "night": [
+    {
+     "zone": "pane",
+     "albedo": "#2c4fa3",
+     "color": "#FFCF8A",
+     "intensity": 0.7,
+     "describe": "gas-lit warehouse floor behind the arched glazing"
+    },
+    {
+     "zone": "inside",
+     "albedo": "#6c758b",
+     "color": "#C98A4A",
+     "intensity": 0.45,
+     "describe": "dim interior spilling out of the freight opening and any breach"
+    }
+   ],
+   "why": "Brick freight depot with stone string courses and freight doors: the historic brick industrial buildings (Pier 70, American Industrial Center era). Damage off; bays and storeys picked per footprint.",
+   "size": {
+    "x": 12,
+    "y": 10.23,
+    "z": 8
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 1876,
+   "vertices": 2903,
+   "bytes": 92980
+  },
+  {
+   "key": "b-depot-brick-5x1",
+   "role": "building:brick-industrial",
+   "asset": "brick-depot-warehouse-3dd642",
+   "knobs": {
+    "bays": 5,
+    "storeys": 1,
+    "damage": 0,
+    "rafters": 7,
+    "tone": 0.3,
+    "brick": "#E2603F",
+    "dressing": "#FFF3DA",
+    "iron": "#1C2347",
+    "pane": "#2C4FA3",
+    "timber": "#FFE27A",
+    "deck": "#A3AEC4",
+    "inside": "#6C758B"
+   },
+   "night": [
+    {
+     "zone": "pane",
+     "albedo": "#2c4fa3",
+     "color": "#FFCF8A",
+     "intensity": 0.7,
+     "describe": "gas-lit warehouse floor behind the arched glazing"
+    },
+    {
+     "zone": "inside",
+     "albedo": "#6c758b",
+     "color": "#C98A4A",
+     "intensity": 0.45,
+     "describe": "dim interior spilling out of the freight opening and any breach"
+    }
+   ],
+   "why": "Brick freight depot with stone string courses and freight doors: the historic brick industrial buildings (Pier 70, American Industrial Center era). Damage off; bays and storeys picked per footprint.",
+   "size": {
+    "x": 20,
+    "y": 4.23,
+    "z": 8
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 1012,
+   "vertices": 1413,
+   "bytes": 46852
+  },
+  {
+   "key": "b-depot-brick-5x2",
+   "role": "building:brick-industrial",
+   "asset": "brick-depot-warehouse-3dd642",
+   "knobs": {
+    "bays": 5,
+    "storeys": 2,
+    "damage": 0,
+    "rafters": 7,
+    "tone": 0.3,
+    "brick": "#E2603F",
+    "dressing": "#FFF3DA",
+    "iron": "#1C2347",
+    "pane": "#2C4FA3",
+    "timber": "#FFE27A",
+    "deck": "#A3AEC4",
+    "inside": "#6C758B"
+   },
+   "night": [
+    {
+     "zone": "pane",
+     "albedo": "#2c4fa3",
+     "color": "#FFCF8A",
+     "intensity": 0.7,
+     "describe": "gas-lit warehouse floor behind the arched glazing"
+    },
+    {
+     "zone": "inside",
+     "albedo": "#6c758b",
+     "color": "#C98A4A",
+     "intensity": 0.45,
+     "describe": "dim interior spilling out of the freight opening and any breach"
+    }
+   ],
+   "why": "Brick freight depot with stone string courses and freight doors: the historic brick industrial buildings (Pier 70, American Industrial Center era). Damage off; bays and storeys picked per footprint.",
+   "size": {
+    "x": 20,
+    "y": 7.23,
+    "z": 8
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 1700,
+   "vertices": 2571,
+   "bytes": 82900
+  },
+  {
+   "key": "b-depot-brick-5x3",
+   "role": "building:brick-industrial",
+   "asset": "brick-depot-warehouse-3dd642",
+   "knobs": {
+    "bays": 5,
+    "storeys": 3,
+    "damage": 0,
+    "rafters": 7,
+    "tone": 0.3,
+    "brick": "#E2603F",
+    "dressing": "#FFF3DA",
+    "iron": "#1C2347",
+    "pane": "#2C4FA3",
+    "timber": "#FFE27A",
+    "deck": "#A3AEC4",
+    "inside": "#6C758B"
+   },
+   "night": [
+    {
+     "zone": "pane",
+     "albedo": "#2c4fa3",
+     "color": "#FFCF8A",
+     "intensity": 0.7,
+     "describe": "gas-lit warehouse floor behind the arched glazing"
+    },
+    {
+     "zone": "inside",
+     "albedo": "#6c758b",
+     "color": "#C98A4A",
+     "intensity": 0.45,
+     "describe": "dim interior spilling out of the freight opening and any breach"
+    }
+   ],
+   "why": "Brick freight depot with stone string courses and freight doors: the historic brick industrial buildings (Pier 70, American Industrial Center era). Damage off; bays and storeys picked per footprint.",
+   "size": {
+    "x": 20,
+    "y": 10.23,
+    "z": 8
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 1898,
+   "vertices": 2822,
+   "bytes": 91300
+  },
+  {
+   "key": "b-depot-brickDeep-3x1",
+   "role": "building:brick-industrial",
+   "asset": "brick-depot-warehouse-3dd642",
+   "knobs": {
+    "bays": 3,
+    "storeys": 1,
+    "damage": 0,
+    "rafters": 7,
+    "tone": 0.3,
+    "brick": "#C94A32",
+    "dressing": "#FFF3DA",
+    "iron": "#1C2347",
+    "pane": "#2C4FA3",
+    "timber": "#FFE27A",
+    "deck": "#A3AEC4",
+    "inside": "#6C758B"
+   },
+   "night": [
+    {
+     "zone": "pane",
+     "albedo": "#2c4fa3",
+     "color": "#FFCF8A",
+     "intensity": 0.7,
+     "describe": "gas-lit warehouse floor behind the arched glazing"
+    },
+    {
+     "zone": "inside",
+     "albedo": "#6c758b",
+     "color": "#C98A4A",
+     "intensity": 0.45,
+     "describe": "dim interior spilling out of the freight opening and any breach"
+    }
+   ],
+   "why": "Brick freight depot with stone string courses and freight doors: the historic brick industrial buildings (Pier 70, American Industrial Center era). Damage off; bays and storeys picked per footprint.",
+   "size": {
+    "x": 12,
+    "y": 4.23,
+    "z": 8
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 828,
+   "vertices": 1148,
+   "bytes": 38288
+  },
+  {
+   "key": "b-depot-brickDeep-3x2",
+   "role": "building:brick-industrial",
+   "asset": "brick-depot-warehouse-3dd642",
+   "knobs": {
+    "bays": 3,
+    "storeys": 2,
+    "damage": 0,
+    "rafters": 7,
+    "tone": 0.3,
+    "brick": "#C94A32",
+    "dressing": "#FFF3DA",
+    "iron": "#1C2347",
+    "pane": "#2C4FA3",
+    "timber": "#FFE27A",
+    "deck": "#A3AEC4",
+    "inside": "#6C758B"
+   },
+   "night": [
+    {
+     "zone": "pane",
+     "albedo": "#2c4fa3",
+     "color": "#FFCF8A",
+     "intensity": 0.7,
+     "describe": "gas-lit warehouse floor behind the arched glazing"
+    },
+    {
+     "zone": "inside",
+     "albedo": "#6c758b",
+     "color": "#C98A4A",
+     "intensity": 0.45,
+     "describe": "dim interior spilling out of the freight opening and any breach"
+    }
+   ],
+   "why": "Brick freight depot with stone string courses and freight doors: the historic brick industrial buildings (Pier 70, American Industrial Center era). Damage off; bays and storeys picked per footprint.",
+   "size": {
+    "x": 12,
+    "y": 7.23,
+    "z": 8
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 1332,
+   "vertices": 2045,
+   "bytes": 65868
+  },
+  {
+   "key": "b-depot-brickDeep-3x3",
+   "role": "building:brick-industrial",
+   "asset": "brick-depot-warehouse-3dd642",
+   "knobs": {
+    "bays": 3,
+    "storeys": 3,
+    "damage": 0,
+    "rafters": 7,
+    "tone": 0.3,
+    "brick": "#C94A32",
+    "dressing": "#FFF3DA",
+    "iron": "#1C2347",
+    "pane": "#2C4FA3",
+    "timber": "#FFE27A",
+    "deck": "#A3AEC4",
+    "inside": "#6C758B"
+   },
+   "night": [
+    {
+     "zone": "pane",
+     "albedo": "#2c4fa3",
+     "color": "#FFCF8A",
+     "intensity": 0.7,
+     "describe": "gas-lit warehouse floor behind the arched glazing"
+    },
+    {
+     "zone": "inside",
+     "albedo": "#6c758b",
+     "color": "#C98A4A",
+     "intensity": 0.45,
+     "describe": "dim interior spilling out of the freight opening and any breach"
+    }
+   ],
+   "why": "Brick freight depot with stone string courses and freight doors: the historic brick industrial buildings (Pier 70, American Industrial Center era). Damage off; bays and storeys picked per footprint.",
+   "size": {
+    "x": 12,
+    "y": 10.23,
+    "z": 8
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 1876,
+   "vertices": 3023,
+   "bytes": 95868
+  },
+  {
+   "key": "b-depot-brickDeep-5x1",
+   "role": "building:brick-industrial",
+   "asset": "brick-depot-warehouse-3dd642",
+   "knobs": {
+    "bays": 5,
+    "storeys": 1,
+    "damage": 0,
+    "rafters": 7,
+    "tone": 0.3,
+    "brick": "#C94A32",
+    "dressing": "#FFF3DA",
+    "iron": "#1C2347",
+    "pane": "#2C4FA3",
+    "timber": "#FFE27A",
+    "deck": "#A3AEC4",
+    "inside": "#6C758B"
+   },
+   "night": [
+    {
+     "zone": "pane",
+     "albedo": "#2c4fa3",
+     "color": "#FFCF8A",
+     "intensity": 0.7,
+     "describe": "gas-lit warehouse floor behind the arched glazing"
+    },
+    {
+     "zone": "inside",
+     "albedo": "#6c758b",
+     "color": "#C98A4A",
+     "intensity": 0.45,
+     "describe": "dim interior spilling out of the freight opening and any breach"
+    }
+   ],
+   "why": "Brick freight depot with stone string courses and freight doors: the historic brick industrial buildings (Pier 70, American Industrial Center era). Damage off; bays and storeys picked per footprint.",
+   "size": {
+    "x": 20,
+    "y": 4.23,
+    "z": 8
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 1012,
+   "vertices": 1449,
+   "bytes": 47724
+  },
+  {
+   "key": "b-depot-brickDeep-5x2",
+   "role": "building:brick-industrial",
+   "asset": "brick-depot-warehouse-3dd642",
+   "knobs": {
+    "bays": 5,
+    "storeys": 2,
+    "damage": 0,
+    "rafters": 7,
+    "tone": 0.3,
+    "brick": "#C94A32",
+    "dressing": "#FFF3DA",
+    "iron": "#1C2347",
+    "pane": "#2C4FA3",
+    "timber": "#FFE27A",
+    "deck": "#A3AEC4",
+    "inside": "#6C758B"
+   },
+   "night": [
+    {
+     "zone": "pane",
+     "albedo": "#2c4fa3",
+     "color": "#FFCF8A",
+     "intensity": 0.7,
+     "describe": "gas-lit warehouse floor behind the arched glazing"
+    },
+    {
+     "zone": "inside",
+     "albedo": "#6c758b",
+     "color": "#C98A4A",
+     "intensity": 0.45,
+     "describe": "dim interior spilling out of the freight opening and any breach"
+    }
+   ],
+   "why": "Brick freight depot with stone string courses and freight doors: the historic brick industrial buildings (Pier 70, American Industrial Center era). Damage off; bays and storeys picked per footprint.",
+   "size": {
+    "x": 20,
+    "y": 7.23,
+    "z": 8
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 1700,
+   "vertices": 2665,
+   "bytes": 85164
+  },
+  {
+   "key": "b-depot-brickDeep-5x3",
+   "role": "building:brick-industrial",
+   "asset": "brick-depot-warehouse-3dd642",
+   "knobs": {
+    "bays": 5,
+    "storeys": 3,
+    "damage": 0,
+    "rafters": 7,
+    "tone": 0.3,
+    "brick": "#C94A32",
+    "dressing": "#FFF3DA",
+    "iron": "#1C2347",
+    "pane": "#2C4FA3",
+    "timber": "#FFE27A",
+    "deck": "#A3AEC4",
+    "inside": "#6C758B"
+   },
+   "night": [
+    {
+     "zone": "pane",
+     "albedo": "#2c4fa3",
+     "color": "#FFCF8A",
+     "intensity": 0.7,
+     "describe": "gas-lit warehouse floor behind the arched glazing"
+    },
+    {
+     "zone": "inside",
+     "albedo": "#6c758b",
+     "color": "#C98A4A",
+     "intensity": 0.45,
+     "describe": "dim interior spilling out of the freight opening and any breach"
+    }
+   ],
+   "why": "Brick freight depot with stone string courses and freight doors: the historic brick industrial buildings (Pier 70, American Industrial Center era). Damage off; bays and storeys picked per footprint.",
+   "size": {
+    "x": 20,
+    "y": 10.23,
+    "z": 8
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 1898,
+   "vertices": 2884,
+   "bytes": 92796
+  },
+  {
+   "key": "b-hall-brick-16",
+   "role": "building:brick-hall",
+   "asset": "engine-shed-eff627",
+   "knobs": {
+    "doors": 1,
+    "length": 16,
+    "roofPitch": 30,
+    "wear": 0.1,
+    "brick": "#E2603F",
+    "stone": "#FFF3DA",
+    "slate": "#6C758B",
+    "iron": "#1C2347",
+    "door": "#FFE27A",
+    "glass": "#2C4FA3",
+    "interior": "#1C2347",
+    "floor": "#A3AEC4"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#e2c291",
+     "intensity": 0.6,
+     "describe": "lamplight inside the shed behind every pane: the side windows, the small gable windows and the glazing of both roof lanterns"
+    }
+   ],
+   "why": "Gabled brick hall 12 m wide: tiled side by side it reads as the multi-gable shipyard sheds of Pier 70 (Buildings 2, 12, 113).",
+   "size": {
+    "x": 12,
+    "y": 8.751,
+    "z": 16
+   },
+   "center": {
+    "x": 2,
+    "z": 8
+   },
+   "minY": 0,
+   "triangles": 1914,
+   "vertices": 1772,
+   "bytes": 66288
+  },
+  {
+   "key": "b-hall-brick-32",
+   "role": "building:brick-hall",
+   "asset": "engine-shed-eff627",
+   "knobs": {
+    "doors": 1,
+    "length": 32,
+    "roofPitch": 30,
+    "wear": 0.1,
+    "brick": "#E2603F",
+    "stone": "#FFF3DA",
+    "slate": "#6C758B",
+    "iron": "#1C2347",
+    "door": "#FFE27A",
+    "glass": "#2C4FA3",
+    "interior": "#1C2347",
+    "floor": "#A3AEC4"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#e2c291",
+     "intensity": 0.6,
+     "describe": "lamplight inside the shed behind every pane: the side windows, the small gable windows and the glazing of both roof lanterns"
+    }
+   ],
+   "why": "Gabled brick hall 12 m wide: tiled side by side it reads as the multi-gable shipyard sheds of Pier 70 (Buildings 2, 12, 113).",
+   "size": {
+    "x": 12,
+    "y": 8.751,
+    "z": 32
+   },
+   "center": {
+    "x": 2,
+    "z": 16
+   },
+   "minY": 0,
+   "triangles": 2470,
+   "vertices": 2402,
+   "bytes": 88080
+  },
+  {
+   "key": "b-hall-brickDeep-16",
+   "role": "building:brick-hall",
+   "asset": "engine-shed-eff627",
+   "knobs": {
+    "doors": 1,
+    "length": 16,
+    "roofPitch": 30,
+    "wear": 0.1,
+    "brick": "#C94A32",
+    "stone": "#FFF3DA",
+    "slate": "#6C758B",
+    "iron": "#1C2347",
+    "door": "#FFE27A",
+    "glass": "#2C4FA3",
+    "interior": "#1C2347",
+    "floor": "#A3AEC4"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#e2c291",
+     "intensity": 0.6,
+     "describe": "lamplight inside the shed behind every pane: the side windows, the small gable windows and the glazing of both roof lanterns"
+    }
+   ],
+   "why": "Gabled brick hall 12 m wide: tiled side by side it reads as the multi-gable shipyard sheds of Pier 70 (Buildings 2, 12, 113).",
+   "size": {
+    "x": 12,
+    "y": 8.751,
+    "z": 16
+   },
+   "center": {
+    "x": 2,
+    "z": 8
+   },
+   "minY": 0,
+   "triangles": 1914,
+   "vertices": 1772,
+   "bytes": 66296
+  },
+  {
+   "key": "b-hall-brickDeep-32",
+   "role": "building:brick-hall",
+   "asset": "engine-shed-eff627",
+   "knobs": {
+    "doors": 1,
+    "length": 32,
+    "roofPitch": 30,
+    "wear": 0.1,
+    "brick": "#C94A32",
+    "stone": "#FFF3DA",
+    "slate": "#6C758B",
+    "iron": "#1C2347",
+    "door": "#FFE27A",
+    "glass": "#2C4FA3",
+    "interior": "#1C2347",
+    "floor": "#A3AEC4"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#e2c291",
+     "intensity": 0.6,
+     "describe": "lamplight inside the shed behind every pane: the side windows, the small gable windows and the glazing of both roof lanterns"
+    }
+   ],
+   "why": "Gabled brick hall 12 m wide: tiled side by side it reads as the multi-gable shipyard sheds of Pier 70 (Buildings 2, 12, 113).",
+   "size": {
+    "x": 12,
+    "y": 8.751,
+    "z": 32
+   },
+   "center": {
+    "x": 2,
+    "z": 16
+   },
+   "minY": 0,
+   "triangles": 2470,
+   "vertices": 2402,
+   "bytes": 88088
+  },
+  {
+   "key": "b-shed-asphalt",
+   "role": "building:shed",
+   "asset": "backyard-garden-shed-38d79f",
+   "knobs": {
+    "material": "ribbed-metal",
+    "doorState": "closed",
+    "stripes": "plain",
+    "boardA": "#A9ADB4",
+    "boardB": "#A9ADB4",
+    "boardC": "#A9ADB4",
+    "boardD": "#A9ADB4",
+    "trim": "#1C2347",
+    "door": "#2C4FA3",
+    "roof": "#6C758B",
+    "ridge": "#1C2347",
+    "interior": "#1C2347",
+    "metal": "#FFFFFF"
+   },
+   "night": [],
+   "why": "Small ribbed-metal shed for footprints under 60 m2 and 4.5 m.",
+   "size": {
+    "x": 4,
+    "y": 4.115,
+    "z": 4
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 1278,
+   "vertices": 1390,
+   "bytes": 49484
+  },
+  {
+   "key": "b-shed-powder",
+   "role": "building:shed",
+   "asset": "backyard-garden-shed-38d79f",
+   "knobs": {
+    "material": "ribbed-metal",
+    "doorState": "closed",
+    "stripes": "plain",
+    "boardA": "#9ED7FF",
+    "boardB": "#9ED7FF",
+    "boardC": "#9ED7FF",
+    "boardD": "#9ED7FF",
+    "trim": "#1C2347",
+    "door": "#2C4FA3",
+    "roof": "#6C758B",
+    "ridge": "#1C2347",
+    "interior": "#1C2347",
+    "metal": "#FFFFFF"
+   },
+   "night": [],
+   "why": "Small ribbed-metal shed for footprints under 60 m2 and 4.5 m.",
+   "size": {
+    "x": 4,
+    "y": 4.115,
+    "z": 4
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 1278,
+   "vertices": 1390,
+   "bytes": 49484
+  },
+  {
+   "key": "b-garage-cream",
+   "role": "building:garage",
+   "asset": "detached-garage-38a178",
+   "knobs": {
+    "doorState": "closed",
+    "siding": "#FFF3DA",
+    "trim": "#FFFFFF",
+    "doorLeaf": "#FFFFFF",
+    "roof": "#6C758B",
+    "glass": "#2C4FA3",
+    "interior": "#1C2347"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#f2d89a",
+     "intensity": 0.55,
+     "describe": "a bare bulb left on inside the bay, seen through the two windows"
+    }
+   ],
+   "why": "Single garage for small residential outbuildings.",
+   "size": {
+    "x": 8,
+    "y": 4.641,
+    "z": 4
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 696,
+   "vertices": 562,
+   "bytes": 22624
+  },
+  {
+   "key": "b-garage-mint",
+   "role": "building:garage",
+   "asset": "detached-garage-38a178",
+   "knobs": {
+    "doorState": "closed",
+    "siding": "#8CE3BF",
+    "trim": "#FFFFFF",
+    "doorLeaf": "#FFFFFF",
+    "roof": "#6C758B",
+    "glass": "#2C4FA3",
+    "interior": "#1C2347"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#f2d89a",
+     "intensity": 0.55,
+     "describe": "a bare bulb left on inside the bay, seen through the two windows"
+    }
+   ],
+   "why": "Single garage for small residential outbuildings.",
+   "size": {
+    "x": 8,
+    "y": 4.641,
+    "z": 4
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 696,
+   "vertices": 562,
+   "bytes": 22620
+  },
+  {
+   "key": "b-parking-3",
+   "role": "building:parking",
+   "asset": "parking-garage-6e4f2c",
+   "knobs": {
+    "decks": 3,
+    "parapetInfill": "solid-band",
+    "waterTank": false,
+    "tone": 0.2,
+    "concrete": "#A3AEC4",
+    "trim": "#FFFFFF",
+    "deck": "#6C758B",
+    "tar": "#1C2347",
+    "interior": "#A9ADB4",
+    "steel": "#2C4FA3",
+    "accent": "#FFCB1F",
+    "lamp": "#FFF3DA",
+    "party": "#6C758B",
+    "course": "#6C758B",
+    "iron": "#1C2347",
+    "lines": "#FFCB1F",
+    "timber": "#8B5A3C"
+   },
+   "night": [
+    {
+     "zone": "lamp",
+     "albedo": "#fff3da",
+     "color": "#ffd9a0",
+     "intensity": 0.8,
+     "describe": "Sign lamps over the two front sign boards and the strip lights under every deck soffit, seen through the open slots."
+    }
+   ],
+   "why": "Open-deck parking structure.",
+   "size": {
+    "x": 12,
+    "y": 10.2,
+    "z": 12
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 1665,
+   "vertices": 1585,
+   "bytes": 58804
+  },
+  {
+   "key": "b-parking-5",
+   "role": "building:parking",
+   "asset": "parking-garage-6e4f2c",
+   "knobs": {
+    "decks": 5,
+    "parapetInfill": "solid-band",
+    "waterTank": false,
+    "tone": 0.2,
+    "concrete": "#A3AEC4",
+    "trim": "#FFFFFF",
+    "deck": "#6C758B",
+    "tar": "#1C2347",
+    "interior": "#A9ADB4",
+    "steel": "#2C4FA3",
+    "accent": "#FFCB1F",
+    "lamp": "#FFF3DA",
+    "party": "#6C758B",
+    "course": "#6C758B",
+    "iron": "#1C2347",
+    "lines": "#FFCB1F",
+    "timber": "#8B5A3C"
+   },
+   "night": [
+    {
+     "zone": "lamp",
+     "albedo": "#fff3da",
+     "color": "#ffd9a0",
+     "intensity": 0.8,
+     "describe": "Sign lamps over the two front sign boards and the strip lights under every deck soffit, seen through the open slots."
+    }
+   ],
+   "why": "Open-deck parking structure.",
+   "size": {
+    "x": 12,
+    "y": 16.2,
+    "z": 12
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 2345,
+   "vertices": 2217,
+   "bytes": 82132
+  },
+  {
+   "key": "b-school-3",
+   "role": "building:school",
+   "asset": "public-school-19ade5",
+   "knobs": {
+    "floors": 3,
+    "parapet": "plain",
+    "quoins": true,
+    "tone": 0.25,
+    "brick": "#E2603F",
+    "stone": "#FFF3DA",
+    "glass": "#2C4FA3",
+    "frame": "#1C2347",
+    "door": "#FFE27A",
+    "deck": "#6C758B",
+    "seam": "#1C2347",
+    "patch": "#FFF3DA",
+    "vent": "#A9ADB4",
+    "party": "#C94A32",
+    "course": "#C94A32"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffd9a0",
+     "intensity": 0.7,
+     "describe": "Classroom windows and the front door lights, lit warm amber after dark."
+    }
+   ],
+   "why": "Masonry school for civic and institutional buildings.",
+   "size": {
+    "x": 20,
+    "y": 10.2,
+    "z": 12
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 2244,
+   "vertices": 3806,
+   "bytes": 119056
+  },
+  {
+   "key": "b-school-4",
+   "role": "building:school",
+   "asset": "public-school-19ade5",
+   "knobs": {
+    "floors": 4,
+    "parapet": "plain",
+    "quoins": true,
+    "tone": 0.25,
+    "brick": "#E2603F",
+    "stone": "#FFF3DA",
+    "glass": "#2C4FA3",
+    "frame": "#1C2347",
+    "door": "#FFE27A",
+    "deck": "#6C758B",
+    "seam": "#1C2347",
+    "patch": "#FFF3DA",
+    "vent": "#A9ADB4",
+    "party": "#C94A32",
+    "course": "#C94A32"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffd9a0",
+     "intensity": 0.7,
+     "describe": "Classroom windows and the front door lights, lit warm amber after dark."
+    }
+   ],
+   "why": "Masonry school for civic and institutional buildings.",
+   "size": {
+    "x": 20,
+    "y": 13.2,
+    "z": 12
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 2750,
+   "vertices": 4692,
+   "bytes": 146392
+  },
+  {
+   "key": "b-church",
+   "role": "building:church",
+   "asset": "brick-church-322885",
+   "knobs": {
+    "towerHeight": 15,
+    "towerTop": "pyramid",
+    "tone": 0.25,
+    "brick": "#FFF3DA",
+    "stone": "#FFFFFF",
+    "roof": "#6C758B",
+    "metal": "#6C758B",
+    "door": "#1C2347",
+    "glass": "#2C4FA3",
+    "interior": "#1C2347",
+    "party": "#A3AEC4",
+    "course": "#A3AEC4"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffd9a0",
+     "intensity": 0.7,
+     "describe": "Warm candle-and-lamp light behind every window pane, the door fanlight and the rose."
+    }
+   ],
+   "why": "Church (OSM amenity=place_of_worship).",
+   "size": {
+    "x": 8,
+    "y": 16.4,
+    "z": 12
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 2952,
+   "vertices": 4270,
+   "bytes": 138684
+  },
+  {
+   "key": "b-firestation",
+   "role": "building:fire-station",
+   "asset": "fire-station-e2b756",
+   "knobs": {
+    "floors": 2,
+    "bayDoor": "closed",
+    "brick": "#E2603F",
+    "stone": "#FFF3DA",
+    "door": "#FF9C86",
+    "frame": "#1C2347",
+    "glass": "#2C4FA3",
+    "roof": "#6C758B",
+    "metal": "#A3AEC4",
+    "dark": "#1C2347",
+    "party": "#C94A32",
+    "course": "#C94A32"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffc979",
+     "intensity": 0.7,
+     "describe": "Warm lamplight in every window pane, front and back, on every floor."
+    }
+   ],
+   "why": "Fire station (OSM amenity=fire_station).",
+   "size": {
+    "x": 8,
+    "y": 7,
+    "z": 8
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 2282,
+   "vertices": 3630,
+   "bytes": 115276
+  },
+  {
+   "key": "b-tank-8",
+   "role": "building:tank",
+   "asset": "fuel-farm-tank-ed67f0",
+   "knobs": {
+    "height": 8,
+    "wear": 0.1,
+    "shell": "#FFFFFF",
+    "roof": "#FFF3DA",
+    "flange": "#A3AEC4",
+    "concrete": "#EEE7DA",
+    "steel": "#A9ADB4",
+    "grating": "#6C758B"
+   },
+   "night": [],
+   "why": "Round storage tank for OSM man_made=storage_tank / tank footprints.",
+   "size": {
+    "x": 16,
+    "y": 9.525,
+    "z": 16
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 1576,
+   "vertices": 1170,
+   "bytes": 47768
+  },
+  {
+   "key": "b-tank-14",
+   "role": "building:tank",
+   "asset": "fuel-farm-tank-ed67f0",
+   "knobs": {
+    "height": 14,
+    "wear": 0.1,
+    "shell": "#FFFFFF",
+    "roof": "#FFF3DA",
+    "flange": "#A3AEC4",
+    "concrete": "#EEE7DA",
+    "steel": "#A9ADB4",
+    "grating": "#6C758B"
+   },
+   "night": [],
+   "why": "Round storage tank for OSM man_made=storage_tank / tank footprints.",
+   "size": {
+    "x": 16,
+    "y": 15.525,
+    "z": 16
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 1858,
+   "vertices": 1409,
+   "bytes": 56892
+  },
+  {
+   "key": "b-tower-6",
+   "role": "building:tower",
+   "asset": "office-tower-1538cc",
+   "knobs": {
+    "floors": 6,
+    "lobby": "double",
+    "waterTank": false,
+    "concrete": "#FFF3DA",
+    "ledge": "#FFFFFF",
+    "glass": "#2C4FA3",
+    "spandrel": "#A3AEC4",
+    "frame": "#1C2347",
+    "roof": "#6C758B",
+    "tar": "#1C2347",
+    "roofgear": "#A9ADB4",
+    "iron": "#1C2347",
+    "timber": "#FFF3DA",
+    "party": "#A3AEC4",
+    "course": "#A3AEC4",
+    "interior": "#1C2347"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffd9a0",
+     "intensity": 0.7,
+     "describe": "Office floors and the lobby lit warm amber behind every vision pane."
+    }
+   ],
+   "why": "Slender office tower for the few buildings above 25 m on a small plate.",
+   "size": {
+    "x": 8,
+    "y": 18.95,
+    "z": 8
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 1720,
+   "vertices": 2282,
+   "bytes": 76188
+  },
+  {
+   "key": "b-tower-10",
+   "role": "building:tower",
+   "asset": "office-tower-1538cc",
+   "knobs": {
+    "floors": 10,
+    "lobby": "double",
+    "waterTank": false,
+    "concrete": "#FFF3DA",
+    "ledge": "#FFFFFF",
+    "glass": "#2C4FA3",
+    "spandrel": "#A3AEC4",
+    "frame": "#1C2347",
+    "roof": "#6C758B",
+    "tar": "#1C2347",
+    "roofgear": "#A9ADB4",
+    "iron": "#1C2347",
+    "timber": "#FFF3DA",
+    "party": "#A3AEC4",
+    "course": "#A3AEC4",
+    "interior": "#1C2347"
+   },
+   "night": [
+    {
+     "zone": "glass",
+     "albedo": "#2c4fa3",
+     "color": "#ffd9a0",
+     "intensity": 0.7,
+     "describe": "Office floors and the lobby lit warm amber behind every vision pane."
+    }
+   ],
+   "why": "Slender office tower for the few buildings above 25 m on a small plate.",
+   "size": {
+    "x": 8,
+    "y": 30.95,
+    "z": 8
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 2696,
+   "vertices": 3626,
+   "bytes": 120160
+  },
+  {
+   "key": "t-street-egg-tree",
+   "role": "tree:street",
+   "asset": "street-tree-0d33f3",
+   "knobs": {
+    "crown": "egg",
+    "tallness": 1,
+    "spread": 1,
+    "canopy": "#48C26A",
+    "bark": "#8B5A3C",
+    "frame": "#EEE7DA",
+    "bed": "#2FA35A"
+   },
+   "night": [],
+   "why": "NYC kit street tree in its square pit (272 tris): evergreen and most broadleaf street trees. Crown profile per species form (egg upright, round, broad).",
+   "size": {
+    "x": 3.05,
+    "y": 6,
+    "z": 3.05
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 272,
+   "vertices": 164,
+   "bytes": 8032
+  },
+  {
+   "key": "t-street-egg-treeDeep",
+   "role": "tree:street",
+   "asset": "street-tree-0d33f3",
+   "knobs": {
+    "crown": "egg",
+    "tallness": 1,
+    "spread": 1,
+    "canopy": "#2FA35A",
+    "bark": "#8B5A3C",
+    "frame": "#EEE7DA",
+    "bed": "#2FA35A"
+   },
+   "night": [],
+   "why": "NYC kit street tree in its square pit (272 tris): evergreen and most broadleaf street trees. Crown profile per species form (egg upright, round, broad).",
+   "size": {
+    "x": 3.05,
+    "y": 6,
+    "z": 3.05
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 272,
+   "vertices": 164,
+   "bytes": 8040
+  },
+  {
+   "key": "t-street-round-tree",
+   "role": "tree:street",
+   "asset": "street-tree-0d33f3",
+   "knobs": {
+    "crown": "round",
+    "tallness": 1,
+    "spread": 1,
+    "canopy": "#48C26A",
+    "bark": "#8B5A3C",
+    "frame": "#EEE7DA",
+    "bed": "#2FA35A"
+   },
+   "night": [],
+   "why": "NYC kit street tree in its square pit (272 tris): evergreen and most broadleaf street trees. Crown profile per species form (egg upright, round, broad).",
+   "size": {
+    "x": 3.151,
+    "y": 5.748,
+    "z": 3.151
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 272,
+   "vertices": 164,
+   "bytes": 8056
+  },
+  {
+   "key": "t-street-round-treeDeep",
+   "role": "tree:street",
+   "asset": "street-tree-0d33f3",
+   "knobs": {
+    "crown": "round",
+    "tallness": 1,
+    "spread": 1,
+    "canopy": "#2FA35A",
+    "bark": "#8B5A3C",
+    "frame": "#EEE7DA",
+    "bed": "#2FA35A"
+   },
+   "night": [],
+   "why": "NYC kit street tree in its square pit (272 tris): evergreen and most broadleaf street trees. Crown profile per species form (egg upright, round, broad).",
+   "size": {
+    "x": 3.151,
+    "y": 5.748,
+    "z": 3.151
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 272,
+   "vertices": 164,
+   "bytes": 8064
+  },
+  {
+   "key": "t-street-broad-tree",
+   "role": "tree:street",
+   "asset": "street-tree-0d33f3",
+   "knobs": {
+    "crown": "broad",
+    "tallness": 1,
+    "spread": 1,
+    "canopy": "#48C26A",
+    "bark": "#8B5A3C",
+    "frame": "#EEE7DA",
+    "bed": "#2FA35A"
+   },
+   "night": [],
+   "why": "NYC kit street tree in its square pit (272 tris): evergreen and most broadleaf street trees. Crown profile per species form (egg upright, round, broad).",
+   "size": {
+    "x": 3.279,
+    "y": 5.37,
+    "z": 3.279
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 272,
+   "vertices": 164,
+   "bytes": 8056
+  },
+  {
+   "key": "t-street-broad-treeDeep",
+   "role": "tree:street",
+   "asset": "street-tree-0d33f3",
+   "knobs": {
+    "crown": "broad",
+    "tallness": 1,
+    "spread": 1,
+    "canopy": "#2FA35A",
+    "bark": "#8B5A3C",
+    "frame": "#EEE7DA",
+    "bed": "#2FA35A"
+   },
+   "night": [],
+   "why": "NYC kit street tree in its square pit (272 tris): evergreen and most broadleaf street trees. Crown profile per species form (egg upright, round, broad).",
+   "size": {
+    "x": 3.279,
+    "y": 5.37,
+    "z": 3.279
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 272,
+   "vertices": 164,
+   "bytes": 8064
+  },
+  {
+   "key": "t-shade-tree",
+   "role": "tree:shade",
+   "asset": "broad-canopy-shade-tree-e7c4a2",
+   "knobs": {
+    "season": "summer",
+    "foliage": "#48C26A",
+    "foliageHi": "#8CE3BF",
+    "bark": "#8B5A3C"
+   },
+   "night": [],
+   "why": "Wide lobed canopy for large deciduous species (London plane, sycamore, elm, ash).",
+   "size": {
+    "x": 7.341,
+    "y": 8.536,
+    "z": 6.626
+   },
+   "center": {
+    "x": -0.192,
+    "z": 0.126
+   },
+   "minY": 0,
+   "triangles": 394,
+   "vertices": 272,
+   "bytes": 12100
+  },
+  {
+   "key": "t-shade-treeDeep",
+   "role": "tree:shade",
+   "asset": "broad-canopy-shade-tree-e7c4a2",
+   "knobs": {
+    "season": "summer",
+    "foliage": "#2FA35A",
+    "foliageHi": "#48C26A",
+    "bark": "#8B5A3C"
+   },
+   "night": [],
+   "why": "Wide lobed canopy for large deciduous species (London plane, sycamore, elm, ash).",
+   "size": {
+    "x": 7.341,
+    "y": 8.536,
+    "z": 6.626
+   },
+   "center": {
+    "x": -0.192,
+    "z": 0.126
+   },
+   "minY": 0,
+   "triangles": 394,
+   "vertices": 272,
+   "bytes": 12108
+  },
+  {
+   "key": "t-ornamental",
+   "role": "tree:ornamental",
+   "asset": "ornamental-front-yard-tree-c6781a",
+   "knobs": {
+    "season": "summer",
+    "foliage": "#48C26A",
+    "foliageHi": "#8CE3BF",
+    "bark": "#8B5A3C",
+    "edging": "#EEE7DA",
+    "mulch": "#8B5A3C"
+   },
+   "night": [],
+   "why": "Small rounded ornamental for flowering and small species (plum, cherry, crape myrtle, maple, magnolia).",
+   "size": {
+    "x": 3.117,
+    "y": 4.5,
+    "z": 2.712
+   },
+   "center": {
+    "x": -0.044,
+    "z": 0.034
+   },
+   "minY": 0,
+   "triangles": 526,
+   "vertices": 340,
+   "bytes": 15316
+  },
+  {
+   "key": "t-palm-9",
+   "role": "tree:palm",
+   "asset": "chilean-palm-45fef5",
+   "knobs": {
+    "height": 9,
+    "fronds": 18,
+    "deadFronds": 2,
+    "wear": 0.1,
+    "leaf": "#48C26A",
+    "underside": "#2FA35A",
+    "deadLeaf": "#FFE27A",
+    "bark": "#A3AEC4",
+    "leafBase": "#8B5A3C"
+   },
+   "night": [],
+   "why": "Feather palm: Canary Island date palm and the other palms on the street tree list.",
+   "size": {
+    "x": 7.883,
+    "y": 9,
+    "z": 7.337
+   },
+   "center": {
+    "x": 0,
+    "z": 0.139
+   },
+   "minY": 0,
+   "triangles": 730,
+   "vertices": 1585,
+   "bytes": 47624
+  },
+  {
+   "key": "t-palm-14",
+   "role": "tree:palm",
+   "asset": "chilean-palm-45fef5",
+   "knobs": {
+    "height": 14,
+    "fronds": 18,
+    "deadFronds": 2,
+    "wear": 0.1,
+    "leaf": "#48C26A",
+    "underside": "#2FA35A",
+    "deadLeaf": "#FFE27A",
+    "bark": "#A3AEC4",
+    "leafBase": "#8B5A3C"
+   },
+   "night": [],
+   "why": "Feather palm: Canary Island date palm and the other palms on the street tree list.",
+   "size": {
+    "x": 7.883,
+    "y": 14,
+    "z": 7.337
+   },
+   "center": {
+    "x": 0,
+    "z": 0.139
+   },
+   "minY": 0,
+   "triangles": 746,
+   "vertices": 1593,
+   "bytes": 48012
+  },
+  {
+   "key": "t-conifer",
+   "role": "tree:conifer",
+   "asset": "tall-pine-tree-ab4108",
+   "knobs": {
+    "season": "summer",
+    "tallness": 9,
+    "needles": "#2FA35A",
+    "bark": "#8B5A3C",
+    "snow": "#FFFFFF"
+   },
+   "night": [],
+   "why": "Conifer for pines, cypresses, redwoods and Norfolk Island pine.",
+   "size": {
+    "x": 3.667,
+    "y": 9,
+    "z": 3.564
+   },
+   "center": {
+    "x": 0,
+    "z": -0.017
+   },
+   "minY": 0,
+   "triangles": 350,
+   "vertices": 186,
+   "bytes": 9484
+  },
+  {
+   "key": "p-lamp",
+   "role": "prop:street_lamp",
+   "asset": "cobra-head-street-light-3e25b8",
+   "knobs": {
+    "arm": "single",
+    "lamp": "led",
+    "pole": "#A3AEC4",
+    "head": "#A9ADB4",
+    "lens": "#FFF3DA",
+    "ledPanel": "#1C2347",
+    "base": "#EEE7DA",
+    "door": "#6C758B"
+   },
+   "night": [
+    {
+     "zone": "lens",
+     "albedo": "#fff3da",
+     "color": "#f0a03c",
+     "intensity": 0.95,
+     "describe": "the warm high-pressure sodium refractor bowl under the cobra head, present when the lamp knob is on sodium (the default). Dark warm brown by day, deep amber after dark — the orange suburban street light."
+    }
+   ],
+   "why": "Cobra-head street light, the standard SF fixture.",
+   "size": {
+    "x": 1.05,
+    "y": 8.012,
+    "z": 3.125
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 452,
+   "vertices": 248,
+   "bytes": 12184
+  },
+  {
+   "key": "p-signal",
+   "role": "prop:traffic_signal",
+   "asset": "traffic-light-b217a2",
+   "knobs": {
+    "armSignal": true,
+    "pedSignal": true,
+    "paint": "#1C2347",
+    "dark": "#1C2347",
+    "stop": "#E2603F",
+    "amber": "#FFCB1F",
+    "go": "#8CE3BF",
+    "walk": "#FFF3DA"
+   },
+   "night": [
+    {
+     "zone": "stop",
+     "albedo": "#e2603f",
+     "color": "#ff2418",
+     "intensity": 1,
+     "describe": "red stop lenses, and the pedestrian stand panel"
+    },
+    {
+     "zone": "amber",
+     "albedo": "#ffcb1f",
+     "color": "#ffb422",
+     "intensity": 1,
+     "describe": "amber caution lenses"
+    },
+    {
+     "zone": "go",
+     "albedo": "#8ce3bf",
+     "color": "#2bf58a",
+     "intensity": 1,
+     "describe": "green go lenses"
+    },
+    {
+     "zone": "walk",
+     "albedo": "#fff3da",
+     "color": "#f3f9f0",
+     "intensity": 0.85,
+     "describe": "pedestrian walk panel"
+    }
+   ],
+   "why": "Mast-arm traffic signal with pedestrian head.",
+   "size": {
+    "x": 2.684,
+    "y": 5.283,
+    "z": 0.722
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 714,
+   "vertices": 538,
+   "bytes": 22320
+  },
+  {
+   "key": "p-stop",
+   "role": "prop:stop",
+   "asset": "street-sign-post-c621b4",
+   "knobs": {
+    "face": "stop",
+    "base": "sleeve",
+    "post": "#A3AEC4",
+    "foot": "#6C758B",
+    "plate": "#E2603F",
+    "border": "#FFFFFF",
+    "legend": "#FFFFFF",
+    "blade": "#2C4FA3",
+    "bladeLegend": "#FFFFFF",
+    "hardware": "#1C2347"
+   },
+   "night": [],
+   "why": "Stop sign on a post (face knob = stop).",
+   "size": {
+    "x": 0.72,
+    "y": 2.4,
+    "z": 0.4
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 242,
+   "vertices": 158,
+   "bytes": 7532
+  },
+  {
+   "key": "p-signpost",
+   "role": "prop:give_way",
+   "asset": "street-sign-post-c621b4",
+   "knobs": {
+    "face": "streetName",
+    "base": "sleeve",
+    "post": "#A3AEC4",
+    "foot": "#6C758B",
+    "plate": "#2C4FA3",
+    "border": "#FFFFFF",
+    "legend": "#FFFFFF",
+    "blade": "#2C4FA3",
+    "bladeLegend": "#FFFFFF",
+    "hardware": "#1C2347"
+   },
+   "night": [],
+   "why": "Generic sign post for give-way and other OSM traffic signs (the catalogue has no yield face).",
+   "size": {
+    "x": 0.95,
+    "y": 2.4,
+    "z": 0.4
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 194,
+   "vertices": 130,
+   "bytes": 6292
+  },
+  {
+   "key": "p-hydrant",
+   "role": "prop:fire_hydrant",
+   "asset": "fire-hydrant-b68b17",
+   "knobs": {
+    "facets": 8,
+    "body": "#FFFFFF",
+    "iron": "#6C758B",
+    "reveal": "#EEE7DA",
+    "capNut": "#FFF3DA",
+    "crownNut": "#2C4FA3"
+   },
+   "night": [],
+   "why": "Hydrant; SF hydrants are white-bodied with a coloured bonnet.",
+   "size": {
+    "x": 0.508,
+    "y": 0.812,
+    "z": 0.502
+   },
+   "center": {
+    "x": 0,
+    "z": 0.029
+   },
+   "minY": 0,
+   "triangles": 525,
+   "vertices": 369,
+   "bytes": 16020
+  },
+  {
+   "key": "p-bench",
+   "role": "prop:bench",
+   "asset": "park-bench-dc8b62",
+   "knobs": {
+    "iron": "#1C2347",
+    "wood": "#8B5A3C",
+    "armrests": true
+   },
+   "night": [],
+   "why": "Park bench.",
+   "size": {
+    "x": 1.8,
+    "y": 0.935,
+    "z": 0.729
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 756,
+   "vertices": 440,
+   "bytes": 20468
+  },
+  {
+   "key": "p-shelter",
+   "role": "prop:bus_shelter",
+   "asset": "bus-shelter-f786b4",
+   "knobs": {
+    "bays": 2,
+    "adState": "poster",
+    "seating": true,
+    "frame": "#6C758B",
+    "glass": "#9ED7FF",
+    "bench": "#1C2347",
+    "adCase": "#1C2347",
+    "diffuser": "#FFF3DA",
+    "posterSky": "#1C9BF2",
+    "posterLand": "#17B2D0",
+    "posterMotif": "#FFCB1F"
+   },
+   "night": [
+    {
+     "zone": "diffuser",
+     "albedo": "#fff3da",
+     "color": "#fff3d8",
+     "intensity": 1,
+     "describe": "the lightbox diffuser behind a blank ad face, the lit bezel ring, and the timetable insert"
+    },
+    {
+     "zone": "posterSky",
+     "albedo": "#1c9bf2",
+     "color": "#ffeccb",
+     "intensity": 0.9,
+     "describe": "backlit poster, upper field"
+    },
+    {
+     "zone": "posterLand",
+     "albedo": "#17b2d0",
+     "color": "#ff7a63",
+     "intensity": 0.9,
+     "describe": "backlit poster, hill band"
+    },
+    {
+     "zone": "posterMotif",
+     "albedo": "#ffcb1f",
+     "color": "#e0a06a",
+     "intensity": 0.9,
+     "describe": "backlit poster, foreground and monument"
+    }
+   ],
+   "why": "Bus shelter for stops tagged shelter=yes.",
+   "size": {
+    "x": 4,
+    "y": 2.6,
+    "z": 1.9
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 296,
+   "vertices": 302,
+   "bytes": 11604
+  },
+  {
+   "key": "p-busstop",
+   "role": "prop:bus_stop",
+   "asset": "street-sign-pole-1e9551",
+   "knobs": {
+    "finial": "cap",
+    "iron": "#1C2347",
+    "blade": "#FFCB1F",
+    "trim": "#FFFFFF",
+    "ink": "#1C2347"
+   },
+   "night": [],
+   "why": "Stop pole with a yellow blade, like a Muni stop marker, for stops without a shelter.",
+   "size": {
+    "x": 1.34,
+    "y": 3,
+    "z": 1.237
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 337,
+   "vertices": 233,
+   "bytes": 10460
+  },
+  {
+   "key": "p-bollard",
+   "role": "prop:bollard",
+   "asset": "sidewalk-bollard-c2567e",
+   "knobs": {
+    "style": "steel-pipe",
+    "bands": 1,
+    "footing": "plinth",
+    "body": "#A3AEC4",
+    "cap": "#6C758B",
+    "band": "#FFCB1F",
+    "iron": "#1C2347",
+    "concrete": "#EEE7DA"
+   },
+   "night": [],
+   "why": "Steel pipe bollard.",
+   "size": {
+    "x": 0.44,
+    "y": 1,
+    "z": 0.44
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 568,
+   "vertices": 339,
+   "bytes": 15776
+  },
+  {
+   "key": "p-bikerack",
+   "role": "prop:bike_rack",
+   "asset": "bike-rack-a1e7c3",
+   "knobs": {
+    "hoops": 3,
+    "railBar": true,
+    "paint": "#6C758B",
+    "plate": "#EEE7DA",
+    "bolt": "#1C2347"
+   },
+   "night": [],
+   "why": "Hoop bike rack; also used for bike-share docks (no dock model in the catalogue).",
+   "size": {
+    "x": 3.586,
+    "y": 0.9,
+    "z": 0.19
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 480,
+   "vertices": 324,
+   "bytes": 14380
+  },
+  {
+   "key": "p-meter",
+   "role": "prop:parking_meter",
+   "asset": "parking-meter-e9cf71",
+   "knobs": {
+    "head": "single",
+    "post": "#6C758B",
+    "shell": "#A3AEC4",
+    "face": "#2C4FA3",
+    "dial": "#FFF3DA",
+    "ring": "#A9ADB4",
+    "plate": "#EEE7DA",
+    "hardware": "#1C2347"
+   },
+   "night": [],
+   "why": "Single-head parking meter.",
+   "size": {
+    "x": 0.41,
+    "y": 1.3,
+    "z": 0.341
+   },
+   "center": {
+    "x": 0,
+    "z": 0.02
+   },
+   "minY": 0,
+   "triangles": 386,
+   "vertices": 297,
+   "bytes": 12620
+  },
+  {
+   "key": "p-bin",
+   "role": "prop:trash_can",
+   "asset": "metal-trash-can-f57043",
+   "knobs": {
+    "lid": "closed",
+    "load": "empty",
+    "steel": "#2FA35A",
+    "body": "#2FA35A",
+    "hardware": "#1C2347",
+    "inside": "#1C2347",
+    "bag": "#1C2347"
+   },
+   "night": [],
+   "why": "Street litter can in SF Public Works green.",
+   "size": {
+    "x": 0.72,
+    "y": 0.9,
+    "z": 0.618
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 720,
+   "vertices": 400,
+   "bytes": 19076
+  },
+  {
+   "key": "p-mailbox",
+   "role": "prop:post_box",
+   "asset": "mailbox-8e36e8",
+   "knobs": {
+    "placard": true,
+    "shell": "#2C4FA3",
+    "hardware": "#1C2347",
+    "accent": "#FFFFFF"
+   },
+   "night": [],
+   "why": "USPS collection box.",
+   "size": {
+    "x": 0.71,
+    "y": 1.2,
+    "z": 0.687
+   },
+   "center": {
+    "x": 0,
+    "z": 0.022
+   },
+   "minY": 0,
+   "triangles": 450,
+   "vertices": 286,
+   "bytes": 13128
+  },
+  {
+   "key": "p-fountain",
+   "role": "prop:drinking_water",
+   "asset": "park-drinking-fountain-b1c25b",
+   "knobs": {
+    "concrete": "#EEE7DA",
+    "basin": "#A3AEC4",
+    "metal": "#6C758B",
+    "slot": "#1C2347",
+    "button": "#FFFFFF",
+    "lime": "#8CE3BF"
+   },
+   "night": [],
+   "why": "Drinking fountain.",
+   "size": {
+    "x": 0.67,
+    "y": 1.1,
+    "z": 0.637
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 742,
+   "vertices": 554,
+   "bytes": 23044
+  },
+  {
+   "key": "p-picnic",
+   "role": "prop:picnic_table",
+   "asset": "picnic-table-4ee33a",
+   "knobs": {
+    "wood": "#8B5A3C",
+    "frame": "#1C2347",
+    "rail": "#6C758B",
+    "bolt": "#A9ADB4"
+   },
+   "night": [],
+   "why": "Picnic table.",
+   "size": {
+    "x": 1.8,
+    "y": 0.75,
+    "z": 1.51
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 484,
+   "vertices": 312,
+   "bytes": 14120
+  },
+  {
+   "key": "p-newsbox",
+   "role": "prop:vending",
+   "asset": "newspaper-box-3f2c0e",
+   "knobs": {
+    "body": "#9ED7FF",
+    "sign": "#FFF3DA",
+    "stand": "#1C2347",
+    "frame": "#A3AEC4",
+    "hardware": "#6C758B",
+    "glass": "#2C4FA3",
+    "paper": "#FFFFFF",
+    "print": "#6C758B",
+    "interior": "#1C2347"
+   },
+   "night": [],
+   "why": "Newspaper/vending box.",
+   "size": {
+    "x": 0.5,
+    "y": 1.1,
+    "z": 0.49
+   },
+   "center": {
+    "x": 0,
+    "z": 0.02
+   },
+   "minY": 0,
+   "triangles": 474,
+   "vertices": 418,
+   "bytes": 16536
+  },
+  {
+   "key": "p-charger",
+   "role": "prop:charging_station",
+   "asset": "vehicle-charging-post-45cbb8",
+   "knobs": {
+    "head": "cable",
+    "shell": "#FFFFFF",
+    "base": "#1C2347",
+    "strip": "#8CE3BF",
+    "screen": "#2C4FA3",
+    "cable": "#A3AEC4"
+   },
+   "night": [
+    {
+     "zone": "strip",
+     "albedo": "#8ce3bf",
+     "color": "#c9f7a8",
+     "intensity": 0.85,
+     "describe": "the lime status strip up both flanks, and the induction pad's charging face"
+    },
+    {
+     "zone": "screen",
+     "albedo": "#2c4fa3",
+     "color": "#7ff0ff",
+     "intensity": 0.9,
+     "describe": "the tinted status display, backlit cyan behind its bezel"
+    }
+   ],
+   "why": "EV charging post.",
+   "size": {
+    "x": 0.6,
+    "y": 1.4,
+    "z": 0.6
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 482,
+   "vertices": 319,
+   "bytes": 14284
+  },
+  {
+   "key": "p-pole",
+   "role": "prop:power_pole",
+   "asset": "timber-utility-pole-a93693",
+   "knobs": {
+    "piece": "straight",
+    "wires": "two",
+    "gear": "bare",
+    "pole": "#8B5A3C",
+    "butt": "#8B5A3C",
+    "arm": "#FFF3DA",
+    "steel": "#A3AEC4",
+    "insul": "#1C2347",
+    "can": "#A9ADB4",
+    "box": "#A3AEC4",
+    "wire": "#1C2347"
+   },
+   "night": [],
+   "why": "Timber utility pole.",
+   "size": {
+    "x": 3.995,
+    "y": 9,
+    "z": 8.097
+   },
+   "center": {
+    "x": 0.598,
+    "z": 3.951
+   },
+   "minY": 0,
+   "triangles": 382,
+   "vertices": 248,
+   "bytes": 11336
+  },
+  {
+   "key": "p-flagpole",
+   "role": "prop:flagpole",
+   "asset": "flag-pole-015e53",
+   "knobs": {
+    "arrangement": 1,
+    "pole": "#A3AEC4",
+    "collar": "#6C758B",
+    "fittings": "#6C758B",
+    "truck": "#A9ADB4",
+    "halyard": "#FFF3DA",
+    "cloth": "#2C4FA3",
+    "hem": "#FFFFFF"
+   },
+   "night": [],
+   "why": "Flagpole.",
+   "size": {
+    "x": 3.605,
+    "y": 9,
+    "z": 1
+   },
+   "center": {
+    "x": 1.303,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 588,
+   "vertices": 427,
+   "bytes": 18084
+  },
+  {
+   "key": "p-crane-mast",
+   "role": "prop:crane_mast",
+   "asset": "tower-crane-mast-1784a3",
+   "knobs": {
+    "height": 8,
+    "ties": true,
+    "guardHurdle": "none",
+    "accessLadder": "none",
+    "wear": 0.1,
+    "steel": "#FFC21A",
+    "base": "#1C2347",
+    "ladder": "#A3AEC4",
+    "ballast": "#A9ADB4",
+    "concrete": "#EEE7DA",
+    "mud": "#6C758B",
+    "hurdle": "#FF9C86"
+   },
+   "night": [],
+   "why": "Crane mast in crane yellow for the Pier 70 cranes (the catalogue has no shipyard whirley/gantry crane; reported).",
+   "size": {
+    "x": 4,
+    "y": 24,
+    "z": 4
+   },
+   "center": {
+    "x": 0,
+    "z": 0
+   },
+   "minY": 0,
+   "triangles": 1662,
+   "vertices": 1405,
+   "bytes": 54432
+  },
+  {
+   "key": "p-crane-top",
+   "role": "prop:crane_top",
+   "asset": "tower-crane-top-d8d9c9",
+   "knobs": {
+    "load": false,
+    "jibSections": 6,
+    "slew": 0.5,
+    "wear": 0.1,
+    "paint": "#FFC21A",
+    "lattice": "#FFC21A",
+    "cab": "#FFF3DA",
+    "glass": "#2C4FA3",
+    "ballast": "#A9ADB4",
+    "machinery": "#1C2347",
+    "rope": "#1C2347",
+    "hook": "#FF9C86",
+    "rebar": "#C94A32",
+    "lamps": "#FFFFFF",
+    "amber": "#FFCB1F"
+   },
+   "night": [
+    {
+     "zone": "lamps",
+     "albedo": "#ffffff",
+     "color": "#F2F7FF",
+     "intensity": 1,
+     "describe": "the work lamp under the cab platform, tilted down and out over the site, burning hard cold work-white"
+    },
+    {
+     "zone": "amber",
+     "albedo": "#ffcb1f",
+     "color": "#FFC24A",
+     "intensity": 0.8,
+     "describe": "the obstruction beacon on top of the apex block, glowing the kit's one warning amber"
+    }
+   ],
+   "why": "Crane jib and cab on top of the mast.",
+   "size": {
+    "x": 35.526,
+    "y": 17.1,
+    "z": 4.355
+   },
+   "center": {
+    "x": -7.023,
+    "z": 0.678
+   },
+   "minY": 0,
+   "triangles": 2167,
+   "vertices": 1785,
+   "bytes": 69680
+  }
+ ]
+}
