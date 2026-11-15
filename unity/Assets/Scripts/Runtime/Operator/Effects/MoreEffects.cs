@@ -78,8 +78,7 @@ namespace Dogpatch.Operator
             foreach (var tag in target.Entities)
             {
                 if (n++ >= MaxBlasts) break;
-                var fire = FireFx.Create(Context.Material, tag.WorldBounds, Scale(strength, 1.8f, 2.4f, 3.2f), n <= 3);
-                Object.Destroy(fire.gameObject, 3.5f);
+                FireFx.Explosion(Context.Material, tag.WorldBounds, Scale(strength, 1f, 1.3f, 1.7f), n <= 3);
                 var car = tag.GetComponent<CarController>();
                 if (car != null && car.Driven && !car.GetComponent<Rigidbody>().isKinematic) CarFx.On(car).Launch(up * 0.6f);
                 else if (tag.Span == null) Launched.Start(tag.transform, up, null);
@@ -94,8 +93,7 @@ namespace Dogpatch.Operator
         {
             foreach (var tag in target.Entities)
             {
-                var fire = FireFx.Create(Context.Material, tag.WorldBounds, 1.4f, true);
-                Object.Destroy(fire.gameObject, 2.5f);
+                FireFx.Explosion(Context.Material, tag.WorldBounds, 1.2f, true);
                 var copy = tag.Span != null ? tag.Span.Detach(tag.Id + " (demolished)", Context.Material) : tag.gameObject;
                 if (copy != null) copy.AddComponent<Sink>().Depth = tag.WorldBounds.size.y + 1f;
             }
@@ -145,15 +143,19 @@ namespace Dogpatch.Operator
 
     public static class MoreEffects
     {
+        // Everyone: racers, their cars, traffic and pedestrians.
         static Action Racers(OperatorEffect e, float k)
         {
+            foreach (var car in Object.FindObjectsByType<CarController>(FindObjectsSortMode.None)) CarFx.On(car);
             CarFx.SizeTarget = k;
+            Ambient.PedestrianSystem.SizeScale = k;
             var player = e.Context.Game.Player;
             var before = player != null ? player.transform.localScale : Vector3.one;
             if (player != null) player.transform.localScale = before * k;
             return () =>
             {
                 CarFx.SizeTarget = 1f;
+                Ambient.PedestrianSystem.SizeScale = 1f;
                 if (player != null) player.transform.localScale = before;
             };
         }
