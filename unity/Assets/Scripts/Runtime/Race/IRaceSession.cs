@@ -25,8 +25,7 @@ namespace Dogpatch.Race
         // after: the last cursor, or null for every event of the current race so far.
         Task<PollResponse> PollAsync(string roomId, long? after);
 
-        // smash: the racer's cumulative smash points this race (CROS-23's score events), 0 for none.
-        Task<RaceUpdateResponse> UpdateAsync(string playerId, string roomId, Vec3 position, float heading, int smash = 0);
+        Task<RaceUpdateResponse> UpdateAsync(string playerId, string roomId, Vec3 position, float heading);
 
         // A world change that does not go through the Operator (bots, pickups, debug).
         Task<FireEventResponse> FireEventAsync(string playerId, string roomId, WorldChangeCommand command);
