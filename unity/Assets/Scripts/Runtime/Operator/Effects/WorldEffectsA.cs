@@ -31,6 +31,12 @@ namespace Dogpatch.Operator
             r.Register("blackout", () => new SkyEffect(SkyEffect.Kind.Blackout));
             r.Register("slow_motion", () => new TimeScaleEffect(true));
             r.Register("fast_forward", () => new TimeScaleEffect(false));
+            r.Register("thick_air", () => new ThickAirEffect());
+            r.Register("flood", () => new FloodEffect());
+            r.Register("floor_is_lava", () => new LavaEffect());
+            r.Register("earthquake", () => new EarthquakeEffect());
+            r.Register("cars_on_water", () => new BoatCarsEffect());
+            r.Register("floaty_crashes", () => new FloatyCrashesEffect());
         }
 
         static float S(string s, float small, float medium, float large) => OperatorEffect.Scale(s, small, medium, large);
@@ -570,6 +576,528 @@ namespace Dogpatch.Operator
         {
             if (warp != null) warp.End();
             SkyGrade.Remove(grade);
+        }
+    }
+
+    // thick_air: the air turns to pink syrup. Everything moves slowly, jumps float, debris drifts,
+    // and bubbles hang in the air around you.
+    public sealed class ThickAirEffect : OperatorEffect
+    {
+        readonly List<Syrup> syrups = new List<Syrup>();
+        readonly List<GuardedKnob> knobs = new List<GuardedKnob>();
+        SkyGrade.Grade grade;
+        Swarm bubbles;
+        EffectTicker ticker;
+
+        public override void Apply(string strength, EffectTarget target)
+        {
+            float k = Scale(strength, 0.65f, 1f, 1.4f);
+            grade = SkyGrade.Add(new SkyGrade.Grade
+            {
+                Top = PropMeshes.C("#B866A8"), Mid = PropMeshes.C("#DE90BC"), Horizon = PropMeshes.C("#F7C6D4"),
+                Ambient = new Color(1.12f, 0.92f, 1.02f), Sun = new Color(1f, 0.85f, 0.92f), FogReach = Mathf.Lerp(1f, 0.3f, k * 0.75f), Fog = PropMeshes.C("#F0B6CA"), FogWeight = 1f,
+                Clouds = new Color(1f, 0.8f, 0.92f), Seconds = 1f,
+            });
+            knobs.Add(GuardedKnob.Times(() => PlayerController.RunScale, v => PlayerController.RunScale = v, Scale(strength, 0.65f, 0.5f, 0.35f)));
+            knobs.Add(GuardedKnob.Times(() => PlayerController.GravityScale, v => PlayerController.GravityScale = v, Scale(strength, 0.5f, 0.35f, 0.25f)));
+            knobs.Add(GuardedKnob.Times(() => PlayerController.JumpScale, v => PlayerController.JumpScale = v, 1.3f));
+            knobs.Add(GuardedKnob.Times(() => Physics.gravity.y, v => Physics.gravity = new Vector3(0f, v, 0f), Scale(strength, 0.6f, 0.45f, 0.3f)));
+            var eye = Context.Game.View.transform;
+            var fx = new Material(Resources.Load<Shader>("Shaders/FxUnlit")) { name = "Bubbles (operator)" };
+            bubbles = Swarm.Create("Bubbles (operator)", PropMeshes.Bubble(new Color(1f, 0.92f, 0.97f, 0.4f)), Mathf.RoundToInt(36 * k), fx, i =>
+            {
+                float t = Time.time * 0.25f + i * 7.3f;
+                var e = eye.position;
+                var p = new Vector3(
+                    e.x + Mathf.Repeat(Racers.Hash(i, 1) * 40f + Mathf.Sin(t) * 3f - e.x, 40f) - 20f,
+                    e.y - 3f + Mathf.Repeat(Racers.Hash(i, 2) * 10f + t * 0.8f, 10f),
+                    e.z + Mathf.Repeat(Racers.Hash(i, 3) * 40f + Mathf.Cos(t * 0.8f) * 3f - e.z, 40f) - 20f);
+                float s = (0.12f + Racers.Hash(i, 4) * 0.3f) * grade.Weight;
+                return Matrix4x4.TRS(p, Quaternion.Euler(t * 40f, t * 30f, 0f), Vector3.one * s);
+            });
+            float c = Scale(strength, 0.5f, 0.9f, 1.4f);
+            void Sweep()
+            {
+                foreach (var car in Racers.Cars(Context, target))
+                {
+                    if (!Racers.Physical(car) || syrups.Exists(s => s != null && s.gameObject == car.gameObject)) continue;
+                    var syrup = Syrup.On(car);
+                    syrup.Set(this, () => c);
+                    syrups.Add(syrup);
+                }
+            }
+            Sweep();
+            float next = 0f;
+            ticker = EffectTicker.On(Context, () =>
+            {
+                if (Time.time < next) return;
+                next = Time.time + 0.5f;
+                Sweep();
+            });
+        }
+
+        public override void Revert()
+        {
+            if (ticker != null) Object.Destroy(ticker);
+            SkyGrade.Remove(grade);
+            if (bubbles != null) Object.Destroy(bubbles.gameObject);
+            foreach (var s in syrups) if (s != null) s.Remove(this);
+            for (int i = knobs.Count - 1; i >= 0; i--) knobs[i].Undo();
+            syrups.Clear();
+            knobs.Clear();
+        }
+    }
+
+    // flood: turquoise water rises over the streets. Parked and traffic cars float up and bob,
+    // rubber ducks paddle about, racers' cars spray and wade, people on foot wade slowly.
+    public sealed class FloodEffect : OperatorEffect
+    {
+        static readonly List<Sheet> floods = new List<Sheet>();
+
+        public static float Level
+        {
+            get
+            {
+                float level = float.NegativeInfinity;
+                foreach (var s in floods) if (s != null) level = Mathf.Max(level, s.Level);
+                return level;
+            }
+        }
+
+        readonly List<ShapeLayers> floated = new List<ShapeLayers>();
+        readonly List<Syrup> syrups = new List<Syrup>();
+        readonly HashSet<CarController> seen = new HashSet<CarController>();
+        Sheet sheet;
+        GuardedKnob wade;
+        EffectTicker ticker;
+
+        public override void Apply(string strength, EffectTarget target)
+        {
+            float depth = Scale(strength, 0.4f, 0.85f, 1.5f);
+            var eye = Context.Game.View.transform;
+            Color deep = PropMeshes.C("#17B2D0"), light = PropMeshes.C("#3FC6DE"), foam = PropMeshes.C("#DFF6FA");
+            sheet = Sheet.Create("Flood (operator)", Context.Material, eye, -0.7f, depth, (x, z) =>
+            {
+                float h = Racers.Hash(x * 0.37f, z * 0.51f);
+                return h > 0.93f ? foam : h > 0.55f ? light : deep;
+            });
+            sheet.Speed = (depth + 0.7f) / 2.2f;
+            sheet.Amplitude = 0.2f;
+            floods.Add(sheet);
+            var floor = new World.MeshBuilder();
+            floor.Quad(new Vector3(-3000f, 0f, -3000f), new Vector3(-3000f, 0f, 3000f), new Vector3(3000f, 0f, 3000f), new Vector3(3000f, 0f, -3000f), deep, Vector3.up);
+            sheet.Floor = PropMeshes.Attach(sheet.transform, "Flood floor", floor.ToMesh("flood floor"), Context.Material, Vector3.zero, false).transform;
+            var ducks = Swarm.Create("Ducks (operator)", PropMeshes.Duck(), 14, Context.Material, i =>
+            {
+                var e = eye.position;
+                float a = Racers.Hash(i, 9) * 6.3f + Time.time * 0.06f * (i % 2 == 0 ? 1f : -1f);
+                float r = 6f + Racers.Hash(9, i) * 24f;
+                var p = new Vector3(e.x + Mathf.Cos(a) * r, sheet.Level - 0.12f + Mathf.Sin(Time.time * 2f + i) * 0.06f, e.z + Mathf.Sin(a) * r);
+                return Matrix4x4.TRS(p, Quaternion.Euler(Mathf.Sin(Time.time * 1.7f + i) * 6f, -a * Mathf.Rad2Deg, 0f), Vector3.one * 1.2f);
+            }, true);
+            ducks.transform.SetParent(sheet.transform, false);
+            wade = GuardedKnob.Times(() => PlayerController.RunScale, v => PlayerController.RunScale = v, Scale(strength, 0.8f, 0.65f, 0.5f));
+            float drag = Scale(strength, 0.25f, 0.45f, 0.7f);
+            float next = 0f;
+            ticker = EffectTicker.On(Context, () =>
+            {
+                float level = sheet.Level;
+                foreach (var car in Racers.Cars(Context, target))
+                {
+                    if (!Racers.Physical(car) || car.transform.position.y > level) continue;
+                    float speed = Mathf.Abs(car.Speed);
+                    if (speed > 2f) MotionFx.Splash(car.transform.position - car.transform.forward * car.HalfExtents.z, Mathf.Clamp01(speed / 18f));
+                }
+                if (Time.time < next) return;
+                next = Time.time + 0.5f;
+                foreach (var car in Racers.Cars(Context, target))
+                {
+                    if (!Racers.Physical(car) || !seen.Add(car)) continue;
+                    var syrup = Syrup.On(car);
+                    var t = car.transform;
+                    syrup.Set(this, () => t.position.y < sheet.Level ? drag : 0f);
+                    syrups.Add(syrup);
+                }
+                foreach (var car in Racers.Nearby(eye.position, 200f, 80))
+                {
+                    if (Racers.Physical(car) || Racers.IsRacer(car) || !seen.Add(car)) continue;
+                    var layers = Racers.Layers(Racers.CarShape(car));
+                    if (layers == null) continue;
+                    float phase = Racers.Hash(car.GetInstanceID(), 3) * 6.3f;
+                    layers.Pivot = 0.6f;
+                    layers.Lift(this, () => Mathf.Max(0f, sheet.Level * 0.8f) + Mathf.Sin(Time.time * 1.6f + phase) * 0.12f);
+                    layers.Tilt(this, () => Quaternion.Euler(Mathf.Sin(Time.time * 1.1f + phase) * 4f * Mathf.Clamp01(sheet.Level), 0f, Mathf.Cos(Time.time * 1.3f + phase) * 5f * Mathf.Clamp01(sheet.Level)));
+                    floated.Add(layers);
+                }
+            });
+        }
+
+        public override void Revert()
+        {
+            if (ticker != null) Object.Destroy(ticker);
+            if (sheet != null)
+            {
+                sheet.Speed = 1f;
+                sheet.Sink();
+            }
+            floods.Remove(sheet);
+            foreach (var l in floated) if (l != null) l.Remove(this);
+            foreach (var s in syrups) if (s != null) s.Remove(this);
+            wade?.Undo();
+            floated.Clear();
+            syrups.Clear();
+            seen.Clear();
+        }
+    }
+
+    // floor_is_lava: glowing, bubbling lava rises over every street and sidewalk. Touch it on foot
+    // and you hop off it in a puff of smoke; racers' cars bounce on hot tyres. Rooftops, car roofs
+    // and the freeway are safe.
+    public sealed class LavaEffect : OperatorEffect
+    {
+        readonly Dictionary<CarController, float> nextHop = new Dictionary<CarController, float>();
+        Sheet sheet;
+        GuardedKnob jump;
+        EffectTicker ticker;
+
+        public override void Apply(string strength, EffectTarget target)
+        {
+            var eye = Context.Game.View.transform;
+            Color hot = PropMeshes.C("#FFE14A"), orange = PropMeshes.C("#FF8A1E"), red = PropMeshes.C("#FF4A1C"), crust = PropMeshes.C("#6E1A0E");
+            var fx = new Material(Resources.Load<Shader>("Shaders/FxUnlit")) { name = "Lava (operator)" };
+            sheet = Sheet.Create("Lava (operator)", fx, eye, -0.4f, 0.12f, (x, z) =>
+            {
+                float h = Racers.Hash(x * 0.41f, z * 0.29f);
+                return h > 0.82f ? hot : h > 0.45f ? orange : h > 0.14f ? red : crust;
+            });
+            sheet.Speed = 0.7f;
+            sheet.Amplitude = 0.06f;
+            sheet.FadeEdges = true;
+            jump = GuardedKnob.Times(() => PlayerController.JumpScale, v => PlayerController.JumpScale = v, Scale(strength, 1.15f, 1.35f, 1.6f));
+            float bounce = Scale(strength, 2.5f, 3.5f, 5f);
+            ticker = EffectTicker.On(Context, () =>
+            {
+                float level = sheet.Level;
+                var player = Context.Game.Player;
+                if (player != null && player.isActiveAndEnabled && player.TryGetComponent<CharacterController>(out var body) && body.isGrounded && player.transform.position.y < level + 0.35f)
+                {
+                    player.Jump();
+                    MotionFx.Land(player.transform.position, 0.45f);
+                    Haptics.Impact(HapticStyle.Light, 0.6f);
+                }
+                foreach (var car in Racers.Cars(Context, target))
+                {
+                    if (!Racers.Physical(car)) continue;
+                    var p = car.transform.position;
+                    if (p.y > level + 0.5f || (nextHop.TryGetValue(car, out var at) && Time.time < at)) continue;
+                    if (!Physics.Raycast(p + Vector3.up * 0.3f, Vector3.down, 0.7f, ~0, QueryTriggerInteraction.Ignore)) continue;
+                    nextHop[car] = Time.time + 0.6f;
+                    CarFx.On(car).Launch(bounce);
+                    MotionFx.Land(p, 0.7f);
+                }
+            });
+        }
+
+        public override void Revert()
+        {
+            if (ticker != null) Object.Destroy(ticker);
+            if (sheet != null) sheet.Sink();
+            jump?.Undo();
+        }
+    }
+
+    // earthquake: the camera rumbles, the street cracks open in dusty fissures, cars jolt and hop,
+    // parked cars rattle and you stumble into little hops.
+    public sealed class EarthquakeEffect : OperatorEffect
+    {
+        readonly List<GameObject> cracks = new List<GameObject>();
+        readonly List<ShapeLayers> rattled = new List<ShapeLayers>();
+        readonly HashSet<CarController> seen = new HashSet<CarController>();
+        EffectTicker ticker;
+
+        public override void Apply(string strength, EffectTarget target)
+        {
+            float k = Scale(strength, 0.6f, 1f, 1.5f);
+            var rng = new System.Random(Racers.Seed(Row?.id));
+            float R() => (float)rng.NextDouble();
+            CameraFeel.Instance?.AddTrauma(0.5f * k);
+            float nextJolt = 0f, nextCrack = 0f, nextDust = 0f, nextSweep = 0f;
+            ticker = EffectTicker.On(Context, () =>
+            {
+                float now = Time.time;
+                CameraFeel.Instance?.AddTrauma(Mathf.Min(1.5f * Time.unscaledDeltaTime * 0.92f, 0.1f));
+                var focus = Context.Game.Focus;
+                var eye = focus != null ? focus.position : Context.Game.View.transform.position;
+                if (now >= nextJolt)
+                {
+                    nextJolt = now + Mathf.Lerp(0.5f, 1.1f, R()) / k;
+                    CameraFeel.Instance?.AddTrauma(0.22f * k);
+                    Haptics.Impact(HapticStyle.Heavy, Mathf.Clamp01(0.6f * k));
+                    foreach (var car in Racers.Cars(Context, target))
+                        if (Racers.Physical(car)) CarFx.On(car).Push(new Vector3((R() - 0.5f) * 4f * k, Mathf.Lerp(1.5f, 3f, R()) * k, (R() - 0.5f) * 4f * k));
+                    var player = Context.Game.Player;
+                    if (player != null && player.isActiveAndEnabled) player.Jump();
+                }
+                if (now >= nextDust)
+                {
+                    nextDust = now + 0.18f / k;
+                    float a = R() * Mathf.PI * 2f, r = 3f + R() * 18f;
+                    var p = eye + new Vector3(Mathf.Cos(a) * r, 0f, Mathf.Sin(a) * r);
+                    p.y = Racers.GroundY(p);
+                    MotionFx.Land(p, 0.5f + 0.4f * R());
+                }
+                if (now >= nextCrack && cracks.Count < Mathf.RoundToInt(6 * k))
+                {
+                    nextCrack = now + 1.6f / k;
+                    var fwd = Context.Game.View.transform.forward;
+                    fwd.y = 0f;
+                    var p = eye + fwd.normalized * (6f + R() * 12f) + new Vector3((R() - 0.5f) * 10f, 0f, (R() - 0.5f) * 10f);
+                    p.y = Racers.GroundY(p, 4f) + 0.04f;
+                    var crack = PropMeshes.Attach(null, "Crack (operator)", PropMeshes.Crack(rng.Next(), Mathf.Lerp(5f, 11f, R()) * k), Context.Material, p, false);
+                    crack.transform.rotation = Quaternion.Euler(0f, R() * 360f, 0f);
+                    Pop.In(crack);
+                    cracks.Add(crack);
+                    MotionFx.Land(p, 1f);
+                }
+                if (now >= nextSweep)
+                {
+                    nextSweep = now + 0.5f;
+                    foreach (var car in Racers.Nearby(eye, 90f, 40))
+                    {
+                        if (Racers.Physical(car) || !seen.Add(car)) continue;
+                        var layers = Racers.Layers(Racers.CarShape(car));
+                        if (layers == null) continue;
+                        float phase = R() * 10f;
+                        layers.Pivot = 0.5f;
+                        layers.Lift(this, () => Mathf.Abs(Mathf.Sin(Time.time * 19f + phase)) * 0.12f * k);
+                        layers.Tilt(this, () => Quaternion.Euler(Mathf.Sin(Time.time * 23f + phase) * 2.5f * k, 0f, Mathf.Sin(Time.time * 17f + phase * 2f) * 3f * k));
+                        rattled.Add(layers);
+                    }
+                }
+            });
+        }
+
+        public override void Revert()
+        {
+            if (ticker != null) Object.Destroy(ticker);
+            foreach (var c in cracks) Pop.Out(c);
+            foreach (var l in rattled) if (l != null) l.Remove(this);
+            cracks.Clear();
+            rattled.Clear();
+            seen.Clear();
+        }
+    }
+
+    // cars_on_water: racers' cars get boat hulls and the bay (or a flood) becomes drivable: they
+    // ride the surface, rock on the swell and throw a wake.
+    public sealed class BoatCarsEffect : OperatorEffect
+    {
+        readonly List<GameObject> hulls = new List<GameObject>();
+        readonly List<ShapeLayers> rocking = new List<ShapeLayers>();
+        readonly HashSet<CarController> seen = new HashSet<CarController>();
+        readonly Dictionary<CarController, bool> afloat = new Dictionary<CarController, bool>();
+        GameObject water;
+        BoxCollider floor;
+        EffectTicker ticker;
+
+        public override void Apply(string strength, EffectTarget target)
+        {
+            var b = Context.Game.World.Bounds;
+            water = new GameObject("Drivable water (operator)");
+            floor = water.AddComponent<BoxCollider>();
+            floor.size = new Vector3(b.width + 5000f, 1f, b.height + 5000f);
+            water.transform.position = new Vector3(b.center.x, -0.52f, b.center.y);
+            float rock = Scale(strength, 2f, 3.5f, 5f);
+            float next = 0f;
+            ticker = EffectTicker.On(Context, () =>
+            {
+                float top = Mathf.Max(-0.02f, FloodEffect.Level - 0.05f);
+                if (Mathf.Abs(water.transform.position.y - (top - 0.5f)) > 0.01f) water.transform.position = new Vector3(b.center.x, top - 0.5f, b.center.y);
+                foreach (var car in Racers.Cars(Context, target))
+                {
+                    var p = car.transform.position;
+                    bool on = Physics.Raycast(p + Vector3.up * 0.3f, Vector3.down, out var hit, 1.2f, ~0, QueryTriggerInteraction.Ignore) && hit.collider == floor;
+                    afloat[car] = on;
+                    float speed = Mathf.Abs(car.Speed);
+                    if (on && speed > 1.5f)
+                    {
+                        MotionFx.Splash(p - car.transform.forward * car.HalfExtents.z, Mathf.Clamp01(speed / 14f));
+                        MotionFx.Splash(p + car.transform.forward * car.HalfExtents.z + car.transform.right * car.HalfExtents.x, Mathf.Clamp01(speed / 25f));
+                        MotionFx.Splash(p + car.transform.forward * car.HalfExtents.z - car.transform.right * car.HalfExtents.x, Mathf.Clamp01(speed / 25f));
+                    }
+                }
+                if (Time.time < next) return;
+                next = Time.time + 0.5f;
+                foreach (var car in Racers.Cars(Context, target))
+                {
+                    if (!seen.Add(car)) continue;
+                    var shape = Racers.CarShape(car);
+                    if (shape == null) continue;
+                    var hull = PropMeshes.Attach(shape, "Hull (operator)", PropMeshes.Hull(Racers.Box(car)), Context.Material, Vector3.zero);
+                    Pop.In(hull);
+                    hulls.Add(hull);
+                    MotionFx.Splash(car.transform.position, 1f);
+                    var layers = Racers.Layers(shape);
+                    layers.Pivot = 0.4f;
+                    float phase = Racers.Hash(car.GetInstanceID(), 5) * 6.3f;
+                    var c = car;
+                    layers.Tilt(this, () => afloat.TryGetValue(c, out var on) && on
+                        ? Quaternion.Euler(Mathf.Sin(Time.time * 2.1f + phase) * rock - Mathf.Clamp(c.Speed, 0f, 20f) * 0.35f, 0f, Mathf.Cos(Time.time * 1.6f + phase) * rock * 0.8f)
+                        : Quaternion.identity);
+                    rocking.Add(layers);
+                }
+            });
+        }
+
+        public override void Revert()
+        {
+            if (ticker != null) Object.Destroy(ticker);
+            if (water != null) Object.Destroy(water);
+            foreach (var h in hulls) Pop.Out(h);
+            foreach (var l in rocking) if (l != null) l.Remove(this);
+            hulls.Clear();
+            rocking.Clear();
+            seen.Clear();
+        }
+    }
+
+    // floaty_crashes: racers' cars carry a bunch of balloons, and any crash sends the cars and
+    // debris around it floating up, spinning slowly, before they drift back down.
+    public sealed class FloatyCrashesEffect : OperatorEffect
+    {
+        readonly List<GameObject> balloons = new List<GameObject>();
+        readonly HashSet<CarController> seen = new HashSet<CarController>();
+        readonly Collider[] near = new Collider[48];
+        EffectTicker ticker;
+        float radius, seconds, rise;
+
+        public override void Apply(string strength, EffectTarget target)
+        {
+            radius = Scale(strength, 4f, 6f, 9f);
+            seconds = Scale(strength, 1.5f, 2.5f, 3.5f);
+            rise = Scale(strength, 1.8f, 2.6f, 3.6f);
+            GameEvents.Impact += OnImpact;
+            GameEvents.Smash += OnSmash;
+            float next = 0f;
+            ticker = EffectTicker.On(Context, () =>
+            {
+                if (Time.time < next) return;
+                next = Time.time + 0.5f;
+                foreach (var car in Racers.Cars(Context, target))
+                {
+                    if (!seen.Add(car)) continue;
+                    var shape = Racers.CarShape(car);
+                    if (shape == null) continue;
+                    var box = Racers.Box(car);
+                    var go = PropMeshes.Attach(shape, "Balloons (operator)", PropMeshes.Balloons(), Context.Material, new Vector3(box.center.x, box.center.y + box.size.y * 0.5f, box.center.z - box.size.z * 0.25f));
+                    go.AddComponent<Bob>();
+                    Pop.In(go);
+                    balloons.Add(go);
+                }
+            });
+        }
+
+        void OnImpact(ImpactInfo info)
+        {
+            if (info.Force >= 4f) Float(info.Position);
+        }
+
+        void OnSmash(SmashInfo info) => Float(info.Position);
+
+        void Float(Vector3 at)
+        {
+            MotionFx.Land(at, 0.8f);
+            int n = Physics.OverlapSphereNonAlloc(at, radius, near, ~0, QueryTriggerInteraction.Ignore);
+            var bodies = new HashSet<Rigidbody>();
+            for (int i = 0; i < n && bodies.Count < 12; i++)
+            {
+                var body = near[i].attachedRigidbody;
+                if (body != null) bodies.Add(body);
+            }
+            foreach (var body in bodies) Floater.Start(body, seconds, rise);
+        }
+
+        public override void Revert()
+        {
+            GameEvents.Impact -= OnImpact;
+            GameEvents.Smash -= OnSmash;
+            if (ticker != null) Object.Destroy(ticker);
+            foreach (var b in balloons) Pop.Out(b);
+            balloons.Clear();
+            seen.Clear();
+        }
+    }
+
+    public sealed class Bob : MonoBehaviour
+    {
+        float seed;
+
+        void Awake() => seed = (GetInstanceID() & 255) * 0.1f;
+
+        void LateUpdate() => transform.localRotation = Quaternion.Euler(Mathf.Sin(Time.time * 1.9f + seed) * 8f, Time.time * 20f, Mathf.Cos(Time.time * 1.4f + seed) * 8f);
+    }
+
+    // Floats a body up and spins it slowly for a few seconds, then lets it drift back down. Cars
+    // you drive float on CarFx airtime; everything else loses gravity for the duration.
+    [DefaultExecutionOrder(45)]
+    public sealed class Floater : MonoBehaviour
+    {
+        Rigidbody body;
+        CarController car;
+        float until, landUntil, rise;
+        bool gravity;
+
+        public static void Start(Rigidbody body, float seconds, float rise)
+        {
+            if (!body.TryGetComponent<Floater>(out var f))
+            {
+                f = body.gameObject.AddComponent<Floater>();
+                f.body = body;
+                f.car = body.GetComponent<CarController>();
+                f.gravity = body.useGravity;
+            }
+            f.until = Time.time + seconds;
+            f.landUntil = f.until + 4f;
+            f.rise = rise;
+            if (f.car != null && !f.car.Driven) f.car.Stun(seconds + 3f);
+            if (!body.isKinematic) body.angularVelocity += new Vector3(0f, UnityEngine.Random.Range(-2f, 2f), 0f);
+        }
+
+        bool Driven => car != null && car.Driven && !car.Autopilot;
+
+        void FixedUpdate()
+        {
+            if (body == null || body.isKinematic)
+            {
+                if (Time.time > until) Destroy(this);
+                return;
+            }
+            if (Time.time < until)
+            {
+                if (Driven) CarFx.On(car).Launch(rise * 0.7f);
+                else
+                {
+                    body.useGravity = false;
+                    var v = body.linearVelocity;
+                    v.y = Mathf.MoveTowards(v.y, rise, 6f * Time.fixedDeltaTime);
+                    body.linearVelocity = v;
+                }
+                return;
+            }
+            body.useGravity = gravity;
+            bool high = !Physics.Raycast(body.position + Vector3.up * 0.3f, Vector3.down, 1.1f, ~0, QueryTriggerInteraction.Ignore);
+            if (!high || Time.time > landUntil)
+            {
+                Destroy(this);
+                return;
+            }
+            if (Driven) CarFx.On(car).Launch(-3f);
+            else if (body.linearVelocity.y < -3f) body.linearVelocity = new Vector3(body.linearVelocity.x, -3f, body.linearVelocity.z);
+        }
+
+        void OnDestroy()
+        {
+            if (body != null) body.useGravity = gravity;
         }
     }
 }

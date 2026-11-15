@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { internalQuery, mutation, type MutationCtx } from "./_generated/server";
-import { fail, getPlayer, vec3 } from "./model";
+import { fail, getPlayer, vec3, type Vec3 } from "./model";
 import {
   COLORS,
   DEFAULT_ASKS,
@@ -31,7 +31,7 @@ import { toEvent } from "./events";
 
 const CODE_LETTERS = "ABCDEFGHJKLMNPQRSTUVWXYZ";
 
-async function leaveOtherRooms(ctx: MutationCtx, playerId: Id<"players">, keep: Id<"rooms"> | null, now: number) {
+export async function leaveOtherRooms(ctx: MutationCtx, playerId: Id<"players">, keep: Id<"rooms"> | null, now: number) {
   const rows = await ctx.db
     .query("roomPlayers")
     .withIndex("by_player", (q) => q.eq("playerId", playerId))
@@ -55,7 +55,7 @@ export async function newRoomCode(ctx: MutationCtx) {
   }
 }
 
-async function joinedResponse(ctx: MutationCtx, roomId: Id<"rooms">, playerId: Id<"players">, now: number) {
+export async function joinedResponse(ctx: MutationCtx, roomId: Id<"rooms">, playerId: Id<"players">, now: number) {
   const room = (await ctx.db.get(roomId))!;
   const rows = await roomPlayers(ctx, room._id);
   const ordered = placeOrder(rows);
@@ -85,6 +85,50 @@ export async function addRacer(ctx: MutationCtx, room: Doc<"rooms">, player: Doc
   });
 }
 
+/** Validates a room's settings and inserts it in the lobby, with extra fields such as a mission's. */
+export async function insertRoom(
+  ctx: MutationCtx,
+  args: { route?: Vec3[]; finishRadius?: number; minPlayers?: number; asks?: number; pickups?: Vec3[]; pickupRadius?: number },
+  now: number,
+  extra: Partial<Doc<"rooms">>,
+) {
+  const route = args.route ?? DEFAULT_ROUTE;
+  if (route.length < 2 || route.length > MAX_ROUTE_POINTS) {
+    fail("INVALID_ARGUMENT", `route must have 2 to ${MAX_ROUTE_POINTS} points`);
+  }
+  const length = routeLength(route);
+  if (!(length > 0)) fail("INVALID_ARGUMENT", "route must have a nonzero length");
+  const finishRadius = args.finishRadius ?? DEFAULT_FINISH_RADIUS;
+  if (!(finishRadius >= 1 && finishRadius <= 100)) fail("INVALID_ARGUMENT", "finishRadius must be 1 to 100");
+  const minPlayers = args.minPlayers ?? 2;
+  if (!Number.isInteger(minPlayers) || minPlayers < 1 || minPlayers > MAX_PLAYERS) {
+    fail("INVALID_ARGUMENT", `minPlayers must be an integer from 1 to ${MAX_PLAYERS}`);
+  }
+  const asks = args.asks || DEFAULT_ASKS;
+  if (!Number.isInteger(asks) || asks < 1 || asks > MAX_ASKS) fail("INVALID_ARGUMENT", `asks must be an integer from 1 to ${MAX_ASKS}`);
+  const pickups = args.pickups ?? [];
+  if (pickups.length > MAX_PICKUPS) fail("INVALID_ARGUMENT", `pickups must have at most ${MAX_PICKUPS} points`);
+  const pickupRadius = args.pickupRadius || DEFAULT_PICKUP_RADIUS;
+  if (!(pickupRadius >= 1 && pickupRadius <= 20)) fail("INVALID_ARGUMENT", "pickupRadius must be 1 to 20");
+  return ctx.db.insert("rooms", {
+    ...extra,
+    code: await newRoomCode(ctx),
+    status: "lobby",
+    raceNumber: 1,
+    minPlayers,
+    startsAt: 0,
+    closesAt: 0,
+    route,
+    routeLength: length,
+    finishRadius,
+    eventSeq: 0,
+    createdAt: now,
+    asks,
+    pickups,
+    pickupRadius,
+  });
+}
+
 export const create = mutation({
   args: {
     playerId: v.string(),
@@ -94,46 +138,13 @@ export const create = mutation({
     asks: v.optional(v.number()),
     pickups: v.optional(v.array(vec3)),
     pickupRadius: v.optional(v.number()),
+    freeAsks: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const player = await getPlayer(ctx, args.playerId);
-    const route = args.route ?? DEFAULT_ROUTE;
-    if (route.length < 2 || route.length > MAX_ROUTE_POINTS) {
-      fail("INVALID_ARGUMENT", `route must have 2 to ${MAX_ROUTE_POINTS} points`);
-    }
-    const length = routeLength(route);
-    if (!(length > 0)) fail("INVALID_ARGUMENT", "route must have a nonzero length");
-    const finishRadius = args.finishRadius ?? DEFAULT_FINISH_RADIUS;
-    if (!(finishRadius >= 1 && finishRadius <= 100)) fail("INVALID_ARGUMENT", "finishRadius must be 1 to 100");
-    const minPlayers = args.minPlayers ?? 2;
-    if (!Number.isInteger(minPlayers) || minPlayers < 1 || minPlayers > MAX_PLAYERS) {
-      fail("INVALID_ARGUMENT", `minPlayers must be an integer from 1 to ${MAX_PLAYERS}`);
-    }
-    const asks = args.asks || DEFAULT_ASKS;
-    if (!Number.isInteger(asks) || asks < 1 || asks > MAX_ASKS) fail("INVALID_ARGUMENT", `asks must be an integer from 1 to ${MAX_ASKS}`);
-    const pickups = args.pickups ?? [];
-    if (pickups.length > MAX_PICKUPS) fail("INVALID_ARGUMENT", `pickups must have at most ${MAX_PICKUPS} points`);
-    const pickupRadius = args.pickupRadius || DEFAULT_PICKUP_RADIUS;
-    if (!(pickupRadius >= 1 && pickupRadius <= 20)) fail("INVALID_ARGUMENT", "pickupRadius must be 1 to 20");
-
     const now = Date.now();
     await leaveOtherRooms(ctx, player._id, null, now);
-    const roomId = await ctx.db.insert("rooms", {
-      code: await newRoomCode(ctx),
-      status: "lobby",
-      raceNumber: 1,
-      minPlayers,
-      startsAt: 0,
-      closesAt: 0,
-      route,
-      routeLength: length,
-      finishRadius,
-      eventSeq: 0,
-      createdAt: now,
-      asks,
-      pickups,
-      pickupRadius,
-    });
+    const roomId = await insertRoom(ctx, args, now, args.freeAsks ? { freeAsks: true } : {});
     await addRacer(ctx, (await ctx.db.get(roomId))!, player, 0, now);
     return joinedResponse(ctx, roomId, player._id, now);
   },
@@ -149,7 +160,7 @@ export const join = mutation({
       .withIndex("by_code", (q) => q.eq("code", code))
       .unique();
     if (!room) fail("NOT_FOUND", `Room ${code} not found`);
-    if (room.kind === "world") fail("CONFLICT", "The world room is not a race");
+    if (room.kind) fail("CONFLICT", room.kind === "world" ? "The world room is not a race" : "Missions are joined at their location");
 
     const now = Date.now();
     const rows = await roomPlayers(ctx, room._id);
@@ -193,7 +204,7 @@ export const setReady = mutation({
   handler: async (ctx, args) => {
     const player = await getPlayer(ctx, args.playerId);
     const room = await getRoom(ctx, args.roomId);
-    if (room.kind === "world") fail("CONFLICT", "The world room is not a race");
+    if (room.kind) fail("CONFLICT", room.kind === "world" ? "The world room is not a race" : "Missions are joined at their location");
     const row = await getMembership(ctx, room, player._id);
     if (row.left) fail("CONFLICT", "Player left this room");
     const now = Date.now();
