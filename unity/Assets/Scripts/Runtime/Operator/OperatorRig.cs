@@ -325,7 +325,7 @@ namespace Dogpatch.Operator
                 var key = pair.Substring(0, eq);
                 var value = Uri.UnescapeDataString(pair.Substring(eq + 1).Replace('+', ' '));
                 if (key == "room") JoinRoom(value);
-                else if (key == "say") race.Calls.Say(value);
+                else if (key == "say" && Config.debugInput) race.Calls.Say(value);
             }
         }
     }

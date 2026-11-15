@@ -27,7 +27,8 @@ namespace Dogpatch.WorldChanges
 
     // Recolors a Polyfork instance through the model's own color knobs. Polyfork bakes each knob's
     // albedo into COLOR_0, so the vertices of a knob are exactly the ones carrying its default color
-    // (Resources/SpeedDial/knobs.json lists the paint knobs per model). The instance gets its own
+    // (Resources/SpeedDial/knobs.json lists the paint knobs per model), as PolyforkPalette has
+    // already mapped it to the Speed Dial palette. The instance gets its own
     // copies of the meshes, so painting one car never repaints the others.
     public sealed class PaintJob : MonoBehaviour
     {
@@ -72,9 +73,9 @@ namespace Dogpatch.WorldChanges
             job = root.AddComponent<PaintJob>();
             var knobs = Knobs(modelId);
             var paint = new List<Color>();
-            if (knobs?.paint != null) foreach (var hex in knobs.paint) paint.Add(Linear(hex));
+            if (knobs?.paint != null) foreach (var hex in knobs.paint) paint.Add(Look.PolyforkPalette.Mapped(modelId, Linear(hex)));
             var fixes = new List<(Color from, Color to)>();
-            if (knobs?.@fixed != null) foreach (var f in knobs.@fixed) fixes.Add((Linear(f.from), Linear(f.to)));
+            if (knobs?.@fixed != null) foreach (var f in knobs.@fixed) fixes.Add((Look.PolyforkPalette.Mapped(modelId, Linear(f.from)), Linear(f.to)));
             float baseLuma = paint.Count > 0 ? Mathf.Max(Luma(paint[0]), 1e-4f) : 1f;
 
             void Take(Mesh shared, Action<Mesh> assign)

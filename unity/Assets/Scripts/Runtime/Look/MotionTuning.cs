@@ -44,16 +44,16 @@ namespace Dogpatch.Look
         [Serializable]
         public sealed class SpeedLineFeel
         {
-            public int count = 30;
-            public float alpha = 0.8f;
-            public float width = 2.6f;
-            public float innerRadius = 0.62f;
-            public float lengthMin = 0.18f;
-            public float lengthMax = 0.42f;
-            public float flow = 2.4f;
-            public float bandShare = 0.2f;
-            public float bandAlpha = 0.25f;
-            public float bandWidth = 9f;
+            public int count = 44;
+            public float alpha = 1f;
+            public float width = 7f;
+            public float innerRadius = 0.6f;
+            public float lengthMin = 0.35f;
+            public float lengthMax = 0.75f;
+            public float flow = 0.9f;
+            public float bandShare = 0.22f;
+            public float bandAlpha = 0.32f;
+            public float bandWidth = 30f;
             public float centerY = 0.06f;
             public float fadeIn = 3f;
             public float fadeOut = 2f;
@@ -68,16 +68,19 @@ namespace Dogpatch.Look
             public float width = 0.03f;
         }
 
-        // Chunky faceted puffs from the rear wheels on launches, drifts and hard braking, carried
-        // along with the car so they bunch behind the wheels instead of trailing as a cloud.
+        // Chunky faceted puffs from the rear wheels on launches, drifts and hard braking, and a light
+        // patter while rushing (cruiseRate scales with Rush), carried along with the car so they
+        // bunch behind the wheels instead of trailing as a cloud.
         [Serializable]
         public sealed class PuffFeel
         {
-            public float alpha = 0.78f;
-            public float size = 0.3f;
-            public float life = 0.55f;
-            public float carry = 0.6f;
-            public float kick = 2f;
+            public float alpha = 0.62f;
+            public float size = 0.42f;
+            public float life = 0.6f;
+            public float carry = 0.75f;
+            public float kick = 1.6f;
+            public float cruiseRate = 3.5f;
+            public float cruiseSize = 0.36f;
             public float launchRate = 12f;
             public float launchMaxSpeedShare = 0.45f;
             public float launchAccelShare = 0.6f;
@@ -99,7 +102,7 @@ namespace Dogpatch.Look
         {
             public float minStrength = 0.2f;
             public int puffs = 8;
-            public float size = 0.4f;
+            public float size = 0.5f;
             public float spread = 3.5f;
             public float life = 0.5f;
             public int shards = 6;
@@ -111,11 +114,11 @@ namespace Dogpatch.Look
         public sealed class SparkFeel
         {
             public int countMin = 5;
-            public int countMax = 18;
+            public int countMax = 24;
             public float lifeMin = 0.18f;
             public float lifeMax = 0.42f;
-            public float width = 0.04f;
-            public float trail = 0.045f;
+            public float width = 0.07f;
+            public float trail = 0.06f;
         }
 
         // The car body stretches on takeoff and squashes on touchdown, then springs back.
@@ -133,10 +136,10 @@ namespace Dogpatch.Look
         [Serializable]
         public sealed class CameraFeelTuning
         {
-            public float fovSpeed = 14f;
+            public float fovSpeed = 9f;
             public float fovSpeedPower = 1.2f;
-            public float fovBoost = 8f;
-            public float fovPunch = 7f;
+            public float fovBoost = 6f;
+            public float fovPunch = 6f;
             public float punchSeconds = 0.35f;
             public float fovResponse = 6f;
             public float leanMax = 3.5f;
