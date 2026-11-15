@@ -12,8 +12,8 @@ namespace Dogpatch.Gameplay
     // Captures each screen in the launch orientation, swaps width and height the way a phone
     // rotation does, and captures it again: the HOST/JOIN menu, typing a code, the pause menu,
     // the avatar camera, the hosted lobby (online only), then a drive that rotates mid-drive. It
-    // logs PASS only if the world, the car and the room survive every rotation and the drag in
-    // progress was cancelled.
+    // logs PASS only if the world, the car and the room survive every rotation, a rotation raises
+    // ScreenShape.Changed, and Changed cancels a drag that is held at that moment.
     public sealed class OrientationCheck : MonoBehaviour
     {
         string output;
@@ -21,6 +21,13 @@ namespace Dogpatch.Gameplay
         RaceDirector race;
         CarController driving;
         int failures;
+        int changes;
+
+        void OnEnable() => ScreenShape.Changed += Count;
+
+        void OnDisable() => ScreenShape.Changed -= Count;
+
+        void Count() => changes++;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Boot()
@@ -105,12 +112,16 @@ namespace Dogpatch.Gameplay
             yield return Shot("driving");
 
             var drag = game.Drag;
-            typeof(DragInput).GetMethod("Begin", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(drag, new object[] { 1000, new Vector2(Screen.width * 0.5f, Screen.height * 0.3f) });
-            Expect(drag.Dragging, "drag held before rotating");
+            typeof(DragInput).GetMethod("Begin", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(drag, new object[] { 7, new Vector2(Screen.width * 0.5f, Screen.height * 0.3f) });
+            Expect(drag.Dragging, "drag held before the screen changes shape");
+            var changed = (Action)typeof(ScreenShape).GetField("Changed", BindingFlags.Static | BindingFlags.NonPublic).GetValue(null);
+            changed?.Invoke();
+            Expect(!drag.Dragging, "ScreenShape.Changed cancelled the held drag");
             var cam = game.View;
             float fovBefore = cam.fieldOfView;
+            int raised = changes;
             yield return Rotate();
-            Expect(!drag.Dragging, "rotation cancelled the drag");
+            Expect(changes > raised, "rotation raised ScreenShape.Changed");
             yield return Wait(1.5f);
             yield return Shot("driving");
             Log($"fov {fovBefore:F1} -> {cam.fieldOfView:F1} (aspect {cam.aspect:F2})");
