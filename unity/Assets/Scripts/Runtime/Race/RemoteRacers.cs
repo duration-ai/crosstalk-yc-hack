@@ -55,6 +55,7 @@ namespace Dogpatch.Race
             public int Protocol;
             internal float WorldSeenAt = -1000f;
             internal long ModeSince;
+            internal long WorldUpdatedAt;
             public string RaceColorHex;
             public string WorldColor;
             public string WorldColorHex;
@@ -121,8 +122,12 @@ namespace Dogpatch.Race
                 remote.WorldMode = player.mode;
                 remote.Protocol = player.protocol;
                 remote.SeenAt = Time.time;
-                remote.WorldSeenAt = Time.time;
-                remote.Left = false;
+                if (player.updatedAt > remote.WorldUpdatedAt)
+                {
+                    remote.WorldUpdatedAt = player.updatedAt;
+                    remote.WorldSeenAt = Time.time;
+                    remote.Left = false;
+                }
                 if (Vehicles.VehicleCatalog.Has(player.vehicleType) && player.vehicleType != Vehicles.VehicleRoster.TypeOf(remote.Car))
                 {
                     Vehicles.VehicleRoster.SwapInto(remote.Car, player.vehicleType);
