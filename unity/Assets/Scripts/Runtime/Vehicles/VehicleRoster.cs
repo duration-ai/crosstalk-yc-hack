@@ -125,6 +125,9 @@ namespace Dogpatch.Vehicles
             var wash = car.GetComponent<HoverWash>();
             if (spec.Handling.HoverHeight > 0f && wash == null) car.gameObject.AddComponent<HoverWash>();
             if (spec.Handling.HoverHeight <= 0f && wash != null) UnityEngine.Object.Destroy(wash);
+            foreach (var old in car.GetComponents<IVehicleAbility>())
+                if (old.GetType() != spec.Ability) UnityEngine.Object.Destroy((Component)old);
+            if (spec.Ability != null && car.GetComponent(spec.Ability) == null) car.gameObject.AddComponent(spec.Ability);
             if (spec.Rider) identity.Rider = MountCourier(car, spec);
         }
 

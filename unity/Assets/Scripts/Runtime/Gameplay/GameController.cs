@@ -311,6 +311,7 @@ namespace Dogpatch.Gameplay
             if (current != null)
             {
                 if (tapped == current) await RunAsync(ExitCarAsync);
+                else if (current.TryGetComponent<IVehicleAbility>(out var ability)) ability.Use();
                 return;
             }
             if (tapped == null)
