@@ -24,6 +24,7 @@ namespace Dogpatch.Gameplay
         string output;
         int every;
         bool underpasses;
+        Vector2? underAt;
         GameController game;
         CarController car;
         readonly List<Vector3> path = new List<Vector3>();
@@ -42,6 +43,12 @@ namespace Dogpatch.Gameplay
             var capture = new GameObject("FreewayCapture").AddComponent<FreewayCapture>();
             capture.underpasses = u >= 0;
             capture.output = args[(u >= 0 ? u : i) + 1];
+            int a = Array.IndexOf(args, "-underAt");
+            if (a >= 0 && a + 1 < args.Length)
+            {
+                var xz = args[a + 1].Split(',');
+                capture.underAt = new Vector2(float.Parse(xz[0], CultureInfo.InvariantCulture), float.Parse(xz[1], CultureInfo.InvariantCulture));
+            }
             int j = Array.IndexOf(args, "-captureEvery");
             capture.every = j >= 0 && j + 1 < args.Length && int.TryParse(args[j + 1], out int n) ? n : 2;
             Time.captureFramerate = 30;
@@ -116,6 +123,7 @@ namespace Dogpatch.Gameplay
 
         // Every street that passes under a deck or ramp more than 3 m up, driven through in both directions
         // from 35 m before to 35 m after the crossing. A pass that stalls logs what the car is touching.
+        // -underAt x,z keeps only crossings within 15 m of that point and drives each three times each way.
         IEnumerator Underpasses(FreewayGraph freeway)
         {
             var roads = game.World.Roads;
@@ -136,9 +144,9 @@ namespace Dogpatch.Gameplay
                             if (!Cross(pts[i], pts[i + 1], new Vector2(a.x, a.z), new Vector2(b.x, b.z), out float t, out float k)) continue;
                             float h = Mathf.Lerp(a.y, b.y, k);
                             var at = Vector2.Lerp(pts[i], pts[i + 1], t);
-                            if (h < 3f || done.Exists(d => Vector2.Distance(d, at) < 12f)) continue;
+                            if (h < 3f || done.Exists(d => Vector2.Distance(d, at) < 12f) || (underAt.HasValue && Vector2.Distance(underAt.Value, at) > 15f)) continue;
                             done.Add(at);
-                            foreach (int dir in new[] { 1, -1 })
+                            foreach (int dir in underAt.HasValue ? new[] { 1, -1, 1, -1, 1, -1 } : new[] { 1, -1 })
                             {
                                 var line = StreetLine(pts, i, t, dir, roads, r);
                                 float minSpeed = float.MaxValue;
