@@ -38,13 +38,20 @@ namespace Dogpatch.Gameplay
             body.stepOffset = 0.4f;
             body.slopeLimit = 50f;
             var player = go.AddComponent<PlayerController>();
-            if (model != null)
-            {
-                var visual = model.Instantiate(material, go.transform);
-                player.visual = visual.transform;
-                player.animator = visual.GetComponent<GlbAnimator>();
-            }
+            player.SetVisual(model, material);
             return player;
+        }
+
+        // Swaps the character model, e.g. for the player's selfie avatar; movement is untouched.
+        public void SetVisual(GlbAsset model, Material material)
+        {
+            if (visual != null) Destroy(visual.gameObject);
+            visual = null;
+            animator = null;
+            if (model == null) return;
+            var instance = model.Instantiate(material, transform);
+            visual = instance.transform;
+            animator = instance.GetComponent<GlbAnimator>();
         }
 
         void Awake() => body = GetComponent<CharacterController>();

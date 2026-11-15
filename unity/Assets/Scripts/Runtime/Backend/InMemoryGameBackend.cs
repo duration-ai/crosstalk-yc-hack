@@ -14,6 +14,7 @@ namespace Dogpatch.Backend
         readonly Dictionary<string, Player> players = new Dictionary<string, Player>();
         readonly Dictionary<string, PlayerState> states = new Dictionary<string, PlayerState>();
         readonly Dictionary<string, Vehicle> vehicles = new Dictionary<string, Vehicle>();
+        readonly Dictionary<string, PlayerAvatar> avatars = new Dictionary<string, PlayerAvatar>();
         int nextId = 1;
 
         static long Now => DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
@@ -116,6 +117,36 @@ namespace Dogpatch.Backend
             var state = WriteState(playerId, position, heading, PlayerModes.Driving, vehicle.id);
             return Task.FromResult(new VehicleResult { vehicle = Copy(vehicle), state = Copy(state) });
         }
+
+        // No photo analysis offline: any non-empty photo becomes the canned avatar, an empty one is
+        // refused like a photo with nobody in it.
+        public Task<AvatarUploadResult> UploadAvatarPhotoAsync(string playerId, byte[] jpeg)
+        {
+            if (!players.ContainsKey(playerId ?? "")) return Fail<AvatarUploadResult>(BackendErrorCodes.NotFound, "Player " + playerId + " not found");
+            if (jpeg == null || jpeg.Length == 0) return Fail<AvatarUploadResult>(AvatarErrorCodes.Retake, "No person in the photo");
+            var avatar = CannedAvatar(playerId);
+            avatars[playerId] = avatar;
+            var decision = new AvatarDecision { provider = "jev", model = "typesafe-ai/jev-1.14.0", latencyMs = 0f, hedged = false, personProbability = 1f };
+            return Task.FromResult(new AvatarUploadResult { avatar = Copy(avatar), decision = decision });
+        }
+
+        public Task<PlayerAvatar> GetAvatarAsync(string playerId)
+        {
+            if (!players.ContainsKey(playerId ?? "")) return Fail<PlayerAvatar>(BackendErrorCodes.NotFound, "Player " + playerId + " not found");
+            return Task.FromResult(avatars.TryGetValue(playerId, out var avatar) ? Copy(avatar) : null);
+        }
+
+        // Offline stand-in: the bundled player model (Polyfork's commuter) as it ships, no recolour.
+        public static PlayerAvatar CannedAvatar(string playerId) => new PlayerAvatar
+        {
+            playerId = playerId,
+            @base = "commuter-381e7f",
+            costume = null,
+            glbUrl = "https://polyfork.dev/cdn/commuter-381e7f.glb",
+            fallbackGlbUrl = "https://polyfork.dev/cdn/commuter-381e7f.glb",
+            recolor = new AvatarRecolor[0],
+            updatedAt = Now,
+        };
 
         Vehicle DrivenBy(string playerId) => vehicles.Values.FirstOrDefault(v => v.occupiedBy == playerId);
 

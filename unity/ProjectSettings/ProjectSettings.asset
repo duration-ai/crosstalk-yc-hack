@@ -433,7 +433,7 @@ PlayerSettings:
   enableInternalProfiler: 0
   logObjCUncaughtExceptions: 1
   enableCrashReportAPI: 0
-  cameraUsageDescription: 
+  cameraUsageDescription: Take a full-body photo to make your avatar.
   locationUsageDescription: 
   microphoneUsageDescription: 
   bluetoothUsageDescription: 

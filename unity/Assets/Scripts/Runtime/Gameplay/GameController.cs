@@ -115,6 +115,7 @@ namespace Dogpatch.Gameplay
 
             var playerModel = models.Role("player").Count > 0 ? models.Get(models.Role("player")[0].id) : null;
             player = PlayerController.Create(playerModel, material);
+            AvatarCapture.Install(gameObject, player, playerModel, material);
             follow = view.gameObject.AddComponent<FollowCamera>();
 
             var state = await backend.LoadPlayerStateAsync(profile.id);

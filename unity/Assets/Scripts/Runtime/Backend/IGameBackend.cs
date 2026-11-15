@@ -8,7 +8,8 @@ namespace Dogpatch.Backend
     // /api/player-state, GET /api/vehicles, POST /api/vehicles/enter|exit|update). Game code
     // depends only on it, so a Convex HTTP client can replace InMemoryGameBackend without
     // touching gameplay. Failures throw BackendException carrying the contract's error code.
-    public interface IGameBackend
+    // The avatar endpoints (POST /api/avatar/photo, GET /api/avatar) come from IAvatarBackend.
+    public interface IGameBackend : IAvatarBackend
     {
         Task<Player> CreatePlayerAsync(string displayName);
 

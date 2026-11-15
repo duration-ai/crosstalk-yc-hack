@@ -49,6 +49,7 @@ namespace Dogpatch.EditorTools
             PlayerSettings.iOS.sdkVersion = simulator ? iOSSdkVersion.SimulatorSDK : iOSSdkVersion.DeviceSDK;
             PlayerSettings.iOS.simulatorSdkArchitecture = AppleMobileArchitectureSimulator.ARM64;
             PlayerSettings.iOS.targetDevice = iOSTargetDevice.iPhoneAndiPad;
+            PlayerSettings.iOS.cameraUsageDescription = "Take a full-body photo to make your avatar.";
             PlayerSettings.iOS.appleEnableAutomaticSigning = true;
             PlayerSettings.iOS.appleDeveloperTeamID = team;
             if (!simulator && team.Length == 0)
