@@ -14,7 +14,6 @@ namespace Dogpatch.WorldChanges
         public static float Traction = 1f;
         public static float SizeTarget = 1f;
         public static float Float;
-        public float OwnSize = 1f;
 
         Rigidbody body;
         float vy;
@@ -86,9 +85,9 @@ namespace Dogpatch.WorldChanges
         void Update()
         {
             float dt = Time.deltaTime;
-            if (!Mathf.Approximately(size, SizeTarget * OwnSize))
+            if (!Mathf.Approximately(size, SizeTarget))
             {
-                size = Mathf.MoveTowards(size, SizeTarget * OwnSize, 2.5f * dt);
+                size = Mathf.MoveTowards(size, SizeTarget, 2.5f * dt);
                 transform.localScale = Vector3.one * size;
             }
 

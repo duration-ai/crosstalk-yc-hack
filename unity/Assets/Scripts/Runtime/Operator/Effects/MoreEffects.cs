@@ -156,11 +156,13 @@ namespace Dogpatch.Operator
         }
     }
 
-    // Grow or shrink each target that is its own object; merged city meshes stay as built.
+    // Grow or shrink each target that is its own object; merged city meshes stay as built. A resized
+    // car's top speed scales with its size, held to 0.6-1.6x so races stay fair.
     public sealed class ResizeEffect : OperatorEffect
     {
         readonly bool grow;
-        readonly System.Collections.Generic.List<(Transform t, Vector3 scale)> resized = new System.Collections.Generic.List<(Transform, Vector3)>();
+        readonly List<(Transform t, Vector3 scale)> resized = new List<(Transform, Vector3)>();
+        readonly List<(CarController car, float k)> sped = new List<(CarController, float)>();
 
         public ResizeEffect(bool grow) => this.grow = grow;
 
@@ -172,6 +174,10 @@ namespace Dogpatch.Operator
                 if (tag.Span != null) continue;
                 resized.Add((tag.transform, tag.transform.localScale));
                 tag.transform.localScale *= k;
+                if (!tag.TryGetComponent<CarController>(out var car)) continue;
+                float speed = Mathf.Clamp(k, 0.6f, 1.6f);
+                car.SpeedMul *= speed;
+                sped.Add((car, speed));
             }
         }
 
@@ -179,16 +185,18 @@ namespace Dogpatch.Operator
         {
             foreach (var (t, scale) in resized) if (t != null) t.localScale = scale;
             resized.Clear();
+            foreach (var (car, speed) in sped) if (car != null) car.SpeedMul /= speed;
+            sped.Clear();
         }
     }
 
-    // Resizes only the target's cars, plus this device's avatar when the target includes me.
+    // Giants and Tiny: people only, never cars. Resizes the target's on-foot bodies (this device's avatar
+    // when the target includes me) and scales my walking and running speed with my size.
     public sealed class SizeEffect : OperatorEffect
     {
         readonly float low, medium, high;
-        readonly List<CarFx> sized = new List<CarFx>();
-        Transform avatar;
-        Vector3 before;
+        readonly List<(Transform t, Vector3 scale)> resized = new List<(Transform, Vector3)>();
+        GuardedKnob run;
 
         public SizeEffect(float low, float medium, float high)
         {
@@ -200,23 +208,27 @@ namespace Dogpatch.Operator
         public override void Apply(string strength, EffectTarget target)
         {
             float k = Scale(strength, low, medium, high);
-            foreach (var car in Racers.Cars(Context, target))
+            var bodies = new HashSet<Transform>();
+            foreach (var tag in target.Entities)
+                if (tag != null && tag.Span == null && !tag.TryGetComponent<CarController>(out _)) bodies.Add(tag.transform);
+            if (target.IncludesMe && Context.Game.Player != null)
             {
-                var fx = CarFx.On(car);
-                fx.OwnSize = k;
-                sized.Add(fx);
+                bodies.Add(Context.Game.Player.transform);
+                run = GuardedKnob.Times(() => PlayerController.RunScale, v => PlayerController.RunScale = v, Mathf.Max(0.5f, k));
             }
-            if (!target.IncludesMe || Context.Game.Player == null) return;
-            avatar = Context.Game.Player.transform;
-            before = avatar.localScale;
-            avatar.localScale = before * k;
+            foreach (var body in bodies)
+            {
+                resized.Add((body, body.localScale));
+                body.localScale *= k;
+            }
         }
 
         public override void Revert()
         {
-            foreach (var fx in sized) if (fx != null) fx.OwnSize = 1f;
-            sized.Clear();
-            if (avatar != null) avatar.localScale = before;
+            foreach (var (t, scale) in resized) if (t != null) t.localScale = scale;
+            resized.Clear();
+            run?.Undo();
+            run = null;
         }
     }
 
