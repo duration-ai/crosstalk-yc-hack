@@ -1,0 +1,17 @@
+{
+  "startName": "22nd Street Caltrain",
+  "start": {
+    "lat": 37.757286,
+    "lon": -122.3924
+  },
+  "finishName": "YC",
+  "finish": {
+    "lat": 37.7608445,
+    "lon": -122.3860644
+  },
+  "via": [],
+  "finishRadius": 15,
+  "ringRadius": 7.2,
+  "routePayphones": 3,
+  "payphones": []
+}

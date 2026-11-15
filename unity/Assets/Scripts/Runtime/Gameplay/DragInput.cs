@@ -14,6 +14,7 @@ namespace Dogpatch.Gameplay
         public Vector2 Anchor { get; private set; }
         public Vector2 Current { get; private set; }
         public event Action<Vector2> Tapped;
+        public Func<Vector2, bool> IgnoreTouch;
 
         int fingerId = -1;
         float downTime;
@@ -65,6 +66,7 @@ namespace Dogpatch.Gameplay
 
         void Begin(int id, Vector2 position)
         {
+            if (IgnoreTouch != null && IgnoreTouch(position)) return;
             fingerId = id;
             Anchor = Current = position;
             downTime = Time.unscaledTime;

@@ -7,6 +7,7 @@ namespace Dogpatch.Gameplay
     {
         public GameController Game;
         public DragInput Input;
+        public bool Minimal;
 
         string toast;
         float toastUntil;
@@ -62,17 +63,20 @@ namespace Dogpatch.Gameplay
             float left = safe.xMin + 20 * s;
             float top = Screen.height - safe.yMax + 20 * s;
             float width = Mathf.Min(safe.width - 40 * s, 620 * s);
-            GUI.DrawTexture(new Rect(left - 10 * s, top - 6 * s, width, 104 * s), panel);
-            GUI.Label(new Rect(left, top, width, 44 * s), string.IsNullOrEmpty(Game.StreetName) ? "Dogpatch, San Francisco" : Game.StreetName, label);
-            GUI.Label(new Rect(left, top + 46 * s, width, 40 * s), Game.StatusLine, small);
+            if (!Minimal)
+            {
+                GUI.DrawTexture(new Rect(left - 10 * s, top - 6 * s, width, 104 * s), panel);
+                GUI.Label(new Rect(left, top, width, 44 * s), string.IsNullOrEmpty(Game.StreetName) ? "Dogpatch, San Francisco" : Game.StreetName, label);
+                GUI.Label(new Rect(left, top + 46 * s, width, 40 * s), Game.StatusLine, small);
 
-            string hint = Game.Driving
-                ? "Drag to steer and drive · release to stop · tap your car to get out"
-                : "Drag anywhere to walk · tap to jump · tap a car to get in";
-            GUI.Label(new Rect(left, Screen.height - safe.yMin - 92 * s, width, 60 * s), hint, small);
+                string hint = Game.Driving
+                    ? "Drag to steer and drive · release to stop · tap your car to get out"
+                    : "Drag anywhere to walk · tap to jump · tap a car to get in";
+                GUI.Label(new Rect(left, Screen.height - safe.yMin - 92 * s, width, 60 * s), hint, small);
+            }
             GUI.Label(new Rect(left, Screen.height - safe.yMin - 38 * s, safe.width - 40 * s, 30 * s), "© OpenStreetMap contributors · DataSF · polyfork.dev", small);
 
-            if (!string.IsNullOrEmpty(toast) && Time.time < toastUntil)
+            if (!Minimal && !string.IsNullOrEmpty(toast) && Time.time < toastUntil)
             {
                 var size = label.CalcSize(new GUIContent(toast));
                 var r = new Rect((Screen.width - size.x) / 2f - 16 * s, Screen.height * 0.3f, size.x + 32 * s, size.y + 16 * s);
