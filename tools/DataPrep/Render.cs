@@ -42,11 +42,24 @@ static class Render
         }
         stroke.Color = new SKColor(60, 60, 60); stroke.StrokeWidth = 1.2f; stroke.PathEffect = SKPathEffect.CreateDash(new[] { 5f, 3f }, 0);
         foreach (var r in w.Rails) c.DrawPath(Path(r.Pts, false, w), stroke);
+        stroke.PathEffect = null;
+        stroke.Color = new SKColor(120, 60, 160); stroke.StrokeWidth = 3;
+        foreach (var v in w.Viaducts) c.DrawPath(Path(v.Pts, false, w), stroke);
         foreach (var b in w.Buildings)
         {
             fill.Color = Lerp(new SKColor(215, 205, 195), new SKColor(90, 70, 110), Math.Clamp(b.Height / 40f, 0, 1));
             c.DrawPath(Path(b.Pts, true, w), fill);
         }
+        float X(float x) => (x - w.MinX) * Scale; float Y(float z) => (w.MaxZ - z) * Scale;
+        fill.Color = new SKColor(30, 150, 40);
+        foreach (var t in w.TreeRecords) c.DrawCircle(X(t.X), Y(t.Z), t.Source == "osm" ? 1.8f : 1.4f, fill);
+        foreach (var p in w.Props)
+        {
+            fill.Color = Validate.KindColor(p.Kind);
+            c.DrawCircle(X(p.X), Y(p.Z), 2.2f, fill);
+        }
+        using var ring = new SKPaint { IsAntialias = true, Style = SKPaintStyle.Stroke, StrokeWidth = 2, Color = SKColors.Black };
+        foreach (var l in w.Landmarks.Where(l => l.Kind is "yc" or "crane" or "machine_shop" or "cream_stone" or "smokestack" or "caltrain_22nd")) c.DrawCircle(X(l.X), Y(l.Z), 6, ring);
         using var img = SKImage.FromBitmap(bmp);
         using var data = img.Encode(SKEncodedImageFormat.Png, 90);
         File.WriteAllBytes(path, data.ToArray());

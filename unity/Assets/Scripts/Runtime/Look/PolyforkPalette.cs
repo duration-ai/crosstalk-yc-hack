@@ -8,7 +8,8 @@ namespace Dogpatch.Look
     // Recolors Polyfork models to the Speed Dial palette through their own color knobs. Each
     // knob's default is the exact COLOR_0 value Polyfork bakes into the GLB, so a vertex color is
     // matched to the nearest knob default of its model and replaced with that knob's Speed Dial
-    // color. The table lives in Resources/Polyfork/palette.json, one entry per model id.
+    // color. The table lives in Resources/Polyfork/palette.json, one entry per model id. Models
+    // not in it (the knob-built variants in variants.json, baked in Speed Dial colors) are left as is.
     public static class PolyforkPalette
     {
         const float MatchDistance = 0.15f;
@@ -39,11 +40,7 @@ namespace Dogpatch.Look
         public static void Apply(GlbAsset asset)
         {
             if (table == null) Load();
-            if (!table.TryGetValue(asset.Id, out var knobs))
-            {
-                Debug.LogWarning("[Look] no Speed Dial palette for " + asset.Id + "; it keeps stock colors");
-                return;
-            }
+            if (!table.TryGetValue(asset.Id, out var knobs)) return;
 
             var cache = new Dictionary<Color, Color>();
             int missed = 0;
