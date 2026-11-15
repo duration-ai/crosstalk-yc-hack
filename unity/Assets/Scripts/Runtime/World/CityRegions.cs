@@ -31,7 +31,7 @@ namespace Dogpatch.World
 
         const float Chunk = 400f;
         const float NearRange = 700f;
-        const float FarRange = 6000f;
+        const float FarRange = 2000f;
         const float FarHeight = 18f;
         const float SkylineHeight = 60f;
         const float SkylineDistance = 2800f;
