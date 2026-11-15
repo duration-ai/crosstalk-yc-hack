@@ -309,28 +309,54 @@ export function decide(a: Answers, view: View, active: ActiveSummary[]): Command
   }
 }
 
-/** Refusals that only mean the game lacks the exact thing: the Operator hands over the closest built effect instead. */
-const SUBSTITUTED: ReadonlySet<RefusalReason> = new Set(["unsupported", "transformation", "spawning", "teleport", "vague", "not_built", "incompatible"]);
+/**
+ * Refusals the Operator turns into a stand-in: anything short of a cheat, an undo, a protected landmark
+ * or a missing ask ("err on the side of doing something"). Chit-chat too, unless it's near-empty.
+ */
+const SUBSTITUTED: ReadonlySet<RefusalReason> = new Set([
+  "unsupported", "transformation", "spawning", "teleport", "vague", "not_built", "incompatible",
+  "deferred", "not_a_request", "not_visible", "too_broad", "player_target",
+]);
 
 /** Reasons that stay refusals; a stand-in is off when Jev gives them a real chance (an "undo that" it half reads as vague). */
-const KEPT_REASONS = ["undo", "cheat", "deferred", "not_a_request"];
+const KEPT_REASONS = ["undo", "cheat"];
+
+const FILLER = new Set([
+  "um", "umm", "uh", "uhh", "er", "erm", "hmm", "mm", "ah", "oh", "okay", "ok", "yeah", "yes", "no", "hi", "hey", "hello",
+  "so", "like", "well", "right", "cool", "nice", "wow", "huh", "what", "the", "a", "and", "thanks", "thank", "you",
+]);
+
+const wordsOf = (transcript: string) => transcript.toLowerCase().match(/[a-z']+/g) ?? [];
+
+/** Pure filler, or two words or fewer that Jev is sure are chatter ("I'm fine"): the only chit-chat still refused. */
+function chatter(a: Answers, transcript: string) {
+  const words = wordsOf(transcript);
+  if (words.every((w) => FILLER.has(w))) return true;
+  return words.length <= 2 && (a.reject_reason.probabilities.not_a_request ?? 0) >= 0.7;
+}
 
 /** Built effects the Operator can hand over as a stand-in: no target, colour or theme needed, and never a counter. */
 export const STAND_INS = [...Object.keys(PLAYER_EFFECTS), ...Object.keys(WORLD_EFFECTS)].filter(
   (effect) => PLAYABLE.has(effect) && !(effect in COUNTERS) && effect !== "ped_theme",
 );
 
+/** Big, visible picks for an open ask ("surprise me", "something crazy") when Jev has no clear nearest. */
+const FUN = ["earthquake", "snow", "night", "gravity_lower", "cars_fly", "waymo_swarm", "big_heads", "flight", "storm"].filter((e) =>
+  STAND_INS.includes(e),
+);
+
 /**
- * Never a dead end for an ask the game can't do exactly: a capability refusal becomes Jev's closest
- * built effect, and a granted ask that only stretches toward the words is marked as a stand-in too,
- * so the Operator's line owns up to the swap. Safety and scope refusals pass through.
+ * Never a dead end: a refusal short of a cheat, an undo or a landmark becomes Jev's closest built
+ * effect, or a fun one when Jev isn't sure what's closest. A granted ask that only stretches toward
+ * the words is marked as a stand-in too, so the Operator's line owns up to the swap.
  */
-export function nextBest(a: Answers, command: Command): Command {
+export function nextBest(a: Answers, command: Command, transcript: string, random: () => number = Math.random): Command {
   if (command.kind === "effect") return a.stretch >= 0.7 ? { ...command, substitute: true } : command;
   if (!SUBSTITUTED.has(command.reason)) return command;
   if (KEPT_REASONS.reduce((sum, reason) => sum + (a.reject_reason.probabilities[reason] ?? 0), 0) >= 0.25) return command;
-  const effect = a.nearest.choice;
-  if (!STAND_INS.includes(effect)) return command;
+  if (chatter(a, transcript)) return command;
+  if (!STAND_INS.includes(a.nearest.choice)) return command;
+  const effect = a.nearest.confidence >= 0.5 ? a.nearest.choice : FUN[Math.floor(random() * FUN.length)];
   const vehicle = effect === "change_vehicle" ? a.nearest_vehicle.choice : "";
   if (effect === "change_vehicle" && !(VEHICLES as readonly string[]).includes(vehicle)) return command;
   const info = PLAYER_EFFECTS[effect] ?? WORLD_EFFECTS[effect];

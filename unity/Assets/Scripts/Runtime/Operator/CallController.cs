@@ -32,6 +32,7 @@ namespace Dogpatch.Operator
         const float AnswerShown = 2.6f;
         const float LatchWindow = 5f;
         const float LatchSilence = 1f;
+        const float RetryDelay = 1.5f;
 
         public GameController Game;
         public IOperator Operator;
@@ -67,6 +68,9 @@ namespace Dogpatch.Operator
         float partialAt;
         float listenAt;
         float greetingLead;
+        bool pickupCall;
+        bool pickupRetried;
+        float retryAt;
 
         public event Action<OperatorResponse> Answered;
 
@@ -131,6 +135,9 @@ namespace Dogpatch.Operator
         public void Pickup()
         {
             if (State == CallState.Talking || State == CallState.Waiting) return;
+            pickupCall = true;
+            pickupRetried = retryAt > 0f;
+            retryAt = 0f;
             BuzzedAt = Time.time;
             Haptics.Notify(HapticNotice.Warning);
             snapshot = View?.Invoke();
@@ -192,18 +199,35 @@ namespace Dogpatch.Operator
                 Set(CallState.Answered);
                 Debug.Log($"[SpeedDial] Operator: \"{reply.line}\" -> {reply.command?.type ?? reply.effect?.effect ?? reply.outcome} ({reply.provider})");
                 Answered?.Invoke(reply);
+                if (reply.outcome == "refused" && reply.refusal?.reason != "no_asks" && reply.refusal?.reason != "race_over") GiveCallBack();
+                else pickupCall = false;
             }
             catch (Exception e)
             {
                 Debug.LogWarning("[SpeedDial] Operator call failed: " + e.Message);
                 Set(CallState.None);
+                GiveCallBack();
             }
+        }
+
+        // A phone pickup's call that ends without an effect (refused, nothing heard, an error) comes back
+        // once: the mic reopens for another LatchWindow, and the ask the pickup granted stays unspent.
+        void GiveCallBack()
+        {
+            if (!pickupCall || pickupRetried)
+            {
+                pickupCall = false;
+                return;
+            }
+            retryAt = Time.time + RetryDelay;
+            Debug.Log("[SpeedDial] the call was declined: the phone gives it back for one retry");
         }
 
         void Update()
         {
             if (Game == null || !Game.IsReady) return;
             if (State == CallState.Answered && Time.time - StateSince > AnswerShown) Set(CallState.None);
+            if (retryAt > 0f && Time.time >= retryAt && State != CallState.Talking && State != CallState.Waiting) Pickup();
             if (State == CallState.Talking && listenAt > 0f && Time.time >= listenAt)
             {
                 listenAt = 0f;
