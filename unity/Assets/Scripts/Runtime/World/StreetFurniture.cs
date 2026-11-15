@@ -62,6 +62,7 @@ namespace Dogpatch.World
                 };
                 var mesh = statics.Mesh(id);
                 if (mesh == null) { tally.Except("model missing"); continue; }
+                if (!ClearSpot(ref p, 0.3f)) { tally.Except("no spot off the asphalt (dropped)"); continue; }
                 float scale = Mathf.Clamp(height / mesh.bounds.size.y, 0.45f, 2.6f);
                 var m = Matrix4x4.TRS(MeshBuilder.At(p, 0.03f), Quaternion.Euler(0f, h % 360, 0f), Vector3.one * scale);
                 if (statics.PlaceAtOrigin(StaticModels.Layer.Trees, id, p, m, tree.id, 0.3f * Mathf.Max(1f, scale), 3f) < 0) { tally.Except("model missing"); continue; }
@@ -150,6 +151,7 @@ namespace Dogpatch.World
             var q = ToCurb(p, tally, prop.kind == "stop_sign" || prop.kind == "give_way" ? 0.6f : 0.5f);
             float heading = prop.headingKnown ? prop.heading : FaceStreet(q);
             if (prop.kind == "stop_sign" || prop.kind == "give_way") q = StopSignSpot(p, heading, q);
+            if (!ClearSpot(ref q, radius)) { tally.Except("no spot off the asphalt (dropped)"); return; }
             if (statics.PlaceAtOrigin(StaticModels.Layer.Props, id, q, Matrix4x4.TRS(MeshBuilder.At(q, 0.03f), Quaternion.Euler(0f, heading, 0f), Vector3.one), prop.id, radius) < 0)
             {
                 tally.Except("model missing");
@@ -233,14 +235,33 @@ namespace Dogpatch.World
             return false;
         }
 
-        // True when a pole at p (with its 0.2 m collider and a little room) would stand on any street's
-        // asphalt, curbed or flush.
-        bool OnCarriageway(Vector2 p)
+        // True when an item of this collider radius at p (with a little room) would stand on any street's
+        // asphalt, curbed or flush. Medians and paths are fine.
+        bool OnCarriageway(Vector2 p, float radius = 0.2f)
         {
-            if (ctx.Roads.OnCurbedCarriageway(p, 0.6f)) return true;
-            if (!ctx.Roads.Nearest(p, 0.6f, out var near)) return false;
+            float margin = Mathf.Max(radius, 0.15f) + 0.4f;
+            if (ctx.Roads.OnCurbedCarriageway(p, margin)) return true;
+            if (!ctx.Roads.Nearest(p, margin, out var near)) return false;
             if (ctx.Roads.Roads[near.Road].kind != "path") return true;
-            return ctx.Roads.Nearest(p, 0.6f, out near, near.Road) && ctx.Roads.Roads[near.Road].kind != "path";
+            return ctx.Roads.Nearest(p, margin, out near, near.Road) && ctx.Roads.Roads[near.Road].kind != "path";
+        }
+
+        // The one placement check every piece of street furniture goes through: p stays if it is off the
+        // asphalt, else moves to the nearest clear spot within 8 m (rings every half metre); false when
+        // there is none, and the item is dropped.
+        bool ClearSpot(ref Vector2 p, float radius)
+        {
+            if (!OnCarriageway(p, radius)) return true;
+            for (float r = 0.5f; r <= 8f; r += 0.5f)
+                for (int i = 0; i < 24; i++)
+                {
+                    float a = i * Mathf.PI * 2f / 24f;
+                    var q = p + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * r;
+                    if (OnCarriageway(q, radius)) continue;
+                    p = q;
+                    return true;
+                }
+            return false;
         }
 
         // Crosswalks are painted by RoadSurface (curb to curb, with curb ramps), so a crossing node is
@@ -263,6 +284,7 @@ namespace Dogpatch.World
             for (int i = 0; i < racks; i++)
             {
                 var q = p + along * ((i - (racks - 1) * 0.5f) * (length + 0.2f));
+                if (!ClearSpot(ref q, 0.3f)) { tally.Except("rack with no spot off the asphalt (dropped)"); continue; }
                 statics.PlaceAtOrigin(StaticModels.Layer.Props, "p-bikerack", q, Matrix4x4.TRS(MeshBuilder.At(q, 0.03f), Quaternion.Euler(0f, heading - 90f, 0f), Vector3.one), prop.id);
             }
             tally.Placed++;

@@ -1465,6 +1465,7 @@ namespace Dogpatch.Ambient
                 {
                     var v = car.transform.forward * car.Speed;
                     Hit(ped, new Vector2(v.x, v.z) - ped.Vel, new Vector2(car.transform.position.x, car.transform.position.z));
+                    if (Busy) Bump(car);
                 }
                 return;
             }
@@ -1486,6 +1487,20 @@ namespace Dogpatch.Ambient
         }
 
         static bool CanStumble(Pedestrian ped) => ped.State != PedState.Stumble && ped.CanBeShoved;
+
+        // While an Operator crowd effect is on, running into people costs a quarter of the car's speed
+        // and a short stun, so crowds become hazards to steer around.
+        readonly Dictionary<CarController, float> bumped = new Dictionary<CarController, float>();
+
+        void Bump(CarController car)
+        {
+            if (!car.Driven || car.Autopilot || !car.TryGetComponent<Rigidbody>(out var body) || body.isKinematic) return;
+            if (bumped.TryGetValue(car, out var until) && Time.time < until) return;
+            bumped[car] = Time.time + 0.6f;
+            var v = body.linearVelocity;
+            body.linearVelocity = new Vector3(v.x * 0.75f, v.y, v.z * 0.75f);
+            car.Stun(0.3f);
+        }
 
         // --- drawing -----------------------------------------------------------------------------
 

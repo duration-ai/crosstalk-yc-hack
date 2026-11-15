@@ -31,9 +31,12 @@ namespace Dogpatch.Look
         public static float NightFactor { get; internal set; }
         public static bool IsNight => NightFactor > 0.5f;
 
-        // Multiplier on tire grip for vehicle handling: 1 dry, about 0.8 on wet asphalt, about 0.6
-        // on snow.
-        public static float GripMultiplier => Mathf.Min(Mathf.Lerp(1f, 0.8f, Wetness), Mathf.Lerp(1f, 0.6f, SnowCover));
+        // Extra grip factor a storm puts on top of the wet road.
+        public static float StormGrip = 1f;
+
+        // Multiplier on tire grip for vehicle handling: 1 dry, 0.7 on soaked asphalt, 0.55 on deep
+        // snow, lower again in a storm.
+        public static float GripMultiplier => Mathf.Min(Mathf.Lerp(1f, 0.7f, Wetness), Mathf.Lerp(1f, 0.55f, SnowCover)) * StormGrip;
 
         public static float GetSurfaceGrip(Vector3 worldPosition) => GripMultiplier;
 
