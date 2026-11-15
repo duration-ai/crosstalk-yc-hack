@@ -483,6 +483,19 @@ namespace Dogpatch.Smash
             frontPopped = rearPopped = false;
         }
 
+        // Fire damage: share is a fraction of this car's durability. A driven car (a racer) is never
+        // burnt below burnFloorHealth, so fire hurts and smokes a racer but cannot wreck one alone;
+        // anything else can burn out.
+        public void Burn(float share)
+        {
+            if (IsWrecked || Invulnerable > 0 || share <= 0f) return;
+            float add = share * Durability;
+            if (Car.Driven) add = Mathf.Min(add, (1f - DamageTuning.Current.burnFloorHealth) * Durability - Damage);
+            if (add <= 0f) return;
+            Damage += add;
+            if (Damage >= Durability) Wreck(LastAttacker);
+        }
+
         public void Repair()
         {
             if (panels != null)

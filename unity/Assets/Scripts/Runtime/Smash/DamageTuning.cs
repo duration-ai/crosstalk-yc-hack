@@ -22,6 +22,9 @@ namespace Dogpatch.Smash
     //     (at least its barge strength), so it plows through a curb row instead of stopping dead.
     //   maxDepenetration: m/s at which physics may push apart overlapping bodies, so a parked or AI
     //     car that turns physical while overlapping something slides out instead of shooting up.
+    //   burnCarPerSecond: health share per second a car loses while set_fire burns on it.
+    //   burnSpotPerSecond: health share per second a racer loses while driving through flames.
+    //   burnFloorHealth: health share fire alone never takes a racer below (traffic can burn out).
     [Serializable]
     public sealed class DamageTuning
     {
@@ -38,6 +41,9 @@ namespace Dogpatch.Smash
         public float airborneGravity = 2.5f;
         public float maxDepenetration = 1f;
         public float parkedShoveKeep = 0f;
+        public float burnCarPerSecond = 0.04f;
+        public float burnSpotPerSecond = 0.15f;
+        public float burnFloorHealth = 0.1f;
 
         static DamageTuning current;
 

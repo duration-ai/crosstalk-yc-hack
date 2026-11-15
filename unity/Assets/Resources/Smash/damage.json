@@ -11,5 +11,8 @@
   "maxTumbleSpin": 3.0,
   "airborneGravity": 2.5,
   "maxDepenetration": 1.0,
-  "parkedShoveKeep": 0.7
+  "parkedShoveKeep": 0.7,
+  "burnCarPerSecond": 0.04,
+  "burnSpotPerSecond": 0.15,
+  "burnFloorHealth": 0.1
 }
