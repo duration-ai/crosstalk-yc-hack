@@ -19,6 +19,7 @@ namespace Dogpatch.EditorTools
     //   IOS_BUNDLE_ID  bundle identifier (default com.crosstalk.dogpatch)
     //   APPLE_TEAM_ID  Apple developer team for automatic signing of device builds
     //   BUILD_OUTPUT   output folder (default ../Builds/iOS-<sdk> or ../Builds/Linux)
+    //   BUILD_DEFINES  extra scripting defines, comma separated (SMASH_DEMO: the smash showcase build)
     public static class BuildScript
     {
         const string ScenePath = "Assets/Scenes/Bootstrap.unity";
@@ -124,6 +125,7 @@ namespace Dogpatch.EditorTools
                 locationPathName = location,
                 target = target,
                 options = options,
+                extraScriptingDefines = Env("BUILD_DEFINES", "").Split(new[] { ',', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries),
             });
             var summary = report.summary;
             Debug.Log($"[Build] {target} {summary.result} in {summary.totalTime} -> {location} ({summary.totalSize / (1024 * 1024)} MB, {summary.totalErrors} errors)");
