@@ -479,6 +479,7 @@ namespace Dogpatch.Race
             if (myPilot != null) myPilot.Active = false;
             Game.ExternalInput = true;
             if (Game.CurrentCar != null) Game.CurrentCar.SetInput(Vector3.zero, 0f);
+            else Game.Player.SetInput(Vector3.zero, 0f);
             float closesIn = Room.closesAt > 0 ? (Room.closesAt - NowMs) / 1000f : 0f;
             Debug.Log($"[SpeedDial] you finished {Me.place} in {Me.finishMs / 1000f:F1} s, results in {closesIn:F0} s at most");
         }
