@@ -13,6 +13,8 @@ namespace Dogpatch.Race
     // on autopilot while calling the Operator and letting the bots fire every world change, then
     // takes the results and a rematch, saving a screenshot of each UI state. Game time runs at a
     // fixed 30 fps so animations land on the same frames however slow the renderer is.
+    // Built with the SPEEDDIAL_DEMO define (BUILD_DEFINES=SPEEDDIAL_DEMO), the player runs it on launch,
+    // for the iOS simulator check where there is no command line.
     public sealed class SpeedDialDemo : MonoBehaviour
     {
         string output;
@@ -23,7 +25,9 @@ namespace Dogpatch.Race
         static void Boot()
         {
             var args = Environment.GetCommandLineArgs();
+#if !SPEEDDIAL_DEMO
             if (Array.IndexOf(args, "-speeddial-demo") < 0) return;
+#endif
             Application.runInBackground = true;
             QualitySettings.vSyncCount = 0;
             var demo = new GameObject("SpeedDialDemo").AddComponent<SpeedDialDemo>();
@@ -144,14 +148,22 @@ namespace Dogpatch.Race
             yield return Seconds(2.5f);
             yield return Shot("12b-rematch-lobby");
             Log($"done: {shots} screenshots");
-            Application.Quit(0);
+            Quit(0);
         }
 
         IEnumerator Watchdog()
         {
             yield return new WaitForSeconds(600f);
             Log("timed out");
-            Application.Quit(1);
+            Quit(1);
+        }
+
+        // The iOS demo build stays open after the run so the phone can still be looked at.
+        static void Quit(int code)
+        {
+#if !SPEEDDIAL_DEMO
+            Application.Quit(code);
+#endif
         }
 
         static IEnumerator Seconds(float seconds)
@@ -168,7 +180,7 @@ namespace Dogpatch.Race
                 if (Time.time > until)
                 {
                     Log("FAILED waiting for " + what);
-                    Application.Quit(1);
+                    Quit(1);
                     yield break;
                 }
                 yield return null;
