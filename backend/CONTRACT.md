@@ -1,6 +1,6 @@
 # Dogpatch backend HTTP contract
 
-This is the API the Unity client's `IGameBackend` will call when it moves from the local in-memory implementation to Convex. Unity has no official Convex SDK, so everything is plain HTTP and JSON against the deployment's HTTP actions URL.
+This is the API the Unity client's `IGameBackend` will call when it moves from the local in-memory implementation to Convex, plus the Speed Dial race API for `IRaceSession` and `IOperator` ([Speed Dial races](#speed-dial-races)). Unity has no official Convex SDK, so everything is plain HTTP and JSON against the deployment's HTTP actions URL.
 
 ## Basics
 
@@ -53,8 +53,9 @@ Every failure returns this body with the status below:
 | Status | `code` | When |
 | --- | --- | --- |
 | 400 | `INVALID_ARGUMENT` | The body is not a JSON object, a field is missing or has the wrong type, or a value breaks a rule (for example an empty `displayName`). |
-| 404 | `NOT_FOUND` | The `playerId` or `vehicleId` does not exist (including malformed ids). |
-| 409 | `CONFLICT` | The request contradicts current state: the vehicle is taken, the player is in another vehicle, or the player is not the driver. |
+| 404 | `NOT_FOUND` | The `playerId`, `vehicleId`, `roomId` or room `code` does not exist (including malformed ids). |
+| 409 | `CONFLICT` | The request contradicts current state: the vehicle is taken, the player is in another vehicle, or the player is not the driver; the room is full, started, finished or in its countdown lock, or the player is not in it. |
+| 501 | `NOT_IMPLEMENTED` | Audio sent to an Operator provider that understands text only. |
 | 500 | `INTERNAL` | Anything unexpected. The message is always `Internal error`. |
 
 `message` is for logs, not for branching; branch on `code` and the status. A path or method that matches no route gets Convex's plain-text `404 No matching routes found` instead of the JSON body.
@@ -173,4 +174,267 @@ Errors: `404`; `409` when the player is not the driver.
 
 - Call rate: every call is a Convex mutation or query. Send driving updates at a checkpoint cadence (for example every few seconds and on exit), not every frame.
 - Ordering: the server applies writes in arrival order. Await each call before sending the next for the same player.
-- Out of scope today: realtime subscriptions, multiplayer sync, and auth. Those would use a Convex client or WebSocket and are not part of this contract.
+- Multiplayer sync is by polling (see Speed Dial races below). Realtime subscriptions and auth are out of scope; subscriptions would need a Convex client or WebSocket.
+
+## Speed Dial races
+
+Four-player races through Dogpatch: rooms and a lobby, race state at 5–10 Hz, server-side places and results, an append-only log of world changes, and the Operator. Everything above (base URL, JSON bodies, no auth, opaque ids, epoch-millisecond server times, Unity world-space meters, the error body) applies here too.
+
+Players come from `POST /api/players`. A player is in at most one room: creating or joining a room first leaves any other room the player is in (with the same rules as an explicit leave, except that the countdown lock does not apply).
+
+### JsonUtility rules
+
+- No top-level arrays and no polymorphic objects.
+- **Numbers are never null.** A time that is not set yet is `0` (`startsAt: 0` in the lobby, `finishMs: 0` before finishing).
+- Lists are always present, possibly empty (`events: []`, `results: []`).
+- World-change `params` is one flat object. One C# class with every field (`level`, `timeOfDay`, `color`, `hex`, `playerId`, `targetPlayerId`, `size`, `count`) reads all of them, and the client may send that class whole: fields a type does not use are ignored, an empty string or `0` counts as unset, and `hex` and swap's `playerId` are always filled in by the server.
+
+### Objects
+
+```jsonc
+// Room
+{
+  "id": "k57…",
+  "code": "QMTX",            // 4 letters (no I or O), what players type to join; case-insensitive
+  "status": "lobby",         // "lobby" | "countdown" | "racing" | "finished", always current to serverTime
+  "raceNumber": 1,           // increments on rematch; reset world changes when it changes
+  "minPlayers": 2,           // players needed before the room can start (1–4)
+  "playerCount": 3,          // racers in the room who have not left
+  "readyCount": 2,
+  "startsAt": 0,             // server time of GO, 0 when no countdown is running
+  "closesAt": 0,             // server time the race ends for stragglers (first finish + 60 s), 0 until someone finishes
+  "routeLength": 700,        // meters along the route
+  "finish": { "x": 300, "y": 0, "z": 400 },   // the route's last point
+  "finishRadius": 10,
+  "createdAt": 1794768818288
+}
+
+// Racer: one per player in the room
+{
+  "playerId": "jd7…",
+  "displayName": "Maya",
+  "color": "purple",         // "blue" | "purple" | "orange" | "green", by join order, never shared
+  "colorHex": "#A35BFF",
+  "slot": 1,                 // 0–3, the start-ring slot; same index as the color
+  "ready": true,
+  "position": { "x": 0, "y": 0.5, "z": 140 },
+  "heading": 0,
+  "progress": 140,           // meters along the route, computed by the server from position
+  "metersToFinish": 560,     // routeLength - progress, for the HUD's "640 M"
+  "place": 2,                // 1–4, computed by the server (see Places, finish and results)
+  "finished": false,
+  "finishMs": 0,             // race time in ms from startsAt, 0 until finished
+  "smash": 0,                // smash points this race, the best value the racer has sent
+  "left": false,             // true if the player left after the start (DNF)
+  "updatedAt": 1794768818366
+}
+
+// Event: one world change in the room's append-only log
+{
+  "seq": 7,                  // per room, strictly increasing from 1 across races; apply in seq order
+  "raceNumber": 1,
+  "type": "gravity",
+  "params": { "level": "low" },
+  "playerId": "jd7…",        // who fired it
+  "displayName": "Maya",
+  "color": "purple",         // for the color block at the start of the news bar
+  "serverTime": 1794768830000,
+  "news": "MAYA LOWERED GRAVITY"   // uppercase, at most four words, ready for the news bar
+}
+
+// Result: one per racer once the room is finished, in place order
+{
+  "place": 1,
+  "playerId": "jd7…",
+  "displayName": "Maya",
+  "color": "purple",
+  "finished": true,
+  "finishMs": 74210,
+  "calls": 3,                // world changes this racer fired this race
+  "smash": 12,               // smash points this race
+  "award": "CHAOS CALLER"    // one award per racer
+}
+```
+
+### World changes
+
+| `type` | `params` | Example news |
+| --- | --- | --- |
+| `gravity` | `{ "level": "low" \| "high" \| "normal" }` | MAYA LOWERED GRAVITY |
+| `ice` | `{ "level": "on" \| "off" }` | JUN ICED THE ROADS |
+| `fog` | `{ "level": "thick" \| "clear" }` | ROSA CALLED THE FOG |
+| `time` | `{ "timeOfDay": "day" \| "golden" \| "dusk" \| "night" }` | TIM MADE IT NIGHT |
+| `traffic` | `{ "level": "heavy" \| "light" }` | JUN CALLED IN TRAFFIC |
+| `recolor` | `{ "color": "yellow", "hex": "#FFCB1F" }` | JUN PAINTED CARS YELLOW |
+| `swap` | `{ "playerId": "<firer>", "targetPlayerId": "<racer>" }` | ROSA SWAPPED WITH TIM |
+| `resize` | `{ "size": "small" \| "big" \| "normal" }` | ROSA SHRANK ALL CARS |
+| `ramp` | `{ "count": 1–5 }` (default 3) | TIM DROPPED RAMPS |
+| `rain` | `{ "level": "on" \| "off" }` | MAYA MADE IT RAIN / MAYA STOPPED THE RAIN |
+| `snow` | `{ "level": "on" \| "off" }` | MAYA MADE IT SNOW / MAYA STOPPED THE SNOW |
+
+- **Recolor colors:** yellow #FFCB1F, pink #FF3E8E, blue #2D8CFF, purple #A35BFF, orange #FF8A1E, green #2EC27E, red #E2603F, white #F7F8F9, black #1C2347, mint #8CE3BF, lilac #BBA6F7. Send `color` only; the server fills `hex`.
+- **Swap:** send `targetPlayerId`, another racer still in the room; the server sets `playerId` to whoever fired it. Each client moves the two cars; the server picks up the new positions from each racer's next `race/update`.
+- **Effects are the client's call.** How low gravity goes and how long fog lasts are decided in Unity. The server only validates, orders and records the changes.
+- The news names the firer by the first word of their display name, uppercased and cut to 12 characters.
+
+### Lobby and countdown
+
+- Colors and slots go by join order: blue, purple, orange, green. A leaver's color goes to the next player who joins.
+- When **every** player in the room is ready and there are at least `minPlayers`, `status` becomes `countdown` with `startsAt` at most **3 s** away.
+- When at least `max(2, minPlayers)` players are ready but not all, the **auto-start** countdown runs: `startsAt = now + 10 s`, set once. It only moves when everyone becomes ready, which shortens it to 3 s.
+- If un-readies or leaves drop the ready count below that, the countdown is cancelled (`status: "lobby"`, `startsAt: 0`).
+- The last 3 s are **locked**: joins, leaves and un-readies get `409`. The race starts at `startsAt` with everyone in the room, ready or not.
+- `status` turns `racing` at `startsAt` on its own; no call is needed. Correct for clock skew with the poll's `serverTime`: `localGo = startsAt - serverTime + localTimeWhenTheResponseArrived`.
+
+### Places, finish and results
+
+- `progress` is the racer's position projected onto the room's route polyline (x and z only), in meters from the start.
+- **Place order:** finished racers first by `finishMs`, then racers still driving by `progress` (highest first), then racers who left. Ties go to the lower slot.
+- A racer **finishes** on the first `race/update` during `racing` whose position is within `finishRadius` meters (x/z) of the route's last point. `finishMs` is that update's server time minus `startsAt`. Updates before the start never finish anyone.
+- The room is **finished** when every racer still in it has finished, or at `closesAt` (60 s after the first finish), whichever is first. Anyone still driving is then a DNF (`finished: false`).
+- **Awards**, one per racer, the first rule that applies:
+  1. **CHAOS CALLER**: the racer with the most calls this race (at least one); a tie goes to the better place.
+  2. **WRECKING BALL**: the racer with the most smash points this race (at least 1); a tie goes to the better place.
+  3. **PHOTO FINISH**: finished within 1 s of the racer just ahead or just behind.
+  4. By place: 1st **FIRST TO YC**, 2nd **SO CLOSE**, 3rd **PODIUM FINISH**, 4th **SCENIC ROUTE**.
+  5. DNF: **STILL DRIVING**.
+
+### Race endpoints
+
+| Operation | Method and path | Convex function |
+| --- | --- | --- |
+| Create room | `POST /api/rooms` | `rooms.create` |
+| Join room | `POST /api/rooms/join` | `rooms.join` |
+| Leave room | `POST /api/rooms/leave` | `rooms.leave` |
+| Set ready, rematch | `POST /api/rooms/ready` | `rooms.setReady` |
+| Poll everything | `GET /api/rooms/poll?roomId=…&after=…` | `rooms.poll` (internal) |
+| Send my position | `POST /api/race/update` | `race.update` |
+| Fire a world change | `POST /api/rooms/events` | `events.fire` |
+| Call the Operator (text) | `POST /api/operator` | `operator.call` (action) |
+| Call the Operator (audio) | `POST /api/operator/audio?playerId=…&roomId=…` | `operator.call` (action) |
+
+A typical client loop: create or join, then poll at 5–10 Hz from the lobby onward; send `ready` from the Ready button; once `status` is `countdown` or `racing`, also send `race/update` at 5–10 Hz; apply `events` in `seq` order as they arrive; show `results` when `status` is `finished`.
+
+#### Create room: `POST /api/rooms`
+
+```jsonc
+{
+  "playerId": "jd7…",
+  "route": [ { "x": 0, "y": 0, "z": 0 }, { "x": 0, "y": 0, "z": 400 }, { "x": 300, "y": 0, "z": 400 } ],
+  "finishRadius": 10,   // optional, 1–100, default 15
+  "minPlayers": 2       // optional, integer 1–4, default 2 (1 lets one player test alone)
+}
+```
+
+`route` is optional, 2–512 points with a nonzero length: the start ring first, the YC finish last. The client owns the map, so it should always send its route (the street path from the start ring to YC). Without one the server uses a placeholder straight line from (0, 0, 0) to (0, 0, 800).
+
+Response `201`: `{ "room": Room, "route": [ Vec3, … ], "you": Racer }`. The creator is in the room as blue, slot 0, not ready. Errors: `400`, `404` (player).
+
+#### Join room: `POST /api/rooms/join`
+
+```json
+{ "playerId": "jd7…", "code": "qmtx" }
+```
+
+Response `200`: `{ "room": Room, "route": [ Vec3, … ], "you": Racer }`. Joining a room you are already in returns the same thing. Errors: `404` (player or code), `409` (room full, race started or finished, countdown locked).
+
+#### Leave room: `POST /api/rooms/leave`
+
+```json
+{ "playerId": "jd7…", "roomId": "k57…" }
+```
+
+Response `200`: `{ "left": true }`. In the lobby or countdown the racer is removed. After the start the racer stays in the standings as `left: true` (DNF) and is removed at the rematch. Leaving is idempotent: leaving again, or leaving a room you are not in, succeeds, so a lost response can be retried. Errors: `404`, `409` (countdown locked).
+
+#### Set ready: `POST /api/rooms/ready`
+
+```json
+{ "playerId": "jd7…", "roomId": "k57…", "ready": true }
+```
+
+Response `200`: `{ "room": Room }` with the countdown already updated. Sending the flag the player already has is a no-op that succeeds, even while locked.
+
+During `finished`, `ready: true` is the **rematch**: the room goes back to `lobby` with `raceNumber + 1`, everyone's ready flag, progress and finish cleared, leavers removed, and then this player marked ready (so a solo room starts its countdown at once). Errors: `404`, `409` (not in the room, left, race running, countdown locked).
+
+#### Poll: `GET /api/rooms/poll?roomId=<id>&after=<seq>`
+
+The one call to make at 5–10 Hz, in the lobby and in the race. `after` is the last `cursor` you got. Omit it on the first poll, after a rejoin, or when `raceNumber` changes, to get every event of the current race so far.
+
+```jsonc
+{
+  "serverTime": 1794768830123,
+  "room": Room,
+  "racers": [ Racer, … ],   // in place order, place 1 first
+  "events": [ Event, … ],   // seq > after, oldest first, at most 100
+  "cursor": 7,              // pass back as after; unchanged when nothing is new
+  "results": [ Result, … ]  // empty until room.status is "finished"
+}
+```
+
+If `events` has 100 entries, poll again straight away. A typical four-racer response is about 1.5 KB. Errors: `400` (`after` is not a non-negative integer), `404` (room).
+
+#### Send my position: `POST /api/race/update`
+
+```json
+{ "playerId": "jd7…", "roomId": "k57…", "position": { "x": 0, "y": 0.5, "z": 140 }, "heading": 0, "smash": 12 }
+```
+
+`smash` is optional: the racer's cumulative smash points this race (breaks, barges, dives, wrecks, combos), a non-negative integer. The server keeps the highest value sent, so a missing value, `0` or a lower number changes nothing. It counts only while `status` is `racing` and is frozen once the room is finished; the rematch resets it to 0.
+
+Send at 5–10 Hz from the lobby onward and await each call before sending the next. The response is small on purpose; places come from the poll.
+
+```jsonc
+{ "status": "racing", "progress": 140, "metersToFinish": 560, "finished": false, "finishMs": 0 }
+```
+
+The update that reaches the finish returns `finished: true` and its `finishMs`, and the last finisher's update already returns `status: "finished"`. After finishing, or once the room is finished, updates still store the position but never change progress or the result. Errors: `400` (including a negative or fractional `smash`), `404`, `409` (not in the room, or left).
+
+#### Fire a world change: `POST /api/rooms/events`
+
+For world changes that do not go through the Operator: a debug menu, pickups, bots a client runs.
+
+```json
+{ "playerId": "jd7…", "roomId": "k57…", "type": "gravity", "params": { "level": "low" } }
+```
+
+`params` may be omitted for `ramp`. Response `201`: `{ "event": Event }`. World changes are accepted in the lobby, countdown and race. Errors: `400` (unknown type, bad or unknown params field, swap target not in the room or yourself), `404`, `409` (not in the room, left, room finished).
+
+#### Call the Operator: `POST /api/operator`
+
+```json
+{ "playerId": "jd7…", "roomId": "k57…", "text": "make every car yellow" }
+```
+
+`text` is what the caller said, 1–500 characters after trimming. Response `200`:
+
+```jsonc
+{
+  "line": "Yellow it is!",          // the Operator's spoken line for her pink bar (and TTS later)
+  "command": { "type": "recolor", "params": { "color": "yellow", "hex": "#FFCB1F" } },
+  "event": Event,                   // the same command, already in the room's log
+  "provider": "keyword"             // which provider answered
+}
+```
+
+The Operator always returns exactly one world change. The event also reaches everyone through the poll, the caller included, so apply world changes from the poll only and use `event.seq` to avoid applying one twice. Errors: `400`, `404`, `409` (not in the room, left, room finished).
+
+#### Call the Operator with audio: `POST /api/operator/audio?playerId=<id>&roomId=<id>`
+
+The body is the raw recording with an `audio/*` `Content-Type` (for example `audio/wav`), at most 5 MB. The response is the same as the text call. **Today this returns `501 NOT_IMPLEMENTED`** because the shipped provider understands text only. It starts working when a voice provider is configured, with no client change. Errors: `400` (not `audio/*`, empty, over 5 MB), `404`, `409`, `501`.
+
+### The Operator's providers
+
+`operator.call` is a Convex action. It asks a provider for `{ line, command }`, validates the command with the same rules as a direct fire, and appends it to the room's log through `events.fire`. The `OPERATOR_PROVIDER` deployment env var picks the provider:
+
+| `OPERATOR_PROVIDER` | What it does |
+| --- | --- |
+| unset or `keyword` | Deterministic keyword matching with no keys and no network. The earliest keyword in the utterance wins: a color word → recolor, "gravity" → gravity low ("more gravity" → high), "icy" → ice, "fog" → fog, "night"/"dusk"/"golden"/"morning" → time, "traffic" → traffic heavy, "swap" → swap with a named racer or the racer just ahead, "shrink"/"giant" → resize, "ramp"/"jump" → ramp, "rain"/"rainy"/"storm"/"wet"/"drizzle" → rain on, "snow"/"snowy"/"blizzard"/"flurries" → snow on (either with "stop"/"no"/"off" → off). Anything else still gets a world change, picked deterministically from the text, with "Didn't catch that." in front of the line. |
+| (open slot) | An LLM or voice provider. Which one is a pending team decision; none is wired up or called. |
+
+To add one, implement `OperatorProvider` (in `convex/operatorProviders.ts`: `respond({ text?, audio?, caller, racers })` returning `{ line, command }`, plus `acceptsAudio`) in its own module, read its key from its own env var, register it in `PROVIDERS`, and set `OPERATOR_PROVIDER` to its name. An unknown name, a provider that throws, or a provider that returns an invalid command falls back to the keyword provider for text calls, and `provider` then says `keyword`.
+
+### Race client notes
+
+- **Measured on rapid-gnat-965** from a cloud machine, with four racers updating and four clients polling in parallel: about 107 ms mean (151 ms p95) per update and 94 ms (126 ms p95) per poll, with no errors. The curl harness that awaited each call sustained 6.7 updates per second per racer, and a round trip that short leaves room for about 9 Hz, so the 5–10 Hz target holds on that link. Operator text calls took 130–190 ms.
+- **Trust:** there is no auth or anti-cheat. Positions, finishes and world changes are taken as sent; there is no rate limit on Operator calls yet.
+- **Rooms are never deleted.** Codes are unique across all rooms ever created, so a code always means the same room.
