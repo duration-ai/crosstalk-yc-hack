@@ -1,8 +1,9 @@
 using System;
 using System.Collections.Generic;
-using System.Reflection;
 using Dogpatch.Gameplay;
+using Dogpatch.Look;
 using Dogpatch.Race;
+using Dogpatch.Vehicles;
 using UnityEngine;
 
 namespace Dogpatch.WorldChanges
@@ -15,13 +16,11 @@ namespace Dogpatch.WorldChanges
         public GameController Game;
         public RaceDirector Race;
         public WorldChangeCatalog Catalog;
-        public IWeather Weather;
 
         const float Blend = 2.5f;
 
         readonly Dictionary<string, float> wearsOff = new Dictionary<string, float>();
         readonly List<GameObject> spawned = new List<GameObject>();
-        readonly List<CarController> carts = new List<CarController>();
         readonly System.Random random = new System.Random(11);
         Color? paint;
         long lastSeq;
@@ -39,10 +38,10 @@ namespace Dogpatch.WorldChanges
             {
                 case "gravity": Gravity(p.level); break;
                 case "ice": CarFx.Traction = p.level == "on" ? 0.035f : 1f; break;
-                case "fog": Weather.SetFog(p.level == "thick", Blend); break;
-                case "rain": Weather.SetRain(p.level == "on", Blend); break;
-                case "snow": Weather.SetSnow(p.level == "on", Blend); break;
-                case "time": Weather.SetTimeOfDay(p.timeOfDay, Blend); break;
+                case "fog": Fog(p.level == "thick"); break;
+                case "rain": WorldEnvironment.SetWeather(p.level == "on" ? WeatherKind.Rain : WeatherKind.Sun, 1f, Blend); break;
+                case "snow": WorldEnvironment.SetWeather(p.level == "on" ? WeatherKind.Snow : WeatherKind.Sun, 1f, Blend); break;
+                case "time": WorldEnvironment.SetTime(Preset(p.timeOfDay), Blend); break;
                 case "traffic": Traffic(p.level == "heavy"); break;
                 case "recolor": Recolor(p.hex ?? Catalog.Hex(p.color)); break;
                 case "swap": Swap(e.playerId, p.targetPlayerId); break;
@@ -59,9 +58,9 @@ namespace Dogpatch.WorldChanges
             {
                 case "gravity": Gravity("normal"); break;
                 case "ice": CarFx.Traction = 1f; break;
-                case "fog": Weather.SetFog(false, Blend); break;
-                case "rain": Weather.SetRain(false, Blend); break;
-                case "snow": Weather.SetSnow(false, Blend); break;
+                case "fog": Fog(false); break;
+                case "rain":
+                case "snow": WorldEnvironment.SetWeather(WeatherKind.Sun, 1f, Blend); break;
                 case "traffic": Traffic(false); break;
                 case "resize": CarFx.SizeTarget = 1f; break;
             }
@@ -74,13 +73,20 @@ namespace Dogpatch.WorldChanges
             Gravity("normal");
             CarFx.Traction = 1f;
             CarFx.SizeTarget = 1f;
-            Weather.ResetAll(1f);
+            WorldEnvironment.SetTime(TimePreset.Day, 1f);
+            Fog(false);
+            WorldEnvironment.SetWeather(WeatherKind.Sun, 1f, 1f);
             Traffic(false);
             foreach (var go in spawned) if (go != null) Destroy(go);
             spawned.Clear();
             Recolor(null);
             CartsBack();
         }
+
+        static void Fog(bool thick) => WorldEnvironment.SetFog(thick ? 1f : 0.35f, Blend);
+
+        static TimePreset Preset(string timeOfDay) =>
+            timeOfDay == "golden" ? TimePreset.Golden : timeOfDay == "dusk" ? TimePreset.Dusk : timeOfDay == "night" ? TimePreset.Night : TimePreset.Day;
 
         void Update()
         {
@@ -90,7 +96,7 @@ namespace Dogpatch.WorldChanges
                 wearsOff.Remove(pair.Key);
                 Revert(pair.Key);
             }
-            if (carts.Count > 0 && Time.time >= cartsBackAt) CartsBack();
+            if (swappedFrom.Count > 0 && Time.time >= cartsBackAt) CartsBack();
         }
 
         IEnumerable<CarController> AllCars() => FindObjectsByType<CarController>(FindObjectsSortMode.None);
@@ -184,56 +190,20 @@ namespace Dogpatch.WorldChanges
             Race.MoveBody(target, pa + Vector3.up * 0.2f, ha);
 
             var targetCar = b.GetComponent<CarController>();
-            if (targetCar != null && SwapInto(targetCar, "shopping-cart"))
-            {
-                carts.Add(targetCar);
-                cartsBackAt = Time.time + 12f;
-            }
+            if (targetCar == null) return;
+            if (!swappedFrom.ContainsKey(targetCar)) swappedFrom[targetCar] = VehicleRoster.TypeOf(targetCar);
+            VehicleRoster.SwapInto(targetCar, VehicleTypes.ShoppingCart);
+            cartsBackAt = Time.time + 12f;
         }
 
-        // The punchline: the racer who got swapped finishes the swap in a shopping cart. The cart
-        // comes from the vehicle roster (CROS-21, Dogpatch.Vehicles.VehicleRoster.SwapInto), which
-        // lives on another branch; it is looked up at runtime so this branch builds without it.
-        static MethodInfo swapInto;
-        static bool looked;
+        // The punchline: whoever got swapped finishes the swap pushing a shopping cart (CROS-21's
+        // vehicle roster), and gets their car back a few seconds later.
         readonly Dictionary<CarController, string> swappedFrom = new Dictionary<CarController, string>();
-
-        bool SwapInto(CarController car, string type)
-        {
-            if (!looked)
-            {
-                looked = true;
-                foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
-                {
-                    var roster = assembly.GetType("Dogpatch.Vehicles.VehicleRoster");
-                    if (roster == null) continue;
-                    swapInto = roster.GetMethod("SwapInto", new[] { typeof(CarController), typeof(string) });
-                    var typeOf = roster.GetMethod("TypeOf", new[] { typeof(CarController) });
-                    if (typeOf != null) typeOfMethod = typeOf;
-                }
-                if (swapInto == null) Debug.Log("[SpeedDial] vehicle roster not in this build; swap moves racers without the shopping cart");
-            }
-            if (swapInto == null) return false;
-            try
-            {
-                if (typeOfMethod != null && !swappedFrom.ContainsKey(car)) swappedFrom[car] = (string)typeOfMethod.Invoke(null, new object[] { car });
-                swapInto.Invoke(null, new object[] { car, type });
-                return true;
-            }
-            catch (Exception ex)
-            {
-                Debug.LogWarning("[SpeedDial] SwapInto failed: " + ex.Message);
-                return false;
-            }
-        }
-
-        static MethodInfo typeOfMethod;
 
         void CartsBack()
         {
-            foreach (var car in carts)
-                if (car != null && swappedFrom.TryGetValue(car, out var was) && was != null) SwapInto(car, was);
-            carts.Clear();
+            foreach (var pair in swappedFrom)
+                if (pair.Key != null && !string.IsNullOrEmpty(pair.Value)) VehicleRoster.SwapInto(pair.Key, pair.Value);
             swappedFrom.Clear();
         }
     }

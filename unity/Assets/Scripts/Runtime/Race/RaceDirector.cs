@@ -180,18 +180,10 @@ namespace Dogpatch.Race
             }
 
             Game.Player.gameObject.AddComponent<PlayerShoveable>();
-            var weather = LookWeather.Create();
-            if (weather == null)
-            {
-                var local = gameObject.AddComponent<LocalWeather>();
-                local.Init(Game.View);
-                weather = local;
-            }
             Changes = gameObject.AddComponent<WorldChangeDirector>();
             Changes.Game = Game;
             Changes.Race = this;
             Changes.Catalog = Catalog;
-            Changes.Weather = weather;
 
             Calls = gameObject.AddComponent<CallController>();
             Calls.Game = Game;
