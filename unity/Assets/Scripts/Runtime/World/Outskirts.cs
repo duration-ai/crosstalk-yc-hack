@@ -9,7 +9,7 @@ namespace Dogpatch.World
     // of the edge out to the horizon: Potrero Hill rising to the west, and low skyline blocks
     // (painted houses on the hill, warehouses to the south, taller Mission Bay blocks to the north)
     // that distance fog softens into the horizon. Purely scenery: out of reach behind the map-edge
-    // walls, no colliders, three meshes.
+    // walls, no colliders, in 1 km chunks so the camera culls what it isn't facing.
     public static class Outskirts
     {
         const float Reach = 2200f;
@@ -27,8 +27,8 @@ namespace Dogpatch.World
         public static void Build(Transform parent, Rect map, float coastNorthX, float coastEastZ, Material ground, Material material)
         {
             var random = new System.Random(2240);
-            var land = new MeshBuilder();
-            var blocks = new MeshBuilder();
+            var landChunks = new ChunkedMeshBuilder(1000f);
+            var blockChunks = new ChunkedMeshBuilder(1000f);
 
             // Land outside the map on its land sides, as one height field: Potrero Hill to the west,
             // flat elsewhere. Cells that are bay (north-east of the coast where it meets the map) are
@@ -58,6 +58,7 @@ namespace Dogpatch.World
                     var d = new Vector2(x, z + Cell);
                     if (!Land((a + c) * 0.5f)) continue;
                     var tone = Color.Lerp(GroundA, GroundB, (float)random.NextDouble());
+                    var land = landChunks.At(a);
                     land.Triangle(V(a), V(d), V(c), tone, Vector3.up);
                     land.Triangle(V(a), V(c), V(b), tone, Vector3.up);
                 }
@@ -93,13 +94,23 @@ namespace Dogpatch.World
                         color = Houses[random.Next(Houses.Length)];
                     }
                     var rotation = Quaternion.Euler(0f, random.Next(2) * 90f, 0f);
+                    var blocks = blockChunks.At(p);
                     blocks.Box(new Vector3(p.x, y + size.y * 0.5f - 1f, p.y), size, rotation, color);
                     blocks.Box(new Vector3(p.x, y + size.y - 0.6f, p.y), new Vector3(size.x + 0.6f, 1.2f, size.z + 0.6f), rotation, Roof);
                 }
 
-            WorldBuilder.Emit(parent, "Outskirts land", land.ToMesh("outskirts land"), ground, false);
-            WorldBuilder.Emit(parent, "Outskirts skyline", blocks.ToMesh("outskirts skyline"), material, false);
-            Debug.Log($"[Outskirts] land {land.VertexCount / 3} tris, skyline {blocks.VertexCount / 3} tris");
+            int landTris = 0, skylineTris = 0;
+            foreach (var (key, mb) in landChunks.All())
+            {
+                landTris += mb.VertexCount / 3;
+                WorldBuilder.Emit(parent, "Outskirts land " + key, mb.ToMesh("outskirts land " + key), ground, false);
+            }
+            foreach (var (key, mb) in blockChunks.All())
+            {
+                skylineTris += mb.VertexCount / 3;
+                WorldBuilder.Emit(parent, "Outskirts skyline " + key, mb.ToMesh("outskirts skyline " + key), material, false);
+            }
+            Debug.Log($"[Outskirts] land {landTris} tris, skyline {skylineTris} tris, in 1 km chunks");
         }
     }
 }
