@@ -64,9 +64,11 @@ namespace Dogpatch.Ambient
             b.Bottom[i] = outfit.Bottom;
             b.Hair[i] = outfit.Hair;
             b.Skin[i] = outfit.Skin;
-            var p = new Vector3(matrix.m03, matrix.m13 + 1f, matrix.m23);
-            if (i == 0) b.Bounds = new Bounds(p, new Vector3(3f, 2.6f, 3f));
-            else b.Bounds.Encapsulate(new Bounds(p, new Vector3(3f, 2.6f, 3f)));
+            float s = PedestrianSystem.CullScale;
+            var p = new Vector3(matrix.m03, matrix.m13 + s, matrix.m23);
+            var size = new Vector3(3f, 2.6f, 3f) * s;
+            if (i == 0) b.Bounds = new Bounds(p, size);
+            else b.Bounds.Encapsulate(new Bounds(p, size));
         }
 
         public void Submit()

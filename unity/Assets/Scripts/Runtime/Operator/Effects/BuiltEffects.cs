@@ -152,7 +152,7 @@ namespace Dogpatch.Operator
     {
         const int MaxFires = 40;
         const int MaxLights = 4;
-        readonly List<GameObject> fires = new List<GameObject>();
+        readonly List<FireFx> fires = new List<FireFx>();
 
         public override void Apply(string strength, EffectTarget target)
         {
@@ -163,15 +163,15 @@ namespace Dogpatch.Operator
             {
                 var tag = order[i];
                 var b = tag.WorldBounds;
-                var fire = FireFx.Create(Context.Material, b, Scale(strength, 1.2f, 1.6f, 2.2f), i < MaxLights);
+                var fire = FireFx.Create(Context.Material, b, Scale(strength, 0.8f, 1f, 1.3f), i < MaxLights);
                 if (tag.Span == null) fire.transform.SetParent(tag.transform, true);
-                fires.Add(fire.gameObject);
+                fires.Add(fire);
             }
         }
 
         public override void Revert()
         {
-            foreach (var fire in fires) if (fire != null) Object.Destroy(fire);
+            foreach (var fire in fires) if (fire != null) fire.Extinguish();
             fires.Clear();
         }
     }
@@ -227,14 +227,18 @@ namespace Dogpatch.Operator
         }
     }
 
-    // Every person's head bone (locals, racers on foot, you) blown up to cartoon size.
+    // Every person's head blown up to cartoon size: head bones on racers and you, and the crowd
+    // shader's head scale for the GPU-drawn pedestrians.
     public sealed class BigHeadsEffect : OperatorEffect
     {
+        static readonly int CrowdHeadScale = Shader.PropertyToID("_CrowdHeadScale");
         readonly List<BigHead> heads = new List<BigHead>();
 
         public override void Apply(string strength, EffectTarget target)
         {
             float size = Scale(strength, 2.5f, 3.5f, 4.5f);
+            Shader.SetGlobalFloat(CrowdHeadScale, size);
+            Ambient.PedestrianSystem.HeadScale = size;
             var people = new List<GameObject>();
             foreach (var tag in EntityTag.All)
                 if (EntityClasses.IsA(tag.Class, "person")) people.Add(tag.gameObject);
@@ -252,6 +256,8 @@ namespace Dogpatch.Operator
 
         public override void Revert()
         {
+            Shader.SetGlobalFloat(CrowdHeadScale, 1f);
+            Ambient.PedestrianSystem.HeadScale = 1f;
             foreach (var h in heads) if (h != null) h.Target = 1f;
             heads.Clear();
         }

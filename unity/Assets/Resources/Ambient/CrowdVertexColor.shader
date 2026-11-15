@@ -20,6 +20,7 @@ Shader "Dogpatch/CrowdVertexColor"
         sampler2D _Bones;
         float4 _BoneTexel;
         float4 _HeadPivot;
+        float _CrowdHeadScale;
 
         UNITY_INSTANCING_BUFFER_START(Crowd)
             UNITY_DEFINE_INSTANCED_PROP(float4, _Anim)
@@ -51,7 +52,7 @@ Shader "Dogpatch/CrowdVertexColor"
             {
                 float s, c;
                 sincos(anim.w, s, c);
-                float3 d = p - _HeadPivot.xyz;
+                float3 d = (p - _HeadPivot.xyz) * (_CrowdHeadScale > 0 ? _CrowdHeadScale : 1);
                 p = _HeadPivot.xyz + float3(d.x * c + d.z * s, d.y, -d.x * s + d.z * c);
                 n = float3(n.x * c + n.z * s, n.y, -n.x * s + n.z * c);
             }

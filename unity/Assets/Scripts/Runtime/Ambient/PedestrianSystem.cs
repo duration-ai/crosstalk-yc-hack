@@ -23,6 +23,14 @@ namespace Dogpatch.Ambient
         public static Vector3? FocusOverride;
         public static bool ShowStats;
 
+        // Scales every pedestrian's whole body; the voice Operator's bigger/smaller effects set it.
+        public static float SizeScale = 1f;
+
+        // The crowd shader's head scale (big_heads), mirrored here so culling covers the bigger heads.
+        public static float HeadScale = 1f;
+
+        public static float CullScale => SizeScale * Mathf.Max(1f, HeadScale);
+
         public static int Count, Near, Drawn, DrawCalls;
         public static float AiMs, RenderMs;
 
@@ -346,7 +354,8 @@ namespace Dogpatch.Ambient
         bool InView(Vector2 p, float distance)
         {
             if (distance > 140f) return false;
-            return GeometryUtility.TestPlanesAABB(planes, new Bounds(new Vector3(p.x, 1f, p.y), new Vector3(2.5f, 2.6f, 2.5f)));
+            float s = CullScale;
+            return GeometryUtility.TestPlanesAABB(planes, new Bounds(new Vector3(p.x, s, p.y), new Vector3(2.5f, 2.6f, 2.5f) * s));
         }
 
         // --- spawning ------------------------------------------------------------------------------
@@ -1527,6 +1536,7 @@ namespace Dogpatch.Ambient
                 int current = model.Frame(ped.Clip, time);
                 int previous = far ? current : model.Frame(ped.PrevClip, ped.PrevClipTime);
                 var anim = new Vector4(previous, current, far ? 1f : ped.Fade, ped.HeadYaw * Mathf.Deg2Rad);
+                if (SizeScale != 1f) matrix *= Matrix4x4.Scale(Vector3.one * SizeScale);
                 crowd.Add(model, matrix, anim, ped.Outfit, shadows);
 
                 var travel = Quaternion.Euler(0f, ped.Heading, 0f);
