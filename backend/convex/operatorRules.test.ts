@@ -417,6 +417,8 @@ describe("next best thing", () => {
     expect(play({ scope: "reject", reject_reason: "cheat", nearest: "flight" })).toEqual(refused("cheat"));
     expect(play({ scope: "reject", reject_reason: "undo", nearest: "rain" })).toEqual(refused("undo"));
     expect(play({ scope: "reject", reject_reason: "not_a_request", nearest: "rain" })).toEqual(refused("not_a_request"));
+    const halfUndo = { scope: "reject", reject_reason: { vague: 0.41, undo: 0.38, none: 0.16, unsupported: 0.05 }, nearest: "slow_motion" };
+    expect(play(halfUndo)).toEqual(refused("vague"));
     expect(play({ scope: "world", world_group: "sky", sky_effect: "rain" })).not.toHaveProperty("substitute");
   });
 

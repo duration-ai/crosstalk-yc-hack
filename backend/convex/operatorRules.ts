@@ -312,6 +312,9 @@ export function decide(a: Answers, view: View, active: ActiveSummary[]): Command
 /** Refusals that only mean the game lacks the exact thing: the Operator hands over the closest built effect instead. */
 const SUBSTITUTED: ReadonlySet<RefusalReason> = new Set(["unsupported", "transformation", "spawning", "teleport", "vague", "not_built", "incompatible"]);
 
+/** Reasons that stay refusals; a stand-in is off when Jev gives them a real chance (an "undo that" it half reads as vague). */
+const KEPT_REASONS = ["undo", "cheat", "deferred", "not_a_request"];
+
 /** Built effects the Operator can hand over as a stand-in: no target, colour or theme needed, and never a counter. */
 export const STAND_INS = [...Object.keys(PLAYER_EFFECTS), ...Object.keys(WORLD_EFFECTS)].filter(
   (effect) => PLAYABLE.has(effect) && !(effect in COUNTERS) && effect !== "ped_theme",
@@ -325,6 +328,7 @@ export const STAND_INS = [...Object.keys(PLAYER_EFFECTS), ...Object.keys(WORLD_E
 export function nextBest(a: Answers, command: Command): Command {
   if (command.kind === "effect") return a.stretch >= 0.7 ? { ...command, substitute: true } : command;
   if (!SUBSTITUTED.has(command.reason)) return command;
+  if (KEPT_REASONS.reduce((sum, reason) => sum + (a.reject_reason.probabilities[reason] ?? 0), 0) >= 0.25) return command;
   const effect = a.nearest.choice;
   if (!STAND_INS.includes(effect)) return command;
   const vehicle = effect === "change_vehicle" ? a.nearest_vehicle.choice : "";
