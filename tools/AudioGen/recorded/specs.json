@@ -1195,7 +1195,8 @@
    }
   ],
   "loop": true,
-  "xfade": 1.5
+  "xfade": 1.5,
+  "trim_gain_db": -3
  },
  {
   "out": "Ambience/day_birds",
@@ -1247,7 +1248,8 @@
    {
     "path": "sf-out/caltrain_horn.wav"
    }
-  ]
+  ],
+  "trim_gain_db": -4
  },
  {
   "out": "Ambience/caltrain_pass",
@@ -1255,7 +1257,8 @@
    {
     "path": "sf-out/caltrain_pass.wav"
    }
-  ]
+  ],
+  "trim_gain_db": -4
  },
  {
   "out": "Ambience/distant_siren",
@@ -1426,7 +1429,7 @@
   "mono": false,
   "rate": 32000,
   "match": false,
-  "lufs": -14,
+  "lufs": -18,
   "hp": 0,
   "trim": true,
   "fout": 0.35,

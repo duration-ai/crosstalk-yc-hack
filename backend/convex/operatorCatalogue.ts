@@ -39,25 +39,25 @@ export const THEMES = ["beach_party", "tech_bros", "elvis", "delivery_riders"] a
 type Effect = { label: string; description: string; duration?: Range };
 
 export const PLAYER_EFFECTS: Record<string, Effect> = {
-  run_faster: { label: "Fast feet", description: "players run faster", duration: [5, 10] },
-  run_slower: { label: "Slow feet", description: "players run slower", duration: [5, 10] },
-  jump_higher: { label: "Big jumps", description: "players jump higher", duration: [5, 12] },
-  slow_fall: { label: "Slow fall", description: "players fall slowly, like a feather", duration: [5, 12] },
-  bigger: { label: "Giants", description: "the racers' whole bodies and cars become bigger", duration: [5, 10] },
-  smaller: { label: "Tiny", description: "the racers' whole bodies and cars become smaller, tiny", duration: [5, 10] },
-  chunky: { label: "Chunky", description: "players become wide and chunky", duration: [8, 15] },
-  skinny: { label: "Skinny", description: "players become thin and skinny", duration: [8, 15] },
-  flight: { label: "Flight", description: "players can fly", duration: [5, 8] },
-  vehicle_faster: { label: "Fast cars", description: "players' vehicles go faster (super speed)", duration: [5, 10] },
-  vehicle_slower: { label: "Slow cars", description: "players' vehicles go slower", duration: [5, 10] },
-  nitro: { label: "Nitro", description: "players' vehicles get a nitro boost", duration: [5, 8] },
-  grip_up: { label: "Grippy tyres", description: "players' vehicles grip the road better", duration: [5, 10] },
-  grip_down: { label: "Slidey tyres", description: "players' vehicles lose grip and slide", duration: [5, 10] },
-  tougher: { label: "Armour", description: "players and their vehicles become tougher", duration: [8, 15] },
-  vehicle_hop: { label: "Car hop", description: "players' vehicles can hop or jump", duration: [5, 12] },
+  run_faster: { label: "Fast feet", description: "players run faster", duration: [15, 23] },
+  run_slower: { label: "Slow feet", description: "players run slower", duration: [15, 23] },
+  jump_higher: { label: "Big jumps", description: "players jump higher", duration: [15, 27] },
+  slow_fall: { label: "Slow fall", description: "players fall slowly, like a feather", duration: [15, 27] },
+  bigger: { label: "Giants", description: "the racers' whole bodies and cars become bigger", duration: [15, 23] },
+  smaller: { label: "Tiny", description: "the racers' whole bodies and cars become smaller, tiny", duration: [15, 23] },
+  chunky: { label: "Chunky", description: "players become wide and chunky", duration: [18, 34] },
+  skinny: { label: "Skinny", description: "players become thin and skinny", duration: [18, 34] },
+  flight: { label: "Flight", description: "players can fly", duration: [15, 18] },
+  vehicle_faster: { label: "Fast cars", description: "players' vehicles go faster (super speed)", duration: [15, 23] },
+  vehicle_slower: { label: "Slow cars", description: "players' vehicles go slower", duration: [15, 23] },
+  nitro: { label: "Nitro", description: "players' vehicles get a nitro boost", duration: [15, 18] },
+  grip_up: { label: "Grippy tyres", description: "players' vehicles grip the road better", duration: [15, 23] },
+  grip_down: { label: "Slidey tyres", description: "players' vehicles lose grip and slide", duration: [15, 23] },
+  tougher: { label: "Armour", description: "players and their vehicles become tougher", duration: [18, 34] },
+  vehicle_hop: { label: "Car hop", description: "players' vehicles can hop or jump", duration: [15, 27] },
 };
 
-const WEATHER: Range = [10, 20];
+const WEATHER: Range = [23, 45];
 
 export const SKY_EFFECTS: Record<string, Effect> = {
   night: { label: "Night", description: "make it night time", duration: WEATHER },
@@ -70,31 +70,31 @@ export const SKY_EFFECTS: Record<string, Effect> = {
   storm: { label: "Storm", description: "thunderstorm with lightning", duration: WEATHER },
   sandstorm: { label: "Sandstorm", description: "a desert sandstorm", duration: WEATHER },
   heatwave: { label: "Heatwave", description: "scorching heat haze", duration: WEATHER },
-  blackout: { label: "Blackout", description: "all city lights go out", duration: [8, 15] },
+  blackout: { label: "Blackout", description: "all city lights go out", duration: [18, 34] },
   clear_weather: { label: "Clear skies", description: "stop the weather, clear the sky" },
   lights_on: { label: "Lights on", description: "turn the city lights back on" },
 };
 
 export const PHYSICS_EFFECTS: Record<string, Effect> = {
-  gravity_lower: { label: "Low gravity", description: "lower gravity, moon gravity", duration: [5, 12] },
-  gravity_higher: { label: "Heavy gravity", description: "stronger gravity, everything heavy", duration: [5, 12] },
-  slippery_ground: { label: "Slippery", description: "the ground turns slippery or icy", duration: [8, 15] },
-  sticky_ground: { label: "Sticky", description: "the ground turns sticky like glue", duration: [8, 15] },
-  thick_air: { label: "Thick air", description: "the air turns thick like syrup", duration: [5, 10] },
-  slow_motion: { label: "Slow-mo", description: "the whole world in slow motion", duration: [5, 10] },
-  fast_forward: { label: "Fast forward", description: "the whole world sped up", duration: [5, 10] },
-  flood: { label: "Flood", description: "flood the streets with water", duration: [10, 20] },
-  floor_is_lava: { label: "Floor is lava", description: "the floor is lava", duration: [5, 10] },
-  earthquake: { label: "Earthquake", description: "the ground shakes", duration: [5, 8] },
-  cars_fly: { label: "Flying cars", description: "cars can fly", duration: [8, 15] },
-  cars_on_water: { label: "Boat cars", description: "cars drive on water", duration: [10, 20] },
-  floaty_crashes: { label: "Floaty crashes", description: "crashes send things floating", duration: [8, 15] },
+  gravity_lower: { label: "Low gravity", description: "lower gravity, moon gravity", duration: [15, 27] },
+  gravity_higher: { label: "Heavy gravity", description: "stronger gravity, everything heavy", duration: [15, 27] },
+  slippery_ground: { label: "Slippery", description: "the ground turns slippery or icy", duration: [18, 34] },
+  sticky_ground: { label: "Sticky", description: "the ground turns sticky like glue", duration: [18, 34] },
+  thick_air: { label: "Thick air", description: "the air turns thick like syrup", duration: [15, 23] },
+  slow_motion: { label: "Slow-mo", description: "the whole world in slow motion", duration: [15, 23] },
+  fast_forward: { label: "Fast forward", description: "the whole world sped up", duration: [15, 23] },
+  flood: { label: "Flood", description: "flood the streets with water", duration: [23, 45] },
+  floor_is_lava: { label: "Floor is lava", description: "the floor is lava", duration: [15, 23] },
+  earthquake: { label: "Earthquake", description: "the ground shakes", duration: [15, 18] },
+  cars_fly: { label: "Flying cars", description: "cars can fly", duration: [18, 34] },
+  cars_on_water: { label: "Boat cars", description: "cars drive on water", duration: [23, 45] },
+  floaty_crashes: { label: "Floaty crashes", description: "crashes send things floating", duration: [18, 34] },
   gravity_normal: { label: "Normal gravity", description: "put gravity back to normal" },
   normal_speed: { label: "Normal speed", description: "put time back to normal speed" },
   drain: { label: "Drained", description: "drain the flood water" },
 };
 
-const CROWD: Range = [10, 20];
+const CROWD: Range = [23, 45];
 
 export const POPULATION_EFFECTS: Record<string, Effect> = {
   more_traffic: { label: "Rush hour", description: "more traffic: rush hour, busy roads, traffic jams", duration: CROWD },
@@ -105,7 +105,7 @@ export const POPULATION_EFFECTS: Record<string, Effect> = {
   fewer_pedestrians: { label: "Ghost town", description: "fewer people on the streets", duration: CROWD },
   angry_npcs: { label: "Angry crowd", description: "people on the street get angry", duration: CROWD },
   calm_npcs: { label: "Chill crowd", description: "people on the street calm down", duration: CROWD },
-  panic: { label: "Panic", description: "people on the street run around in panic", duration: [8, 15] },
+  panic: { label: "Panic", description: "people on the street run around in panic", duration: [18, 34] },
   ped_theme: { label: "Theme party", description: "dress every pedestrian in a costume theme", duration: CROWD },
   big_heads: { label: "Big heads", description: "everyone, racers and pedestrians, gets giant cartoon heads", duration: CROWD },
 };
@@ -117,31 +117,31 @@ const MOVERS = ["vehicle", "person"];
 type ObjectEffect = Effect & { classes: readonly string[] };
 
 export const OBJECT_EFFECTS: Record<string, ObjectEffect> = {
-  set_fire: { label: "On fire", description: "set it on fire", classes: BURNABLE, duration: [8, 15] },
+  set_fire: { label: "On fire", description: "set it on fire", classes: BURNABLE, duration: [18, 34] },
   extinguish: { label: "Extinguished", description: "put out a fire", classes: BURNABLE },
   demolish: { label: "Demolished", description: "demolish or knock down a building", classes: ["building"] },
   explode: { label: "Boom", description: "blow up a vehicle", classes: ["vehicle"] },
   launch: { label: "Launched", description: "launch it into the air", classes: MOVERS },
-  stop: { label: "Stopped", description: "make it stop moving", classes: MOVERS, duration: [5, 10] },
-  speed_up: { label: "Sped up", description: "make it move faster", classes: MOVERS, duration: [5, 10] },
-  slow_down: { label: "Slowed", description: "make it move slower", classes: MOVERS, duration: [5, 10] },
-  grow: { label: "Grown", description: "make it bigger", classes: ANY, duration: [10, 20] },
-  shrink: { label: "Shrunk", description: "make it smaller", classes: ANY, duration: [10, 20] },
+  stop: { label: "Stopped", description: "make it stop moving", classes: MOVERS, duration: [15, 23] },
+  speed_up: { label: "Sped up", description: "make it move faster", classes: MOVERS, duration: [15, 23] },
+  slow_down: { label: "Slowed", description: "make it move slower", classes: MOVERS, duration: [15, 23] },
+  grow: { label: "Grown", description: "make it bigger", classes: ANY, duration: [23, 45] },
+  shrink: { label: "Shrunk", description: "make it smaller", classes: ANY, duration: [23, 45] },
   recolor: {
     label: "Repainted",
     description: "change its colour",
     classes: ["vehicle", "building", "plant", "billboard", "streetlight"],
   },
-  see_through: { label: "See-through", description: "make it transparent, like glass", classes: ANY, duration: [8, 15] },
-  bouncy: { label: "Bouncy", description: "give it a bouncy, rubbery material", classes: ANY, duration: [8, 15] },
-  icy: { label: "Icy", description: "give it a slippery, icy surface", classes: ANY, duration: [8, 15] },
-  rock_solid: { label: "Rock solid", description: "make it hard and indestructible like stone", classes: ANY, duration: [8, 15] },
-  soft: { label: "Squishy", description: "make it soft and squishy, like jelly", classes: ANY, duration: [8, 15] },
+  see_through: { label: "See-through", description: "make it transparent, like glass", classes: ANY, duration: [18, 34] },
+  bouncy: { label: "Bouncy", description: "give it a bouncy, rubbery material", classes: ANY, duration: [18, 34] },
+  icy: { label: "Icy", description: "give it a slippery, icy surface", classes: ANY, duration: [18, 34] },
+  rock_solid: { label: "Rock solid", description: "make it hard and indestructible like stone", classes: ANY, duration: [18, 34] },
+  soft: { label: "Squishy", description: "make it soft and squishy, like jelly", classes: ANY, duration: [18, 34] },
   ghost: {
     label: "Ghosted",
     description: "make it a ghost you pass through",
     classes: ["vehicle", "plant", "streetlight", "billboard", "building"],
-    duration: [5, 10],
+    duration: [15, 23],
   },
 };
 

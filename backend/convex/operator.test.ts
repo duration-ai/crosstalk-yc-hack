@@ -91,8 +91,8 @@ describe("operator.call", () => {
     const result = await say("make it rain", RAIN);
     expect(result).toMatchObject({ outcome: "applied", line: "Rain!", refusal: null, timings: { attempts: 1 } });
     expect(result.effect).toMatchObject({ effect: "rain", scope: "world", status: "active", strength: "medium", instant: false });
-    expect(result.effect!.durationS).toBeGreaterThanOrEqual(10);
-    expect(result.effect!.durationS).toBeLessThanOrEqual(20);
+    expect(result.effect!.durationS).toBeGreaterThanOrEqual(23);
+    expect(result.effect!.durationS).toBeLessThanOrEqual(45);
     expect(result.effect!.endsAt - result.effect!.startsAt).toBe(result.effect!.durationS * 1000);
 
     expect(requests).toHaveLength(1);

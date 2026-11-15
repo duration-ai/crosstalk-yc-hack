@@ -232,7 +232,8 @@ namespace Dogpatch.Smash
             const float e = 0.3f;
             float w1 = (m1 * u1 + m2 * u2 - m2 * e * (u1 - u2)) / (m1 + m2);
             float w2 = (m1 * u1 + m2 * u2 + m1 * e * (u1 - u2)) / (m1 + m2);
-            w1 = Mathf.Lerp(w1, u1, instigator.Spec.BargeStrength);
+            bool parkedVictim = instigator.Car.Driven && !victim.Car.Driven && !victim.Car.Autopilot;
+            w1 = Mathf.Lerp(w1, u1, parkedVictim ? Mathf.Max(instigator.Spec.BargeStrength, DamageTuning.Current.parkedShoveKeep) : instigator.Spec.BargeStrength);
             w2 = Mathf.Lerp(w2, u2, victim.Spec.BargeStrength);
 
             if (!victim.Car.Driven) victim.Car.Stun(1.4f);

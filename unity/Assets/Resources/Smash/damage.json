@@ -10,5 +10,6 @@
   "maxRiseSpeed": 3.5,
   "maxTumbleSpin": 3.0,
   "airborneGravity": 2.5,
-  "maxDepenetration": 1.0
+  "maxDepenetration": 1.0,
+  "parkedShoveKeep": 0.7
 }
