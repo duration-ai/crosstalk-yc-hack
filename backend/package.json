@@ -9,7 +9,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "convex": "^1.50.0"
+    "convex": "^1.50.0",
+    "sharp": "^0.34.5"
   },
   "devDependencies": {
     "@edge-runtime/vm": "^5.0.0",

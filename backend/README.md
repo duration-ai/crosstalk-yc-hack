@@ -19,7 +19,12 @@ The Unity client does not call this yet: it runs against a local in-memory `IGam
 | `convex/operatorRules.ts` | The routing rules that turn Jev's answers into one command |
 | `convex/operatorCatalogue.ts` | Effects, classes, durations, counters |
 | `convex/jev.ts` | The Jev questions, the input text and the HTTP call |
-| `scripts/live-operator.mts`, `scripts/live-voice.mts` | Live tests against a deployment |
+| `convex/avatarData.ts` | Avatar questions' option lists, outfits, swatches, costume presets, thresholds and Polyfork base models |
+| `convex/avatarModel.ts` | Avatar questions and the fixed rules from answers to avatar params |
+| `convex/avatarDecision.ts` | The hedged decision call: Jev first, the backup after 1.5 s or on failure |
+| `convex/avatarPhoto.ts` | The Node action: resize the photo with sharp, decide, map, save |
+| `convex/avatars.ts` | Avatar table writes and `get` |
+| `scripts/live-operator.mts`, `scripts/live-voice.mts`, `scripts/live-avatar.mts` | Live tests against a deployment |
 | `convex/raceModel.ts` | Room rules: colors, countdown, phase, route progress, place order, awards |
 | `convex/worldChanges.ts` | World-change validation and news text |
 | `convex/model.ts` | Shared validators, error helper, and response shapes |

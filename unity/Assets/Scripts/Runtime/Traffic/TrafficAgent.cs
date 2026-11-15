@@ -424,7 +424,7 @@ namespace Dogpatch.Traffic
             lateral = Mathf.MoveTowards(lateral, wantLateral, 1.5f * dt);
             p += right * lateral;
             float yaw = Mathf.Atan2(t.x, t.y) * Mathf.Rad2Deg;
-            var position = new Vector3(p.x, 0.05f, p.y);
+            var position = new Vector3(p.x, Dogpatch.World.RoadSurface.GroundY(p) + 0.05f, p.y);
             var rotation = Quaternion.Euler(0f, yaw, 0f);
             if (teleport || body == null)
             {

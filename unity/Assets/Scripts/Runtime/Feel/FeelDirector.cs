@@ -9,6 +9,7 @@ namespace Dogpatch.Feel
     {
         PlayerController player;
         float nextScan;
+        bool cameraFeelFailed;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Boot()
@@ -51,7 +52,11 @@ namespace Dogpatch.Feel
             if (Time.unscaledTime < nextScan) return;
             nextScan = Time.unscaledTime + 0.5f;
             var cam = Camera.main;
-            if (cam != null && cam.GetComponent<CameraFeel>() == null) cam.gameObject.AddComponent<CameraFeel>();
+            if (!cameraFeelFailed && cam != null && cam.GetComponent<CameraFeel>() == null && cam.gameObject.AddComponent<CameraFeel>() == null)
+            {
+                cameraFeelFailed = true;
+                Debug.LogError("[Feel] Could not add CameraFeel to the main camera; camera shake is off");
+            }
             if (player != null) return;
             player = FindAnyObjectByType<PlayerController>();
             if (player != null) player.Landed += OnLanded;
@@ -120,13 +125,18 @@ namespace Dogpatch.Feel
 
         void OnShove(Vector3 position) => Haptics.Impact(HapticStyle.Light, 0.6f);
 
-        // Squash the character on touchdown; PlayerController's own scale easing springs it back.
+        // A subtle squash on touchdown; PlayerController's own scale easing springs it back. An ordinary
+        // jump lands at about 6.5 m/s, so only real drops (over ~3 m, 11 m/s) add a light shake and
+        // a light haptic.
         void OnLanded(float fallSpeed)
         {
             if (player == null || player.Visual == null) return;
-            float s = Mathf.Clamp(fallSpeed / 22f, 0.1f, 0.32f);
-            player.Visual.localScale = new Vector3(1f + s * 0.8f, 1f - s, 1f + s * 0.8f);
-            if (fallSpeed > 8f) Haptics.Impact(HapticStyle.Light, 0.6f);
+            bool drop = fallSpeed > 11f;
+            float s = drop ? Mathf.Clamp(fallSpeed / 160f, 0.07f, 0.1f) : 0.03f;
+            player.Visual.localScale = new Vector3(1f + s * 0.6f, 1f - s, 1f + s * 0.6f);
+            if (!drop) return;
+            Shake(0.12f);
+            Haptics.Impact(HapticStyle.Light, 0.4f);
         }
     }
 }

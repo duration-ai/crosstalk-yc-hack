@@ -79,7 +79,108 @@ namespace Dogpatch.World
 
         public static bool IsDriveable(Road road) => road.kind != "path";
 
-        public static float HalfWidth(Road road) => Mathf.Max(road.width, 2f) * 0.5f;
+        // Never narrower than its lanes: OSM gives lane counts on most arterials, and its width is a per-kind
+        // default. Curbed streets also carry a parking lane along each curb, as SF streets do.
+        public static float HalfWidth(Road road)
+        {
+            float width = Mathf.Max(road.width, 2f);
+            if (!IsDriveable(road)) return width * 0.5f;
+            if (road.lanes > 0) width = Mathf.Max(width, road.lanes * LaneWidth);
+            if (IsCurbed(road))
+            {
+                var (f, b) = LaneCounts(road);
+                width = Mathf.Max(width, (f + b) * LaneWidth + 2f * ParkingLane);
+            }
+            return width * 0.5f;
+        }
+
+        public const float LaneWidth = 3.1f;
+        public const float ParkingLane = 2.4f;
+
+        static readonly HashSet<string> CurbedKinds = new HashSet<string>
+        {
+            "primary", "primary_link", "secondary", "secondary_link", "tertiary", "tertiary_link", "residential", "unclassified", "living_street",
+        };
+
+        // City streets at grade: the asphalt sits below raised sidewalks with a curb. Service roads, tracks,
+        // bridges and tunnels stay flush.
+        public static bool IsCurbed(Road road) => CurbedKinds.Contains(road.kind) && !road.bridge && !road.tunnel && road.layer == 0;
+
+        // Travel lanes in the way's direction (forward) and against it (backward), and where the two directions
+        // meet: Divider is the lateral offset of that line, positive to the left of the way's direction.
+        public struct LaneLayout
+        {
+            public int Forward;
+            public int Backward;
+            public float Width;
+            public float Divider;
+        }
+
+        static (int forward, int backward) LaneCounts(Road road)
+        {
+            int n = road.lanes, f = road.lanesForward, b = road.lanesBackward;
+            if (road.oneway) return (Mathf.Max(n, f, 1), 0);
+            if (f + b > 0)
+            {
+                if (n < f + b) n = f + b;
+                if (f == 0) f = n - b;
+                if (b == 0) b = n - f;
+                return (f, b);
+            }
+            if (n > 1) return (n - n / 2, n / 2);
+            return (1, n == 1 ? 0 : 1);
+        }
+
+        // Travel lanes sit centred between the parking lanes of a curbed street.
+        public static LaneLayout Lanes(Road road)
+        {
+            var (f, b) = LaneCounts(road);
+            float hw = HalfWidth(road);
+            float travel = 2f * hw - (IsCurbed(road) ? 2f * ParkingLane : 0f);
+            float lane = Mathf.Min(LaneWidth + 0.2f, travel / Mathf.Max(f + b, 1));
+            return new LaneLayout { Forward = f, Backward = b, Width = lane, Divider = road.oneway || b == 0 ? hw : (f - b) * lane * 0.5f };
+        }
+
+        // True when p lies on the asphalt of a curbed street (a capsule of HalfWidth + margin around each
+        // segment, for margins up to CurbReach). Street building asks this every half metre, so curbed
+        // segments get their own fine grid, filled lazily.
+        public bool OnCurbedCarriageway(Vector2 p, float margin, int excludeRoad = -1)
+        {
+            if (curbGrid == null) BuildCurbGrid();
+            if (!curbGrid.TryGetValue(new Vector2Int(Mathf.FloorToInt(p.x / CurbCell), Mathf.FloorToInt(p.y / CurbCell)), out var list)) return false;
+            foreach (int s in list)
+            {
+                var seg = segments[s];
+                if (seg.Road == excludeRoad) continue;
+                float reach = HalfWidth(Roads[seg.Road]) + margin;
+                if ((p - Geometry.ClosestPointOnSegment(p, seg.A, seg.B, out _)).sqrMagnitude < reach * reach) return true;
+            }
+            return false;
+        }
+
+        const float CurbCell = 8f;
+        const float CurbReach = 1f;
+        Dictionary<Vector2Int, List<int>> curbGrid;
+
+        void BuildCurbGrid()
+        {
+            curbGrid = new Dictionary<Vector2Int, List<int>>();
+            for (int s = 0; s < segments.Count; s++)
+            {
+                var seg = segments[s];
+                if (!IsCurbed(Roads[seg.Road])) continue;
+                var pad = Vector2.one * (HalfWidth(Roads[seg.Road]) + CurbReach);
+                var min = Vector2.Min(seg.A, seg.B) - pad;
+                var max = Vector2.Max(seg.A, seg.B) + pad;
+                for (int x = Mathf.FloorToInt(min.x / CurbCell); x <= Mathf.FloorToInt(max.x / CurbCell); x++)
+                    for (int z = Mathf.FloorToInt(min.y / CurbCell); z <= Mathf.FloorToInt(max.y / CurbCell); z++)
+                    {
+                        var cell = new Vector2Int(x, z);
+                        if (!curbGrid.TryGetValue(cell, out var list)) curbGrid[cell] = list = new List<int>();
+                        list.Add(s);
+                    }
+            }
+        }
 
         static Vector2Int CellOf(Vector2 p) => new Vector2Int(Mathf.FloorToInt(p.x / Cell), Mathf.FloorToInt(p.y / Cell));
 

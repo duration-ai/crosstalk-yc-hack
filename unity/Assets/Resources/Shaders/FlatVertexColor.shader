@@ -11,6 +11,9 @@ Shader "Dogpatch/FlatVertexColor"
     Properties
     {
         _Tint ("Tint", Color) = (1, 1, 1, 1)
+        [IntRange] _StencilRef ("Stencil Ref", Range(0, 255)) = 0
+        [Enum(UnityEngine.Rendering.CompareFunction)] _StencilComp ("Stencil Comparison", Float) = 8
+        [Enum(UnityEngine.Rendering.StencilOp)] _StencilOp ("Stencil Pass", Float) = 0
     }
 
     CGINCLUDE
@@ -62,6 +65,12 @@ Shader "Dogpatch/FlatVertexColor"
         Pass
         {
             Tags { "LightMode" = "ForwardBase" }
+            Stencil
+            {
+                Ref [_StencilRef]
+                Comp [_StencilComp]
+                Pass [_StencilOp]
+            }
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag

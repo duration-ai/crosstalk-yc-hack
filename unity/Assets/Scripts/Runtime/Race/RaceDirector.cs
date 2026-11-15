@@ -8,7 +8,6 @@ using Dogpatch.Gameplay;
 using Dogpatch.Glb;
 using Dogpatch.Operator;
 using Dogpatch.Slipstream;
-using Dogpatch.Smash;
 using Dogpatch.WorldChanges;
 using UnityEngine;
 
@@ -207,7 +206,11 @@ namespace Dogpatch.Race
         Vector3 LobbyRight => Vector3.Cross(Vector3.up, -Course.RingFacing);
         float LobbyHeading => RoutePath.Heading(new Vector2(Course.RingFacing.x, Course.RingFacing.z));
 
-        public Vector3 RingSpot(int slot) => Course.RingCenter + LobbyRight * RingLateral[slot] + Vector3.up * 0.06f;
+        public Vector3 RingSpot(int slot)
+        {
+            var p = Course.RingCenter + LobbyRight * RingLateral[slot];
+            return new Vector3(p.x, Course.GroundY(new Vector2(p.x, p.z)) + 0.06f, p.z);
+        }
 
         void PlaceForLobby(bool onRing)
         {
@@ -327,7 +330,6 @@ namespace Dogpatch.Race
         {
             Started = true;
             StartedAt = Time.time;
-            foreach (var car in RacerCars()) SmashScore.ResetFor(car);
             botCallsAfter = Time.time + 4f;
             foreach (var bot in bots)
             {
@@ -355,11 +357,11 @@ namespace Dogpatch.Race
             while (true)
             {
                 var me = BodyOf(MyId);
-                if (me != null) yield return Wait(Session.UpdateAsync(MyId, RoomId, new Vec3(me.position.x, me.position.y, me.position.z), me.eulerAngles.y, SmashScore.TotalFor(myCar)));
+                if (me != null) yield return Wait(Session.UpdateAsync(MyId, RoomId, new Vec3(me.position.x, me.position.y, me.position.z), me.eulerAngles.y));
                 foreach (var bot in bots)
                 {
                     var t = BodyOf(bot.Id);
-                    var update = Session.UpdateAsync(bot.Id, RoomId, new Vec3(t.position.x, t.position.y, t.position.z), t.eulerAngles.y, SmashScore.TotalFor(bot.Car));
+                    var update = Session.UpdateAsync(bot.Id, RoomId, new Vec3(t.position.x, t.position.y, t.position.z), t.eulerAngles.y);
                     yield return Wait(update);
                 }
                 yield return new WaitForSeconds(SendEvery);

@@ -2,6 +2,7 @@ import { httpRouter } from "convex/server";
 import { ConvexError } from "convex/values";
 import { api, internal } from "./_generated/api";
 import { httpAction, type ActionCtx } from "./_generated/server";
+import { checkPlayerId } from "./avatars";
 
 type Handler = (ctx: ActionCtx, input: Record<string, any>) => Promise<unknown>;
 
@@ -9,8 +10,10 @@ const STATUS: Record<string, number> = {
   INVALID_ARGUMENT: 400,
   NOT_FOUND: 404,
   CONFLICT: 409,
+  RETAKE: 422,
   RATE_LIMITED: 429,
   UNAVAILABLE: 503,
+  DECISION_UNAVAILABLE: 503,
 };
 
 function json(status: number, body: unknown) {
@@ -43,10 +46,10 @@ async function readInput(request: Request) {
   return body as Record<string, unknown>;
 }
 
-function endpoint(handler: Handler, successStatus = 200) {
+function endpoint(handler: Handler, successStatus = 200, read: (request: Request) => Promise<Record<string, any>> = readInput) {
   return httpAction(async (ctx, request) => {
     try {
-      return json(successStatus, await handler(ctx, await readInput(request)));
+      return json(successStatus, await handler(ctx, await read(request)));
     } catch (error) {
       return errorResponse(error);
     }
@@ -195,6 +198,41 @@ http.route({
       clientTimings,
     }),
   ),
+});
+
+const MAX_PHOTO_BYTES = 8 * 1024 * 1024;
+
+async function readPhoto(request: Request) {
+  const mimeType = request.headers.get("Content-Type") ?? "";
+  if (!mimeType.startsWith("image/")) {
+    throw new ConvexError({ code: "INVALID_ARGUMENT", message: "Content-Type must be image/jpeg (or another image/*)" });
+  }
+  const photo = await request.arrayBuffer();
+  if (photo.byteLength === 0 || photo.byteLength > MAX_PHOTO_BYTES) {
+    throw new ConvexError({ code: "INVALID_ARGUMENT", message: `The photo must be 1 byte to ${MAX_PHOTO_BYTES} bytes` });
+  }
+  return { ...Object.fromEntries(new URL(request.url).searchParams), photo };
+}
+
+http.route({
+  path: "/api/avatar/photo",
+  method: "POST",
+  handler: endpoint(async (ctx, { playerId, photo }) => {
+    checkPlayerId(playerId ?? "");
+    const result = await ctx.runAction(internal.avatarPhoto.analyze, { playerId, photo });
+    if (result.kind === "invalid") throw new ConvexError({ code: "INVALID_ARGUMENT", message: result.message });
+    if (result.kind === "unavailable") throw new ConvexError({ code: "DECISION_UNAVAILABLE", message: result.message });
+    if (result.kind === "retake") {
+      throw new ConvexError({ code: "RETAKE", message: result.message, realPerson: result.decision.realPerson });
+    }
+    return { avatar: result.avatar, decision: result.decision, answers: result.answers };
+  }, 200, readPhoto),
+});
+
+http.route({
+  path: "/api/avatar",
+  method: "GET",
+  handler: endpoint((ctx, { playerId }) => ctx.runQuery(api.avatars.get, { playerId: playerId ?? "" })),
 });
 
 export default http;

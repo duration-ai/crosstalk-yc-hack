@@ -88,7 +88,7 @@ namespace Dogpatch.Gameplay
                 traceAlpha = Mathf.MoveTowards(traceAlpha, 0f, Time.unscaledDeltaTime / TraceFade);
             }
 
-            float target = Mathf.Clamp01(MotionFx.SpeedFactor * 1.25f - 0.1f + MotionFx.BoostFactor);
+            float target = Mathf.Clamp01((MotionFx.SpeedFactor - 0.6f) / 0.4f + MotionFx.BoostFactor);
             speedLines = Mathf.MoveTowards(speedLines, Paused ? 0f : target, Time.unscaledDeltaTime * 2.5f);
             float dt = Paused ? 0f : Time.unscaledDeltaTime;
             smearSpin += dt * (0.4f + speedLines);
@@ -144,7 +144,7 @@ namespace Dogpatch.Gameplay
         Streak NewStreak(bool scatter) => new Streak
         {
             Angle = PickAngle(),
-            Radius = scatter ? 0.45f + (float)random.NextDouble() * 0.8f : 0.45f + (float)random.NextDouble() * 0.2f,
+            Radius = scatter ? 0.62f + (float)random.NextDouble() * 0.6f : 0.62f + (float)random.NextDouble() * 0.15f,
             Length = 0.12f + (float)random.NextDouble() * 0.22f,
             Speed = 1.6f + (float)random.NextDouble() * 1.4f,
         };
@@ -185,15 +185,15 @@ namespace Dogpatch.Gameplay
         {
             var center = new Vector2(Screen.width * 0.5f, Screen.height * 0.56f);
             float reach = new Vector2(Screen.width, Screen.height).magnitude * 0.5f;
-            float width = Mathf.Max(1.5f, Scale * 3.2f);
+            float width = Mathf.Max(1f, Scale * 1.7f * EffectsSettings.Scale);
             foreach (var st in streaks)
             {
                 var dir = new Vector2(Mathf.Cos(st.Angle), Mathf.Sin(st.Angle));
                 var normal = new Vector2(-dir.y, dir.x);
                 var inner = center + dir * st.Radius * reach;
                 var outer = center + dir * (st.Radius + st.Length) * reach;
-                float fadeIn = Mathf.Clamp01((st.Radius - 0.45f) / 0.25f);
-                var c = new Color(1f, 1f, 1f, 0.55f * speedLines * fadeIn);
+                float fadeIn = Mathf.Clamp01((st.Radius - 0.62f) / 0.2f);
+                var c = new Color(1f, 1f, 1f, Mathf.Min(0.35f * EffectsSettings.Scale, 0.6f) * speedLines * fadeIn);
                 Tri(inner, outer + normal * width, outer - normal * width, c);
             }
         }
@@ -205,7 +205,7 @@ namespace Dogpatch.Gameplay
             const int wedges = 36;
             var center = new Vector2(Screen.width * 0.5f, Screen.height * 0.56f);
             float outer = new Vector2(Screen.width, Screen.height).magnitude * 0.62f;
-            float inner = outer * 0.55f;
+            float inner = outer * 0.72f;
             for (int i = 0; i < wedges; i++)
             {
                 float a0 = (i + 0.15f) * Mathf.PI * 2f / wedges + smearSpin * 0.05f;
@@ -213,7 +213,7 @@ namespace Dogpatch.Gameplay
                 var d0 = new Vector2(Mathf.Cos(a0), Mathf.Sin(a0));
                 var d1 = new Vector2(Mathf.Cos(a1), Mathf.Sin(a1));
                 float pulse = 0.6f + 0.4f * Mathf.Sin(i * 2.3f + smearSpin * 3f);
-                var edge = new Color(1f, 1f, 1f, 0.2f * speedLines * pulse);
+                var edge = new Color(1f, 1f, 1f, Mathf.Min(0.08f * EffectsSettings.Scale, 0.14f) * speedLines * pulse);
                 var clear = new Color(1f, 1f, 1f, 0f);
                 GL.Color(clear); GL.Vertex3(center.x + d0.x * inner, center.y + d0.y * inner, 0f);
                 GL.Color(edge); GL.Vertex3(center.x + d0.x * outer, center.y + d0.y * outer, 0f);
@@ -313,10 +313,15 @@ namespace Dogpatch.Gameplay
             new[] { ("SUN", "weather=sun"), ("RAIN", "weather=rain"), ("SNOW", "weather=snow"), ("FOG", "fog=1"), ("CLEAR", "fog=0.35") },
         };
 
+        static readonly (string label, float intensity)[] EffectsRow =
+        {
+            ("FX LOW", EffectsSettings.Low), ("FX MED", EffectsSettings.Medium), ("FX HIGH", EffectsSettings.High),
+        };
+
         GUIStyle chip;
 
-        // Debug menu while paused: time of day, weather and fog presets as flat chips under PAUSED.
-        // They apply at once.
+        // Debug menu while paused, as flat chips under PAUSED: time of day, weather and fog presets,
+        // then the effects intensity (the current level in sunshine). They apply at once.
         void DrawEnvironmentMenu(float s)
         {
             if (chip == null) chip = new GUIStyle { font = font, alignment = TextAnchor.MiddleCenter };
@@ -328,21 +333,31 @@ namespace Dogpatch.Gameplay
                 for (int i = 0; i < EnvironmentRows[row].Length; i++)
                 {
                     var (label, query) = EnvironmentRows[row][i];
-                    var r = new Rect(left + i * (w + gap), top + row * (h + gap), w, h);
-                    if (Event.current.type == EventType.Repaint)
-                    {
-                        material.SetPass(0);
-                        GL.PushMatrix();
-                        GL.LoadPixelMatrix();
-                        GL.Begin(GL.TRIANGLES);
-                        var c = new Vector2(r.center.x, Screen.height - r.center.y);
-                        Parallelogram(c, w * 0.5f, h * 0.5f, 7f * s, Ink);
-                        GL.End();
-                        GL.PopMatrix();
-                    }
-                    chip.normal.textColor = White;
-                    if (GUI.Button(r, label, chip)) WorldEnvironment.Apply(query);
+                    if (Chip(new Rect(left + i * (w + gap), top + row * (h + gap), w, h), label, false, s)) WorldEnvironment.Apply(query);
                 }
+            float effectsTop = top + EnvironmentRows.Length * (h + gap);
+            for (int i = 0; i < EffectsRow.Length; i++)
+            {
+                var (label, intensity) = EffectsRow[i];
+                bool selected = Mathf.Approximately(EffectsSettings.Intensity, intensity);
+                if (Chip(new Rect(left + i * (w + gap), effectsTop, w, h), label, selected, s)) EffectsSettings.Intensity = intensity;
+            }
+        }
+
+        bool Chip(Rect r, string label, bool selected, float s)
+        {
+            if (Event.current.type == EventType.Repaint)
+            {
+                material.SetPass(0);
+                GL.PushMatrix();
+                GL.LoadPixelMatrix();
+                GL.Begin(GL.TRIANGLES);
+                Parallelogram(new Vector2(r.center.x, Screen.height - r.center.y), r.width * 0.5f, r.height * 0.5f, 7f * s, selected ? Sunshine : Ink);
+                GL.End();
+                GL.PopMatrix();
+            }
+            chip.normal.textColor = selected ? Ink : White;
+            return GUI.Button(r, label, chip);
         }
 
         static void Outlined(Rect r, string text, GUIStyle style, Color color, float s)
