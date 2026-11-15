@@ -34,6 +34,7 @@ namespace Dogpatch.Slipstream
         GUIStyle style;
         float s;
         float left, right, top, bottom;
+        float band;
         readonly Queue<News> queue = new Queue<News>();
         News showing;
         int place;
@@ -77,6 +78,19 @@ namespace Dogpatch.Slipstream
         void OnDestroy() => Audio.GameEvents.Paused -= OnPaused;
 
         void OnPaused(bool on) => paused = on;
+
+        void OnEnable() => Gameplay.ScreenShape.Changed += CancelPresses;
+
+        void OnDisable() => Gameplay.ScreenShape.Changed -= CancelPresses;
+
+        // A rotation moves every button, so presses that began in the old layout never land; a
+        // held Call keeps talking until its finger lifts.
+        void CancelPresses()
+        {
+            readyFinger = int.MinValue;
+            plateFinger = int.MinValue;
+            platePressed = -1;
+        }
 
         void OnEvent(RaceEvent e)
         {
@@ -244,6 +258,7 @@ namespace Dogpatch.Slipstream
             right = safe.xMax - 22f * s;
             top = Screen.height - safe.yMax + 14f * s;
             bottom = Screen.height - safe.yMin - 20f * s;
+            band = right - left < 700f * s ? top + 76f * s : top + 4f * s;
             readyVisible = false;
             callVisible = false;
             if (Race.Last == null)
@@ -435,7 +450,8 @@ namespace Dogpatch.Slipstream
         }
 
         // The caller's asks: a pink chip with the handset and the count under the distance, flaring
-        // when a pickup adds one; ink when there are none left.
+        // when a pickup adds one; ink when there are none left. In portrait it drops below the news and
+        // Operator row.
         void AskCounter()
         {
             var me = Race.Me;
@@ -450,7 +466,8 @@ namespace Dogpatch.Slipstream
             var size = Measure(label, 22f);
             float h = 28f * s;
             float w = h + size.x + 16f * s;
-            var chip = new Rect(right - 64f * s - w, top + 58f * s, w, h);
+            float y = band > top + 4f * s ? band + 46f * s : top + 58f * s;
+            var chip = new Rect(right - 64f * s - w, y, w, h);
             if (bump > 0f) Panel(Inflate(chip, 5f * s * bump), new Color(Sun.r, Sun.g, Sun.b, bump));
             Framed(chip, me.asks > 0 ? Pink : Ink, White, 1.6f * s);
             Icon(new Rect(chip.x + 6f * s, chip.y + 3f * s, h - 6f * s, h - 6f * s), "call", White);
@@ -515,9 +532,9 @@ namespace Dogpatch.Slipstream
                 float t = Time.time - calls.StateSince;
                 float inP = EaseOut(Mathf.Clamp01(t / 0.18f));
                 float outP = Mathf.Clamp01((t - 2.3f) / 0.25f);
-                float baseX = Screen.width * 0.5f - 150f * s;
+                float baseX = band > top + 4f * s ? left : Screen.width * 0.5f - 150f * s;
                 float x = Mathf.Lerp(-360f * s, baseX, inP) - outP * outP * (baseX + 400f * s);
-                float lineY = top + 4f * s;
+                float lineY = band;
                 var size = Measure(calls.Line, 18f);
                 var handset = new Rect(x, lineY, 40f * s, 38f * s);
                 var line = new Rect(handset.xMax + 2f * s, lineY, size.x + 34f * s, 38f * s);
@@ -541,7 +558,7 @@ namespace Dogpatch.Slipstream
                 showing = null;
                 return;
             }
-            float baseLeft = Mathf.Max(left + 150f * s, Screen.width * 0.5f - 270f * s);
+            float baseLeft = band > top + 4f * s ? left : Mathf.Max(left + 150f * s, Screen.width * 0.5f - 270f * s);
             float offset;
             float lean;
             if (since < 0.12f)
@@ -567,7 +584,7 @@ namespace Dogpatch.Slipstream
                 offset = -p * p * (baseLeft + 500f * s);
                 lean = Mathf.Lerp(Lean, 0.45f, p);
             }
-            float y = top + 4f * s;
+            float y = band;
             var textSize = Measure(showing.Text, 15f);
             var block = new Rect(baseLeft + offset, y, 40f * s, 30f * s);
             var bar = new Rect(block.xMax + 2f * s, y, Mathf.Max(textSize.x + 28f * s, 150f * s), 30f * s);

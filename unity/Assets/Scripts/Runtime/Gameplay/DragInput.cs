@@ -76,7 +76,7 @@ namespace Dogpatch.Gameplay
         }
 
         // Drops the gestures in progress without a tap, so a finger already down when the game
-        // pauses neither keeps steering nor taps on release.
+        // pauses or the screen rotates neither keeps steering nor taps on release.
         public void Cancel()
         {
             move.Id = -1;
@@ -85,6 +85,10 @@ namespace Dogpatch.Gameplay
             Dragging = false;
             lookDelta = Vector2.zero;
         }
+
+        void OnEnable() => ScreenShape.Changed += Cancel;
+
+        void OnDisable() => ScreenShape.Changed -= Cancel;
 
         void Update()
         {
