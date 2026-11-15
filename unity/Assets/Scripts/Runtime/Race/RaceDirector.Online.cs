@@ -23,7 +23,9 @@ namespace Dogpatch.Race
         const string NameKey = "speeddial.name";
         const int ConnectTimeoutSeconds = 6;
         const int RequestTimeoutSeconds = 3;
-        const float WorldEvery = 0.125f;
+        const float WorldEvery = 1f / 15f;
+        const float WorldEveryRacing = 0.5f;
+        const float TrafficLogEvery = 5f;
         const float BackToWorldAfter = 10f;
         const float RingExitMargin = 3f;
 
@@ -94,6 +96,7 @@ namespace Dogpatch.Race
                 }
                 session.TimeoutSeconds = RequestTimeoutSeconds;
                 session.Reconnected += () => Debug.Log("[SpeedDial] reconnected: resyncing room and world from the server");
+                session.WorldPushed += ApplyWorld;
                 convex = session;
                 Session = session;
                 MyId = id;
@@ -191,10 +194,13 @@ namespace Dogpatch.Race
             else if (!Gridded && d > Course.RingRadius + RingExitMargin && (Room.status == RoomStatus.Lobby || (Room.status == RoomStatus.Countdown && MsToStart > LockMs + 500f))) Leave();
         }
 
-        // Presence: one request in flight, retried with backoff while the link is down.
+        // Presence and the world snapshot in one request: one in flight, as often as every 1/15 s
+        // (every 0.5 s while racing, when the race poll carries the other racers), retried with
+        // backoff while the link is down.
         IEnumerator WorldLoop()
         {
             int failures = 0;
+            float nextTrafficLog = Time.realtimeSinceStartup + TrafficLogEvery;
             var last = Game.Player.transform.position;
             float lastAt = Time.realtimeSinceStartup;
             while (true)
@@ -208,8 +214,14 @@ namespace Dogpatch.Race
                 var position = new Vec3(body.position.x, body.position.y, body.position.z);
                 var mode = car != null ? PlayerModes.Driving : PlayerModes.OnFoot;
                 var type = car != null ? VehicleRoster.TypeOf(car) : "";
+                float started = Time.realtimeSinceStartup;
                 var call = AsPlayer(() => convex.PresenceAsync(MyId, position, body.eulerAngles.y, speed, mode, type));
                 while (!call.IsCompleted) yield return null;
+                if (Time.realtimeSinceStartup >= nextTrafficLog)
+                {
+                    nextTrafficLog = Time.realtimeSinceStartup + TrafficLogEvery;
+                    Debug.Log("[Net] " + convex.TakeTrafficStats() + $", remote delay {Remotes.DelayMs:F0} ms");
+                }
                 if (call.Status != TaskStatus.RanToCompletion)
                 {
                     if (++failures == 1) Debug.LogWarning("[SpeedDial] presence: " + call.Exception?.GetBaseException().Message);
@@ -218,18 +230,26 @@ namespace Dogpatch.Race
                 }
                 if (failures > 0) Debug.Log($"[SpeedDial] presence back after {failures} failures");
                 failures = 0;
-                var world = call.Result;
-                WorldShard = world.shard;
-                WorldCount = world.players.Count + 1;
-                if (world.worldRoomId != WorldRoomId)
-                {
-                    WorldRoomId = world.worldRoomId;
-                    Debug.Log($"[SpeedDial] in the world: shard {world.shard}, room {WorldRoomId}, {WorldCount} online, you are {world.you?.color}");
-                    RoomChanged?.Invoke();
-                }
-                Remotes.SyncWorld(world);
-                yield return Pause(WorldEvery);
+                ApplyWorld(call.Result);
+                float every = Gridded && !ResultsIn ? WorldEveryRacing : WorldEvery;
+                float wait = every - (Time.realtimeSinceStartup - started);
+                if (wait > 0f) yield return Pause(wait);
+                else yield return null;
             }
+        }
+
+        void ApplyWorld(WorldPresenceResponse world)
+        {
+            if (world == null) return;
+            WorldShard = world.shard;
+            WorldCount = world.players.Count + 1;
+            if (world.worldRoomId != WorldRoomId)
+            {
+                WorldRoomId = world.worldRoomId;
+                Debug.Log($"[SpeedDial] in the world: shard {world.shard}, room {WorldRoomId}, {WorldCount} online, you are {world.you?.color}");
+                RoomChanged?.Invoke();
+            }
+            Remotes.SyncWorld(world);
         }
 
         // Headless checks walk into the ring from the command line once the course is set up.

@@ -24,13 +24,12 @@ namespace Dogpatch.Race
         static readonly float[] BotSkill = { 0.95f, 0.91f, 0.87f };
         static readonly float[] RingLateral = { -0.9f, -2.7f, 0.9f, 2.7f };
         public static readonly string[] SlotHex = { "#2D8CFF", "#A35BFF", "#FF8A1E", "#2EC27E" };
-        const float PollEvery = 0.12f;
+        const float PollEvery = 0.1f;
         const float SendEvery = 0.1f;
         const float LockMs = 3000f;
         const float GhostFor = 4f;
-        public const float WreckHold = 2.5f;
-        public const float WreckSkipAfter = 1f;
-        const float WreckFadeTime = 0.25f;
+        const float WreckHold = 1f;
+        const float WreckFadeTime = 0.1f;
         const float ContactWatch = 10f;
         const float ClearRoadFor = 10f;
         const float ClearRoadMeters = 150f;
@@ -354,6 +353,7 @@ namespace Dogpatch.Race
                     continue;
                 }
                 string polled = RoomId;
+                float pollStarted = Time.realtimeSinceStartup;
                 var poll = Session.PollAsync(polled, cursor);
                 while (!poll.IsCompleted) yield return null;
                 if (poll.Status != TaskStatus.RanToCompletion)
@@ -364,7 +364,9 @@ namespace Dogpatch.Race
                 }
                 failures = 0;
                 if (polled == RoomId) yield return Handle(poll.Result);
-                yield return Pause(PollEvery);
+                float pollWait = PollEvery - (Time.realtimeSinceStartup - pollStarted);
+                if (pollWait > 0f) yield return Pause(pollWait);
+                else yield return null;
             }
         }
 
@@ -539,7 +541,7 @@ namespace Dogpatch.Race
 
         // A wreck doesn't end anyone's race. A bot's car is repaired and back on the route a moment
         // later. Yours is a beat: you're thrown out and roll, then stand by the smoking wreck with the
-        // camera on it and WRECKED up for 2.5 s (a tap skips it after 1 s), a quick fade, and you're
+        // camera on it and WRECKED up for 1 s, a quick fade, and you're
         // back on the route where you were in the same car, repaired. Getting out on purpose is not a
         // wreck, so it never respawns you.
         void OnWrecked(CarController car)
@@ -562,9 +564,7 @@ namespace Dogpatch.Race
             Game.Follow.Target = car.transform;
             while (!ResultsIn)
             {
-                float since = Time.time - WreckedAt;
-                bool tapped = Input.GetMouseButtonDown(0) || (Input.touchCount > 0 && Input.GetTouch(0).phase == TouchPhase.Began);
-                if (since >= WreckHold || (since >= WreckSkipAfter && tapped)) break;
+                if (Time.time - WreckedAt >= WreckHold) break;
                 if (Game.CurrentCar == null && Game.Player.enabled) Game.Player.SetInput(Vector3.zero, 0f);
                 yield return null;
             }
@@ -603,6 +603,7 @@ namespace Dogpatch.Race
             }
             else
             {
+                if (Game.CurrentCar != null && Game.CurrentCar != myCar) yield return Wait(Game.ExitCar());
                 if (Game.CurrentCar != myCar)
                 {
                     Game.Player.Teleport(spot + Quaternion.Euler(0f, heading, 0f) * Vector3.left * 2.2f, heading);
@@ -649,6 +650,7 @@ namespace Dogpatch.Race
                     yield return null;
                     continue;
                 }
+                float sendStarted = Time.realtimeSinceStartup;
                 var sends = new List<Task>();
                 var me = BodyOf(MyId);
                 if (me != null) sends.Add(Session.UpdateAsync(MyId, RoomId, new Vec3(me.position.x, me.position.y, me.position.z), me.eulerAngles.y));
@@ -666,7 +668,9 @@ namespace Dogpatch.Race
                     continue;
                 }
                 failures = 0;
-                yield return Pause(SendEvery);
+                float sendWait = SendEvery - (Time.realtimeSinceStartup - sendStarted);
+                if (sendWait > 0f) yield return Pause(sendWait);
+                else yield return null;
             }
         }
 
