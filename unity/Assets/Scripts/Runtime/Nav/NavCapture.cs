@@ -59,6 +59,11 @@ namespace Dogpatch.Nav
             }
             Minimap.MapStyle = 1;
             var map = FindAnyObjectByType<Minimap>();
+            map.SetFull(true);
+            map.Preview(1f, true);
+            yield return Seconds(0.4f);
+            yield return Shot("full-map-card");
+            map.SetFull(false);
             for (int i = 0; i < MapLook.All.Length; i++)
             {
                 MapLook.Index = i;
@@ -78,6 +83,22 @@ namespace Dogpatch.Nav
             yield return Seconds(1f);
             Log($"fast travel: {Vector3.Distance(game.Player.transform.position, race.Course.RingCenter):F0} m from the ring");
             yield return Shot("fast-travel");
+            foreach (var (name, at) in race.RouteRingSpots())
+            {
+                map.StartTravel(new MapTarget { Kind = TargetKind.Ring, Name = name, World = new Vector2(at.x, at.z) });
+                yield return Seconds(1f);
+                var me = game.Focus;
+                var to = at - me.position;
+                to.y = 0f;
+                Log($"fast travel to ring {name}: {to.magnitude:F0} m out, facing off by {Vector3.Angle(new Vector3(me.forward.x, 0f, me.forward.z), to):F0} deg");
+            }
+            var spot = new Vector2(race.Course.RingCenter.x + 170f, race.Course.RingCenter.z - 140f);
+            map.StartTravel(new MapTarget { Kind = TargetKind.Spot, Name = "DROPPED PIN", World = spot });
+            yield return Seconds(1f);
+            var landed = new Vector2(game.Focus.position.x, game.Focus.position.z);
+            game.World.Roads.Nearest(landed, 40f, out var onRoad);
+            Log($"fast travel to a dropped pin: {Vector2.Distance(landed, spot):F0} m from the pin, {Mathf.Max(0f, onRoad.Distance):F1} m off the road");
+            yield return Shot("fast-travel-pin");
 
             CarController car = null;
             foreach (var candidate in game.Cars.Values)
@@ -105,7 +126,13 @@ namespace Dogpatch.Nav
             var exit = game.ExitCar();
             while (!exit.IsCompleted) yield return null;
 
+            nav.SetWaypoint(new Vector3(anchor.x + 300f, 0f, anchor.y + 200f));
+            Log($"waypoint before the ring: {nav.Target?.Kind.ToString() ?? "none"}");
             game.Player.Teleport(race.RingSpot(race.MySlot), 0f);
+            yield return Seconds(0.5f);
+            nav.SetWaypoint(new Vector3(anchor.x + 300f, 0f, anchor.y + 200f));
+            yield return null;
+            Log($"on the ring: waypoint {(nav.Target == null ? "cleared" : "kept")}, objective {nav.Kind}");
             race.Hud.PressReady();
             yield return Until(() => race.Started, 40f, "race started");
             race.EnableAutopilot();

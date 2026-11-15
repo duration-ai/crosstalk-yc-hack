@@ -76,7 +76,7 @@ Shader "Dogpatch/FlatMorph"
                 float shadow = SHADOW_ATTENUATION(i);
                 float3 ambient = _SideAmbient.rgb * (1 - abs(n.y)) + _SkyAmbient.rgb * saturate(n.y) + _GroundAmbient.rgb * saturate(-n.y);
                 float3 lit = albedo * (ambient + _LightColor0.rgb * ndl * shadow);
-                lit += i.color.rgb * saturate(1 - i.color.a) * _DogpatchNight * 1.8 * (1 - _Mix.a);
+                lit += i.color.rgb * saturate(1 - i.color.a) * _DogpatchNight * 3.6 * (1 - _Mix.a);
                 float rim = pow(1 - saturate(dot(n, toEye)), 2) * _Rim;
                 lit += rim;
                 fixed4 col = fixed4(lit, saturate(_Alpha + rim * 0.5));

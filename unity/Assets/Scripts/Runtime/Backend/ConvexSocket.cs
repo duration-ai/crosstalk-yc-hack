@@ -207,6 +207,7 @@ namespace Dogpatch.Backend
                     main.Post(_ =>
                     {
                         if (socket != ws) return;
+                        Dogpatch.Gameplay.HitchLogger.NetMessages++;
                         try { Handle(text); }
                         catch (Exception e) { Debug.LogWarning("[ConvexSocket] bad message: " + e.Message); }
                     }, null);
