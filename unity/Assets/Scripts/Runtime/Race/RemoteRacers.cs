@@ -221,9 +221,20 @@ namespace Dogpatch.Race
                 return false;
             }
             var last = samples[samples.Count - 1];
-            if (t <= last.T || samples.Count < 2) return Pose(samples, t, out p, out h);
+            if (t <= last.T || samples.Count < 2)
+            {
+                for (int i = samples.Count - 1; i > 0; i--)
+                {
+                    var a = samples[i - 1];
+                    var b = samples[i];
+                    if (t < a.T) continue;
+                    if (b.T > a.T) v = (b.P - a.P) / (float)((b.T - a.T) / 1000.0);
+                    break;
+                }
+                return Pose(samples, t, out p, out h);
+            }
             float ahead = (float)System.Math.Min(t - last.T, MaxDeadReckonMs) / 1000f;
-            v = Quaternion.Euler(0f, last.W * ahead, 0f) * last.V;
+            v = t - last.T >= MaxDeadReckonMs ? Vector3.zero : Quaternion.Euler(0f, last.W * ahead, 0f) * last.V;
             p = last.P + Quaternion.Euler(0f, last.W * ahead * 0.5f, 0f) * last.V * ahead;
             h = last.H + last.W * ahead;
             return true;
