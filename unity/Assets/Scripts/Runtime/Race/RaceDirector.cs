@@ -414,6 +414,11 @@ namespace Dogpatch.Race
             Game.ExternalInput = true;
             Calls.EndTalk();
             if (Game.CurrentCar != null && Game.CurrentCar != myCar) yield return Wait(Game.ExitCar());
+            if (!myCar.gameObject.activeSelf)
+            {
+                myCar.gameObject.SetActive(true);
+                Debug.Log("[SpeedDial] your race car was switched off where the last race left it; switched it back on");
+            }
             var spot = Course.Grid[MySlot];
             if (Game.CurrentCar != myCar)
             {

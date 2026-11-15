@@ -57,7 +57,7 @@ namespace Dogpatch.Race
         IEnumerator Start()
         {
             Directory.CreateDirectory(output);
-            float deadline = Time.realtimeSinceStartup + 600f;
+            float deadline = Time.realtimeSinceStartup + 900f;
             StartCoroutine(Watchdog(deadline));
             while ((race = RaceDirector.Instance) == null || !race.Setup) yield return null;
             if (!race.Online)
@@ -73,41 +73,65 @@ namespace Dogpatch.Race
             yield return new WaitForSecondsRealtime(1.5f);
             yield return Shot("world");
 
-            race.Game.Player.Teleport(race.RingSpot(0), 0f);
-            while (race.Last == null) yield return null;
-            Log($"entered the ring: mission room {race.RoomCode} as {race.MyName} ({race.MyId}), slot {race.MySlot}, {race.Room.playerCount} in the lobby, {race.Room.status}");
+            int races = int.TryParse(Arg("-speeddial-races"), out var rn) ? rn : 1;
             race.EventArrived += e => StartCoroutine(OnChange(e));
-            yield return new WaitForSecondsRealtime(1f);
-            yield return Shot("lobby");
-            while (race.Room == null || race.Room.status != RoomStatus.Countdown) yield return null;
-            Log($"countdown: {race.MsToStart / 1000f:F1} s to go, {race.Room.playerCount} racers");
-            yield return new WaitForSecondsRealtime(2f);
-            yield return Shot("countdown");
-
-            while (!race.Started) yield return null;
-            Log("GO");
-            StartCoroutine(SyncLog());
-            float lastRemoteShot = -100f;
-            int remoteShots = 0;
-            while (!race.ResultsIn)
+            int results = 0;
+            for (int number = 1; number <= races; number++)
             {
-                if (remoteShots < 3 && Time.realtimeSinceStartup - lastRemoteShot > 8f && RemoteInView(out var who))
+                string tag = races > 1 ? "race" + number + "-" : "";
+                race.Game.Player.Teleport(race.RingSpot(0), 0f);
+                while (race.Last == null) yield return null;
+                Log($"race {number}: entered the ring: mission room {race.RoomCode} as {race.MyName} ({race.MyId}), slot {race.MySlot}, {race.Room.playerCount} in the lobby, {race.Room.status}");
+                yield return new WaitForSecondsRealtime(1f);
+                yield return Shot(tag + "lobby");
+                while (race.Room == null || race.Room.status != RoomStatus.Countdown) yield return null;
+                Log($"race {number}: countdown: {race.MsToStart / 1000f:F1} s to go, {race.Room.playerCount} racers");
+                yield return new WaitForSecondsRealtime(2f);
+                yield return Shot(tag + "countdown");
+
+                while (!race.Started) yield return null;
+                Log($"race {number}: GO");
+                var car = race.MyCar;
+                var from = car.transform.position;
+                StartCoroutine(SyncLog());
+                float lastRemoteShot = -100f;
+                int remoteShots = 0;
+                float goAt = Time.realtimeSinceStartup;
+                bool checkedCar = false;
+                while (!race.ResultsIn)
                 {
-                    lastRemoteShot = Time.realtimeSinceStartup;
-                    remoteShots++;
-                    yield return Shot("remote-racer-" + who.ToLowerInvariant().Replace(' ', '-'));
+                    if (!checkedCar && Time.realtimeSinceStartup - goAt > 8f)
+                    {
+                        checkedCar = true;
+                        float moved = Vector3.Distance(from, car.transform.position);
+                        bool drivable = car.gameObject.activeInHierarchy && race.Game.CurrentCar == car;
+                        Log($"race {number}: my car active={car.gameObject.activeInHierarchy} driven={race.Game.CurrentCar == car} moved {moved:F0} m in 8 s");
+                        if (!drivable || moved < 15f)
+                        {
+                            yield return Shot(tag + "stuck");
+                            Log($"FAIL: race {number}: my car is stuck or hidden");
+                            Application.Quit(1);
+                            yield break;
+                        }
+                    }
+                    if (remoteShots < 3 && Time.realtimeSinceStartup - lastRemoteShot > 8f && RemoteInView(out var who))
+                    {
+                        lastRemoteShot = Time.realtimeSinceStartup;
+                        remoteShots++;
+                        yield return Shot(tag + "remote-racer-" + who.ToLowerInvariant().Replace(' ', '-'));
+                    }
+                    yield return null;
                 }
-                yield return null;
+                yield return new WaitForSecondsRealtime(2f);
+                Log($"race {number}: results: " + string.Join(", ", race.Last.results.Select(r => $"{r.place}. {r.displayName} {(r.finished ? (r.finishMs / 1000f).ToString("F1") + " s" : "DNF")} {r.award}")));
+                yield return Shot(tag + "results");
+                results += race.Last.results.Count;
+                while (race.RoomId != null) yield return null;
+                yield return new WaitForSecondsRealtime(3f);
+                Log($"race {number}: back in the world at ({race.Game.Player.transform.position.x:F0},{race.Game.Player.transform.position.z:F0}), {race.WorldCount} online");
+                yield return Shot(tag + "back-in-world");
             }
-            yield return new WaitForSecondsRealtime(2f);
-            Log("results: " + string.Join(", ", race.Last.results.Select(r => $"{r.place}. {r.displayName} {(r.finished ? (r.finishMs / 1000f).ToString("F1") + " s" : "DNF")} {r.award}")));
-            yield return Shot("results");
-            int results = race.Last.results.Count;
-            while (race.RoomId != null) yield return null;
-            yield return new WaitForSecondsRealtime(3f);
-            Log($"back in the world at ({race.Game.Player.transform.position.x:F0},{race.Game.Player.transform.position.z:F0}), {race.WorldCount} online");
-            yield return Shot("back-in-world");
-            Log($"PASS: {race.Remotes.All.Count()} remote players, {changes} world changes, {results} results, back in the world");
+            Log($"PASS: {races} races, {race.Remotes.All.Count()} remote players, {changes} world changes, {results} results, back in the world");
             Application.Quit(0);
         }
 
