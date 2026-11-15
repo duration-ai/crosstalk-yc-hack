@@ -35,6 +35,8 @@ namespace Dogpatch.Gameplay
         Vector2 traceAnchor;
         Vector2 traceTip;
         float traceAlpha;
+        bool wasDragging;
+        float dragStartAt = -10f;
 
         // Gameplay feedback stays out of the middle of the screen (no sentences in the HUD), so
         // toasts only go to the log.
@@ -58,7 +60,10 @@ namespace Dogpatch.Gameplay
         {
             HandlePause();
 
-            if (Input != null && Input.Dragging)
+            bool dragging = Input != null && Input.Dragging;
+            if (dragging && !wasDragging) dragStartAt = Time.unscaledTime;
+            wasDragging = dragging;
+            if (dragging)
             {
                 traceAnchor = Input.Anchor;
                 traceTip = Input.Current;
@@ -162,9 +167,13 @@ namespace Dogpatch.Gameplay
             var a = traceAnchor;
             var tip = a + Vector2.ClampMagnitude(traceTip - a, reach);
             var faint = new Color(1f, 1f, 1f, 0.5f * traceAlpha);
+            float since = Time.unscaledTime - dragStartAt;
             Ring(a, 46f * s, 2.6f * s, faint);
+            if (since < 0.28f) Ring(a, Mathf.Lerp(46f, 78f, since / 0.28f) * s, 2f * s, new Color(1f, 1f, 1f, 0.6f * (1f - since / 0.28f)));
             Disc(a, 4f * s, faint);
-            Disc(tip, 15f * s, new Color(1f, 1f, 1f, 0.85f * traceAlpha));
+            float t = Mathf.Clamp01(since / 0.22f) - 1f;
+            float pop = 1f + t * t * (3.2f * t + 2.2f);
+            Disc(tip, 15f * s * Mathf.Max(0.05f, pop), new Color(1f, 1f, 1f, 0.85f * traceAlpha));
         }
 
         void DrawStick(float s)

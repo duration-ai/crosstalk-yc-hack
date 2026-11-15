@@ -110,6 +110,11 @@ export const POPULATION_EFFECTS: Record<string, Effect> = {
   more_traffic: { label: "Rush hour", description: "more traffic: rush hour, busy roads, traffic jams", duration: CROWD },
   less_traffic: { label: "Empty roads", description: "less traffic: empty, quiet roads", duration: CROWD },
   aggressive_traffic: { label: "Road rage", description: "traffic drives aggressively", duration: CROWD },
+  waymo_swarm: {
+    label: "Waymo attack",
+    description: "a swarm of Waymo robotaxis hunts and rams the other racers (send the Waymos after them, Waymo attack, sic the robotaxis on everyone)",
+    duration: [15, 20],
+  },
   green_lights: { label: "Green lights", description: "every traffic light turns green", duration: CROWD },
   more_pedestrians: { label: "Crowds", description: "more people on the streets", duration: CROWD },
   fewer_pedestrians: { label: "Ghost town", description: "fewer people on the streets", duration: CROWD },

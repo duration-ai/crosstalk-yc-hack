@@ -12,6 +12,8 @@ namespace Dogpatch.Look
     [DefaultExecutionOrder(1200)]
     public sealed class SpeedLines : MonoBehaviour
     {
+        // During a boost the streaks warm to sunshine (Hot Wheels Unleashed / Rocket League boost lines).
+        static readonly Color BoostTint = QualitySettings.activeColorSpace == ColorSpace.Linear ? SpeedDial.Hex("#FFCB1F").linear : SpeedDial.Hex("#FFCB1F");
         struct Line
         {
             public float Angle;
@@ -130,7 +132,8 @@ namespace Dogpatch.Look
                 vertices[v + 1] = View(mid + normal, h, depth);
                 vertices[v + 2] = View(outer, h, depth);
                 vertices[v + 3] = View(mid - normal, h, depth);
-                var c = new Color(1f, 1f, 1f, fade);
+                var c = Color.Lerp(Color.white, BoostTint, MotionFx.BoostFactor * 0.85f);
+                c.a = fade;
                 colors[v + 1] = colors[v + 3] = c;
                 c.a = fade * 0.9f;
                 colors[v + 2] = c;
