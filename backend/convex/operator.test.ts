@@ -66,11 +66,11 @@ const view = (mode: "onFoot" | "driving" = "onFoot") => ({
   ],
 });
 
-async function room() {
+async function room(asks: { asks?: number; freeAsks?: boolean } = { freeAsks: true }) {
   const t = convexTest(schema, modules);
   const tim = await t.mutation(api.players.create, { displayName: "Tim" });
   const maya = await t.mutation(api.players.create, { displayName: "Maya" });
-  const created = await t.mutation(api.rooms.create, { playerId: tim.id });
+  const created = await t.mutation(api.rooms.create, { playerId: tim.id, ...asks });
   await t.mutation(api.rooms.join, { playerId: maya.id, code: created.room.code });
   const roomId = created.room.id;
   const say = (transcript: string, picks: Record<string, string | number> | Error, playerId = tim.id, mode: "onFoot" | "driving" = "onFoot") => {
@@ -78,7 +78,9 @@ async function room() {
     return t.action(api.operator.call, { roomId, playerId, transcript, view: view(mode) });
   };
   const effects = async () => (await t.query(api.operator.activeEffects, { roomId })).effects;
-  return { t, tim, maya, roomId, say, effects };
+  const asksOf = async (playerId: string) =>
+    (await t.query(internal.rooms.poll, { roomId, now: Date.now() })).racers.find((r) => r.playerId === playerId)!.asks;
+  return { t, tim, maya, roomId, say, effects, asksOf };
 }
 
 const RAIN = { scope: "world", world_group: "sky", sky_effect: "rain" };
@@ -246,6 +248,46 @@ describe("operator.call", () => {
     expect(await effects()).toEqual([]);
   });
 
+  it("spends one ask per applied effect and refuses cleanly at zero", async () => {
+    const { t, tim, maya, say, effects, asksOf } = await room({});
+    expect(await asksOf(tim.id)).toBe(2);
+    await say("make it rain", RAIN);
+    expect(await say("spawn a dragon", { scope: "reject", reject_reason: "spawning" })).toMatchObject({ outcome: "refused" });
+    expect(await asksOf(tim.id)).toBe(1);
+    await say("night", { scope: "world", world_group: "sky", sky_effect: "night" });
+    expect(await asksOf(tim.id)).toBe(0);
+
+    const broke = await say("roll in the fog", { scope: "world", world_group: "sky", sky_effect: "fog" });
+    expect(broke).toMatchObject({ outcome: "refused", effect: null, refusal: { reason: "no_asks" }, line: "No asks! Find a pink token." });
+    expect((await effects()).map((e) => e.effect).sort()).toEqual(["night", "rain"]);
+    expect(await asksOf(tim.id)).toBe(0);
+    expect(await asksOf(maya.id)).toBe(2);
+    const log = await t.run((ctx) => ctx.db.query("operatorCalls").collect());
+    expect(log[log.length - 1]).toMatchObject({ transcript: "roll in the fog", outcome: "refused", reason: "no_asks" });
+  });
+
+  it("charges a promoted effect when it is confirmed, not when it is asked for", async () => {
+    const { t, tim, say, effects, asksOf } = await room({ asks: 1 });
+    const slow = { scope: "object", object_effect: "slow_down", other_player: 0.95 };
+    const first = await say("slow him down", slow, tim.id, "driving");
+    expect(await asksOf(tim.id)).toBe(1);
+    await t.mutation(api.operator.confirm, { playerId: tim.id, effectId: first.effect!.id });
+    expect(await asksOf(tim.id)).toBe(0);
+
+    const second = await say("shrink her", { scope: "object", object_effect: "shrink", other_player: 0.9 }, tim.id, "driving");
+    expect(second).toMatchObject({ outcome: "pending" });
+    await expect(t.mutation(api.operator.confirm, { playerId: tim.id, effectId: second.effect!.id })).rejects.toThrow(/No asks/);
+    expect((await effects()).map((e) => e.effect)).toEqual(["vehicle_slower"]);
+  });
+
+  it("never runs a freeAsks room out of asks", async () => {
+    const { tim, say, asksOf } = await room({ asks: 1, freeAsks: true });
+    for (const effect of ["rain", "night", "fog"]) {
+      expect(await say(effect, { scope: "world", world_group: "sky", sky_effect: effect })).toMatchObject({ outcome: "applied" });
+    }
+    expect(await asksOf(tim.id)).toBe(1);
+  });
+
   it("counts applied Operator calls toward the race's CHAOS CALLER", async () => {
     const { t, tim, maya, roomId, say } = await room();
     let started;
@@ -262,6 +304,8 @@ describe("operator.call", () => {
       Tim: [0, expect.any(String)],
       Maya: [2, "CHAOS CALLER"],
     });
+    vi.setSystemTime(Date.now() + 1);
+    expect(await say("make it rain", RAIN, maya.id)).toMatchObject({ outcome: "refused", refusal: { reason: "race_over" } });
   });
 
   it("retries Jev once, then refuses as unavailable and logs the error", async () => {

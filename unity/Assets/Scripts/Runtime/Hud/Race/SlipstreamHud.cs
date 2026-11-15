@@ -47,6 +47,7 @@ namespace Dogpatch.Slipstream
         bool callVisible;
         int readyFinger = int.MinValue;
         int callFinger = int.MinValue;
+        bool paused;
 
         public float NewsSince => showing == null || showing.Start < 0f ? -1f : Time.time - showing.Start;
 
@@ -70,7 +71,12 @@ namespace Dogpatch.Slipstream
         void Start()
         {
             Race.EventArrived += OnEvent;
+            Audio.GameEvents.Paused += OnPaused;
         }
+
+        void OnDestroy() => Audio.GameEvents.Paused -= OnPaused;
+
+        void OnPaused(bool on) => paused = on;
 
         void OnEnable() => Gameplay.ScreenShape.Changed += CancelPresses;
 
@@ -115,7 +121,6 @@ namespace Dogpatch.Slipstream
         void Update()
         {
             if (Race == null || !Race.Setup) return;
-            OnlineUpdate();
             for (int i = 0; i < Input.touchCount; i++)
             {
                 var t = Input.GetTouch(i);
@@ -243,7 +248,7 @@ namespace Dogpatch.Slipstream
         {
             if (Race == null || !Race.Setup) return;
             buttons.Clear();
-            if (Race.Last == null && !(Race.Online && Race.RoomId == null)) return;
+            if (Race.Last == null && !Race.Online) return;
             GUI.depth = -5;
             s = Mathf.Min(Screen.height / 402f, Screen.width / 560f);
             var safe = Screen.safeArea;
@@ -255,11 +260,12 @@ namespace Dogpatch.Slipstream
             band = narrow ? top + 76f * s : top + 4f * s;
             readyVisible = false;
             callVisible = false;
-            if (Race.Last == null)
+            if (Race.Online)
             {
-                Menu();
-                return;
+                WorldTags();
+                NetChip();
             }
+            if (Race.Last == null) return;
 
             var room = Race.Room;
             bool lobby = !Race.Gridded && (room.status == RoomStatus.Lobby || room.status == RoomStatus.Countdown);
@@ -267,8 +273,8 @@ namespace Dogpatch.Slipstream
 
             if (!Race.ResultsIn) NameTags();
             if (racing) FindMe();
-            if (lobby) Lobby(room);
-            if (Race.Online && (lobby || Race.ResultsIn)) RoomCorner(room, lobby);
+            if (lobby && !paused) Lobby(room);
+            if (Race.Online && lobby && !paused) MissionPlate(room);
             if (Race.Gridded && !Race.ResultsIn) Countdown();
             if (racing) RaceCorners();
             if (Race.ResultsIn) Results();
@@ -287,7 +293,7 @@ namespace Dogpatch.Slipstream
                 var bar = new Rect(block.xMax + 3f * s, y, 150f * s, 24f * s);
                 Panel(bar, me ? Ink : Paper);
                 Panel(block, SlotColor(r.color));
-                Icon(new Rect(block.x + 6f * s, block.y + 2f * s, 20f * s, 20f * s), r.ready ? "ready" : "dash", White);
+                if (!Race.Online) Icon(new Rect(block.x + 6f * s, block.y + 2f * s, 20f * s, 20f * s), r.ready ? "ready" : "dash", White);
                 Text(new Rect(bar.x + 12f * s, bar.y, bar.width, bar.height), me ? "YOU" : r.displayName.ToUpperInvariant(), 14f, me ? White : Ink);
                 y += 31f * s;
             }
@@ -319,7 +325,7 @@ namespace Dogpatch.Slipstream
                 }
             }
 
-            ReadyButton(Race.Me != null && Race.Me.ready);
+            if (!Race.Online) ReadyButton(Race.Me != null && Race.Me.ready);
         }
 
         void ReadyButton(bool pressed)

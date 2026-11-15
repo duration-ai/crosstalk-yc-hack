@@ -50,10 +50,11 @@ namespace Dogpatch.Traffic
         IEnumerator Refill()
         {
             nextCandidates = 0f;
-            float until = Time.time + 4f;
+            float until = Time.time + 6f;
             while (Time.time < until && Deficit(out _) > 0)
             {
-                for (int k = 0; k < 3; k++)
+                if (Time.time >= nextCandidates - 1.5f) nextCandidates = 0f;
+                for (int k = 0; k < 16; k++)
                 {
                     int before = Agents.Count;
                     TrySpawn(true);

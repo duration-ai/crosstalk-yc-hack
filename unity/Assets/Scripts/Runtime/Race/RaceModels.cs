@@ -35,6 +35,9 @@ namespace Dogpatch.Race
         public Vec3 finish;
         public float finishRadius;
         public long createdAt;
+        public int asks;
+        public List<Vec3> pickups;
+        public float pickupRadius;
     }
 
     [Serializable]
@@ -55,6 +58,8 @@ namespace Dogpatch.Race
         public long finishMs;
         public bool left;
         public long updatedAt;
+        public int asks;
+        public List<int> collected;
     }
 
     // One flat class for every world change's params; fields a type does not use stay default.
@@ -147,6 +152,13 @@ namespace Dogpatch.Race
     }
 
     [Serializable]
+    public class AskResponse
+    {
+        public bool collected;
+        public int asks;
+    }
+
+    [Serializable]
     public class FireEventResponse
     {
         public RaceEvent @event;
@@ -164,5 +176,38 @@ namespace Dogpatch.Race
         public Operator.OperatorRefusal refusal;
         public double serverNow;
         public string transcript;
+    }
+
+    // POST /api/world/presence: everyone else in this device's world shard.
+    [Serializable]
+    public class WorldPlayer
+    {
+        public string playerId;
+        public string displayName;
+        public string color;
+        public string colorHex;
+        public Vec3 position;
+        public float heading;
+        public float speed;
+        public string mode;
+        public string vehicleType;
+        public long updatedAt;
+    }
+
+    [Serializable]
+    public class WorldColor
+    {
+        public string color;
+        public string colorHex;
+    }
+
+    [Serializable]
+    public class WorldPresenceResponse
+    {
+        public long serverTime;
+        public int shard;
+        public string worldRoomId;
+        public WorldColor you;
+        public List<WorldPlayer> players = new List<WorldPlayer>();
     }
 }
