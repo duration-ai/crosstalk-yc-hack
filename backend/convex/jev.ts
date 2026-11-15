@@ -66,7 +66,7 @@ export function buildQuestions(view: View): Question[] {
       type: "choice",
       name: "scope",
       instructions:
-        "What does the player's FIRST request change, right now? Answer for the first request only. Changing what something is made of (ice, rubber, glass, jelly, stone) is a property of that thing, not a transformation. A request with a delay or a condition (in five minutes, later, after the race, when someone wins) is reject.",
+        "What does the player's FIRST request change, right now? Answer for the first request only. Changing what something is made of (ice, rubber, glass, jelly, stone) is a property of that thing, not a transformation. A bare effect name (nitro, rush hour, earthquake) is a request. A request with a delay or a condition (in five minutes, later, after the race, when someone wins) is reject.",
       choices: [
         { value: "players", description: "the racers themselves (me, us, everyone): their size, shape, running, jumping, flying, or how their cars drive (super speed, nitro, grip, hop)" },
         { value: "world", description: "the whole world: time of day, weather, lights, gravity, ground, time speed, water, traffic, pedestrians and crowds (numbers, mood, costumes, big heads), or undo" },
@@ -83,8 +83,8 @@ export function buildQuestions(view: View): Question[] {
       choices: [
         NONE,
         { value: "sky", description: "time of day, weather, sky, city lights" },
-        { value: "physics", description: "gravity, ground, air, time speed, flood water, lava, earthquake, cars flying or floating" },
-        { value: "population", description: "traffic, traffic lights, pedestrians, crowd mood or costumes, big heads" },
+        { value: "physics", description: "gravity, ground, air, slow motion or fast forward, flood water, lava, earthquake, cars flying or floating" },
+        { value: "population", description: "traffic (rush hour, jams, empty roads), traffic lights, pedestrians, crowd mood or costumes, big heads" },
         { value: "undo", description: "undo or cancel the last change" },
       ],
     },
@@ -167,7 +167,7 @@ export function buildQuestions(view: View): Question[] {
         { value: "deferred", description: "do something later: in five minutes, after the race, when someone wins" },
         { value: "cheat", description: "win, skip ahead, finish the race, get points, or remove other players" },
         { value: "vague", description: "unclear what change is wanted" },
-        { value: "not_a_request", description: "chit-chat, a question, noise, not asking for any change" },
+        { value: "not_a_request", description: "chit-chat, a question or noise; a bare effect name like rush hour is a request" },
       ],
     },
   ];
