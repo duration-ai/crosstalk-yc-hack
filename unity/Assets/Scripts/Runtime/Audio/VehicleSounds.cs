@@ -176,7 +176,7 @@ namespace Dogpatch.Audio
                 Position = contact.point,
                 Force = force,
                 Surface = otherCar != null ? Surface.Vehicle : SurfaceOf(c.collider),
-                InvolvesPlayer = car.Driven || (otherCar != null && otherCar.Driven),
+                InvolvesPlayer = IsPlayer(car) || IsPlayer(otherCar),
             });
         }
 
@@ -190,6 +190,8 @@ namespace Dogpatch.Audio
             nextScrape = Time.time + 0.35f;
             SoundSystem.Play("scrape", c.GetContact(0).point, Bus.Vehicles, Mathf.Clamp01(slide / 12f), Random.Range(0.9f, 1.1f), 160, 40f);
         }
+
+        static bool IsPlayer(CarController c) => c != null && SoundSystem.Game != null && SoundSystem.Game.CurrentCar == c;
 
         // Owners can tag colliders with SoundSurface; otherwise the world's object names decide.
         public static Surface SurfaceOf(Collider collider)

@@ -29,7 +29,6 @@ namespace Dogpatch.Audio
         };
 
         SoundLoop ring, lineBed;
-        float nextPoints;
 
         public static string BreakableClip(string kind)
         {
@@ -46,8 +45,6 @@ namespace Dogpatch.Audio
             GameEvents.Impact += OnImpact;
             GameEvents.Smash += OnSmash;
             GameEvents.Wreck += OnWreck;
-            GameEvents.Points += OnPoints;
-            GameEvents.Combo += OnCombo;
             GameEvents.PedestrianDive += OnDive;
             GameEvents.Shove += OnShove;
             GameEvents.Countdown += OnCountdown;
@@ -67,8 +64,6 @@ namespace Dogpatch.Audio
             GameEvents.Impact -= OnImpact;
             GameEvents.Smash -= OnSmash;
             GameEvents.Wreck -= OnWreck;
-            GameEvents.Points -= OnPoints;
-            GameEvents.Combo -= OnCombo;
             GameEvents.PedestrianDive -= OnDive;
             GameEvents.Shove -= OnShove;
             GameEvents.Countdown -= OnCountdown;
@@ -119,16 +114,6 @@ namespace Dogpatch.Audio
         }
 
         void OnWreck(Vector3 position, bool isPlayer) => SoundSystem.Play("wreck", position, Bus.Sfx, 1f, Jitter(0.04f), isPlayer ? 255 : 160, 150f);
-
-        void OnPoints(int amount)
-        {
-            if (Time.unscaledTime < nextPoints) return;
-            nextPoints = Time.unscaledTime + 0.06f;
-            SoundSystem.Play2D("points_pop", Bus.Ui, 0.7f, 1f + Mathf.Clamp01(amount / 1000f) * 0.4f, 190);
-        }
-
-        // Each combo step climbs a whole tone, topping out an octave up.
-        void OnCombo(int level) => SoundSystem.Play2D("combo_chime", Bus.Ui, 0.75f, Mathf.Pow(2f, Mathf.Min(level - 1, 6) * 2f / 12f), 200);
 
         void OnDive(Vector3 position, int seed)
         {

@@ -119,7 +119,6 @@ namespace Dogpatch.Feel
         void OnBoost(bool on)
         {
             if (!on) return;
-            if (CameraFeel.Instance != null) CameraFeel.Instance.Kick(4f);
             Haptics.Impact(HapticStyle.Soft, 0.8f);
         }
 
