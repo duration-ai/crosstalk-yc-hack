@@ -754,6 +754,51 @@ namespace Dogpatch.Operator
         }
     }
 
+    // A ghost building is part of a merged building collider, so instead of switching it off this
+    // lets every moving body (cars, the player) inside the building's footprint through that
+    // collider, and puts it back for each one as it leaves.
+    public sealed class GhostZone : MonoBehaviour
+    {
+        public Bounds Area;
+        readonly List<Collider> walls = new List<Collider>();
+        readonly HashSet<Collider> passing = new HashSet<Collider>();
+        readonly List<Collider> gone = new List<Collider>();
+        readonly HashSet<Collider> seen = new HashSet<Collider>();
+
+        void Start()
+        {
+            foreach (var c in Physics.OverlapBox(Area.center, Area.extents * 0.6f, Quaternion.identity, ~0, QueryTriggerInteraction.Ignore))
+                if (c.name.StartsWith("BuildingCollider")) walls.Add(c);
+        }
+
+        void FixedUpdate()
+        {
+            if (walls.Count == 0) return;
+            seen.Clear();
+            foreach (var c in Physics.OverlapBox(Area.center, Area.extents + new Vector3(3f, 1f, 3f), Quaternion.identity, ~0, QueryTriggerInteraction.Ignore))
+            {
+                bool moving = c is CharacterController || (c.attachedRigidbody != null && !c.attachedRigidbody.isKinematic);
+                if (!moving) continue;
+                seen.Add(c);
+                if (!passing.Add(c)) continue;
+                foreach (var w in walls) Physics.IgnoreCollision(w, c, true);
+            }
+            gone.Clear();
+            foreach (var c in passing) if (c == null || !seen.Contains(c)) gone.Add(c);
+            foreach (var c in gone)
+            {
+                passing.Remove(c);
+                if (c != null) foreach (var w in walls) Physics.IgnoreCollision(w, c, false);
+            }
+        }
+
+        void OnDestroy()
+        {
+            foreach (var c in passing)
+                if (c != null) foreach (var w in walls) if (w != null) Physics.IgnoreCollision(w, c, false);
+        }
+    }
+
     // see_through, bouncy, icy, rock_solid, soft and ghost on objects: a look, a motion and the
     // physics to match. Pedestrians (drawn by the crowd renderer) take the look on their clothes,
     // and stone ones stand still as statues.
@@ -811,6 +856,12 @@ namespace Dogpatch.Operator
                 if (body == null) continue;
                 n++;
                 if (tag.Span != null) undo.Add(() => SpanCopies.Give(tag, isGhost));
+                if (isGhost && tag.Class == "building")
+                {
+                    var zone = body.AddComponent<GhostZone>();
+                    zone.Area = tag.WorldBounds;
+                    undo.Add(() => { if (zone != null) Object.Destroy(zone); });
+                }
                 var morph = Morph.On(body);
                 var mod = Mod(k);
                 morph.Add(mod);
