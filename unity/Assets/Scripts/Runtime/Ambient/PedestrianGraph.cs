@@ -546,8 +546,15 @@ namespace Dogpatch.Ambient
                     int axis = delta < 45f ? 0 : 1;
 
                     int index = -1;
-                    foreach (var c in Crossings)
-                        if (c.FromData && c.Road == arm.road && (c.Center - j.P).sqrMagnitude < 18f * 18f) index = Crossings.IndexOf(c);
+                    float nearest = 18f * 18f;
+                    for (int k = 0; k < Crossings.Count; k++)
+                    {
+                        var c = Crossings[k];
+                        var off = c.Center - j.P;
+                        if (!c.FromData || c.Road != arm.road || Vector2.Dot(off, x - j.P) <= 0f || off.sqrMagnitude >= nearest) continue;
+                        nearest = off.sqrMagnitude;
+                        index = k;
+                    }
                     if (index < 0) index = AddCrossing(arm.road, x, dir, false);
                     if (index < 0 || !signal) continue;
                     var crossing = Crossings[index];

@@ -892,7 +892,9 @@ namespace Dogpatch.Ambient
         static bool GapClear(Crossing c, Vector2 p, Vector2 v, float horizon)
         {
             if ((p - c.Center).sqrMagnitude > 90f * 90f) return true;
-            if (DistanceToSegment(p, c.A, c.B) < 4.5f && v.sqrMagnitude > 0.04f) return false;
+            float d = DistanceToSegment(p, c.A, c.B);
+            if (d < 2.5f) return false;
+            if (d < 4.5f && v.sqrMagnitude > 0.04f) return false;
             if (v.sqrMagnitude < 0.25f) return true;
             for (float t = 0.5f; t <= horizon; t += 0.5f)
                 if (DistanceToSegment(p + v * t, c.A, c.B) < 3f) return false;
@@ -1052,6 +1054,7 @@ namespace Dogpatch.Ambient
             {
                 if (car == null || Mathf.Abs(car.Speed) < 3f) continue;
                 var t = car.transform;
+                if ((new Vector2(t.position.x, t.position.z) - ped.Pos).sqrMagnitude > 35f * 35f) continue;
                 var v = new Vector2(t.forward.x, t.forward.z) * car.Speed;
                 if (Predict(ped, new Vector2(t.position.x, t.position.z), v, car.HalfExtents.x + 0.6f, out float tti))
                 {
@@ -1064,6 +1067,7 @@ namespace Dogpatch.Ambient
                 var v = new Vector2(vehicle.Velocity.x, vehicle.Velocity.z);
                 if (v.sqrMagnitude < 9f) continue;
                 var p = new Vector2(vehicle.Position.x, vehicle.Position.z);
+                if ((p - ped.Pos).sqrMagnitude > 35f * 35f) continue;
                 if (Predict(ped, p, v, 1.6f, out float tti))
                 {
                     Threat(ped, p, v, tti);
