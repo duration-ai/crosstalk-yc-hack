@@ -13,6 +13,7 @@ namespace Dogpatch.Vehicles
         public const string Cybertruck = "cybertruck";
         public const string RaceCar = "race-car";
         public const string SportsCar = "sports-car";
+        public const string FlyingCar = "flying-car";
         public const string MuniBus = "muni-bus";
         public const string ShoppingCart = "shopping-cart";
         public const string BayWheels = "bay-wheels-ebike";
@@ -26,7 +27,7 @@ namespace Dogpatch.Vehicles
 
         public static readonly string[] All =
         {
-            WaymoSuv, WaymoVan, Zoox, Cybertruck, RaceCar, SportsCar, MuniBus, ShoppingCart, BayWheels, Scooter,
+            WaymoSuv, WaymoVan, Zoox, Cybertruck, RaceCar, SportsCar, FlyingCar, MuniBus, ShoppingCart, BayWheels, Scooter,
             DoorDashBike, UberEatsBike, Hatchback, Sedan, YellowCab, TThird,
         };
     }
@@ -124,6 +125,9 @@ namespace Dogpatch.Vehicles
                 Lamps = { ["#3d454b"] = 0.8f, ["#6b1d1f"] = 0.6f },
                 Handling = H(28f, 12f, 20f, 90f, 1.15f, 1050f, 45f, 0.2f), CruiseSpeed = 13f,
             });
+            var hover = H(25f, 10f, 18f, 85f, 1.05f, 900f, 40f, 0.15f);
+            hover.HoverHeight = 3.75f;
+            Add(new VehicleSpec { Id = VehicleTypes.FlyingCar, Title = "Flying car", Source = ModelSource.Procedural, Handling = hover, CruiseSpeed = 12f });
             Add(new VehicleSpec
             {
                 Id = VehicleTypes.MuniBus, Title = "Muni bus", Source = ModelSource.Glb, Resource = "Vehicles/muni-bus", PolyforkId = "city-bus-49fd97",
