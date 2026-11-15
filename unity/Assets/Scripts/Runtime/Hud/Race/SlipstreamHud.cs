@@ -35,6 +35,7 @@ namespace Dogpatch.Slipstream
         float s;
         float left, right, top, bottom;
         float band;
+        bool narrow;
         readonly Queue<News> queue = new Queue<News>();
         News showing;
         int place;
@@ -250,7 +251,8 @@ namespace Dogpatch.Slipstream
             right = safe.xMax - 22f * s;
             top = Screen.height - safe.yMax + 14f * s;
             bottom = Screen.height - safe.yMin - 20f * s;
-            band = right - left < 700f * s ? top + 76f * s : top + 4f * s;
+            narrow = right - left < 700f * s;
+            band = narrow ? top + 76f * s : top + 4f * s;
             readyVisible = false;
             callVisible = false;
             if (Race.Last == null)
@@ -500,7 +502,7 @@ namespace Dogpatch.Slipstream
                 float t = Time.time - calls.StateSince;
                 float inP = EaseOut(Mathf.Clamp01(t / 0.18f));
                 float outP = Mathf.Clamp01((t - 2.3f) / 0.25f);
-                float baseX = band > top + 4f * s ? left : Screen.width * 0.5f - 150f * s;
+                float baseX = narrow ? left : Screen.width * 0.5f - 150f * s;
                 float x = Mathf.Lerp(-360f * s, baseX, inP) - outP * outP * (baseX + 400f * s);
                 float lineY = band;
                 var size = Measure(calls.Line, 18f);
@@ -526,7 +528,7 @@ namespace Dogpatch.Slipstream
                 showing = null;
                 return;
             }
-            float baseLeft = band > top + 4f * s ? left : Mathf.Max(left + 150f * s, Screen.width * 0.5f - 270f * s);
+            float baseLeft = narrow ? left : Mathf.Max(left + 150f * s, Screen.width * 0.5f - 270f * s);
             float offset;
             float lean;
             if (since < 0.12f)
