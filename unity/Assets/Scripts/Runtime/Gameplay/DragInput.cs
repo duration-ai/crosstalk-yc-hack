@@ -4,21 +4,19 @@ using UnityEngine;
 
 namespace Dogpatch.Gameplay
 {
-    // Touch input. In the car the whole screen is one drag stick: the drag vector from the
-    // touch-down point gives direction (screen up = away from the camera) and strength (longer =
-    // faster). On foot (Split) the screen is split like most mobile third-person games: a drag
-    // that starts on the left half is the move stick, whose anchor trails the thumb once it passes
-    // full reach, and a drag that starts on the right half pans the camera, so both thumbs work at
-    // once. A short touch that barely moves is a tap anywhere. On foot a quick tap by any other
-    // finger (on the look side, or a second finger on the move side) is a tap too, so you can jump
-    // while running; the camera only turns once a look drag passes that tap's movement limit. The
-    // mouse stands in for touch in the editor.
+    // Touch input. One fixed stick sits in the bottom-right corner (HudLayout.StickScreen): a touch
+    // that starts on it moves you, its offset from the stick's centre giving direction (up = away
+    // from the camera on foot, the car's nose at the wheel) and strength (further = faster), and
+    // it never drifts, so you always know where it is. A drag that starts anywhere else pans the
+    // camera, on foot and in a car. A quick touch anywhere off the stick is a tap (jump, get in or
+    // out), with any finger, so you can jump while running; two fingers off the stick together are
+    // the pause gesture, never a tap. Touches on the minimap are left to it.
+    // The mouse stands in for touch.
     public sealed class DragInput : MonoBehaviour
     {
-        const float TapSeconds = 0.35f;
         const int MouseId = 1000;
-        const float QuickTapSeconds = 0.2f;
-        const float QuickTapPixels = 15f;
+        const int HeldId = -2;
+        const float TapSeconds = 0.3f;
 
         struct Finger
         {
@@ -29,7 +27,6 @@ namespace Dogpatch.Gameplay
             public float MaxTravel;
         }
 
-        public bool Split;
         public bool Dragging { get; private set; }
         public Vector2 Anchor { get; private set; }
         public Vector2 Current { get; private set; }
@@ -48,16 +45,18 @@ namespace Dogpatch.Gameplay
         Finger look = new Finger { Id = -1 };
         readonly List<Finger> extra = new List<Finger>();
         Vector2 lookDelta;
+        bool twoFinger;
 
-        public float TapSlop => Mathf.Min(Screen.width, Screen.height) * 0.035f;
-        public float Reach => Mathf.Min(Screen.width, Screen.height) * 0.25f;
+        public float Reach => HudLayout.StickRadius;
+        float DeadZone => Reach * 0.15f;
+        static float TapPixels => Mathf.Min(Screen.width, Screen.height) * 0.02f;
 
         public Vector2 Direction
         {
             get
             {
                 var d = Current - Anchor;
-                return Dragging && d.magnitude > TapSlop ? d.normalized : Vector2.zero;
+                return Dragging && d.magnitude > DeadZone ? d.normalized : Vector2.zero;
             }
         }
 
@@ -67,7 +66,7 @@ namespace Dogpatch.Gameplay
             {
                 if (!Dragging) return 0f;
                 float m = (Current - Anchor).magnitude;
-                return Mathf.Clamp01((m - TapSlop) / Mathf.Max(Reach - TapSlop, 1f));
+                return Mathf.Clamp01((m - DeadZone) / Mathf.Max(Reach - DeadZone, 1f));
             }
         }
 
@@ -79,6 +78,20 @@ namespace Dogpatch.Gameplay
             return d;
         }
 
+        // Scripted captures: hold the stick at an offset in stick radii, or let go.
+        public void Hold(Vector2 offset)
+        {
+            move.Id = HeldId;
+            Dragging = true;
+            Anchor = HudLayout.StickScreen;
+            Current = Anchor + Vector2.ClampMagnitude(offset, 1f) * Reach;
+        }
+
+        public void Release()
+        {
+            if (move.Id == HeldId) Cancel();
+        }
+
         // Drops the gestures in progress without a tap, so a finger already down when the game
         // pauses or the screen rotates neither keeps steering nor taps on release.
         public void Cancel()
@@ -87,6 +100,7 @@ namespace Dogpatch.Gameplay
             look.Id = -1;
             extra.Clear();
             Dragging = false;
+            twoFinger = false;
             lookDelta = Vector2.zero;
         }
 
@@ -96,6 +110,7 @@ namespace Dogpatch.Gameplay
 
         void Update()
         {
+            if (move.Id == HeldId) return;
             if (Input.touchCount > 0)
             {
                 for (int i = 0; i < Input.touchCount; i++)
@@ -121,68 +136,69 @@ namespace Dogpatch.Gameplay
 
         void Begin(int id, Vector2 position)
         {
-            if ((IgnoreAt != null && IgnoreAt(position)) || (IgnoreTouch != null && IgnoreTouch(position))) return;
+            if ((IgnoreAt != null && IgnoreAt(position)) || (IgnoreTouch != null && IgnoreTouch(position)) || (Map.Minimap.Shown && HudLayout.InMinimap(position))) return;
             var finger = new Finger { Id = id, Start = position, Last = position, DownTime = Time.unscaledTime };
-            bool lookSide = position.x > Screen.width * 0.5f;
-            if (Split && lookSide && look.Id < 0)
+            if (move.Id < 0 && HudLayout.InStick(position))
             {
-                look = finger;
+                move = finger;
+                Dragging = true;
+                Anchor = HudLayout.StickScreen;
+                Current = position;
                 return;
             }
-            if (Split && (lookSide || move.Id >= 0))
+            if (look.Id < 0) look = finger;
+            else
             {
                 extra.Add(finger);
-                return;
+                twoFinger = true;
             }
-            if (move.Id >= 0) return;
-            move = finger;
-            Dragging = true;
-            Anchor = Current = position;
         }
 
         void Move(int id, Vector2 position)
         {
+            if (id == move.Id)
+            {
+                Current = position;
+                return;
+            }
             if (id == look.Id)
             {
                 look.MaxTravel = Mathf.Max(look.MaxTravel, (position - look.Start).magnitude);
-                if (look.MaxTravel >= QuickTapPixels) lookDelta += position - look.Last;
+                if (look.MaxTravel >= TapPixels) lookDelta += position - look.Last;
                 look.Last = position;
                 return;
             }
             int e = ExtraIndex(id);
-            if (e >= 0)
-            {
-                var f = extra[e];
-                f.MaxTravel = Mathf.Max(f.MaxTravel, (position - f.Start).magnitude);
-                extra[e] = f;
-                return;
-            }
-            if (id != move.Id) return;
-            Current = position;
-            var offset = position - Anchor;
-            move.MaxTravel = Mathf.Max(move.MaxTravel, (position - move.Start).magnitude);
-            if (Split && offset.magnitude > Reach) Anchor = position - offset.normalized * Reach;
+            if (e < 0) return;
+            var f = extra[e];
+            f.MaxTravel = Mathf.Max(f.MaxTravel, (position - f.Start).magnitude);
+            extra[e] = f;
         }
 
         void End(int id, Vector2 position)
         {
+            if (id == move.Id)
+            {
+                move.Id = -1;
+                Dragging = false;
+                return;
+            }
+            Move(id, position);
+            Finger finger;
             int e = ExtraIndex(id);
             if (e >= 0)
             {
-                Move(id, position);
-                var f = extra[e];
+                finger = extra[e];
                 extra.RemoveAt(e);
-                if (QuickTap(f) && TapAllowed(position)) Tapped?.Invoke(position);
-                return;
             }
-            if (id != move.Id && id != look.Id) return;
-            Move(id, position);
-            ref var finger = ref id == move.Id ? ref move : ref look;
-            bool tap = id == move.Id
-                ? finger.MaxTravel < TapSlop && Time.unscaledTime - finger.DownTime < TapSeconds
-                : QuickTap(finger);
-            if (id == move.Id) Dragging = false;
-            finger.Id = -1;
+            else if (id == look.Id)
+            {
+                finger = look;
+                look.Id = -1;
+            }
+            else return;
+            bool tap = !twoFinger && finger.MaxTravel < TapPixels && Time.unscaledTime - finger.DownTime < TapSeconds;
+            if (look.Id < 0 && extra.Count == 0) twoFinger = false;
             if (tap && TapAllowed(position)) Tapped?.Invoke(position);
         }
 
@@ -194,7 +210,5 @@ namespace Dogpatch.Gameplay
                 if (extra[i].Id == id) return i;
             return -1;
         }
-
-        static bool QuickTap(Finger f) => f.MaxTravel < QuickTapPixels && Time.unscaledTime - f.DownTime < QuickTapSeconds;
     }
 }

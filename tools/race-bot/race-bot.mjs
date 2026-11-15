@@ -140,9 +140,18 @@ async function main() {
   const mission = opt("mission", false);
   let stopPresence = () => {};
   let joined;
+  const here = dirname(fileURLToPath(import.meta.url));
+  const missionRoute = JSON.parse(readFileSync(join(here, "route.json"), "utf8")).route;
+  const enterRing = async () => {
+    pose.position = { x: missionRoute[0].x, y: missionRoute[0].y + 0.3, z: missionRoute[0].z };
+    pose.mode = "onFoot";
+    pose.speed = 0;
+    const j = await call("POST", "/api/missions/enter", { playerId: player.id, mission: "yc", route: missionRoute, finishRadius: 15 });
+    log("entered the ring: room " + j.room.code + " (" + j.room.status + ", " + j.room.playerCount + " in the lobby) as " + j.you.color);
+    return j;
+  };
   if (mission) {
-    const here = dirname(fileURLToPath(import.meta.url));
-    const route = JSON.parse(readFileSync(join(here, "route.json"), "utf8")).route;
+    const route = missionRoute;
     pose.position = { x: route[0].x + 18, y: route[0].y + 0.3, z: route[0].z + 12 };
     stopPresence = presenceLoop(player.id);
     while (!world) await sleep(100);
@@ -151,9 +160,7 @@ async function main() {
     while (world.players.length < want) await sleep(250);
     log("sees " + world.players.map((p) => p.displayName + " (" + p.color + ", " + p.mode + ")").join(", "));
     await sleep(Number(opt("ring-after", 3)) * 1000);
-    pose.position = { x: route[0].x, y: route[0].y + 0.3, z: route[0].z };
-    joined = await call("POST", "/api/missions/enter", { playerId: player.id, mission: "yc", route, finishRadius: 15 });
-    log("entered the ring: room " + joined.room.code + " (" + joined.room.status + ", " + joined.room.playerCount + " in the lobby) as " + joined.you.color);
+    joined = await enterRing();
   } else if (opt("host", false)) {
     const here = dirname(fileURLToPath(import.meta.url));
     const route = JSON.parse(readFileSync(join(here, "route.json"), "utf8")).route;
@@ -168,16 +175,18 @@ async function main() {
     log("joined room " + joined.room.code + " as " + joined.you.color + " (slot " + joined.you.slot + "), route " + joined.room.routeLength.toFixed(0) + " m");
   }
 
-  const roomId = joined.room.id;
   const me = player.id;
+  let raced = 0;
+  for (;;) {
+  const roomId = joined.room.id;
   const path = makePath(joined.route);
   const slot = joined.you.slot;
   const lane = Number(opt("lane", slot % 2 === 0 ? -1.9 : 1.9));
   let cursor = null;
   let raceNumber = joined.room.raceNumber;
-  let raced = 0;
 
   let leaving = false;
+  process.removeAllListeners("SIGINT");
   process.on("SIGINT", async () => {
     if (leaving) process.exit(1);
     leaving = true;
@@ -256,29 +265,35 @@ async function main() {
         log("results:");
         for (const r of poll.results) log("  " + r.place + ". " + r.displayName.padEnd(12) + " " + (r.finished ? (r.finishMs / 1000).toFixed(1) + " s" : "DNF") + "  " + r.award + " (" + r.calls + " calls)");
         raced++;
-        if (raced >= races) break;
-        if (mission) continue;
+        if (raced >= races || mission) break;
         await sleep(3000);
         await call("POST", "/api/rooms/ready", { playerId: me, roomId, ready: true }).catch((e) => log("rematch: " + e.message));
         log("asked for a rematch");
       }
       await sleep(Math.max(0, 1000 / hz - (Date.now() - t0)));
     }
+    if (mission) break;
+  }
+  if (!mission) {
+    await call("POST", "/api/rooms/leave", { playerId: me, roomId }).catch(() => {});
+    log("done, left the room");
+    return;
+  }
+  await sleep(10000);
+  await call("POST", "/api/rooms/leave", { playerId: me, roomId }).catch(() => {});
+  pose.mode = "onFoot";
+  pose.speed = 0;
+  log("back in the world at (" + pose.position.x.toFixed(0) + "," + pose.position.z.toFixed(0) + "), " + (world.players.length + 1) + " online");
+  if (raced >= races) break;
+  await sleep(Number(opt("ring-after", 3)) * 1000);
+  joined = await enterRing();
   }
   if (mission) {
-    await sleep(10000);
-    await call("POST", "/api/rooms/leave", { playerId: me, roomId }).catch(() => {});
-    pose.mode = "onFoot";
-    pose.speed = 0;
-    log("back in the world at (" + pose.position.x.toFixed(0) + "," + pose.position.z.toFixed(0) + "), " + (world.players.length + 1) + " online");
     await sleep(Number(opt("linger", 20)) * 1000);
     stopPresence();
     await call("POST", "/api/world/leave", { playerId: me }).catch(() => {});
     log("done, left the world");
-    return;
   }
-  await call("POST", "/api/rooms/leave", { playerId: me, roomId }).catch(() => {});
-  log("done, left the room");
 }
 
 main().catch((e) => {

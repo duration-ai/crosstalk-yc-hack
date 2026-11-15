@@ -100,23 +100,19 @@ namespace Dogpatch.Operator
         {
             if (Calls == null) return;
             GUI.depth = -6;
-            s = Mathf.Min(Screen.height / 402f, Screen.width / 560f);
-            var safe = Screen.safeArea;
-            float left = safe.xMin + 22f * s;
-            float right = safe.xMax - 22f * s;
-            float top = Screen.height - safe.yMax + 14f * s;
-            float bottom = Screen.height - safe.yMin - 20f * s;
+            s = Gameplay.HudLayout.U;
             live.Clear();
             if (Dogpatch.Map.Minimap.FullOpen) return;
 
-            Hearing(right, bottom);
-            Chips(left, top + (right - left < 700f * s ? 124f : 92f) * s);
+            Hearing();
+            var chips = Gameplay.HudLayout.Chips;
+            Chips(chips.x, chips.y);
             Toasting();
             ConfirmSheet();
-            if (DebugInput) DebugField(left, bottom);
+            if (DebugInput) DebugField(Gameplay.HudLayout.Left, Gameplay.HudLayout.Call(72f * s, 72f * s).y - 2f * s);
         }
 
-        void Hearing(float right, float bottom)
+        void Hearing()
         {
             string words = Calls.State == CallState.Talking ? Calls.Partial
                 : Calls.State == CallState.Waiting || Calls.State == CallState.Answered ? (string.IsNullOrEmpty(Calls.Heard) ? Calls.Partial : Calls.Heard)
@@ -126,7 +122,7 @@ namespace Dogpatch.Operator
             else if (!string.IsNullOrEmpty(words)) words = "“" + words + "”";
             if (string.IsNullOrEmpty(words)) return;
             float w = Mathf.Min(Width(words, 15f) + 28f * s, Screen.width * 0.6f);
-            var r = new Rect(right - w, bottom - 150f * s, w, 30f * s);
+            var r = Gameplay.HudLayout.Hearing(w, 30f * s);
             Panel(r, new Color(Ink.r, Ink.g, Ink.b, 0.9f));
             Text(new Rect(r.x + 14f * s, r.y, r.width - 20f * s, r.height), words, 15f, Calls.State == CallState.Waiting ? Sun : Color.white);
         }
@@ -162,7 +158,7 @@ namespace Dogpatch.Operator
             if (t > 2.8f || string.IsNullOrEmpty(toast)) return;
             float a = Mathf.Clamp01(t / 0.12f) * Mathf.Clamp01((2.8f - t) / 0.3f);
             float w = Width(toast, 20f) + 44f * s;
-            var r = new Rect(Screen.width * 0.5f - w * 0.5f, Screen.height * 0.28f, w, 40f * s);
+            var r = new Rect(Screen.width * 0.5f - w * 0.5f, Gameplay.HudLayout.Band, w, 40f * s);
             Panel(r, new Color(Pink.r, Pink.g, Pink.b, a));
             Text(r, toast, 20f, new Color(1f, 1f, 1f, a), TextAnchor.MiddleCenter);
         }
