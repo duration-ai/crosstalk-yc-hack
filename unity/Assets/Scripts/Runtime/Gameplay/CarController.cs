@@ -137,6 +137,8 @@ namespace Dogpatch.Gameplay
 
         void Awake() => body = GetComponent<Rigidbody>();
 
+        void OnDisable() => body.useGravity = true;
+
         public void SetDriven(bool driven)
         {
             Driven = driven;

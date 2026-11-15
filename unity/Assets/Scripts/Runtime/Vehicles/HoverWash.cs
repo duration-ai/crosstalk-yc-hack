@@ -17,7 +17,7 @@ namespace Dogpatch.Vehicles
         {
             if (car == null || !car.Driven || car.HoverAltitude < 1f || Time.time < next) return;
             next = Time.time + Mathf.Lerp(0.25f, 0.6f, Mathf.Clamp01(Mathf.Abs(car.Speed) / 20f));
-            MotionFx.Land(car.HoverGround + Vector3.up * 0.05f, 0.12f);
+            MotionFx.Downwash(car.HoverGround + Vector3.up * 0.05f);
         }
     }
 }
