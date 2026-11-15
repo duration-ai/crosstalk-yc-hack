@@ -24,6 +24,8 @@ namespace Dogpatch.Race
         {
             var args = Environment.GetCommandLineArgs();
             if (Array.IndexOf(args, "-speeddial-demo") < 0) return;
+            Application.runInBackground = true;
+            QualitySettings.vSyncCount = 0;
             var demo = new GameObject("SpeedDialDemo").AddComponent<SpeedDialDemo>();
             int at = Array.IndexOf(args, "-speeddial-out");
             demo.output = at >= 0 && at + 1 < args.Length ? args[at + 1] : Path.Combine(Application.persistentDataPath, "speeddial-demo");
