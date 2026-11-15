@@ -1,4 +1,5 @@
 using Dogpatch.Look;
+using Dogpatch.Map;
 using UnityEngine;
 
 namespace Dogpatch.Gameplay
@@ -322,7 +323,8 @@ namespace Dogpatch.Gameplay
         GUIStyle chip;
 
         // Debug menu while paused, as flat chips under PAUSED: time of day, weather and fog presets,
-        // then the effects intensity (the current level in sunshine). They apply at once.
+        // then the effects intensity (the current level in sunshine) and the minimap toggle. They
+        // apply at once.
         void DrawEnvironmentMenu(float s)
         {
             if (chip == null) chip = new GUIStyle { font = font, alignment = TextAnchor.MiddleCenter };
@@ -343,6 +345,7 @@ namespace Dogpatch.Gameplay
                 bool selected = Mathf.Approximately(EffectsSettings.Intensity, intensity);
                 if (Chip(new Rect(left + i * (w + gap), effectsTop, w, h), label, selected, s)) EffectsSettings.Intensity = intensity;
             }
+            if (Chip(new Rect(left + EffectsRow.Length * (w + gap), effectsTop, w, h), "MAP", Minimap.Shown, s)) Minimap.Shown = !Minimap.Shown;
         }
 
         bool Chip(Rect r, string label, bool selected, float s)

@@ -31,6 +31,7 @@ namespace Dogpatch.Race
         const float ContactWatch = 10f;
         const float ClearRoadFor = 10f;
         const float ClearRoadMeters = 150f;
+        const float ClearRoadRadius = 14f;
 
         public static RaceDirector Instance { get; private set; }
 
@@ -87,6 +88,7 @@ namespace Dogpatch.Race
         bool lobbyCam;
         bool ghosted;
         bool roadCleared;
+        int clearZone;
         bool contactsReported;
         readonly Dictionary<string, int> launchContacts = new Dictionary<string, int>();
 
@@ -436,24 +438,33 @@ namespace Dogpatch.Race
                             if (a != null && b != null) Physics.IgnoreCollision(a, b, on);
         }
 
-        // Traffic stays off the start and the first stretch of the route from the countdown until a few
-        // seconds after GO.
+        // Traffic stays off the grid and the first stretch of the route from the countdown until a few
+        // seconds after GO; a countdown that is called off reopens it straight away.
         void ClearRoad(bool on)
         {
             roadCleared = on;
-            var traffic = Dogpatch.Traffic.TrafficSystem.Instance;
-            if (traffic == null) return;
             if (!on)
             {
-                traffic.KeepClear(null, 0f);
+                if (clearZone != 0) Dogpatch.Traffic.TrafficSystem.EndZone(clearZone);
+                clearZone = 0;
                 return;
             }
-            var points = new List<Vector2>();
-            for (float d = 0f; d <= Mathf.Min(ClearRoadMeters, Course.Route.Length); d += 8f) points.Add(Course.Route.PointAt(d));
-            traffic.KeepClear(points, 16f);
+            var path = new List<Vector3>();
+            float end = Mathf.Min(Course.Grid[0].Progress + ClearRoadMeters, Course.Route.Length);
+            for (float d = Mathf.Max(0f, Course.Grid[3].Progress - 6f); d <= end; d += 6f)
+            {
+                var p = Course.Route.PointAt(d);
+                path.Add(new Vector3(p.x, 0f, p.y));
+            }
+            float countdown = MsToStart == float.MaxValue ? 30f : Mathf.Max(0f, MsToStart / 1000f);
+            clearZone = Dogpatch.Traffic.TrafficSystem.ClearZone(path, ClearRoadRadius, countdown + ClearRoadFor + 5f);
         }
 
-        void OnDestroy() => Dogpatch.Smash.VehicleDamage.Wrecked -= OnWrecked;
+        void OnDestroy()
+        {
+            Dogpatch.Smash.VehicleDamage.Wrecked -= OnWrecked;
+            ClearRoad(false);
+        }
 
         // A wreck doesn't end anyone's race: a moment later the car is repaired and back on the route
         // where it was, and the player is back in it.

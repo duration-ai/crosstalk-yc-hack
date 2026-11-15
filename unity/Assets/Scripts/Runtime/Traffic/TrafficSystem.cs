@@ -20,6 +20,7 @@ namespace Dogpatch.Traffic
         const float NearRadius = 90f;
         const float SpawnMin = 80f;
         const float SpawnMax = 210f;
+        const float KeepRadius = 150f;
         const int RobotaxiQuota = 12;
         const int EverydayQuota = 12;
         const int RiderQuota = 6;
@@ -30,6 +31,70 @@ namespace Dogpatch.Traffic
 
         public static TrafficSystem Instance { get; private set; }
 
+        sealed class Zone
+        {
+            public int Id;
+            public Vector2[] Points;
+            public float Radius;
+            public float Until;
+        }
+
+        static readonly List<Zone> zones = new List<Zone>();
+        static int nextZoneId = 1;
+
+        // Closes part of the map to AI traffic for a while (a race start and its first stretch):
+        // nothing spawns inside, AI cars inside despawn, the bus and the trains hide until it
+        // reopens, and everything else turns away from it or holds at its edge. The zone is every
+        // point within radius of the path (one point for a circle). Returns an id for EndZone.
+        public static int ClearZone(Vector3 center, float radius, float seconds) => ClearZone(new[] { center }, radius, seconds);
+
+        public static int ClearZone(IReadOnlyList<Vector3> path, float radius, float seconds)
+        {
+            var points = new Vector2[path.Count];
+            for (int i = 0; i < path.Count; i++) points[i] = new Vector2(path[i].x, path[i].z);
+            var zone = new Zone { Id = nextZoneId++, Points = points, Radius = radius, Until = Time.time + seconds };
+            zones.Add(zone);
+            return zone.Id;
+        }
+
+        // Reopens a zone before its time is up (a countdown that was called off).
+        public static void EndZone(int id) => zones.RemoveAll(z => z.Id == id);
+
+        public static bool HasZones => zones.Count > 0;
+
+        public static bool InZone(Vector2 p, float pad = 0f)
+        {
+            for (int z = zones.Count - 1; z >= 0; z--)
+            {
+                var zone = zones[z];
+                if (Time.time >= zone.Until)
+                {
+                    zones.RemoveAt(z);
+                    continue;
+                }
+                float r = zone.Radius + pad;
+                var pts = zone.Points;
+                for (int i = 0; i < pts.Length; i++)
+                {
+                    var a = pts[i];
+                    var b = pts[Mathf.Min(i + 1, pts.Length - 1)];
+                    var ab = b - a;
+                    float t = ab.sqrMagnitude > 1e-4f ? Mathf.Clamp01(Vector2.Dot(p - a, ab) / ab.sqrMagnitude) : 0f;
+                    if ((a + ab * t - p).sqrMagnitude <= r * r) return true;
+                }
+            }
+            return false;
+        }
+
+        public static bool Crosses(StreetGraph.Lane lane, float pad)
+        {
+            if (zones.Count == 0) return false;
+            var path = lane.Path;
+            for (float s = 0f; s < path.Length + 4f; s += 4f)
+                if (InZone(path.Sample(Mathf.Min(s, path.Length), out _), pad)) return true;
+            return false;
+        }
+
         public StreetGraph Graph { get; private set; }
         public readonly List<TrafficAgent> Agents = new List<TrafficAgent>();
         public readonly List<Obstacle> Obstacles = new List<Obstacle>();
@@ -37,14 +102,16 @@ namespace Dogpatch.Traffic
         public float AverageMs { get; private set; }
         public float MaxMs { get; private set; }
 
+        // Parked or abandoned cars count as obstacles only when they sit within reach of a lane
+        // centreline; the thousands parked along the curbs never block a lane.
         GameController game;
         Transform root;
         TrafficWorld data;
         readonly Dictionary<string, Stack<CarController>> pool = new Dictionary<string, Stack<CarController>>();
         readonly List<CarController> parked = new List<CarController>();
+        CarController[] allCars = System.Array.Empty<CarController>();
+        float nextCarListing;
         readonly List<StreetGraph.Lane> candidates = new List<StreetGraph.Lane>();
-        readonly List<Vector2> keepClear = new List<Vector2>();
-        float keepClearRadius;
         readonly Stopwatch watch = new Stopwatch();
         readonly Dictionary<CarController, GameObject> playerRiders = new Dictionary<CarController, GameObject>();
         float frameAccumulator;
@@ -53,6 +120,7 @@ namespace Dogpatch.Traffic
         float nextParkedScan;
         float nextCandidates;
         float nextLog;
+        Vector3 lastFocus;
         int tick;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -93,6 +161,7 @@ namespace Dogpatch.Traffic
             SpawnDockBikes(fallback);
             SpawnShowroom();
             for (int i = 0; i < 600 && Deficit(out _) > 0; i++) TrySpawn(true);
+            lastFocus = Focus;
 
             GameController.VehicleEntered += OnEntered;
             GameController.VehicleExited += OnExited;
@@ -106,24 +175,6 @@ namespace Dogpatch.Traffic
             GameController.VehicleExited -= OnExited;
             VehicleRoster.Swapped -= OnSwapped;
             if (Instance == this) Instance = null;
-        }
-
-        // Streets the AI keeps empty for a while, like the race start: discs of `radius` around `points`.
-        // Nothing spawns there and cars that are or drive in there go back to the pool; buses and trains
-        // keep their routes. KeepClear with no points lifts it.
-        public void KeepClear(IReadOnlyList<Vector2> points, float radius)
-        {
-            keepClear.Clear();
-            if (points != null) keepClear.AddRange(points);
-            keepClearRadius = radius;
-        }
-
-        bool InKeepClear(Vector3 p)
-        {
-            var q = new Vector2(p.x, p.z);
-            foreach (var c in keepClear)
-                if ((c - q).sqrMagnitude < keepClearRadius * keepClearRadius) return true;
-            return false;
         }
 
         Vector3 Focus => game.Focus != null ? game.Focus.position : Vector3.zero;
@@ -149,7 +200,20 @@ namespace Dogpatch.Traffic
                 var agent = Agents[i];
                 float d = Vector3.Distance(agent.transform.position, focus);
                 bool fixedRoute = agent.OnRail || agent.Route != null || agent.Car == game.Current;
-                if (!fixedRoute && (d > 240f || InKeepClear(agent.transform.position) || (d > 150f && !Visible(agent.transform.position)) || (agent.Idle > 40f && !Visible(agent.transform.position))))
+                if (zones.Count > 0 && agent.Car != game.Current)
+                {
+                    var p = agent.transform.position;
+                    bool closed = InZone(new Vector2(p.x, p.z), agent.Car.HalfExtents.z);
+                    if (closed && !fixedRoute)
+                    {
+                        Despawn(agent);
+                        continue;
+                    }
+                    if (agent.gameObject.activeSelf == closed) agent.gameObject.SetActive(!closed);
+                    if (closed) continue;
+                }
+                else if (!agent.gameObject.activeSelf) agent.gameObject.SetActive(true);
+                if (!fixedRoute && (d > 240f || (d > KeepRadius && !Visible(agent.transform.position)) || (agent.Idle > 40f && !Visible(agent.transform.position))))
                 {
                     Despawn(agent);
                     continue;
@@ -159,7 +223,13 @@ namespace Dogpatch.Traffic
                 if (far && (tick + i) % 3 != 0) continue;
                 agent.Step(far ? dt * 3f : dt, this);
             }
-            if (tick % 2 == 0) TrySpawn(false);
+            if ((focus - lastFocus).sqrMagnitude > SpawnMin * SpawnMin)
+            {
+                nextCandidates = 0f;
+                for (int i = 0; i < 600 && Deficit(out _) > 0; i++) TrySpawn(true);
+            }
+            else if (tick % 2 == 0) TrySpawn(false);
+            lastFocus = focus;
             watch.Stop();
             frameAccumulator += (float)watch.Elapsed.TotalMilliseconds;
         }
@@ -213,12 +283,18 @@ namespace Dogpatch.Traffic
                 nextParkedScan = Time.time + 1f;
                 parked.Clear();
                 var focus = Focus;
-                foreach (var car in FindObjectsByType<CarController>(FindObjectsSortMode.None))
+                if (Time.time >= nextCarListing)
                 {
-                    if (car == current || !car.enabled) continue;
+                    nextCarListing = Time.time + 10f;
+                    allCars = FindObjectsByType<CarController>(FindObjectsSortMode.None);
+                }
+                foreach (var car in allCars)
+                {
+                    if (car == null || car == current || !car.enabled) continue;
                     var agent = car.GetComponent<TrafficAgent>();
                     if (agent != null && agent.enabled) continue;
-                    if ((car.transform.position - focus).sqrMagnitude < 260f * 260f) parked.Add(car);
+                    var p = car.transform.position;
+                    if ((p - focus).sqrMagnitude < 260f * 260f && Graph.Nearest(new Vector2(p.x, p.z), Vector2.zero, 2.6f, out _, out _) != null) parked.Add(car);
                 }
             }
             foreach (var car in parked)
@@ -282,10 +358,10 @@ namespace Dogpatch.Traffic
             float s = Random.Range(4f, lane.Path.Length - 6f);
             var p = lane.Path.Sample(s, out _);
             var world = new Vector3(p.x, RoadSurface.GroundY(p) + 0.05f, p.y);
+            if (InZone(p, 8f)) return;
             float d = Vector2.Distance(p, f2);
-            if (d > SpawnMax || d < (initial ? 25f : SpawnMin)) return;
+            if (d > (initial ? KeepRadius : SpawnMax) || d < (initial ? 25f : SpawnMin)) return;
             if (!initial && d < 170f && Visible(world)) return;
-            if (InKeepClear(world)) return;
             foreach (var a in Agents)
                 if ((a.transform.position - world).sqrMagnitude < 14f * 14f) return;
             foreach (var car in parked)
