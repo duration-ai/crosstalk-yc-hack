@@ -33,8 +33,6 @@ namespace Dogpatch.Audio
         public static event Action<ImpactInfo> Impact;
         public static event Action<SmashInfo> Smash;
         public static event Action<Vector3, bool> Wreck;
-        public static event Action<int> Points;
-        public static event Action<int> Combo;
         public static event Action<Vector3, int> PedestrianDive;
         public static event Action<Vector3> Shove;
         public static event Action<int> Countdown;
@@ -62,8 +60,6 @@ namespace Dogpatch.Audio
         public static void RaiseImpact(ImpactInfo info) { Log($"Impact {info.Surface} force={info.Force:F1} player={info.InvolvesPlayer}"); Impact?.Invoke(info); }
         public static void RaiseSmash(Vector3 position, string kind, float force, bool byPlayer = true) { Log($"Smash {kind} force={force:F1}"); Smash?.Invoke(new SmashInfo { Position = position, Kind = kind ?? "", Force = force, ByPlayer = byPlayer }); }
         public static void RaiseWreck(Vector3 position, bool isPlayer) { Log($"Wreck player={isPlayer}"); Wreck?.Invoke(position, isPlayer); }
-        public static void RaisePoints(int amount) { Log($"Points {amount}"); Points?.Invoke(amount); }
-        public static void RaiseCombo(int level) { Log($"Combo {level}"); Combo?.Invoke(level); }
         public static void RaisePedestrianDive(Vector3 position, int voiceSeed) { Log("PedestrianDive"); PedestrianDive?.Invoke(position, voiceSeed); }
         public static void RaiseShove(Vector3 position) { Log("Shove"); Shove?.Invoke(position); }
         public static void RaiseCountdown(int secondsLeft) { Log($"Countdown {secondsLeft}"); Countdown?.Invoke(secondsLeft); }
