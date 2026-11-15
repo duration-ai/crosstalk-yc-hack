@@ -14,6 +14,10 @@ namespace Dogpatch.Gameplay
         const float Gravity = -20f;
         const float JumpVelocity = 6.5f;
 
+        public static float RunScale = 1f;
+        public static float JumpScale = 1f;
+        public static float GravityScale = 1f;
+
         CharacterController body;
         GlbAnimator animator;
         Vector3 desired;
@@ -65,7 +69,7 @@ namespace Dogpatch.Gameplay
         public void Jump()
         {
             if (!body.isGrounded) return;
-            verticalVelocity = JumpVelocity;
+            verticalVelocity = JumpVelocity * JumpScale;
             Jumped?.Invoke();
         }
 
@@ -95,8 +99,8 @@ namespace Dogpatch.Gameplay
         void Update()
         {
             float dt = Time.deltaTime;
-            float target = desired.sqrMagnitude > 0.01f ? strength * RunSpeed : 0f;
-            speed = Mathf.MoveTowards(speed, target, Acceleration * dt);
+            float target = desired.sqrMagnitude > 0.01f ? strength * RunSpeed * RunScale : 0f;
+            speed = Mathf.MoveTowards(speed, target, Acceleration * RunScale * dt);
             if (target > 0f)
             {
                 var look = Quaternion.LookRotation(desired, Vector3.up);
@@ -104,7 +108,7 @@ namespace Dogpatch.Gameplay
             }
 
             if (body.isGrounded && verticalVelocity < 0f) verticalVelocity = -2f;
-            verticalVelocity += Gravity * dt;
+            verticalVelocity += Gravity * GravityScale * dt;
             float falling = verticalVelocity;
             var motion = transform.forward * speed + Vector3.up * verticalVelocity;
             body.Move(motion * dt);

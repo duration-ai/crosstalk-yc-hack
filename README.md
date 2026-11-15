@@ -30,6 +30,18 @@ Everything a server would own sits behind `Dogpatch.Backend.IGameBackend` (`unit
 
 The app ships with `InMemoryGameBackend`, which enforces the same rules and error codes and makes no network calls. `GameController` is the only code that touches the backend: it creates and stores the player id, seeds the parked cars, enters and exits vehicles through the interface, and checkpoints position every 2 s. Switching to Convex means writing an HTTP implementation of `IGameBackend` and constructing it in `GameController.Start`.
 
+## Voice Operator
+
+Holding the pink Call plate talks to the Operator on the Convex backend (`backend/convex/operator.ts`). `Runtime/Operator/OperatorRig` wires it in once the race is set up, with no scene changes:
+
+- **Speech** (`Operator/Voice`): when the Call plate slides in, `ScribeVoice` gets a single-use token from `operator:mintScribeToken` (the ElevenLabs key stays on the server), opens ElevenLabs Scribe realtime and starts the microphone, keeping 0.5 s of pre-roll. Pressing the plate streams 16 kHz mono int16 chunks every 150 ms. Releasing commits, and the app uses `committed_transcript`, or the last partial after 1.5 s. Partials show above the plate while you talk.
+- **View** (`Operator/View`): `EntityTagger` tags buildings (`bld_<index>`, with the YC building protected), trees, lights, billboards, parked and traffic cars, locals and racers' cars (`car:<playerId>`). On press, `ViewSnapshot` keeps tagged things within 120 m that are in the frustum and not occluded, and `ViewRanker` picks the top 8. When you're driving, your car is always in as `veh_me`.
+- **Convex** (`Operator/Convex`): one `IConvexClient` with two transports. `ConvexDotnetClient` uses the unofficial Convex.Client package from `Assets/Plugins/ConvexClient` (websocket and live subscriptions), compiled in because `Assets/csc.rsp` defines `CONVEX_DOTNET`. `ConvexHttpClient` uses `/api/action|mutation|query` and polls subscriptions every 250 ms. `transport: auto` tries Convex.Client first. To drop the package, delete `Assets/Plugins/ConvexClient` and `Assets/csc.rsp`.
+- **Effects** (`Operator/Effects`): `OperatorEffects` applies the effect from the `operator:call` answer right away, then follows `operator:activeEffects`. Rows are keyed by id, a row is reverted when it leaves the list, and instant rows are applied once. `EffectRegistry` maps every catalogue id to an implementation. rain, night, gravity_lower, run_faster, vehicle_hop, recolor, set_fire, launch, stop and big_heads are real, the counters happen on the server, and everything else is a logged no-op.
+- **HUD** (`OperatorHud`): countdown chips, refusal toasts, and the confirm sheet ("This will affect everyone, including you." calls `operator:confirm` within 10 s). There's also a debug text field.
+
+Settings live in `Resources/Operator/operator.json`: Convex URL, transport, room code, Scribe model, `commitStrategy` (`manual` or `vad`), `silencePadMs`, keyterms, chunk and pre-roll sizes. You can override them with `-operator-convex <url>`, `-operator-local`, `-operator-transport`, `-operator-room <code>`, `-operator-commit`, `-operator-pad-ms`, `-operator-say "<words>"` or `CONVEX_URL`. The app makes its own Convex player (kept in PlayerPrefs) and room. If Convex is unreachable, if you pass `-operator-local`, or in the scripted demo, the on-device `LocalOperator` answers instead. Deep links skip the microphone: `speeddial://operator?say=make%20it%20rain` and `speeddial://operator?room=ABCD`. Run `./scripts/operator-selftest.sh` for headless checks of the resampler, ranking, wire JSON and registry.
+
 ## Rebuild the data
 
 ```
