@@ -63,13 +63,13 @@ namespace Dogpatch.Race
         public static GameObject AskToken(Transform parent, Vector3 position, Material material)
         {
             var ground = new MeshBuilder();
-            Annulus(ground, 1.55f, 1.95f, 0.05f, Pink, 24);
+            Annulus(ground, 1.9f, 2.4f, 0.05f, Pink, 24);
             var token = Emit(parent, "AskToken", ground, position, 0f, material);
 
             var coin = new MeshBuilder();
             const int sides = 8;
-            const float r = 0.85f;
-            const float half = 0.13f;
+            const float r = 1.1f;
+            const float half = 0.16f;
             Vector3 Rim(int i, float z) => new Vector3(Mathf.Cos(i * Mathf.PI * 2f / sides + Mathf.PI / sides) * r, Mathf.Sin(i * Mathf.PI * 2f / sides + Mathf.PI / sides) * r, z);
             for (int i = 0; i < sides; i++)
             {
@@ -80,10 +80,10 @@ namespace Dogpatch.Race
             }
             foreach (float z in new[] { -half - 0.01f, half + 0.01f })
             {
-                coin.Box(new Vector3(0f, 0f, z), new Vector3(0.9f, 0.24f, 0.02f), Quaternion.identity, White);
-                coin.Box(new Vector3(0f, 0f, z), new Vector3(0.24f, 0.9f, 0.02f), Quaternion.identity, White);
+                coin.Box(new Vector3(0f, 0f, z), new Vector3(1.15f, 0.3f, 0.02f), Quaternion.identity, White);
+                coin.Box(new Vector3(0f, 0f, z), new Vector3(0.3f, 1.15f, 0.02f), Quaternion.identity, White);
             }
-            var c = Emit(token.transform, "Coin", coin, position + Vector3.up * 1.3f, 0f, material);
+            var c = Emit(token.transform, "Coin", coin, position + Vector3.up * 1.6f, 0f, material);
             c.transform.SetAsFirstSibling();
             return token;
         }

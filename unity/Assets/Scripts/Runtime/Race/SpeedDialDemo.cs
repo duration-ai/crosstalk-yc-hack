@@ -180,8 +180,11 @@ namespace Dogpatch.Race
             }
             int before = race.Me.asks;
             var token = race.Course.AskPickups[pick];
-            var back = RoutePath.Flat(me.position) - RoutePath.Flat(token);
-            var from = token + new Vector3(back.x, 0f, back.y).normalized * 14f;
+            var street = race.Course.Graph.Route(RoutePath.Flat(token), race.Course.Route.PointAt(race.Course.Route.Project(RoutePath.Flat(token))));
+            var approach = street != null && street.Count >= 2 ? new RoutePath(street) : null;
+            var at = approach != null ? approach.PointAt(Mathf.Min(11f, approach.Length)) : RoutePath.Flat(me.position);
+            var back = at - RoutePath.Flat(token);
+            var from = new Vector3(at.x, token.y, at.y);
             race.HoldAutopilot(true);
             race.MoveBody(race.MyId, from + Vector3.up * 0.3f, RoutePath.Heading(-back));
             race.Game.Follow.Snap(me, true);

@@ -10,7 +10,7 @@ namespace Dogpatch.Slipstream
     // the four corners, Exo 2 Black Italic numbers with a thin ink outline, and the guide's motion
     // (news shooting in from the right, the Call plate sliding in under the right thumb, countdown
     // segments dropping, numbers slamming in). Drawn with IMGUI under a shear matrix.
-    public sealed class SlipstreamHud : MonoBehaviour
+    public sealed partial class SlipstreamHud : MonoBehaviour
     {
         public RaceDirector Race;
 
@@ -93,12 +93,14 @@ namespace Dogpatch.Slipstream
             queue.Enqueue(new News { Text = text, Picto = def?.pictogram ?? e.type, Color = SlotColor(e.color) });
         }
 
+        public void PushNews(string text, string picto, string color) => queue.Enqueue(new News { Text = text, Picto = picto, Color = SlotColor(color) });
+
         // True when a screen point (pixels, origin bottom left) lands on a live button.
         public bool HitTest(Vector2 screen)
         {
             var p = new Vector2(screen.x, Screen.height - screen.y);
             float pad = 12f * s;
-            return (readyVisible && Inflate(readyRect, pad).Contains(p)) || (callVisible && Inflate(callRect, pad).Contains(p));
+            return (readyVisible && Inflate(readyRect, pad).Contains(p)) || (callVisible && Inflate(callRect, pad).Contains(p)) || OnlineHit(p);
         }
 
         static Rect Inflate(Rect r, float by) => new Rect(r.x - by, r.y - by, r.width + by * 2f, r.height + by * 2f);
@@ -106,6 +108,7 @@ namespace Dogpatch.Slipstream
         void Update()
         {
             if (Race == null || !Race.Setup) return;
+            OnlineUpdate();
             for (int i = 0; i < Input.touchCount; i++)
             {
                 var t = Input.GetTouch(i);
@@ -122,6 +125,7 @@ namespace Dogpatch.Slipstream
         void Press(int finger, Vector2 p)
         {
             float pad = 12f * s;
+            if (OnlinePress(finger, p)) return;
             if (callVisible && Inflate(callRect, pad).Contains(p))
             {
                 callFinger = finger;
@@ -132,6 +136,7 @@ namespace Dogpatch.Slipstream
 
         void Release(int finger, Vector2 p)
         {
+            if (OnlineRelease(finger, p)) return;
             if (finger == callFinger)
             {
                 callFinger = int.MinValue;
@@ -229,7 +234,9 @@ namespace Dogpatch.Slipstream
 
         void OnGUI()
         {
-            if (Race == null || !Race.Setup || Race.Last == null) return;
+            if (Race == null || !Race.Setup) return;
+            buttons.Clear();
+            if (Race.Last == null && !(Race.Online && Race.RoomId == null)) return;
             GUI.depth = -5;
             s = Mathf.Min(Screen.height / 402f, Screen.width / 560f);
             var safe = Screen.safeArea;
@@ -239,13 +246,20 @@ namespace Dogpatch.Slipstream
             bottom = Screen.height - safe.yMin - 20f * s;
             readyVisible = false;
             callVisible = false;
+            if (Race.Last == null)
+            {
+                Menu();
+                return;
+            }
 
             var room = Race.Room;
             bool lobby = !Race.Gridded && (room.status == RoomStatus.Lobby || room.status == RoomStatus.Countdown);
             bool racing = Race.Started && !Race.ResultsIn;
 
             Markers();
+            if (!Race.ResultsIn) NameTags();
             if (lobby && !paused) Lobby(room);
+            if (Race.Online && (lobby || Race.ResultsIn)) RoomCorner(room, lobby);
             if (!Race.ResultsIn && !paused) AskCounter();
             if (Race.Gridded && !Race.ResultsIn) Countdown();
             if (racing) RaceCorners();

@@ -9,7 +9,7 @@ import { ConvexClient } from "convex/browser";
 import { api } from "../convex/_generated/api.js";
 
 type Expect = { effect?: string; refuse?: string | string[]; target?: string; targetClass?: string; color?: string; theme?: string; outcome?: string };
-type Case = [string, Expect, string];
+type Case = [string, Expect, string, typeof view?];
 
 const url = process.env.CONVEX_URL;
 if (!url) throw new Error("Set CONVEX_URL");
@@ -76,6 +76,7 @@ const CASES: Case[] = [
   ["slow him down", { effect: "vehicle_slower", outcome: "pending" }, "other player"],
   ["set her car on fire", { refuse: "player_target" }, "other player"],
   ["demolish the YC building", { refuse: "protected" }, "refusal"],
+  ["demolish the YC building", { refuse: "not_visible" }, "refusal", { ...view, entities: view.entities.filter((x) => x.id !== "bld_yc") }],
   ["make gravity go sideways", { refuse: "unsupported" }, "refusal"],
   ["teleport me to the finish line", { refuse: ["teleport", "cheat"] }, "refusal"],
   ["spawn a dragon", { refuse: "spawning" }, "refusal"],
@@ -128,9 +129,9 @@ function check(expect: Expect, result: any, timId: string) {
 }
 
 const rows = [];
-for (const [phrase, expect, group] of CASES) {
+for (const [phrase, expect, group, caseView] of CASES) {
   const t0 = performance.now();
-  const result: any = await client.action(api.operator.call, { roomId: room.id, playerId: tim.id, transcript: phrase, view });
+  const result: any = await client.action(api.operator.call, { roomId: room.id, playerId: tim.id, transcript: phrase, view: caseView ?? view });
   const t1 = performance.now();
   const shown = result.outcome === "applied" ? await seen(result.effect.id, result.effect.endsAt) : t1;
   const got = result.outcome === "refused" ? `refused:${result.refusal.reason}` : `${result.outcome}:${result.effect.effect}${result.effect.target ? "@" + result.effect.target : ""}${result.effect.targetClass && !result.effect.target ? "@every " + result.effect.targetClass : ""}${result.effect.color ? " " + result.effect.color : ""}${result.effect.theme ? " " + result.effect.theme : ""}`;

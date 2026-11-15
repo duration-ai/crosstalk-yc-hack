@@ -82,7 +82,7 @@ namespace Dogpatch.Race
             {
                 if (!tokens[i].activeSelf) continue;
                 var coin = tokens[i].transform.GetChild(0);
-                coin.SetPositionAndRotation(positions[i] + Vector3.up * (1.3f + Mathf.Sin(Time.time * 2.4f + i) * 0.15f), Quaternion.Euler(0f, spin + i * 40f, 0f));
+                coin.SetPositionAndRotation(positions[i] + Vector3.up * (1.6f + Mathf.Sin(Time.time * 2.4f + i) * 0.15f), Quaternion.Euler(0f, spin + i * 40f, 0f));
             }
 
             if (room.status != RoomStatus.Racing) return;

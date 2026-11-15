@@ -133,7 +133,7 @@ namespace Dogpatch.World
                 switch (prop.kind)
                 {
                     case "traffic_signal": PlaceSignal(prop, p, tally); continue;
-                    case "crossing": PlaceCrossing(prop, p, tally); continue;
+                    case "crossing": PlaceCrossing(prop, tally); continue;
                     case "bus_stop":
                         bool shelter = Has(prop, "shelter=yes") || Has(prop, "shelter=1");
                         PlaceSingle(shelter ? "p-shelter" : "p-busstop", shelter ? 0f : 0.15f, prop, p, tally);
@@ -214,27 +214,12 @@ namespace Dogpatch.World
             }
         }
 
-        // Zebra crossing painted across the road at the crossing node (no crosswalk model in the catalogue).
-        void PlaceCrossing(Prop prop, Vector2 p, Tally tally)
+        // Crosswalks are painted by RoadSurface (curb to curb, with curb ramps), so a crossing node is
+        // only tallied here.
+        void PlaceCrossing(Prop prop, Tally tally)
         {
-            if (!ctx.Roads.Nearest(p, 2f, out var hit)) { tally.Except("not on a road"); return; }
-            var road = ctx.Roads.Roads[hit.Road];
-            if (road.kind == "path") { tally.Except("not on a road"); return; }
-            if (Has(prop, "crossing=unmarked") || Has(prop, "crossing:markings=no")) { tally.Except("unmarked (nothing to draw)"); return; }
-            float hw = RoadNetwork.HalfWidth(road);
-            var d = hit.Direction;
-            var n = new Vector2(-d.y, d.x);
-            var mb = statics.Generated(StaticModels.Layer.Props, hit.Point);
-            var white = WorldBuilder.Palette("cloud");
-            for (float s = -hw + 0.3f; s < hw - 0.3f; s += 1.2f)
-            {
-                var c = hit.Point + n * (s + 0.3f);
-                var a = d * 1.6f;
-                var b = n * 0.3f;
-                mb.Quad(MeshBuilder.At(c - a - b, 0.06f), MeshBuilder.At(c + a - b, 0.06f), MeshBuilder.At(c + a + b, 0.06f), MeshBuilder.At(c - a + b, 0.06f), white, Vector3.up);
-            }
-            tally.Placed++;
-            tally.Except("represented by painted stripes, not a Polyfork model");
+            bool unmarked = Has(prop, "crossing=unmarked") || Has(prop, "crossing:markings=no");
+            tally.Except(unmarked ? "unmarked (nothing to draw)" : "painted by the road surface's crosswalks");
         }
 
         // A Bay Wheels dock: a row of hoop racks along the dock, one per six docking points.

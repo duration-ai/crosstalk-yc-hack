@@ -14,7 +14,7 @@ namespace Dogpatch.Smash.Demo
 {
     // Scripted smash sequences on a small street set, for recordings, perf numbers and the iOS
     // showcase build. Not part of the game: it only runs when asked for.
-    //   Dogpatch.x86_64 -smashDemo lamps|parked|barge|wreck|dive|crash20|all [-capture <dir>] [-perf <file>]
+    //   Dogpatch.x86_64 -smashDemo lamps|parked|barge|wreck|dive|crash20|durability|all [-capture <dir>] [-perf <file>]
     // Several scenes run in order when comma separated (crash20,crash20 measures a warm second run).
     // Built with the SMASH_DEMO define (BUILD_DEFINES=SMASH_DEMO), the player loops all of them.
     public sealed class SmashDemo : MonoBehaviour
@@ -119,6 +119,7 @@ namespace Dogpatch.Smash.Demo
                 case "dive": return Dive();
                 case "crash20": return Crash20();
                 case "parked": return Parked();
+                case "durability": return Durability();
                 default: throw new ArgumentException("unknown smash demo " + name);
             }
         }
@@ -403,6 +404,63 @@ namespace Dogpatch.Smash.Demo
             hop.HopOut(-mine.transform.right);
             Watch(mine.transform, mine.transform.position + new Vector3(-9f, 4f, -7f));
             yield return Capture(3.5f);
+        }
+
+        // The durability check: the roster hatchback, driven as the player's car, runs through ten lamps
+        // and a tree on the curb, then rams a concrete wall five times. Health is logged after every hit.
+        IEnumerator Durability()
+        {
+            BuildStreet();
+            for (int i = 0; i < 10; i++) Prop("p-lamp", 5.6f, i * 8f, -90f, 0.2f, 3f);
+            Prop("t-street-round-tree", 5.6f, 88f, 30f, 0.3f, 3f);
+            var wall = new GameObject("Wall").AddComponent<BoxCollider>();
+            wall.transform.SetParent(root, false);
+            wall.center = new Vector3(0f, 2f, 170f);
+            wall.size = new Vector3(25f, 4f, 2f);
+            var mb = new MeshBuilder();
+            mb.Box(wall.center, wall.size, Quaternion.identity, Concrete);
+            WorldBuilder.Emit(root, "Wall", mb.ToMesh("wall"), material, true);
+            var car = Vehicles.VehicleRoster.Spawn(Vehicles.VehicleTypes.Hatchback, new Vector3(5.6f, 0.05f, -40f), 0f, root);
+            Finish(car);
+            car.SetDriven(true);
+            var damage = car.GetComponent<VehicleDamage>();
+            int hits = 0;
+            void OnHit(VehicleHit hit)
+            {
+                if (hit.Car != car) return;
+                hits++;
+                string what = hit.Other == wall ? "wall" : hit.Other != null ? hit.Other.name : "?";
+                float left = Mathf.Max(damage.Durability - damage.Damage - hit.Damage, 0f);
+                Debug.Log($"[Durability] hit {hits}: {what} at {hit.ImpactSpeed:F1} m/s, damage {hit.Damage:F1}, health {left / damage.Durability * 100f:F0}% ({left:F0}/{damage.Durability:F0})");
+            }
+            VehicleImpacts.Hit += OnHit;
+            yield return null;
+            Debug.Log($"[Durability] hatchback durability {damage.Durability:F0} (base {damage.Spec.Durability:F0})");
+            Chase(car.transform, 11f, 4.6f, -2.5f);
+            Drive(car, Vector3.forward, 1f);
+            while (car.transform.position.z < 100f) yield return Capture(0.1f);
+            Debug.Log($"[Durability] after 10 lamps and the tree: smashed {SmashWorld.Instance.BrokenCount}, health {damage.Health01 * 100f:F0}%");
+            for (int ram = 1; ram <= 5 && !damage.IsWrecked; ram++)
+            {
+                Drive(car, new Vector3(-car.transform.position.x * 0.02f, 0f, 1f), 1f);
+                float speed = 0f;
+                for (float t = 0f; t < 8f && car.transform.position.z < wall.center.z - 3.2f; t += 0.1f)
+                {
+                    speed = Mathf.Max(speed, car.GetComponent<Rigidbody>().linearVelocity.magnitude);
+                    yield return Capture(0.1f);
+                }
+                yield return Capture(0.6f);
+                Debug.Log($"[Durability] wall ram {ram} at up to {speed:F1} m/s: health {damage.Health01 * 100f:F0}%{(damage.IsWrecked ? " WRECKED" : "")}");
+                if (damage.IsWrecked) break;
+                Drive(car, Vector3.back, 1f);
+                while (car.transform.position.z > wall.center.z - 60f) yield return Capture(0.1f);
+                Drive(car, Vector3.forward, 0f);
+                yield return Capture(0.5f);
+            }
+            VehicleImpacts.Hit -= OnHit;
+            Debug.Log($"[Durability] done: health {damage.Health01 * 100f:F0}%, wrecked={damage.IsWrecked}");
+            drivers.Remove(car);
+            yield return Capture(1.5f);
         }
 
         // A car drives at two people standing in the road; they dive out of the way.
