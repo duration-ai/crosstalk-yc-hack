@@ -9,7 +9,7 @@ namespace Dogpatch.Race
 {
     // Scripted play-through for headless checks: run the player build with
     //   -speeddial-demo -speeddial-out <folder>
-    // and it walks to a payphone, takes a call, steps onto the start ring, readies up, races to YC
+    // and it stands on foot with the phone button buzzing, steps onto the start ring, readies up, races to YC
     // on autopilot while calling the Operator and letting the bots fire every world change, then
     // takes the results and a rematch, saving a screenshot of each UI state. Game time runs at a
     // fixed 30 fps so animations land on the same frames however slow the renderer is.
@@ -47,18 +47,15 @@ namespace Dogpatch.Race
             Log($"room ready, output {output}");
             yield return Seconds(1f);
 
-            var phone = race.Calls.Phones[0];
-            var facing = -phone.transform.forward;
-            var stand = phone.HandsetPoint + phone.transform.forward * 3.6f + phone.transform.right * 1.2f;
-            game.Player.Teleport(stand, RoutePath.Heading(new Vector2(facing.x, facing.z)));
+            var toRing = race.Course.RingCenter - race.Course.RingFacing * 14f;
+            game.Player.Teleport(toRing, RoutePath.Heading(new Vector2(race.Course.RingFacing.x, race.Course.RingFacing.z)));
             game.Follow.Snap(game.Player.transform, false);
             yield return Seconds(1.5f);
             yield return Shot("07-on-foot");
 
-            game.Player.Teleport(phone.HandsetPoint + phone.transform.forward * 0.5f, RoutePath.Heading(new Vector2(facing.x, facing.z)));
-            yield return Until(() => race.Calls.State == CallState.Holding, 5f, "handset grabbed");
-            yield return Seconds(0.6f);
-            yield return Shot("08-holding-a-call");
+            race.Calls.Buzz();
+            yield return Seconds(0.25f);
+            yield return Shot("08-phone-buzz");
 
             game.Player.Teleport(race.RingSpot(race.MySlot), 0f);
             yield return Until(() => race.Room.status == RoomStatus.Countdown, 15f, "auto-start countdown running");
@@ -95,7 +92,7 @@ namespace Dogpatch.Race
             yield return Seconds(4.4f);
             yield return Shot("11a-racing");
 
-            if (race.Calls.State == CallState.Holding)
+            if (race.Calls.HasAsks)
             {
                 race.Calls.BeginTalk();
                 yield return Seconds(0.9f);
@@ -110,7 +107,7 @@ namespace Dogpatch.Race
                 yield return Shot("09b-news-my-call");
                 yield return Until(() => race.Hud.NewsSince < 0f, 4f, "news cleared");
             }
-            else Log("no call in hand for the mid-race call (state " + race.Calls.State + ")");
+            else Log("no asks left for the mid-race call");
 
             race.BotCall("Maya", WorldChangeCatalog.Command("gravity", new WorldChangeParams { level = "low" }));
             yield return Until(() => race.Hud.NewsSince >= 0.06f, 3f, "news shooting in");
