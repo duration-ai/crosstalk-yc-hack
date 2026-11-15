@@ -148,6 +148,7 @@ namespace Dogpatch.Operator
     }
 
     // Flames on each target, nearest first; lights only on the closest few to keep iPhone happy.
+    // These flames burn: a car on fire loses health over time and racers driving through get hurt.
     public sealed class SetFireEffect : OperatorEffect
     {
         const int MaxFires = 40;
@@ -164,6 +165,7 @@ namespace Dogpatch.Operator
                 var tag = order[i];
                 var b = tag.WorldBounds;
                 var fire = FireFx.Create(Context.Material, b, Scale(strength, 1.2f, 1.6f, 2.2f), i < MaxLights);
+                fire.Burns = true;
                 if (tag.Span == null) fire.transform.SetParent(tag.transform, true);
                 fires.Add(fire.gameObject);
             }

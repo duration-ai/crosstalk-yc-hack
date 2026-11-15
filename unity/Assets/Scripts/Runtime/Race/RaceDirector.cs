@@ -725,37 +725,43 @@ namespace Dogpatch.Race
             PlaceForLobby(true);
         }
 
+        // This device's racers on a fixed clock, up to two rounds of updates out at once so a slow
+        // round trip never holds the next position back; one at a time with backoff while failing.
         IEnumerator SendLoop()
         {
+            var pending = new List<Task>();
             int failures = 0;
+            float nextSend = 0f;
             while (true)
             {
-                if (RoomId == null)
+                for (int i = pending.Count - 1; i >= 0; i--)
                 {
-                    yield return null;
-                    continue;
+                    var done = pending[i];
+                    if (!done.IsCompleted) continue;
+                    pending.RemoveAt(i);
+                    if (done.Status == TaskStatus.RanToCompletion)
+                    {
+                        failures = 0;
+                        continue;
+                    }
+                    if (++failures == 1) Debug.LogWarning("[SpeedDial] update: " + done.Exception?.GetBaseException().Message);
+                    nextSend = Time.realtimeSinceStartup + Backoff(failures);
                 }
-                float sendStarted = Time.realtimeSinceStartup;
-                var sends = new List<Task>();
-                var me = BodyOf(MyId);
-                if (me != null) sends.Add(Session.UpdateAsync(MyId, RoomId, new Vec3(me.position.x, me.position.y, me.position.z), me.eulerAngles.y));
-                foreach (var bot in bots)
+                float now = Time.realtimeSinceStartup;
+                if (RoomId != null && now >= nextSend && pending.Count < (failures > 0 ? 1 : 2))
                 {
-                    var t = BodyOf(bot.Id);
-                    sends.Add(Session.UpdateAsync(bot.Id, RoomId, new Vec3(t.position.x, t.position.y, t.position.z), t.eulerAngles.y));
+                    var sends = new List<Task>();
+                    var me = BodyOf(MyId);
+                    if (me != null) sends.Add(Session.UpdateAsync(MyId, RoomId, new Vec3(me.position.x, me.position.y, me.position.z), me.eulerAngles.y));
+                    foreach (var bot in bots)
+                    {
+                        var t = BodyOf(bot.Id);
+                        sends.Add(Session.UpdateAsync(bot.Id, RoomId, new Vec3(t.position.x, t.position.y, t.position.z), t.eulerAngles.y));
+                    }
+                    pending.Add(Task.WhenAll(sends));
+                    nextSend = Mathf.Max(nextSend + SendEvery, now);
                 }
-                var all = Task.WhenAll(sends);
-                while (!all.IsCompleted) yield return null;
-                if (all.Status != TaskStatus.RanToCompletion)
-                {
-                    if (++failures == 1) Debug.LogWarning("[SpeedDial] update: " + all.Exception?.GetBaseException().Message);
-                    yield return Pause(Backoff(failures));
-                    continue;
-                }
-                failures = 0;
-                float sendWait = SendEvery - (Time.realtimeSinceStartup - sendStarted);
-                if (sendWait > 0f) yield return Pause(sendWait);
-                else yield return null;
+                yield return null;
             }
         }
 

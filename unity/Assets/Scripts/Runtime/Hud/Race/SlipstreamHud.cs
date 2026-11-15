@@ -51,6 +51,12 @@ namespace Dogpatch.Slipstream
         int readyFinger = int.MinValue;
         int callFinger = int.MinValue;
         bool paused;
+        bool readyWasVisible;
+        float readyShownAt = -10f;
+        float readyHeldAt = -10f;
+        float readyReleasedAt = -10f;
+        bool lobbyWas;
+        float lobbyShownAt = -10f;
 
         public float NewsSince => showing == null || showing.Start < 0f ? -1f : Time.time - showing.Start;
 
@@ -146,7 +152,11 @@ namespace Dogpatch.Slipstream
                 callFinger = finger;
                 Race.Calls.BeginTalk();
             }
-            else if (readyVisible && Inflate(readyRect, pad).Contains(p)) readyFinger = finger;
+            else if (readyVisible && Inflate(readyRect, pad).Contains(p))
+            {
+                readyFinger = finger;
+                readyHeldAt = Time.time;
+            }
         }
 
         void Release(int finger, Vector2 p)
@@ -160,6 +170,7 @@ namespace Dogpatch.Slipstream
             if (finger == readyFinger)
             {
                 readyFinger = int.MinValue;
+                readyReleasedAt = Time.time;
                 if (readyVisible && Inflate(readyRect, 12f * s).Contains(p)) PressReady();
             }
         }
@@ -245,11 +256,19 @@ namespace Dogpatch.Slipstream
 
         static float EaseOut(float t) => 1f - (1f - t) * (1f - t) * (1f - t);
 
+        // Back-out easing: overshoots about 10% before settling at 1 (the pop on slide-ins and presses).
+        static float Overshoot(float t)
+        {
+            t -= 1f;
+            return 1f + t * t * (3.2f * t + 2.2f);
+        }
+
         // ---- frame ----
 
         void OnGUI()
         {
             if (Race == null || !Race.Setup) return;
+            readyWasVisible = readyVisible;
             buttons.Clear();
             if (Dogpatch.Map.Minimap.FullOpen)
             {
@@ -275,11 +294,18 @@ namespace Dogpatch.Slipstream
                 NetChip();
                 if (!Race.Gridded) RouteTags();
             }
-            if (Race.Last == null) return;
+            if (Race.Last == null)
+            {
+                OperatorAndNews();
+                PhoneButton(false);
+                return;
+            }
 
             var room = Race.Room;
             bool lobby = !Race.Gridded && (room.status == RoomStatus.Lobby || room.status == RoomStatus.Countdown) && NearRing();
             bool racing = Race.Started && !Race.ResultsIn;
+            if (lobby && !lobbyWas) lobbyShownAt = Time.time;
+            lobbyWas = lobby;
 
             if (!Race.ResultsIn) NameTags();
             if (racing) FindMe();
@@ -311,11 +337,15 @@ namespace Dogpatch.Slipstream
             var racers = Race.Last.racers.OrderBy(r => r.slot).ToList();
             var at = Gameplay.HudLayout.LobbyPanel;
             float y = at.y;
-            foreach (var r in racers)
+            for (int i = 0; i < racers.Count; i++)
             {
+                var r = racers[i];
                 bool me = r.playerId == Race.MyId;
-                var block = new Rect(at.x, y, 30f * s, 24f * s);
+                float slide = Mathf.Clamp01((Time.time - lobbyShownAt - i * 0.07f) / 0.26f);
+                float dx = (1f - Overshoot(slide)) * -(at.x + 220f * s);
+                var block = new Rect(at.x + dx, y, 30f * s, 24f * s);
                 var bar = new Rect(block.xMax + 3f * s, y, 150f * s, 24f * s);
+                if (slide < 1f) Stripes(block.x - 6f * s, y + 5f * s, 20f * s, 46f * s, SlotColor(r.color), false);
                 Panel(bar, me ? Ink : Paper);
                 Panel(block, SlotColor(r.color));
                 if (!Race.Online) Icon(new Rect(block.x + 6f * s, block.y + 2f * s, 20f * s, 20f * s), r.ready ? "ready" : "dash", White);
@@ -358,7 +388,15 @@ namespace Dogpatch.Slipstream
             var r = Gameplay.HudLayout.Ready(112f * s, 62f * s);
             readyRect = r;
             readyVisible = true;
+            if (!readyWasVisible) readyShownAt = Time.time;
             bool held = readyFinger != int.MinValue;
+            float now = Time.time;
+            float k = held ? Mathf.Lerp(1f, 0.88f, Mathf.Clamp01((now - readyHeldAt) / 0.06f))
+                : now - readyReleasedAt < 0.32f ? 0.88f + 0.12f * Overshoot(Mathf.Clamp01((now - readyReleasedAt) / 0.28f))
+                : Overshoot(Mathf.Clamp01((now - readyShownAt) / 0.3f));
+            k = Mathf.Max(0.01f, k);
+            float sx = k < 1f ? k + (1f - k) * 0.7f : k;
+            r = new Rect(r.center.x - r.width * sx * 0.5f, r.center.y - r.height * k * 0.5f, r.width * sx, r.height * k);
             DrawFrame(new Rect(r.x + 7f * s, r.y + 7f * s, r.width, r.height), Sun, 1.6f * s);
             if (pressed || held)
             {
@@ -484,7 +522,12 @@ namespace Dogpatch.Slipstream
                 Text(new Rect(local.x, local.y - (1f - p) * digit.height, local.width, local.height), place.ToString(), 64f, Sun, TextAnchor.UpperLeft, 2.6f * s);
                 GUI.EndGroup();
             }
-            else Text(digit, place.ToString(), 64f, Sun, TextAnchor.UpperLeft, 2.6f * s);
+            else
+            {
+                float pop = previousPlace > place && since < 0.5f ? 1f + 0.28f * Mathf.Sin(Mathf.Clamp01((since - 0.28f) / 0.22f) * Mathf.PI) : 1f;
+                var popped = new Rect(digit.x - digit.width * (pop - 1f) * 0.3f, digit.y - digit.height * (pop - 1f) * 0.4f, digit.width * pop, digit.height * pop);
+                Text(popped, place.ToString(), 64f * pop, Sun, TextAnchor.UpperLeft, 2.6f * s * pop);
+            }
             int shown = since < 0.14f && previousPlace > 0 ? previousPlace : place;
             var suffix = Measure(Ordinal(shown), 22f);
             Text(new Rect(digit.xMax - 2f * s, top + 4f * s, suffix.x, suffix.y), Ordinal(shown), 22f, White, TextAnchor.UpperLeft, 1.6f * s);
@@ -550,13 +593,29 @@ namespace Dogpatch.Slipstream
                     Text(new Rect(bar.x + 14f * s, bar.y, bar.width, bar.height), mine.award, 20f, Ink);
                     if (p < 1f) Stripes(block.x - 6f * s, y + 10f * s, 30f * s, 60f * s, Sun, false);
                 }
+                if (mine.finished && mine.finishMs > 0 && since > 0.6f)
+                {
+                    float tick = EaseOut(Mathf.Clamp01((since - 0.6f) / 0.7f));
+                    var time = (mine.finishMs / 1000f * tick).ToString("F1") + "S";
+                    var ts = Measure(time, 28f);
+                    Text(new Rect(left + 34f * s, top + 244f * s, ts.x, ts.y), time, 28f, tick < 1f ? White : Sun, TextAnchor.UpperLeft, 1.8f * s);
+                }
             }
 
             float rowY = Gameplay.HudLayout.ResultsTop;
-            foreach (var r in results.OrderBy(r => r.place))
+            var ordered = results.OrderBy(r => r.place).ToList();
+            for (int i = 0; i < ordered.Count; i++)
             {
+                var r = ordered[i];
                 bool me = r.playerId == Race.MyId;
-                var block = new Rect(right - 160f * s, rowY, 26f * s, 24f * s);
+                float slide = Mathf.Clamp01((since - 0.45f - i * 0.08f) / 0.28f);
+                if (slide <= 0f)
+                {
+                    rowY += 31f * s;
+                    continue;
+                }
+                float dx = (1f - Overshoot(slide)) * 260f * s;
+                var block = new Rect(right - 160f * s + dx, rowY, 26f * s, 24f * s);
                 var bar = new Rect(block.xMax + 3f * s, rowY, 128f * s, 24f * s);
                 Panel(bar, me ? Ink : Paper);
                 Panel(block, me ? Sun : SlotColor(r.color));
@@ -564,7 +623,34 @@ namespace Dogpatch.Slipstream
                 Text(new Rect(bar.x + 10f * s, bar.y, bar.width, bar.height), me ? "YOU" : r.displayName.ToUpperInvariant(), 14f, me ? White : Ink);
                 rowY += 31f * s;
             }
+            Podium(ordered, rowY + 6f * s, since);
             if (since > 0.6f) ReadyButton(false);
+        }
+
+        // Mario Kart's podium in flat Slipstream blocks under the standings: 2nd, 1st, 3rd rise in turn
+        // with an overshoot, each in its racer's colour (yours in sunshine).
+        void Podium(List<RaceResult> ordered, float y, float since)
+        {
+            if (ordered.Count < 2) return;
+            int[] order = { 2, 1, 3 };
+            float[] heights = { 30f, 44f, 20f };
+            float w = 44f * s;
+            float gap = 4f * s;
+            float x0 = right - 160f * s + (157f * s - (3f * w + 2f * gap)) * 0.5f;
+            float baseY = y + 46f * s;
+            for (int i = 0; i < 3; i++)
+            {
+                var r = ordered.FirstOrDefault(o => o.place == order[i]);
+                if (r == null) continue;
+                bool me = r.playerId == Race.MyId;
+                float rise = Overshoot(Mathf.Clamp01((since - 0.85f - i * 0.12f) / 0.3f));
+                if (rise <= 0f) continue;
+                float h = heights[order[i] - 1] * s * rise;
+                var col = new Rect(x0 + i * (w + gap), baseY - h, w, h);
+                Panel(new Rect(col.x - 2f * s, col.y - 2f * s, col.width + 4f * s, col.height + 2f * s), Ink, 0f);
+                Panel(col, me ? Sun : SlotColor(r.color), 0f);
+                if (rise > 0.6f) Text(new Rect(col.x, col.y, col.width, Mathf.Min(col.height, 26f * s)), r.place.ToString(), 18f, me ? Ink : White, TextAnchor.MiddleCenter);
+            }
         }
 
         void OperatorAndNews()

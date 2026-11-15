@@ -59,6 +59,9 @@ namespace Dogpatch.Gameplay
         bool reversing;
         readonly List<Transform> wheels = new List<Transform>();
         readonly List<Transform> steering = new List<Transform>();
+        readonly List<GameObject> brakeLights = new List<GameObject>();
+        bool brakeHeld, brakeLit;
+        float lastSpeed, accelSmooth;
         float wheelSpin;
         float stunnedUntil;
         bool swinging;
@@ -128,10 +131,13 @@ namespace Dogpatch.Gameplay
             HalfExtents = bounds.extents;
             wheels.Clear();
             steering.Clear();
-            foreach (var t in visual.GetComponentsInChildren<Transform>())
+            brakeLights.Clear();
+            brakeLit = false;
+            foreach (var t in visual.GetComponentsInChildren<Transform>(true))
             {
                 if (t.name.StartsWith("wheel-") && !t.name.EndsWith("-mesh")) wheels.Add(t);
                 if (t.name.StartsWith("steer-f")) steering.Add(t);
+                if (t.name == "brake-glow") { brakeLights.Add(t.gameObject); t.gameObject.SetActive(false); }
             }
         }
 
@@ -147,6 +153,8 @@ namespace Dogpatch.Gameplay
             desired = Vector3.zero;
             strength = 0f;
         }
+
+        public float InputStrength => strength;
 
         public void SetInput(Vector3 direction, float amount)
         {
@@ -243,6 +251,7 @@ namespace Dogpatch.Gameplay
             float grip = Mathf.Clamp01(handling.Grip * RoadConditions.GripMultiplier);
             float rate = handbrake ? handling.Braking * 0.3f : brake ? handling.Braking : target == 0f ? handling.Coasting : opposing ? handling.Braking : handling.Acceleration;
             rate *= Mathf.Lerp(0.5f, 1f, grip);
+            brakeHeld = handbrake || brake || opposing;
             forwardSpeed = Mathf.MoveTowards(forwardSpeed, handbrake ? 0f : target, rate * dt);
             steer = Mathf.MoveTowards(steer, steerInput, 6f * dt);
 
@@ -295,10 +304,31 @@ namespace Dogpatch.Gameplay
             wheelSpin += forwardSpeed / 0.33f * Mathf.Rad2Deg * Time.deltaTime;
             foreach (var w in wheels) w.localRotation = Quaternion.Euler(wheelSpin, 0f, 0f);
             foreach (var s in steering) s.localRotation = Quaternion.Euler(0f, steer * 28f * (reversing ? -1f : 1f), 0f);
+
+            // Smoothed longitudinal acceleration drives the brake lights and the body's pitch.
+            float dt = Time.deltaTime;
+            if (dt > 0f) accelSmooth = Mathf.Lerp(accelSmooth, (forwardSpeed - lastSpeed) / dt, 1f - Mathf.Exp(-6f * dt));
+            lastSpeed = forwardSpeed;
+            bool stopped = Mathf.Abs(forwardSpeed) < 0.3f;
+            bool braking = Driven && !Autopilot ? brakeHeld || (stopped && strength <= 0f) : Autopilot && (stopped || accelSmooth * Mathf.Sign(forwardSpeed) < -2.5f);
+            if (braking != brakeLit)
+            {
+                brakeLit = braking;
+                foreach (var light in brakeLights) if (light != null) light.SetActive(braking);
+            }
+
             if (visual != null)
             {
                 var tilt = Quaternion.FromToRotation(Vector3.up, transform.InverseTransformDirection(groundNormal));
                 if (Hovers) tilt *= Quaternion.Euler(0f, 0f, -steer * Mathf.Clamp01(Mathf.Abs(forwardSpeed) / 15f) * 12f);
+                else if (wheels.Count >= 4)
+                {
+                    // Arcade body roll out of the turn and a nose dive under braking (squat on launch),
+                    // exaggerated the way Mario Kart and Crash Team Racing karts lean.
+                    float roll = steer * Mathf.Clamp01(Mathf.Abs(forwardSpeed) / 12f) * 4.5f;
+                    float pitch = Mathf.Clamp(-accelSmooth * 0.3f, -3f, 3.5f);
+                    tilt *= Quaternion.Euler(pitch, 0f, roll);
+                }
                 visual.transform.localRotation = Quaternion.Slerp(visual.transform.localRotation, tilt, 1f - Mathf.Exp(-10f * Time.deltaTime));
             }
         }

@@ -217,7 +217,7 @@ function promote(a: Answers, view: View, objectEffect: string, confirm: boolean)
 }
 
 /** Object effects that work on a racer's own car rather than becoming a players effect. */
-const CAR_EFFECTS = new Set(["ghost", "see_through", "bouncy", "icy", "rock_solid", "soft", "grow", "shrink", "recolor", "launch"]);
+export const CAR_EFFECTS = new Set(["ghost", "see_through", "bouncy", "icy", "rock_solid", "soft", "grow", "shrink", "recolor", "launch"]);
 
 function onCar(a: Answers, effect: string, car: ViewEntity, confirm: boolean): Command {
   return effectCommand(a, "object", effect, { target: car.id, targetClass: car.class, confirm });

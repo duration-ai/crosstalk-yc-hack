@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Dogpatch.Backend;
@@ -24,8 +25,9 @@ namespace Dogpatch.Race
         const int ConnectTimeoutSeconds = 6;
         const int RequestTimeoutSeconds = 3;
         const float WorldEvery = 1f / 15f;
-        const float WorldEveryRacing = 0.5f;
+        const float WorldEveryRacing = 0.25f;
         const float TrafficLogEvery = 5f;
+        const int MaxInFlight = 3;
         const float BackToWorldAfter = 10f;
         const float RingExitMargin = 3f;
 
@@ -194,47 +196,60 @@ namespace Dogpatch.Race
             else if (!Gridded && d > Course.RingRadius + RingExitMargin && (Room.status == RoomStatus.Lobby || (Room.status == RoomStatus.Countdown && MsToStart > LockMs + 500f))) Leave();
         }
 
-        // Presence and the world snapshot in one request: one in flight, as often as every 1/15 s
-        // (every 0.5 s while racing, when the race poll carries the other racers), retried with
-        // backoff while the link is down.
+        // Presence on a fixed clock: every 1/15 s (every 0.25 s while racing, when the race poll
+        // carries the other racers), with up to MaxInFlight requests out at once so one slow round
+        // trip never holds the next update back; the socket pushes everyone else in between. While
+        // the link is down it drops to one request at a time with backoff.
         IEnumerator WorldLoop()
         {
+            var pending = new List<Task<WorldPresenceResponse>>();
             int failures = 0;
+            long newest = 0;
+            float nextSend = 0f;
             float nextTrafficLog = Time.realtimeSinceStartup + TrafficLogEvery;
             var last = Game.Player.transform.position;
             float lastAt = Time.realtimeSinceStartup;
             while (true)
             {
-                var car = Game.CurrentCar;
-                var body = car != null ? car.transform : Game.Player.transform;
-                float dt = Mathf.Max(Time.realtimeSinceStartup - lastAt, 1e-3f);
-                float speed = car != null ? Mathf.Abs(car.Speed) : Vector3.Distance(body.position, last) / dt;
-                last = body.position;
-                lastAt = Time.realtimeSinceStartup;
-                var position = new Vec3(body.position.x, body.position.y, body.position.z);
-                var mode = car != null ? PlayerModes.Driving : PlayerModes.OnFoot;
-                var type = car != null ? VehicleRoster.TypeOf(car) : "";
-                float started = Time.realtimeSinceStartup;
-                var call = AsPlayer(() => convex.PresenceAsync(MyId, position, body.eulerAngles.y, speed, mode, type));
-                while (!call.IsCompleted) yield return null;
-                if (Time.realtimeSinceStartup >= nextTrafficLog)
+                for (int i = pending.Count - 1; i >= 0; i--)
                 {
-                    nextTrafficLog = Time.realtimeSinceStartup + TrafficLogEvery;
+                    var done = pending[i];
+                    if (!done.IsCompleted) continue;
+                    pending.RemoveAt(i);
+                    if (done.Status != TaskStatus.RanToCompletion)
+                    {
+                        if (++failures == 1) Debug.LogWarning("[SpeedDial] presence: " + done.Exception?.GetBaseException().Message);
+                        nextSend = Time.realtimeSinceStartup + Backoff(failures);
+                        continue;
+                    }
+                    if (failures > 0) Debug.Log($"[SpeedDial] presence back after {failures} failures");
+                    failures = 0;
+                    if (done.Result.serverTime < newest) continue;
+                    newest = done.Result.serverTime;
+                    ApplyWorld(done.Result);
+                }
+                float now = Time.realtimeSinceStartup;
+                if (now >= nextSend && pending.Count < (failures > 0 ? 1 : MaxInFlight))
+                {
+                    var car = Game.CurrentCar;
+                    var body = car != null ? car.transform : Game.Player.transform;
+                    float speed = car != null ? Mathf.Abs(car.Speed) : Vector3.Distance(body.position, last) / Mathf.Max(now - lastAt, 1e-3f);
+                    last = body.position;
+                    lastAt = now;
+                    var position = new Vec3(body.position.x, body.position.y, body.position.z);
+                    var mode = car != null ? PlayerModes.Driving : PlayerModes.OnFoot;
+                    var type = car != null ? VehicleRoster.TypeOf(car) : "";
+                    float heading = body.eulerAngles.y;
+                    pending.Add(AsPlayer(() => convex.PresenceAsync(MyId, position, heading, speed, mode, type)));
+                    float every = Gridded && !ResultsIn ? WorldEveryRacing : WorldEvery;
+                    nextSend = Mathf.Max(nextSend + every, now);
+                }
+                if (now >= nextTrafficLog)
+                {
+                    nextTrafficLog = now + TrafficLogEvery;
                     Debug.Log("[Net] " + convex.TakeTrafficStats() + $", remote delay {Remotes.DelayMs:F0} ms");
                 }
-                if (call.Status != TaskStatus.RanToCompletion)
-                {
-                    if (++failures == 1) Debug.LogWarning("[SpeedDial] presence: " + call.Exception?.GetBaseException().Message);
-                    yield return Pause(Backoff(failures));
-                    continue;
-                }
-                if (failures > 0) Debug.Log($"[SpeedDial] presence back after {failures} failures");
-                failures = 0;
-                ApplyWorld(call.Result);
-                float every = Gridded && !ResultsIn ? WorldEveryRacing : WorldEvery;
-                float wait = every - (Time.realtimeSinceStartup - started);
-                if (wait > 0f) yield return Pause(wait);
-                else yield return null;
+                yield return null;
             }
         }
 

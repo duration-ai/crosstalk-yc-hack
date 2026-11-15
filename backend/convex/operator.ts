@@ -4,8 +4,8 @@ import { internal } from "./_generated/api";
 import { action, internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { askJev, buildInput, buildQuestions, JevUnavailable } from "./jev";
 import { fail, getPlayer, movementMode } from "./model";
-import { COUNTERS, EXCLUSIVE, effectInfo, isA, rollDuration } from "./operatorCatalogue";
-import { decide, REFUSAL_MESSAGES, type Command, type EffectCommand, type RefusalReason, type View } from "./operatorRules";
+import { COUNTERS, EXCLUSIVE, SELF_EFFECTS, effectInfo, isA, rollDuration } from "./operatorCatalogue";
+import { CAR_EFFECTS, decide, REFUSAL_MESSAGES, type Command, type EffectCommand, type RefusalReason, type View } from "./operatorRules";
 import { getMembership, getRoom, phase } from "./raceModel";
 
 const MAX_TRANSCRIPT = 300;
@@ -107,6 +107,24 @@ function activeRows(ctx: MutationCtx, roomId: Id<"rooms">) {
     .query("activeEffects")
     .withIndex("by_room_status", (q) => q.eq("roomId", roomId).eq("status", "active"))
     .collect();
+}
+
+/** OPERATOR_SELF_SCOPE (default true): car and avatar changes land only on the caller; the environment stays shared. */
+const operatorSelfScope = () => process.env.OPERATOR_SELF_SCOPE !== "false";
+
+/**
+ * SELF effects tag the caller ("self:<playerId>"); car effects aimed at a whole class of vehicles or
+ * at another racer's car go on the caller's own car instead, with no confirm.
+ */
+export function selfScoped(command: EffectCommand, playerId: string): EffectCommand {
+  const own = `car:${playerId}`;
+  if (SELF_EFFECTS.has(command.effect) && (command.scope === "players" || command.scope === "world")) {
+    return { ...command, target: `self:${playerId}`, targetClass: "", confirm: false };
+  }
+  if (!CAR_EFFECTS.has(command.effect)) return command;
+  if (command.scope === "class" && isA(command.targetClass, "vehicle")) return { ...command, scope: "object", target: own, targetClass: "car", confirm: false };
+  if (command.scope === "object" && command.target.startsWith("car:")) return { ...command, target: own, confirm: false };
+  return command;
 }
 
 /** OPERATOR_ANYWHERE (default true, for testing): calls outside a running race are free and never refused as race_over. */
@@ -252,6 +270,7 @@ export const call = action({
       command = { kind: "refuse", reason: "unavailable" };
     }
     if (command.kind === "effect" && command.target === "veh_me") command = { ...command, target: `car:${playerId}` };
+    if (command.kind === "effect" && operatorSelfScope()) command = selfScoped(command, playerId);
 
     const result: CallResult = await ctx.runMutation(internal.operator.apply, {
       roomId,
