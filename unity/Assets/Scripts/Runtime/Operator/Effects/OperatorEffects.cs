@@ -22,6 +22,7 @@ namespace Dogpatch.Operator
             public OperatorEffect Effect;
             public float AppliedAt;
             public bool Listed;
+            public bool Applied;
             public Action Look;
         }
 
@@ -105,6 +106,7 @@ namespace Dogpatch.Operator
             var started = new Running { Row = row, Effect = effect, AppliedAt = Time.time, Listed = listed };
             running[row.id] = started;
             var target = Run(effect, row);
+            started.Applied = !Skips(row, target);
             try { started.Look = VehicleLooks.Attach(Context, row, target); }
             catch (Exception e) { Debug.LogError($"[Operator] {row.effect} look failed: {e}"); }
         }
@@ -112,7 +114,7 @@ namespace Dogpatch.Operator
         EffectTarget Run(OperatorEffect effect, ActiveEffect row)
         {
             var target = Resolve(row);
-            if (!target.IncludesMe && !RemoteVisible.Contains(row.effect))
+            if (Skips(row, target))
             {
                 Debug.Log($"[Operator] {row.effect} {row.id} is another racer's own change; their car shows it, ours stays as is");
                 Started?.Invoke(row);
@@ -129,15 +131,18 @@ namespace Dogpatch.Operator
         {
             running.Remove(r.Row.id);
             Debug.Log($"[Operator] revert {r.Row.effect} {r.Row.id} ({why})");
-            try { r.Effect.Revert(); }
-            catch (Exception e) { Debug.LogError($"[Operator] {r.Row.effect} revert failed: {e}"); }
+            if (r.Applied)
+                try { r.Effect.Revert(); }
+                catch (Exception e) { Debug.LogError($"[Operator] {r.Row.effect} revert failed: {e}"); }
             try { r.Look?.Invoke(); }
             catch (Exception e) { Debug.LogError($"[Operator] {r.Row.effect} look removal failed: {e}"); }
         }
 
         // SELF effects that only touch the owner's car and avatar models, so other devices can draw them
         // on that racer; the rest also turn this device's own knobs and run on the caller's device only.
-        static readonly HashSet<string> RemoteVisible = new HashSet<string> { "chunky", "skinny", "cars_fly", "cars_on_water", "floaty_crashes", "change_vehicle" };
+        static readonly HashSet<string> RemoteVisible = new HashSet<string> { "chunky", "skinny", "bigger", "smaller", "cars_fly", "change_vehicle" };
+
+        static bool Skips(ActiveEffect row, EffectTarget target) => !target.IncludesMe && !RemoteVisible.Contains(row.effect);
 
         public EffectTarget Resolve(ActiveEffect row)
         {
