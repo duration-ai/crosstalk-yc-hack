@@ -159,5 +159,10 @@ namespace Dogpatch.Race
         public WorldChangeCommand command;
         public RaceEvent @event;
         public string provider;
+        public string outcome;
+        public Operator.ActiveEffect effect;
+        public Operator.OperatorRefusal refusal;
+        public double serverNow;
+        public string transcript;
     }
 }

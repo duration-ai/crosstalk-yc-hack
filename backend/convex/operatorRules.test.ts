@@ -280,6 +280,13 @@ describe("rule 10: object targets", () => {
     expect(decide(wrongClass, onFoot, [])).toEqual(effect({ target: "veh_12" }));
   });
 
+  it("refuses a described thing that isn't in view instead of picking the nearest", () => {
+    const offScreen = answers({ scope: "object", object_effect: "demolish", class: "building", described: 0.9, target: "none" });
+    expect(decide(offScreen, onFoot, [])).toEqual(refused("not_visible"));
+    const noClass = answers({ scope: "object", object_effect: "set_fire", described: 0.8, target: "none" });
+    expect(decide(noClass, driving, [])).toEqual(refused("not_visible"));
+  });
+
   it("refuses a class nobody can see", () => {
     const a = answers({ scope: "object", object_effect: "stop", class: "bus" });
     expect(decide(a, onFoot, [])).toEqual(refused("not_visible"));

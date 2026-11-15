@@ -85,6 +85,8 @@ namespace Dogpatch.Slipstream
             queue.Enqueue(new News { Text = text, Picto = def?.pictogram ?? e.type, Color = SlotColor(e.color) });
         }
 
+        public void PushNews(string text, string picto, string color) => queue.Enqueue(new News { Text = text, Picto = picto, Color = SlotColor(color) });
+
         // True when a screen point (pixels, origin bottom left) lands on a live button.
         public bool HitTest(Vector2 screen)
         {

@@ -546,7 +546,8 @@ namespace Dogpatch.World
         // Cars parallel-parked in the parking lane along each curb, facing the way traffic flows in the
         // lane beside them: the right-hand curb of each direction on two-way streets, both curbs facing
         // forward on one-way streets. Spaces are 6.4 m with about a quarter left empty, and none at a
-        // junction, crosswalk, driveway or side street, hydrant, bus stop, rail line, median or keepClear.
+        // junction, crosswalk, driveway or side street, hydrant, bus stop, bike rack, Bay Wheels dock,
+        // rail line, median or keepClear.
         public void PlanParking(System.Random random, List<Pose2D> into, List<Vector2> keepClear)
         {
             const float Space = 6.4f;
@@ -554,7 +555,7 @@ namespace Dogpatch.World
             var avoid = new List<(Vector2 p, float r)>();
             foreach (var prop in data.props)
             {
-                float r = prop.kind == "fire_hydrant" ? 4.6f : prop.kind == "bus_stop" ? 12f : prop.kind == "level_crossing" ? 10f : prop.kind == "crossing" ? 5f : 0f;
+                float r = prop.kind == "fire_hydrant" ? 4.6f : prop.kind == "bus_stop" ? 12f : prop.kind == "level_crossing" ? 10f : prop.kind == "crossing" ? 5f : prop.kind == "bike_rack" ? 2.5f : prop.kind == "bicycle_rental" ? 9f : 0f;
                 if (r > 0f) avoid.Add((new Vector2(prop.x, prop.z), r));
             }
             foreach (var p in keepClear) avoid.Add((p, 14f));
@@ -641,7 +642,7 @@ namespace Dogpatch.World
 
         // Ground the player and parked cars stand on away from the streets: a 1 m raster of the land
         // polygons with every curbed street removed (dilated so the hole edge stays under a sidewalk),
-        // merged into rectangles.
+        // merged into rectangles of at most 64 m a side.
         ChunkedMeshBuilder LandColliders()
         {
             const float Cell = 1f;
@@ -695,6 +696,7 @@ namespace Dogpatch.World
             }
 
             var result = new ChunkedMeshBuilder(ChunkSize);
+            const int MaxRect = 64;
             var open = new Dictionary<(int, int), int>();
             var runs = new HashSet<(int, int)>();
             var ended = new List<(int, int)>();
@@ -705,12 +707,12 @@ namespace Dogpatch.World
                 {
                     if (!solid[j * w + i]) continue;
                     int start = i;
-                    while (i + 1 < w && solid[j * w + i + 1]) i++;
+                    while (i + 1 < w && solid[j * w + i + 1] && (i + 1) % MaxRect != 0) i++;
                     runs.Add((start, i));
                 }
                 ended.Clear();
                 foreach (var pair in open)
-                    if (!runs.Contains(pair.Key)) ended.Add(pair.Key);
+                    if (!runs.Contains(pair.Key) || j % MaxRect == 0) ended.Add(pair.Key);
                 foreach (var (x0, x1) in ended)
                 {
                     var a = new Vector2(bounds.xMin + x0 * Cell, bounds.yMin + open[(x0, x1)] * Cell);
