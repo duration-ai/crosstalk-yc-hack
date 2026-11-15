@@ -72,6 +72,21 @@ namespace Dogpatch.Gameplay
             GUI.Label(new Rect(left, Screen.height - safe.yMin - 92 * s, width, 60 * s), hint, small);
             GUI.Label(new Rect(left, Screen.height - safe.yMin - 38 * s, safe.width - 40 * s, 30 * s), "© OpenStreetMap contributors · DataSF · polyfork.dev", small);
 
+            var car = Game.NearestCar;
+            if (car != null && Game.View != null)
+            {
+                var marker = car.transform.position + Vector3.up * (car.HalfExtents.y * 2f + 1.2f + Mathf.Sin(Time.time * 4f) * 0.15f);
+                var p = Game.View.WorldToScreenPoint(marker);
+                if (p.z > 0f)
+                {
+                    var text = new GUIContent("Tap to drive ▼");
+                    var size = small.CalcSize(text);
+                    var r = new Rect(p.x - size.x / 2f - 10 * s, Screen.height - p.y - size.y - 6 * s, size.x + 20 * s, size.y + 8 * s);
+                    GUI.DrawTexture(r, panel);
+                    GUI.Label(new Rect(r.x + 10 * s, r.y + 4 * s, size.x, size.y), text, small);
+                }
+            }
+
             if (!string.IsNullOrEmpty(toast) && Time.time < toastUntil)
             {
                 var size = label.CalcSize(new GUIContent(toast));

@@ -8,6 +8,7 @@ namespace Dogpatch.Gameplay
     {
         public Transform Target;
         public bool Driving;
+        public bool Hold;
 
         float yaw;
         float distance = 7f;
@@ -33,7 +34,7 @@ namespace Dogpatch.Gameplay
             float follow = Driving ? 3.5f : 2.2f;
             var car = Driving ? Target.GetComponent<CarController>() : null;
             if (car != null && car.Speed < -0.5f) follow = 0.6f;
-            yaw = Mathf.LerpAngle(yaw, targetYaw, 1f - Mathf.Exp(-follow * dt));
+            if (!Hold) yaw = Mathf.LerpAngle(yaw, targetYaw, 1f - Mathf.Exp(-follow * dt));
 
             float wanted = Driving ? 10f : 6.5f;
             float pitch = Driving ? 16f : 18f;

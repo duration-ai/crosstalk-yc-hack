@@ -4,6 +4,7 @@ set -euo pipefail
 source "$(dirname "$0")/unity-env.sh"
 export BUILD_OUTPUT="${BUILD_OUTPUT:-$REPO_ROOT/Builds/Linux}"
 mkdir -p "$REPO_ROOT/Builds"
+preserve_project_settings
 log="$REPO_ROOT/Builds/unity-linux.log"
 "$UNITY_PATH" -batchmode -nographics -quit -projectPath "$PROJECT_PATH" -buildTarget Linux64 \
   -executeMethod Dogpatch.EditorTools.BuildScript.BuildLinux -logFile "$log" || { tail -60 "$log"; exit 1; }

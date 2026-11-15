@@ -7,6 +7,7 @@ source "$(dirname "$0")/unity-env.sh"
 export IOS_SDK="${IOS_SDK:-simulator}"
 export BUILD_OUTPUT="${BUILD_OUTPUT:-$REPO_ROOT/Builds/iOS-$IOS_SDK}"
 mkdir -p "$REPO_ROOT/Builds"
+preserve_project_settings
 log="$REPO_ROOT/Builds/unity-ios-$IOS_SDK.log"
 echo "Exporting iOS ($IOS_SDK) Xcode project to $BUILD_OUTPUT (log: $log)"
 "$UNITY_PATH" -batchmode -nographics -quit -projectPath "$PROJECT_PATH" -buildTarget iOS \

@@ -88,8 +88,15 @@ namespace Dogpatch.Gameplay
 
         public void Place(Vector3 position, float heading)
         {
-            body.isKinematic = true;
+            if (!body.isKinematic)
+            {
+                body.linearVelocity = Vector3.zero;
+                body.angularVelocity = Vector3.zero;
+            }
+            body.isKinematic = !Driven;
             transform.SetPositionAndRotation(position, Quaternion.Euler(0f, heading, 0f));
+            body.position = position;
+            body.rotation = transform.rotation;
             forwardSpeed = 0f;
         }
 
@@ -102,16 +109,32 @@ namespace Dogpatch.Gameplay
 
             float target = 0f;
             float steerAngle = 0f;
+            bool braking = false;
             if (Driven && strength > 0f && desired.sqrMagnitude > 0.01f)
             {
                 float angle = Vector3.SignedAngle(forward, desired, Vector3.up);
-                if (!reversing && Mathf.Abs(angle) > 125f && forwardSpeed < 1.5f) reversing = true;
+                bool pointingBack = Mathf.Abs(angle) > 125f;
+                if (!reversing && pointingBack && forwardSpeed < 1.5f) reversing = true;
                 else if (reversing && Mathf.Abs(angle) < 70f) reversing = false;
-                target = reversing ? -strength * MaxReverse : strength * MaxSpeed;
-                steerAngle = reversing ? Vector3.SignedAngle(-forward, desired, Vector3.up) : angle;
+                if (reversing)
+                {
+                    target = -strength * MaxReverse;
+                    steerAngle = Vector3.SignedAngle(-forward, desired, Vector3.up);
+                }
+                else if (pointingBack)
+                {
+                    target = 0f;
+                    braking = true;
+                }
+                else
+                {
+                    target = strength * MaxSpeed;
+                    steerAngle = angle;
+                }
             }
 
-            float rate = target == 0f ? Coasting : (Mathf.Sign(target) != Mathf.Sign(forwardSpeed) && Mathf.Abs(forwardSpeed) > 0.5f ? Braking : Acceleration);
+            bool opposing = Mathf.Sign(target) != Mathf.Sign(forwardSpeed) && Mathf.Abs(forwardSpeed) > 0.5f;
+            float rate = braking ? Braking : target == 0f ? Coasting : opposing ? Braking : Acceleration;
             forwardSpeed = Mathf.MoveTowards(forwardSpeed, target, rate * dt);
             steer = Mathf.MoveTowards(steer, Mathf.Clamp(steerAngle / 25f, -1f, 1f), 4f * dt);
             float yaw = steer * TurnRate * Mathf.Clamp01(Mathf.Abs(forwardSpeed) / 3f) * dt;

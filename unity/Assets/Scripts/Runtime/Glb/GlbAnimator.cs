@@ -25,6 +25,13 @@ namespace Dogpatch.Glb
             if (glb.Clips.Length > 0) current = glb.Clips[0];
         }
 
+        public bool Has(string clipName)
+        {
+            if (asset == null) return false;
+            foreach (var clip in asset.Clips) if (clip.Name == clipName) return true;
+            return false;
+        }
+
         public void Play(string clipName)
         {
             if (asset == null || (current != null && current.Name == clipName)) return;
