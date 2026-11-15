@@ -62,6 +62,7 @@ const VEHICLE_DESCRIPTIONS: Record<string, string> = {
   race_car: "a race car (GT racer)",
   flying_car: "a flying car or hover car",
   cable_car: "a San Francisco cable car or trolley",
+  lowrider: "a lowrider (candy-paint classic with hydraulics that hops)",
   hatchback: "a hatchback or small everyday car",
   sedan: "a sedan or family car",
   taxi: "a taxi or yellow cab",

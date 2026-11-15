@@ -1158,16 +1158,16 @@
   "out": "Ambience/pier_wind",
   "src": [
    {
-    "path": "Wind - Cherry Tree - Strong - Bed",
-    "start": 20,
-    "dur": 21.5,
-    "gain": 0.7
-   },
-   {
     "path": "AMBInd_Distant Port Atmos, Dover",
     "start": 10,
     "dur": 21.5,
     "gain": 0.8
+   },
+   {
+    "path": "synth/pier_wind.wav",
+    "start": 0,
+    "dur": 21.5,
+    "gain": 0.7
    }
   ],
   "loop": true,
@@ -1179,31 +1179,6 @@
    {
     "path": "AMBUrbn_Nighttime-Urban Side Street Empty Rain Dops Hum",
     "start": 90,
-    "dur": 21.5
-   }
-  ],
-  "loop": true,
-  "xfade": 1.5
- },
- {
-  "out": "Ambience/night_crickets",
-  "src": [
-   {
-    "path": "AMBSubn_Ambience, Forest Crickets, Birds, Connecticut 02",
-    "start": 30,
-    "dur": 21.5
-   }
-  ],
-  "loop": true,
-  "xfade": 1.5,
-  "trim_gain_db": -3
- },
- {
-  "out": "Ambience/day_birds",
-  "src": [
-   {
-    "path": "AMBForst_Spring Afternoon Edge of Mixed Forest",
-    "start": 10,
     "dur": 21.5
    }
   ],
@@ -1434,5 +1409,19 @@
   "trim": true,
   "fout": 0.35,
   "fin": 0
+ },
+ {
+  "out": "Ambience/construction",
+  "src": [
+   {
+    "path": "AMBCnst_Construction03_InMotionAudio",
+    "start": 20,
+    "dur": 21.5
+   }
+  ],
+  "loop": true,
+  "xfade": 1.5,
+  "match": "Ambience/freeway_hum",
+  "trim_gain_db": -6
  }
 ]
