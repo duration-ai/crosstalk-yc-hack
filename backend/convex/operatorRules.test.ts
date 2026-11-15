@@ -428,7 +428,8 @@ describe("next best thing", () => {
     for (const said of ["give me a tank", "make it rain frogs", "summon Godzilla", "turn me into a dragon", "teleport me home"]) {
       const line = standInLine(said, "Earthquake", said.includes("tank") ? "cybertruck" : "");
       expect(line.split(/\s+/).length, line).toBeLessThanOrEqual(12);
-      expect(line, line).toMatch(/sugar|hon/);
+      expect(line, line).toMatch(/\b(dude|man|okay)\b/i);
+      expect(line, line).not.toMatch(/sugar|\bhon\b|boss|pal\b/i);
       expect(line).toContain(said.includes("tank") ? "a cybertruck" : "Earthquake");
     }
   });

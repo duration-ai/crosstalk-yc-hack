@@ -207,7 +207,7 @@ namespace Dogpatch.EditorTools
             Check(Math.Abs(result.serverNow - 1763236800123.0) < 1, "epoch ms survive as double");
             var applied = JsonUtility.FromJson<OperatorCallResult>("{\"outcome\":\"applied\",\"effect\":{\"id\":\"k1\",\"effect\":\"rain\",\"scope\":\"world\",\"target\":\"\",\"targetClass\":\"\",\"strength\":\"medium\",\"color\":\"\",\"theme\":\"\",\"instant\":false,\"status\":\"active\",\"startsAt\":1763236800000,\"endsAt\":1763236815000,\"durationS\":15,\"label\":\"Rain\",\"requestedBy\":\"p1\",\"transcript\":\"make it rain\"},\"refusal\":null,\"line\":\"Rain!\",\"serverNow\":1763236800000}");
             Check(applied.effect.IsSet && applied.effect.endsAt - applied.effect.startsAt == 15000 && applied.line == "Rain!", "applied call result carries the effect row");
-            Check(ConvexOperator.Refused("No teleporting, sorry.") == "No teleporting, sorry." && ConvexOperator.Refused("this message is far too long for the hud") == "Try again, sugar.", "toast lines stay within four words");
+            Check(ConvexOperator.Refused("No teleporting, sorry.") == "No teleporting, sorry." && ConvexOperator.Refused("this message is far too long for the hud") == "Try again, man.", "toast lines stay within four words");
         }
     }
 }
