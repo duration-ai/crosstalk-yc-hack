@@ -24,8 +24,6 @@ namespace Dogpatch.Race
         public GeoPoint[] via;
         public float finishRadius;
         public float ringRadius;
-        public int routePayphones;
-        public GeoPoint[] payphones;
     }
 
     public struct Spot
@@ -37,7 +35,7 @@ namespace Dogpatch.Race
 
     // The race laid onto the generated city: the start ring on clear ground near the start point,
     // a route that follows the street graph (one-way streets only one way) from the ring to YC, a
-    // four-car grid at the head of the route, payphones on sidewalks, and the finish line.
+    // four-car grid at the head of the route, and the finish line.
     public sealed class RaceCourse
     {
         static readonly HashSet<string> RaceKinds = new HashSet<string>
@@ -52,7 +50,6 @@ namespace Dogpatch.Race
         public float RingRadius;
         public Vector3 RingFacing;
         public Spot[] Grid = new Spot[4];
-        public List<Spot> Payphones = new List<Spot>();
         public Vector3 Finish;
         public float FinishHeading;
         public float FinishHalfWidth;
@@ -126,7 +123,6 @@ namespace Dogpatch.Race
             PlaceRing(startTarget);
             PlaceGrid();
             PlaceFinish();
-            PlacePayphones();
         }
 
         static List<Vector2> Simplify(List<Vector2> pts)
@@ -215,61 +211,6 @@ namespace Dogpatch.Race
             var dir = Route.DirectionAt(Route.Length);
             FinishHeading = RoutePath.Heading(dir);
             FinishHalfWidth = world.Roads.Nearest(end, 5f, out var hit) ? RoadNetwork.HalfWidth(world.Roads.Roads[hit.Road]) : 4.5f;
-        }
-
-        bool SidewalkSpot(Vector2 near, int preferSide, out Spot spot)
-        {
-            spot = default;
-            if (!world.Roads.Nearest(near, 12f, out var hit)) return false;
-            float hw = RoadNetwork.HalfWidth(world.Roads.Roads[hit.Road]);
-            var n = new Vector2(hit.Direction.y, -hit.Direction.x);
-            for (int k = 0; k < 2; k++)
-            {
-                float side = (k == 0 ? preferSide : -preferSide);
-                var q = hit.Point + n * side * (hw + 1.6f);
-                if (world.Buildings.Blocked(q, 0.8f) || world.Roads.DistanceToIntersection(q) < 12f || !OnLand(q)) continue;
-                var facing = -n * side;
-                spot = new Spot { Position = Ground(q), Heading = RoutePath.Heading(facing), Progress = Route.Project(q) };
-                return true;
-            }
-            return false;
-        }
-
-        void PlacePayphones()
-        {
-            if (Data.payphones != null && Data.payphones.Length > 0)
-            {
-                foreach (var g in Data.payphones)
-                    if (SidewalkSpot(Project(g), 1, out var s)) Payphones.Add(s);
-                return;
-            }
-
-            var ring = new Vector2(RingCenter.x, RingCenter.z);
-            if (world.Roads.Nearest(ring, 60f, out var near))
-            {
-                var away = (ring - near.Point).normalized;
-                for (float shift = 10f; shift < 60f; shift += 6f)
-                {
-                    var probe = near.Point + near.Direction * shift + away * 2f;
-                    if (!SidewalkSpot(probe, Vector2.Dot(new Vector2(near.Direction.y, -near.Direction.x), away) >= 0f ? 1 : -1, out var s)) continue;
-                    Payphones.Add(s);
-                    break;
-                }
-            }
-
-            int count = Mathf.Max(0, Data.routePayphones);
-            for (int i = 0; i < count; i++)
-            {
-                float d = Route.Length * (i + 1f) / (count + 1f);
-                for (int tries = 0; tries < 6; tries++, d += 12f)
-                {
-                    if (d >= Route.Length - 20f) break;
-                    if (!SidewalkSpot(Route.PointAt(d), i % 2 == 0 ? 1 : -1, out var s)) continue;
-                    Payphones.Add(s);
-                    break;
-                }
-            }
-            Debug.Log($"[SpeedDial] {Payphones.Count} payphones placed");
         }
     }
 
