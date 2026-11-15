@@ -1,0 +1,131 @@
+using System.Collections.Generic;
+using Dogpatch.Glb;
+using UnityEngine;
+
+namespace Dogpatch.Gameplay
+{
+    // Arcade car on a Rigidbody. The drag gives a world direction and a strength: the car steers
+    // toward that direction, the strength sets the target speed, and dragging behind the car
+    // backs it up. With no input it rolls to a stop.
+    [RequireComponent(typeof(Rigidbody))]
+    public sealed class CarController : MonoBehaviour
+    {
+        const float MaxSpeed = 22f;
+        const float MaxReverse = 7f;
+        const float Acceleration = 8f;
+        const float Braking = 16f;
+        const float Coasting = 5f;
+        const float TurnRate = 75f;
+
+        public string VehicleId;
+        public string ModelId;
+        public bool Driven { get; private set; }
+        public float Speed => forwardSpeed;
+        public Vector3 HalfExtents { get; private set; }
+
+        Rigidbody body;
+        Vector3 desired;
+        float strength;
+        float forwardSpeed;
+        float steer;
+        bool reversing;
+        readonly List<Transform> wheels = new List<Transform>();
+        readonly List<Transform> steering = new List<Transform>();
+        float wheelSpin;
+
+        public static CarController Create(string vehicleId, GlbAsset model, Material material, Vector3 position, float heading)
+        {
+            var go = new GameObject("Car " + vehicleId);
+            go.transform.SetPositionAndRotation(position, Quaternion.Euler(0f, heading, 0f));
+            var visual = model.Instantiate(material, go.transform);
+            var bounds = model.ComputeBounds();
+
+            var box = go.AddComponent<BoxCollider>();
+            float lift = 0.25f;
+            box.center = new Vector3(bounds.center.x, (bounds.max.y + lift) * 0.5f, bounds.center.z);
+            box.size = new Vector3(bounds.size.x * 0.95f, Mathf.Max(bounds.max.y - lift, 0.5f), bounds.size.z * 0.97f);
+            box.sharedMaterial = new PhysicsMaterial("car") { dynamicFriction = 0f, staticFriction = 0f, frictionCombine = PhysicsMaterialCombine.Minimum };
+
+            var wheel = go.AddComponent<SphereCollider>();
+            wheel.radius = lift;
+            wheel.center = new Vector3(bounds.center.x, lift, bounds.center.z);
+            wheel.sharedMaterial = box.sharedMaterial;
+
+            var body = go.AddComponent<Rigidbody>();
+            body.mass = 1200f;
+            body.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
+            body.interpolation = RigidbodyInterpolation.Interpolate;
+            body.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+            body.isKinematic = true;
+
+            var car = go.AddComponent<CarController>();
+            car.VehicleId = vehicleId;
+            car.ModelId = model.Id;
+            car.HalfExtents = bounds.extents;
+            foreach (var t in visual.GetComponentsInChildren<Transform>())
+            {
+                if (t.name.StartsWith("wheel-") && !t.name.EndsWith("-mesh")) car.wheels.Add(t);
+                if (t.name.StartsWith("steer-f")) car.steering.Add(t);
+            }
+            return car;
+        }
+
+        void Awake() => body = GetComponent<Rigidbody>();
+
+        public void SetDriven(bool driven)
+        {
+            Driven = driven;
+            if (driven) body.isKinematic = false;
+            desired = Vector3.zero;
+            strength = 0f;
+        }
+
+        public void SetInput(Vector3 direction, float amount)
+        {
+            desired = direction;
+            strength = amount;
+        }
+
+        public void Place(Vector3 position, float heading)
+        {
+            body.isKinematic = true;
+            transform.SetPositionAndRotation(position, Quaternion.Euler(0f, heading, 0f));
+            forwardSpeed = 0f;
+        }
+
+        void FixedUpdate()
+        {
+            if (body.isKinematic) return;
+            float dt = Time.fixedDeltaTime;
+            var forward = transform.forward;
+            forwardSpeed = Vector3.Dot(body.linearVelocity, forward);
+
+            float target = 0f;
+            float steerAngle = 0f;
+            if (Driven && strength > 0f && desired.sqrMagnitude > 0.01f)
+            {
+                float angle = Vector3.SignedAngle(forward, desired, Vector3.up);
+                if (!reversing && Mathf.Abs(angle) > 125f && forwardSpeed < 1.5f) reversing = true;
+                else if (reversing && Mathf.Abs(angle) < 70f) reversing = false;
+                target = reversing ? -strength * MaxReverse : strength * MaxSpeed;
+                steerAngle = reversing ? Vector3.SignedAngle(-forward, desired, Vector3.up) : angle;
+            }
+
+            float rate = target == 0f ? Coasting : (Mathf.Sign(target) != Mathf.Sign(forwardSpeed) && Mathf.Abs(forwardSpeed) > 0.5f ? Braking : Acceleration);
+            forwardSpeed = Mathf.MoveTowards(forwardSpeed, target, rate * dt);
+            steer = Mathf.MoveTowards(steer, Mathf.Clamp(steerAngle / 25f, -1f, 1f), 4f * dt);
+            float yaw = steer * TurnRate * Mathf.Clamp01(Mathf.Abs(forwardSpeed) / 3f) * dt;
+            body.MoveRotation(body.rotation * Quaternion.Euler(0f, yaw, 0f));
+            body.linearVelocity = forward * forwardSpeed + Vector3.up * Mathf.Min(body.linearVelocity.y, 0f);
+
+            if (!Driven && Mathf.Abs(forwardSpeed) < 0.05f) body.isKinematic = true;
+        }
+
+        void Update()
+        {
+            wheelSpin += forwardSpeed / 0.33f * Mathf.Rad2Deg * Time.deltaTime;
+            foreach (var w in wheels) w.localRotation = Quaternion.Euler(wheelSpin, 0f, 0f);
+            foreach (var s in steering) s.localRotation = Quaternion.Euler(0f, steer * 28f * (reversing ? -1f : 1f), 0f);
+        }
+    }
+}

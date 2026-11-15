@@ -1,0 +1,53 @@
+{
+  "player": [
+    "commuter-381e7f"
+  ],
+  "car": [
+    "compact-hatchback-386417",
+    "yellow-cab-8df4a0",
+    "town-car-56eeb6",
+    "police-cruiser-a2d25e",
+    "family-crossover-suv-42027f",
+    "pickup-truck-a34bf2",
+    "delivery-truck-a9537e",
+    "family-minivan-924de0"
+  ],
+  "tree": [
+    "street-tree-0d33f3",
+    "broad-canopy-shade-tree-e7c4a2",
+    "tree-in-pit-grate-ea8010",
+    "ornamental-front-yard-tree-c6781a"
+  ],
+  "streetlight": [
+    "cobra-head-street-light-3e25b8"
+  ],
+  "hydrant": [
+    "fire-hydrant-b68b17"
+  ],
+  "bench": [
+    "park-bench-dc8b62"
+  ],
+  "bin": [
+    "metal-trash-can-f57043"
+  ],
+  "trafficlight": [
+    "traffic-light-b217a2"
+  ],
+  "newsbox": [
+    "newspaper-box-3f2c0e"
+  ],
+  "meter": [
+    "parking-meter-e9cf71"
+  ],
+  "busshelter": [
+    "bus-shelter-f786b4"
+  ],
+  "rooftop": [
+    "rooftop-water-tower-b38362",
+    "rooftop-ac-unit-6ccb3c"
+  ],
+  "npc": [
+    "delivery-courier-327e30",
+    "construction-worker-c1ad8c"
+  ]
+}
