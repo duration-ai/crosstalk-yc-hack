@@ -391,9 +391,9 @@ namespace Dogpatch.Race
             if (away.sqrMagnitude < 1e-4f) away = other.right;
             away.Normalize();
             var before = Planar(mine);
-            float closing = Vector3.Dot(new Vector3(remote.Velocity.x, 0f, remote.Velocity.z) - before, away);
+            float closing = Mathf.Abs(Vector3.Dot(new Vector3(remote.Velocity.x, 0f, remote.Velocity.z) - before, away));
             float shove = Mathf.Clamp(closing * BumpShare, MinShove, MaxShove);
-            CarFx.On(mine).Push(away * shove);
+            Shove(mine, away * shove);
             remote.NextPush = Time.time + PushEvery;
             remote.SnapHoldUntil = Time.time + BumpSnapHold;
             bool first = Time.time - remote.ContactAt > BumpDedupe;
@@ -417,10 +417,14 @@ namespace Dogpatch.Race
             }
             remote.BumpedAt = Time.time;
             var before = Planar(mine);
-            CarFx.On(mine).Push(impulse);
+            Shove(mine, impulse);
             Debug.Log($"[SpeedDial] {remote.Name} bumped us: shove {impulse.magnitude:F1} m/s, {ageMs} ms after their hit");
             StartCoroutine(LogDeltaV(mine, before, "after " + remote.Name + "'s bump"));
         }
+
+        // CarFx's push is a decaying velocity offset, so its total velocity change grows with its
+        // square (about 1x at 1 m/s); this asks it for the velocity change itself.
+        static void Shove(CarController car, Vector3 dv) => CarFx.On(car).Push(dv.normalized * Mathf.Sqrt(dv.magnitude));
 
         static Vector3 Planar(CarController car)
         {

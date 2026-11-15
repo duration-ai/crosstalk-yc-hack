@@ -193,7 +193,7 @@ namespace Dogpatch.Race
         public static Request Presence(string playerId, Vec3 position, float heading, float speed, string mode, string vehicleType, PresenceBump bump = null)
         {
             var json = JsonUtility.ToJson(new PresenceRequest { playerId = playerId, position = position, heading = Mathf.Repeat(heading, 360f), speed = speed, mode = mode, vehicleType = vehicleType ?? "", protocol = Protocol });
-            if (bump != null) json = json.Substring(0, json.Length - 1) + ","bump":" + JsonUtility.ToJson(bump) + "}";
+            if (bump != null) json = json.Substring(0, json.Length - 1) + ",\"bump\":" + JsonUtility.ToJson(bump) + "}";
             return new Request("POST", "/api/world/presence", json);
         }
 
