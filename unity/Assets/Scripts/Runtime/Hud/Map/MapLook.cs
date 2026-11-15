@@ -4,10 +4,11 @@ using UnityEngine;
 namespace Dogpatch.Map
 {
     // Map looks Tim picks between (pause menu, MAP LOOK): the palette and line weights baked into
-    // the vector map, plus the route, label and pin colours drawn over it. Classic is the original.
+    // the vector map, plus the route, label and pin colours drawn over it. Arcade Clean (Tim's pick)
+    // is the default; Classic is the original.
     public sealed class MapLook
     {
-        const string PrefKey = "dogpatch.maplook";
+        const string PrefKey = "dogpatch.maplook.v2";
 
         public string Name;
         public MapGeometry.Palette Palette;
@@ -25,6 +26,18 @@ namespace Dogpatch.Map
 
         public static readonly MapLook[] All =
         {
+            new MapLook
+            {
+                Name = "ARCADE CLEAN",
+                Palette = new MapGeometry.Palette
+                {
+                    Land = H("#EEF4FB"), Park = H("#B9EBCF"), Path = H("#E2EAF4"), Casing = H("#AEBBD4"), Street = H("#FFFFFF"),
+                    Buildings = new[] { H("#D9DEEC"), H("#C9D0E2") },
+                    Shadow = H("#B8C2D8"), ShadowOffset = new Vector2(1.6f, -1.6f), CasingExtra = 1.6f, StreetScale = 1.25f,
+                },
+                Bay = SpeedDial.Hex("#1C9BF2"), Route = SpeedDial.Hex("#FFCB1F"), RouteUnder = SpeedDial.Hex("#1C2347"),
+                LabelInk = SpeedDial.Hex("#4F5872"), LabelHalo = SpeedDial.Hex("#EEF4FB"), Mission = SpeedDial.Hex("#FFCB1F"),
+            },
             new MapLook
             {
                 Name = "CLASSIC",
