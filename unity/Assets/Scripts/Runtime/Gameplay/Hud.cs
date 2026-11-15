@@ -250,6 +250,8 @@ namespace Dogpatch.Gameplay
                 Input?.Cancel();
                 Debug.Log("[Hud] controls " + (DragInput.DragAnywhere ? "drag anywhere" : "fixed stick"));
             }
+            if (Chip(new Rect(controls.xMax + gap, controls.y, w, h), "SOCKET", Dogpatch.Race.ConvexRaceSession.SocketEnabled, s))
+                Dogpatch.Race.ConvexRaceSession.SocketEnabled = !Dogpatch.Race.ConvexRaceSession.SocketEnabled;
         }
 
         bool Chip(Rect r, string label, bool selected, float s)

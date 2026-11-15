@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
 
@@ -30,6 +31,26 @@ namespace Dogpatch.Operator
                 int valueStart = i;
                 SkipValue(json, ref i);
                 if (key == name) return json.Substring(valueStart, i - valueStart);
+            }
+        }
+
+        // The elements of a JSON array as raw JSON text.
+        public static List<string> Elements(string json)
+        {
+            var list = new List<string>();
+            if (string.IsNullOrEmpty(json)) return list;
+            int i = 0;
+            Skip(json, ref i);
+            if (i >= json.Length || json[i] != '[') return list;
+            i++;
+            while (true)
+            {
+                Skip(json, ref i);
+                if (i >= json.Length || json[i] == ']') return list;
+                if (json[i] == ',') { i++; continue; }
+                int start = i;
+                SkipValue(json, ref i);
+                list.Add(json.Substring(start, i - start));
             }
         }
 

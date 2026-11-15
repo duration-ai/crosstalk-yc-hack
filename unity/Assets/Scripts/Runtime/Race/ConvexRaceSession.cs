@@ -189,18 +189,168 @@ namespace Dogpatch.Race
                     if (failingSinceMs < 0.0) failingSinceMs = LocalMs;
                     if (web.result == UnityWebRequest.Result.ConnectionError) throw new BackendException(Unavailable, web.error);
                 }
-                else if (failingSinceMs >= 0.0)
-                {
-                    bool was = Reconnecting;
-                    failingSinceMs = -1.0;
-                    if (was)
-                    {
-                        synced = false;
-                        Reconnected?.Invoke();
-                    }
-                }
+                else Answered();
                 return Parse<T>(web.responseCode, web.downloadHandler.text);
             }
+        }
+
+        // ---- the WebSocket ----
+        // With the socket up (ConvexSocket, Convex's sync protocol), presence goes over the socket as
+        // the sync:presence mutation, everyone else in the shard is pushed by the sync:world
+        // subscription (WorldPushed), and PollAsync returns the sync:room subscription's latest value
+        // instead of polling. Any socket failure falls back to the HTTP calls above, per request.
+        // On by default; DOGPATCH_CONVEX_WS=0, -no-ws or the pause menu's SOCKET chip turns it off.
+
+        const string SocketKey = "speeddial.ws";
+        const int PushWaitMs = 250;
+        const double StatsEveryMs = 5000.0;
+
+        static bool? socketEnabled;
+
+        public static bool SocketEnabled
+        {
+            get
+            {
+                if (socketEnabled.HasValue) return socketEnabled.Value;
+                var env = Environment.GetEnvironmentVariable("DOGPATCH_CONVEX_WS");
+                if (Array.IndexOf(Environment.GetCommandLineArgs(), "-no-ws") >= 0 || env == "0" || env == "off") socketEnabled = false;
+                else socketEnabled = env == "1" || PlayerPrefs.GetInt(SocketKey, 1) == 1;
+                return socketEnabled.Value;
+            }
+            set
+            {
+                socketEnabled = value;
+                PlayerPrefs.SetInt(SocketKey, value ? 1 : 0);
+                PlayerPrefs.Save();
+                Debug.Log("[Net] socket " + (value ? "on" : "off (HTTP polling)"));
+            }
+        }
+
+        ConvexSocket socket;
+        int worldQuery = -1;
+        string worldArgs;
+        WorldPresenceResponse lastWorld;
+        List<WorldPlayer> pushedPlayers = new List<WorldPlayer>();
+        int roomQuery = -1;
+        string roomQueryRoom;
+        PollResponse pushedRoom;
+        long roomServerTime;
+        TaskCompletionSource<bool> roomPushed;
+
+        // Everyone else in the shard, raised on the main thread each time the server pushes a change.
+        public event Action<WorldPresenceResponse> WorldPushed;
+
+        public bool Pushed => socket != null && socket.Connected;
+        public string Transport => Pushed ? "ws" : "http";
+
+        ConvexSocket Socket()
+        {
+            if (!SocketEnabled)
+            {
+                if (socket == null) return null;
+                socket.Dispose();
+                socket = null;
+                worldQuery = roomQuery = -1;
+                worldArgs = roomQueryRoom = null;
+                return null;
+            }
+            if (socket == null)
+            {
+                socket = new ConvexSocket(baseUrl);
+                socket.QueryUpdated += OnPushed;
+            }
+            return socket.Connected ? socket : null;
+        }
+
+        void OnPushed(int queryId, string json)
+        {
+            if (queryId == worldQuery)
+            {
+                var world = JsonUtility.FromJson<WorldPresenceResponse>(json);
+                pushedPlayers = world.players ?? new List<WorldPlayer>();
+                if (lastWorld == null) return;
+                world.shard = lastWorld.shard;
+                world.worldRoomId = lastWorld.worldRoomId;
+                world.you = lastWorld.you;
+                pushes++;
+                Measure(world);
+                WorldPushed?.Invoke(world);
+            }
+            else if (queryId == roomQuery)
+            {
+                var poll = JsonUtility.FromJson<PollResponse>(json);
+                if (poll.serverTime < roomServerTime) return;
+                pushedRoom = poll;
+                roomPushed?.TrySetResult(true);
+            }
+        }
+
+        void Watch(WorldPresenceResponse world, string playerId)
+        {
+            lastWorld = world;
+            string args = "{\"shard\":" + world.shard + ",\"playerId\":" + Dogpatch.Operator.JsonText.Quote(playerId) + "}";
+            if (args == worldArgs || socket == null) return;
+            if (worldQuery >= 0) socket.Unsubscribe(worldQuery);
+            worldQuery = socket.Subscribe("sync:world", args);
+            worldArgs = args;
+        }
+
+        async Task<PollResponse> PushedPollAsync(ConvexSocket s, string roomId)
+        {
+            if (roomQueryRoom != roomId)
+            {
+                if (roomQuery >= 0) s.Unsubscribe(roomQuery);
+                roomQuery = s.Subscribe("sync:room", "{\"roomId\":" + Dogpatch.Operator.JsonText.Quote(roomId) + "}");
+                roomQueryRoom = roomId;
+                pushedRoom = null;
+                roomServerTime = 0;
+            }
+            if (pushedRoom == null)
+            {
+                roomPushed = new TaskCompletionSource<bool>();
+                await Task.WhenAny(roomPushed.Task, Task.Delay(PushWaitMs));
+            }
+            var poll = pushedRoom;
+            pushedRoom = null;
+            if (poll == null || roomQueryRoom != roomId) return null;
+            roomServerTime = poll.serverTime;
+            return poll;
+        }
+
+        // ---- update rate and age, logged every few seconds as [Net] for before/after comparisons ----
+
+        readonly Dictionary<string, long> seenUpdate = new Dictionary<string, long>();
+        int sends, pushes, remoteUpdates;
+        double rttSum, ageSum, statsSinceMs = -1.0;
+
+        void Measure(WorldPresenceResponse world)
+        {
+            long now = ServerNowMs;
+            foreach (var p in world.players)
+            {
+                if (seenUpdate.TryGetValue(p.playerId, out var seen) && seen >= p.updatedAt) continue;
+                seenUpdate[p.playerId] = p.updatedAt;
+                remoteUpdates++;
+                ageSum += now - p.updatedAt;
+            }
+            double local = LocalMs;
+            if (statsSinceMs < 0.0) statsSinceMs = local;
+            if (local - statsSinceMs < StatsEveryMs) return;
+            double seconds = (local - statsSinceMs) / 1000.0;
+            Debug.Log($"[Net] {Transport}: presence {sends / seconds:F1}/s sent, rtt {(sends > 0 ? rttSum / sends : 0):F0} ms; {pushes / seconds:F1} pushes/s; remote updates {remoteUpdates / seconds:F1}/s ({seenUpdate.Count} remotes), age at arrival {(remoteUpdates > 0 ? ageSum / remoteUpdates : 0):F0} ms");
+            sends = pushes = remoteUpdates = 0;
+            rttSum = ageSum = 0.0;
+            statsSinceMs = local;
+        }
+
+        void Answered()
+        {
+            if (failingSinceMs < 0.0) return;
+            bool was = Reconnecting;
+            failingSinceMs = -1.0;
+            if (!was) return;
+            synced = false;
+            Reconnected?.Invoke();
         }
 
         // ---- the contract ----
@@ -219,17 +369,48 @@ namespace Dogpatch.Race
 
         public async Task<PollResponse> PollAsync(string roomId, long? after)
         {
+            var s = roomId == "probe" ? null : Socket();
+            if (s != null)
+            {
+                var pushed = await PushedPollAsync(s, roomId);
+                if (pushed != null)
+                {
+                    Answered();
+                    return pushed;
+                }
+            }
             double sent = LocalMs;
             var poll = await Send<PollResponse>(Poll(roomId, after));
             Sync(poll.serverTime, sent);
+            if (roomQueryRoom == roomId) roomServerTime = Math.Max(roomServerTime, poll.serverTime);
             return poll;
         }
 
         public async Task<WorldPresenceResponse> PresenceAsync(string playerId, Vec3 position, float heading, float speed, string mode, string vehicleType)
         {
             double sent = LocalMs;
-            var world = await Send<WorldPresenceResponse>(Presence(playerId, position, heading, speed, mode, vehicleType));
+            var request = Presence(playerId, position, heading, speed, mode, vehicleType);
+            WorldPresenceResponse world = null;
+            var s = Socket();
+            if (s != null)
+            {
+                try
+                {
+                    world = JsonUtility.FromJson<WorldPresenceResponse>(await s.MutationAsync("sync:presence", request.Body, TimeoutSeconds));
+                    world.players = new List<WorldPlayer>(pushedPlayers);
+                    Answered();
+                }
+                catch (BackendException e) when (e.Code == ConvexSocket.Unavailable)
+                {
+                    Debug.LogWarning("[Net] socket presence failed, using HTTP: " + e.Message);
+                }
+            }
+            if (world == null) world = await Send<WorldPresenceResponse>(request);
             Sync(world.serverTime, sent);
+            sends++;
+            rttSum += LocalMs - sent;
+            if (Pushed) Watch(world, playerId);
+            else Measure(world);
             return world;
         }
 
