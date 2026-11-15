@@ -52,7 +52,12 @@ namespace Dogpatch.Nav
             yield return Seconds(1.2f);
             Log($"on foot: objective {nav.Kind}, {nav.Remaining:F0} m along {nav.Path.Count} points, arrived={nav.Arrived}");
             yield return Shot("on-foot-free-roam");
-            yield return FullMap("full-map-free-roam");
+            for (int i = 0; i < Minimap.StyleNames.Length; i++)
+            {
+                Minimap.MapStyle = i;
+                yield return FullMap("full-map-" + Minimap.StyleNames[i].ToLowerInvariant());
+            }
+            Minimap.MapStyle = 0;
             FindAnyObjectByType<Minimap>().StartTravel();
             yield return Seconds(1f);
             Log($"fast travel: {Vector3.Distance(game.Player.transform.position, race.Course.RingCenter):F0} m from the ring");
@@ -117,6 +122,7 @@ namespace Dogpatch.Nav
         {
             var map = FindAnyObjectByType<Minimap>();
             map.SetFull(true);
+            map.Preview(1.7f);
             yield return Seconds(0.3f);
             yield return Shot(name);
             map.SetFull(false);

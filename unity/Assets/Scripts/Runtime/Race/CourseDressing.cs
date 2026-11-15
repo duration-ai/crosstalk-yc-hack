@@ -6,12 +6,11 @@ using UnityEngine;
 namespace Dogpatch.Race
 {
     // The race's own objects in the world, all flat vertex-colored geometry on the shared material:
-    // the yellow start ring, the YC finish (checkered line, banner and a tall checkered flag), turn
+    // the start ring (its beacon and floor overlay are StartRingFx), the YC finish (checkered line, banner and a tall checkered flag), turn
     // and chevrons painted on the route, and the pink ask tokens.
     public static class CourseDressing
     {
         static readonly Color Yellow = PaintJob.Linear("#FFCB1F");
-        static readonly Color Cream = PaintJob.Linear("#FCE9A8");
         static readonly Color White = PaintJob.Linear("#F7F8F9");
         static readonly Color Ink = PaintJob.Linear("#1C2347");
         static readonly Color Pink = PaintJob.Linear("#FF3E8E");
@@ -83,23 +82,11 @@ namespace Dogpatch.Race
 
         public static GameObject StartRing(Transform parent, Vector3 center, float radius, Material material)
         {
-            var mb = new MeshBuilder();
-            float inner = radius * 0.62f;
-            float white = inner + 0.45f;
-            Annulus(mb, 0f, inner, 0.03f, Cream, 48);
-            Annulus(mb, inner, white, 0.035f, White, 48);
-            Annulus(mb, white, radius, 0.04f, Yellow, 48);
-            int count = 14;
-            float mid = (white + radius) * 0.5f;
-            for (int i = 0; i < count; i++)
-            {
-                float ang = i * Mathf.PI * 2f / count;
-                var c = Polar(ang, mid, 0f);
-                var tangent = new Vector3(-Mathf.Sin(ang), 0f, Mathf.Cos(ang));
-                var radial = new Vector3(Mathf.Cos(ang), 0f, Mathf.Sin(ang));
-                Chevron(mb, c, tangent, radial, 0.7f, (radius - white) * 0.32f, 0.32f, 0.05f, Ink);
-            }
-            return Emit(parent, "StartRing", mb, center, 0f, material);
+            var ring = new GameObject("StartRing");
+            ring.transform.SetParent(parent, false);
+            ring.transform.position = center;
+            StartRingFx.Attach(ring, radius, material);
+            return ring;
         }
 
         public static void Finish(Transform parent, Vector3 line, float heading, float halfWidth, Vector3 site, Material material)
