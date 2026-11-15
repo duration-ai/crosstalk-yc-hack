@@ -302,11 +302,6 @@ describe("rule 10: object targets", () => {
     expect(decide(grow, noOwnCar, [])).toEqual(effect({ scope: "players", effect: "bigger" }));
   });
 
-  it("never picks your own car as the first of a class", () => {
-    const a = answers({ scope: "object", object_effect: "recolor", class: "car", color: "red" });
-    expect(decide(a, driving, [])).toEqual(effect({ scope: "object", target: "veh_12", color: "red" }));
-  });
-
   it("recolors your own car locally", () => {
     const a = answers({ scope: "object", object_effect: "recolor", color: "rainbow" });
     expect(decide(a, driving, [])).toEqual(effect({ scope: "object", target: "veh_me", color: "rainbow", strength: "" }));

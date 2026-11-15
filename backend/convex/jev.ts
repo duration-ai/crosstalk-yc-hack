@@ -103,7 +103,7 @@ export function buildQuestions(view: View): Question[] {
       name: "object_effect",
       instructions: "Which change to a thing or kind of thing is asked for? Material changes (ice, rubber, glass, jelly, stone) are properties, not transformations.",
       choices: options(OBJECT_EFFECTS, [
-        { value: "x_transform", description: "turn it into a different kind of thing (a car into a boat, a tree into a dragon)" },
+        { value: "x_transform", description: "turn an existing thing into a different kind of thing (a car into a boat); creating something new is not this" },
       ]),
     },
     {
