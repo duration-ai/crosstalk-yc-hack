@@ -248,6 +248,12 @@ namespace Dogpatch.Slipstream
         {
             if (Race == null || !Race.Setup) return;
             buttons.Clear();
+            if (Dogpatch.Map.Minimap.FullOpen)
+            {
+                readyVisible = false;
+                callVisible = false;
+                return;
+            }
             if (Race.Last == null && !Race.Online) return;
             GUI.depth = -5;
             s = Mathf.Min(Screen.height / 402f, Screen.width / 560f);
