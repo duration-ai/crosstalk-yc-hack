@@ -19,6 +19,8 @@ namespace Dogpatch.Gameplay
         float strength;
         float speed;
         float verticalVelocity;
+        float airTime;
+        Transform visual;
 
         public float Speed => speed;
 
@@ -35,6 +37,7 @@ namespace Dogpatch.Gameplay
             if (model != null)
             {
                 var visual = model.Instantiate(material, go.transform);
+                player.visual = visual.transform;
                 player.animator = visual.GetComponent<GlbAnimator>();
             }
             return player;
@@ -78,7 +81,31 @@ namespace Dogpatch.Gameplay
             var motion = transform.forward * speed + Vector3.up * verticalVelocity;
             body.Move(motion * dt);
 
+            bool airborne = !body.isGrounded && verticalVelocity > -6f && airTime > 0.08f;
+            airTime = body.isGrounded ? 0f : airTime + dt;
+            if (visual != null)
+            {
+                float stretch = airborne ? 1f + Mathf.Clamp(verticalVelocity, -6f, 6f) * 0.012f : 1f;
+                visual.localScale = Vector3.Lerp(visual.localScale, new Vector3(2f - stretch, stretch, 2f - stretch), 1f - Mathf.Exp(-20f * dt));
+            }
+
             if (animator == null) return;
+            if (airborne)
+            {
+                // Polyfork characters ship Idle/Walk/Run only; without a Jump clip, a held mid-stride
+                // Run pose plus the stretch above reads as a leap.
+                if (animator.Has("Jump"))
+                {
+                    animator.Play("Jump");
+                    animator.Speed = 1f;
+                }
+                else
+                {
+                    animator.Play("Run");
+                    animator.Speed = 0.15f;
+                }
+                return;
+            }
             if (speed > 3.8f) animator.Play("Run");
             else if (speed > 0.25f) animator.Play("Walk");
             else animator.Play("Idle");
