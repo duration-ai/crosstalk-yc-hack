@@ -27,6 +27,7 @@ namespace Dogpatch.World
         public BuildingFitter Fitter;
         public StreetFurniture Furniture;
         public Landmarks Landmarks;
+        public RoadSurface Surface;
         public StaticInstanceIndex Instances => Statics?.Index;
     }
 
@@ -36,7 +37,6 @@ namespace Dogpatch.World
     public static class WorldBuilder
     {
         const float ChunkSize = 200f;
-        const float SidewalkWidth = 3f;
         const string HeroStreet = "Tennessee Street";
 
         static Color C(string hex)
@@ -48,14 +48,6 @@ namespace Dogpatch.World
         static readonly Color Land = Look.SpeedDial.Land;
         static readonly Color Water = Look.SpeedDial.Bay;
         static readonly Color Park = Look.SpeedDial.Park;
-        static readonly Color Sidewalk = Look.SpeedDial.Sidewalk;
-        static readonly Color Asphalt = Look.SpeedDial.Asphalt;
-        static readonly Color ServiceAsphalt = Look.SpeedDial.Asphalt;
-        static readonly Color PathColor = Look.SpeedDial.Sidewalk;
-        static readonly Color LaneYellow = Look.SpeedDial.DoubleYellow;
-        static readonly Color LaneWhite = Look.SpeedDial.LaneWhite;
-        static readonly Color RailBed = Look.SpeedDial.RailBed;
-        static readonly Color Rail = Look.SpeedDial.Rail;
 
         // The Speed Dial palette (STYLE-GUIDE.md) by name, for generated landmark and roof geometry.
         static readonly Dictionary<string, Color> SpeedDial = new Dictionary<string, Color>
@@ -84,7 +76,8 @@ namespace Dogpatch.World
             ctx.Statics = new StaticModels(models);
 
             BuildGround(data, ctx, material);
-            BuildStreets(data, ctx, material);
+            ctx.Surface = new RoadSurface(ctx, data);
+            ctx.Surface.Build(material);
             BuildBuildings(data, ctx, models, measure);
             ctx.Roads.AttachFreeway(Freeway.Build(data, ctx, material));
             ctx.Furniture = new StreetFurniture(ctx, ctx.Statics);
@@ -92,7 +85,7 @@ namespace Dogpatch.World
             ctx.Furniture.PlaceProps(data.props);
             ctx.Landmarks = new Landmarks(ctx, ctx.Statics);
             ctx.Landmarks.Build(data);
-            ChooseSpawns(ctx, models, random);
+            ChooseSpawns(ctx, random);
 
             var lod = ctx.Root.AddComponent<DistanceLod>();
             ctx.Statics.Emit(ctx.Root.transform, material, lod);
@@ -108,15 +101,14 @@ namespace Dogpatch.World
                 new Vector3(b.xMax + pad, -0.6f, b.yMax + pad), new Vector3(b.xMax + pad, -0.6f, b.yMin - pad), Water, Vector3.up);
             Emit(ctx.Root.transform, "Water", water.ToMesh("water"), material, false);
 
+            var ground = RoadSurface.GroundMaterial(material);
             var land = new MeshBuilder();
             foreach (var poly in data.land) land.Polygon(Geometry.ToPoints(poly.pts), 0f, Land);
-            var landMesh = land.ToMesh("land");
-            var landGo = Emit(ctx.Root.transform, "Land", landMesh, material, false);
-            landGo.AddComponent<MeshCollider>().sharedMesh = landMesh;
+            Emit(ctx.Root.transform, "Land", land.ToMesh("land"), ground, false);
 
             var parks = new MeshBuilder();
             foreach (var poly in data.parks) parks.Polygon(Geometry.ToPoints(poly.pts), 0.01f, Park);
-            Emit(ctx.Root.transform, "Parks", parks.ToMesh("parks"), material, false);
+            Emit(ctx.Root.transform, "Parks", parks.ToMesh("parks"), ground, false);
 
             var seabed = new GameObject("Seabed");
             seabed.transform.SetParent(ctx.Root.transform, false);
@@ -136,89 +128,6 @@ namespace Dogpatch.World
             Wall(new Vector3(b.xMax + 1f, 10f, b.center.y), new Vector3(2f, 40f, b.height + 4f));
             Wall(new Vector3(b.center.x, 10f, b.yMin - 1f), new Vector3(b.width + 4f, 40f, 2f));
             Wall(new Vector3(b.center.x, 10f, b.yMax + 1f), new Vector3(b.width + 4f, 40f, 2f));
-        }
-
-        static void BuildStreets(WorldData data, WorldContext ctx, Material material)
-        {
-            var chunks = new ChunkedMeshBuilder(ChunkSize);
-            var net = ctx.Roads;
-            for (int r = 0; r < data.roads.Length; r++)
-            {
-                var road = data.roads[r];
-                var pts = net.Points[r];
-                if (pts.Length < 2) continue;
-                var mb = chunks.At(pts[pts.Length / 2]);
-                float hw = RoadNetwork.HalfWidth(road);
-                if (road.kind == "path")
-                {
-                    mb.Ribbon(pts, hw, 0.02f, PathColor, true);
-                    continue;
-                }
-                bool major = road.kind != "service" && road.kind != "track";
-                if (major) mb.Ribbon(pts, hw + SidewalkWidth, 0.025f, Sidewalk, true);
-                mb.Ribbon(pts, hw, 0.04f, major ? Asphalt : ServiceAsphalt, true);
-                if (road.kind == "primary" || road.kind == "secondary" || road.kind == "tertiary" || (road.kind == "residential" && hw >= 4.5f))
-                {
-                    Stripe(mb, pts, net, 0.17f, 0.065f, LaneYellow, 0f, 0f);
-                    Stripe(mb, pts, net, -0.17f, 0.065f, LaneYellow, 0f, 0f);
-                }
-                if (hw >= 7f)
-                {
-                    Stripe(mb, pts, net, hw * 0.5f, 0.08f, LaneWhite, 3f, 6f);
-                    Stripe(mb, pts, net, -hw * 0.5f, 0.08f, LaneWhite, 3f, 6f);
-                }
-            }
-
-            foreach (var rail in data.rails)
-            {
-                var pts = Geometry.ToPoints(rail.pts);
-                if (pts.Length < 2) continue;
-                var mb = chunks.At(pts[pts.Length / 2]);
-                mb.Ribbon(pts, 1.4f, 0.045f, RailBed, false);
-                mb.Ribbon(Offset(pts, 0.72f), 0.07f, 0.065f, Rail, false);
-                mb.Ribbon(Offset(pts, -0.72f), 0.07f, 0.065f, Rail, false);
-            }
-
-            foreach (var (key, builder) in chunks.All())
-                Emit(ctx.Root.transform, "Streets " + key, builder.ToMesh("streets " + key), material, false);
-        }
-
-        // A road marking along the polyline at a lateral offset: solid when dash is 0, else dashed.
-        // Markings stop short of intersections.
-        static void Stripe(MeshBuilder mb, Vector2[] pts, RoadNetwork net, float offset, float halfWidth, Color color, float dash, float gap)
-        {
-            const float y = 0.055f;
-            const float step = 4f;
-            var line = Offset(pts, offset);
-            for (int i = 0; i < line.Length - 1; i++)
-            {
-                var a = line[i];
-                var b = line[i + 1];
-                float len = Vector2.Distance(a, b);
-                var dir = (b - a) / Mathf.Max(len, 1e-3f);
-                var n = new Vector2(-dir.y, dir.x) * halfWidth;
-                float piece = dash > 0f ? dash : step;
-                float stride = dash > 0f ? dash + gap : step;
-                for (float t = 0f; t < len; t += stride)
-                {
-                    var p0 = a + dir * t;
-                    var p1 = a + dir * Mathf.Min(t + piece, len);
-                    if (net.DistanceToIntersection((p0 + p1) * 0.5f, 12f) < 11f) continue;
-                    mb.Quad(MeshBuilder.At(p0 + n, y), MeshBuilder.At(p1 + n, y), MeshBuilder.At(p1 - n, y), MeshBuilder.At(p0 - n, y), color, Vector3.up);
-                }
-            }
-        }
-
-        static Vector2[] Offset(Vector2[] pts, float offset)
-        {
-            var result = new Vector2[pts.Length];
-            for (int i = 0; i < pts.Length; i++)
-            {
-                var d = i < pts.Length - 1 ? pts[i + 1] - pts[i] : pts[i] - pts[i - 1];
-                d.Normalize();
-                result[i] = pts[i] + new Vector2(-d.y, d.x) * offset;
-            }
-            return result;
         }
 
         // Every footprint becomes Polyfork models fitted by BuildingFitter; the extruded footprint
@@ -260,8 +169,9 @@ namespace Dogpatch.World
         }
 
         // The player starts on the sidewalk of Tennessee Street with a hatchback parked just ahead,
-        // so walking to a car and driving down a real street takes a few seconds.
-        static void ChooseSpawns(WorldContext ctx, ModelLibrary models, System.Random random)
+        // so walking to a car and driving down a real street takes a few seconds. Every other curb in
+        // Dogpatch gets its parked cars from RoadSurface.PlanParking.
+        static void ChooseSpawns(WorldContext ctx, System.Random random)
         {
             var net = ctx.Roads;
             int bestRoad = -1, bestSeg = -1;
@@ -303,45 +213,11 @@ namespace Dogpatch.World
             float heading = Mathf.Atan2(dir.x, dir.y) * Mathf.Rad2Deg;
             string street = net.Roads[bestRoad].name;
 
-            ctx.PlayerSpawn = new Pose2D { Position = MeshBuilder.At(start + right * (hw + 1.2f), 0.05f), Heading = heading, Street = street };
-            ctx.HeroCar = new Pose2D { Position = MeshBuilder.At(start + right * (hw - 1.4f) + dir * 7f, 0.05f), Heading = heading, Street = street };
-
-            var taken = new List<Vector2> { start + right * (hw - 1.4f) + dir * 7f };
-            var order = new List<int>();
-            for (int r = 0; r < net.Roads.Length; r++) order.Add(r);
-            for (int i = order.Count - 1; i > 0; i--)
-            {
-                int j = random.Next(i + 1);
-                (order[i], order[j]) = (order[j], order[i]);
-            }
-            foreach (int r in order)
-            {
-                if (ctx.ParkedCars.Count >= 40) break;
-                var road = net.Roads[r];
-                if (road.kind != "residential" && road.kind != "tertiary" && road.kind != "secondary" && road.kind != "unclassified") continue;
-                var pts = net.Points[r];
-                float rhw = RoadNetwork.HalfWidth(road);
-                for (int i = 0; i < pts.Length - 1; i++)
-                {
-                    float len = Vector2.Distance(pts[i], pts[i + 1]);
-                    var d = (pts[i + 1] - pts[i]) / Mathf.Max(len, 1e-3f);
-                    for (float t = 15f + (float)random.NextDouble() * 20f; t < len - 15f; t += 35f + (float)random.NextDouble() * 50f)
-                    {
-                        float side = random.Next(2) == 0 ? 1f : -1f;
-                        var n = new Vector2(d.y, -d.x) * side;
-                        var pos = pts[i] + d * t + n * (rhw - 1.4f);
-                        if (net.DistanceToIntersection(pos, 20f) < 16f) continue;
-                        if (ctx.Buildings.Blocked(pos, 1.5f)) continue;
-                        if (net.Nearest(pos, 1f, out _, r)) continue;
-                        bool clear = true;
-                        foreach (var q in taken) if (Vector2.Distance(q, pos) < 9f) clear = false;
-                        if (!clear) continue;
-                        taken.Add(pos);
-                        float h = Mathf.Atan2(d.x * side, d.y * side) * Mathf.Rad2Deg;
-                        ctx.ParkedCars.Add(new Pose2D { Position = MeshBuilder.At(pos, 0.05f), Heading = h, Street = road.name });
-                    }
-                }
-            }
+            bool curbed = RoadNetwork.IsCurbed(net.Roads[bestRoad]);
+            var heroAt = start + right * (hw - 1.15f) + dir * 7f;
+            ctx.PlayerSpawn = new Pose2D { Position = MeshBuilder.At(start + right * (hw + 1.2f), (curbed ? RoadSurface.SidewalkY : 0f) + 0.05f), Heading = heading, Street = street };
+            ctx.HeroCar = new Pose2D { Position = MeshBuilder.At(heroAt, (curbed ? RoadSurface.RoadY : 0f) + 0.05f), Heading = heading, Street = street };
+            ctx.Surface.PlanParking(random, ctx.ParkedCars, new List<Vector2> { heroAt });
         }
 
         public static GameObject Emit(Transform parent, string name, Mesh mesh, Material material, bool shadows)

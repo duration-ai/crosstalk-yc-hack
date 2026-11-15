@@ -38,7 +38,6 @@ namespace Dogpatch.Smash.Demo
         Camera view;
         Transform root;
         StaticModels statics;
-        SmashHud hud;
         CarController hero;
         readonly Dictionary<CarController, (Vector3 dir, float strength)> drivers = new Dictionary<CarController, (Vector3, float)>();
         Transform camTarget;
@@ -202,9 +201,6 @@ namespace Dogpatch.Smash.Demo
         {
             statics.Emit(root, material, root.gameObject.AddComponent<DistanceLod>());
             SmashWorld.Install(root.gameObject, statics.Index, models, material, view);
-            hud = root.gameObject.AddComponent<SmashHud>();
-            hud.View = view;
-            hud.Focus = () => hero;
             hero = focus;
         }
 

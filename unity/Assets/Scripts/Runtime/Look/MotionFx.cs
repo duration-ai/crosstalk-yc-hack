@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Dogpatch.Gameplay;
+using Dogpatch.Vehicles;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -12,13 +13,19 @@ namespace Dogpatch.Look
     // to the static events, or call the triggers to fire an effect themselves. Every effect is a
     // fixed pool rebuilt into one dynamic mesh: puffs on the shared flat material, sparks and streaks
     // on an unlit one, tire marks on the flat one. Three draw calls in total.
+    //
+    // Tuned as accents that add feel without blocking the view: small, short-lived and sparse. Wheel
+    // smoke (only on hard launches and wheelspin), landing dust (none on small hops) and footsteps are
+    // the lightest: a few faint see-through puffs. EffectsSettings.Intensity scales them all.
     public sealed class MotionFx : MonoBehaviour
     {
         const int MaxPuffs = 96;
+        const int MaxSoftPuffs = 32;
+        const float SoftAlpha = 0.3f;
         const int MaxSparks = 64;
         const int MaxStreaks = 28;
         const int MaxMarks = 600;
-        const float MarkWidth = 0.24f;
+        const float MarkWidth = 0.18f;
         const float CarTopSpeed = 22f;
 
         public static event Action<Vector3, float> Landed;
@@ -46,13 +53,13 @@ namespace Dogpatch.Look
         public static void Land(Vector3 position, float strength)
         {
             strength = Mathf.Clamp01(strength);
-            if (instance != null) instance.Burst(position, 5 + Mathf.RoundToInt(strength * 7f), Dust, 0.3f + 0.35f * strength, 2.2f + 3f * strength, 0.8f);
+            if (instance != null && strength >= 0.45f) instance.SoftBurst(position, 2f + 2f * strength, Dust, 0.07f + 0.06f * strength, 0.9f + 0.8f * strength, 0.4f);
             Landed?.Invoke(position, strength);
         }
 
         public static void Footstep(Vector3 position)
         {
-            if (instance != null) instance.Burst(position, 1, Dust, 0.17f, 0.7f, 0.5f);
+            if (instance != null) instance.SoftBurst(position, 1f, Dust, 0.06f, 0.4f, 0.3f);
             Stepped?.Invoke(position);
         }
 
@@ -77,7 +84,7 @@ namespace Dogpatch.Look
             strength = Mathf.Clamp01(strength);
             BoostFactor = Mathf.Max(BoostFactor, strength);
             if (instance != null && instance.car != null)
-                foreach (var wheel in instance.rearWheels) instance.Burst(wheel.position, 3, SpeedDial.Smoke, 0.55f, 1.6f, 0.9f);
+                foreach (var wheel in instance.rearWheels) instance.SoftPuff(wheel.position + Vector3.up * 0.2f, -instance.car.transform.forward * 1.5f + Vector3.up * 0.5f, 0.2f, 0.45f, Color.white);
             Boosted?.Invoke(strength);
         }
 
@@ -89,6 +96,7 @@ namespace Dogpatch.Look
             public float Age;
             public float Life;
             public float Size;
+            public Color Tint;
         }
 
         struct Spark
@@ -109,6 +117,12 @@ namespace Dogpatch.Look
         }
 
         readonly Puff[] puffs = new Puff[MaxPuffs];
+        readonly Puff[] softPuffs = new Puff[MaxSoftPuffs];
+        int nextSoftPuff;
+        Mesh softMesh;
+        Vector3[] softVertices;
+        Color[] softColors;
+        float[] facetShade;
         readonly Spark[] sparks = new Spark[MaxSparks];
         readonly Streak[] streaks = new Streak[MaxStreaks];
         int nextPuff, nextSpark, nextStreak;
@@ -135,11 +149,24 @@ namespace Dogpatch.Look
 
         float R(float a, float b) => a + (float)random.NextDouble() * (b - a);
 
-        void Awake() => instance = this;
+        void Awake()
+        {
+            instance = this;
+            VehicleRoster.Swapped += Retrack;
+        }
 
         void OnDestroy()
         {
+            VehicleRoster.Swapped -= Retrack;
             if (instance == this) instance = null;
+        }
+
+        // SwapInto rebuilds the same car with new wheels, so the cached rear wheels are gone.
+        void Retrack(CarController swapped)
+        {
+            if (swapped != car) return;
+            TrackCar(null);
+            TrackCar(swapped);
         }
 
         void Start()
@@ -157,6 +184,19 @@ namespace Dogpatch.Look
             puffColors = new Color[puffVertices.Length];
             puffMesh = Dynamic("puffs", puffVertices, puffColors, Sequential(puffVertices.Length));
             Spawn("Puffs", puffMesh, flat, false);
+
+            // Wheel smoke: the lightest effect, a few faint see-through faceted puffs. Facets keep a
+            // fixed light-to-dark shade so they still read as faceted without lighting.
+            softVertices = new Vector3[MaxSoftPuffs * puffShape.Count * 3];
+            softColors = new Color[softVertices.Length];
+            softMesh = Dynamic("soft puffs", softVertices, softColors, Sequential(softVertices.Length));
+            Spawn("SoftPuffs", softMesh, glow, false);
+            facetShade = new float[puffShape.Count];
+            for (int i = 0; i < puffShape.Count; i++)
+            {
+                var (a, b, c) = puffShape[i];
+                facetShade[i] = 0.82f + 0.18f * Mathf.Clamp01(((a + b + c) / 3f).normalized.y * 0.5f + 0.5f);
+            }
 
             glowVertices = new Vector3[(MaxSparks + MaxStreaks) * 4];
             glowColors = new Color[glowVertices.Length];
@@ -281,22 +321,22 @@ namespace Dogpatch.Look
             }
 
             float lateral = Mathf.Abs(yawRate * speed);
-            float launch = Mathf.Abs(speed) < 12f ? Mathf.Clamp01((accel - 3f) / 4f) : 0f;
-            float drift = Mathf.Clamp01((lateral - 7f) / 8f);
+            float launch = Mathf.Abs(speed) < 9f ? Mathf.Clamp01((accel - 5f) / 4f) : 0f;
+            float wheelspin = Mathf.Clamp01((lateral - 9f) / 8f);
             float braking = Mathf.Clamp01((-accel - 9f) / 6f);
-            float cruise = Mathf.Clamp01((Mathf.Abs(speed) - 14f) / 8f) * 0.35f;
-            float skid = Mathf.Max(launch, Mathf.Max(drift, braking));
+            float skid = Mathf.Max(launch, Mathf.Max(wheelspin, braking));
 
-            emitDebt += Mathf.Max(skid, cruise) * 26f * dt;
+            float spin = Mathf.Max(launch, wheelspin);
+            emitDebt = spin > 0f ? emitDebt + spin * 6f * EffectsSettings.Intensity * dt : 0f;
             while (emitDebt >= 1f)
             {
                 emitDebt -= 1f;
-                foreach (var wheel in rearWheels) EmitSmoke(wheel.position, t, skid);
+                foreach (var wheel in rearWheels) EmitSmoke(wheel.position, t, spin);
             }
-            for (int w = 0; w < rearWheels.Count && w < 2; w++) Mark(w, rearWheels[w].position, skid > 0.25f);
+            for (int w = 0; w < rearWheels.Count && w < 2; w++) Mark(w, rearWheels[w].position, skid > 0.35f);
 
             float wet = Mathf.Max(WorldEnvironment.Wetness, WorldEnvironment.SnowCover);
-            sprayDebt += wet * Mathf.Clamp01((Mathf.Abs(speed) - 3f) / 12f) * 30f * dt;
+            sprayDebt += wet * Mathf.Clamp01((Mathf.Abs(speed) - 3f) / 12f) * 13f * EffectsSettings.Intensity * dt;
             while (sprayDebt >= 1f)
             {
                 sprayDebt -= 1f;
@@ -351,9 +391,26 @@ namespace Dogpatch.Look
 
         void EmitSmoke(Vector3 wheel, Transform t, float skid)
         {
-            AddPuff(new Vector3(wheel.x, t.position.y + 0.25f, wheel.z) - t.forward * 0.3f,
-                -t.forward * R(1f, 2.5f) + t.right * R(-0.8f, 0.8f) + Vector3.up * 0.6f,
-                0.35f + 0.35f * skid + R(0f, 0.15f), 0.9f, SpeedDial.Smoke);
+            SoftPuff(new Vector3(wheel.x, t.position.y + 0.2f, wheel.z) - t.forward * 0.3f,
+                -t.forward * R(1f, 2f) + t.right * R(-0.6f, 0.6f) + Vector3.up * 0.45f,
+                0.13f + 0.1f * skid + R(0f, 0.04f), 0.4f, Color.white);
+        }
+
+        void SoftBurst(Vector3 position, float baseCount, Color tint, float size, float spread, float life)
+        {
+            int count = EffectsSettings.Count(baseCount);
+            for (int i = 0; i < count; i++)
+            {
+                float a = (i + R(0f, 0.7f)) / count * Mathf.PI * 2f;
+                var outward = new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a));
+                SoftPuff(position + outward * size + Vector3.up * size * 0.5f, outward * spread * R(0.6f, 1f) + Vector3.up * R(0.2f, 0.5f), size * R(0.8f, 1.2f), life, tint);
+            }
+        }
+
+        void SoftPuff(Vector3 position, Vector3 velocity, float size, float life, Color tint)
+        {
+            softPuffs[nextSoftPuff] = new Puff { Position = position, Velocity = velocity, Rotation = UnityEngine.Random.rotationUniform, Size = size * EffectsSettings.Scale, Life = life, Tint = tint };
+            nextSoftPuff = (nextSoftPuff + 1) % MaxSoftPuffs;
         }
 
         void Spray(Vector3 position, float strength)
@@ -361,11 +418,12 @@ namespace Dogpatch.Look
             var back = car != null ? -car.transform.forward * Mathf.Sign(car.Speed == 0f ? 1f : car.Speed) : Vector3.zero;
             var side = car != null ? car.transform.right : Vector3.right;
             AddPuff(position + back * 0.4f, back * R(1.5f, 3f) * (0.5f + strength) + side * R(-0.9f, 0.9f) + Vector3.up * R(1.2f, 2.6f),
-                R(0.14f, 0.24f) * (0.7f + strength), R(0.45f, 0.7f), WorldEnvironment.SnowCover > WorldEnvironment.Wetness ? Powder : SprayColor);
+                R(0.08f, 0.13f) * (0.7f + strength), R(0.3f, 0.45f), WorldEnvironment.SnowCover > WorldEnvironment.Wetness ? Powder : SprayColor);
         }
 
-        void Burst(Vector3 position, int count, Color color, float size, float spread, float life)
+        void Burst(Vector3 position, float baseCount, Color color, float size, float spread, float life)
         {
+            int count = EffectsSettings.Count(baseCount);
             for (int i = 0; i < count; i++)
             {
                 float a = (i + R(0f, 0.7f)) / count * Mathf.PI * 2f;
@@ -378,6 +436,7 @@ namespace Dogpatch.Look
 
         void AddPuff(Vector3 position, Vector3 velocity, float size, float life, Color color)
         {
+            size *= EffectsSettings.Scale;
             puffs[nextPuff] = new Puff { Position = position, Velocity = velocity, Rotation = UnityEngine.Random.rotationUniform, Size = size, Life = life };
             int v = nextPuff * puffShape.Count * 3;
             for (int i = 0; i < puffShape.Count * 3; i++) puffColors[v + i] = color;
@@ -388,14 +447,14 @@ namespace Dogpatch.Look
         void Sparks(Vector3 position, Vector3 normal, float strength)
         {
             var carry = car != null ? car.transform.forward * car.Speed * 0.45f : Vector3.zero;
-            int count = 6 + Mathf.RoundToInt(strength * 14f);
+            int count = EffectsSettings.Count(3f + strength * 7f);
             for (int i = 0; i < count; i++)
             {
                 sparks[nextSpark] = new Spark
                 {
                     Position = position,
                     Velocity = normal * R(1f, 3f) + Vector3.up * R(1.5f, 4f) + UnityEngine.Random.insideUnitSphere * 2.5f + carry,
-                    Life = R(0.22f, 0.5f),
+                    Life = R(0.15f, 0.32f),
                 };
                 nextSpark = (nextSpark + 1) % MaxSparks;
             }
@@ -404,7 +463,7 @@ namespace Dogpatch.Look
         void SpawnStreaks(float dt)
         {
             if (view == null || car == null) return;
-            float rate = Mathf.Clamp01((SpeedFactor - 0.5f) / 0.5f + BoostFactor) * 34f;
+            float rate = Mathf.Clamp01((SpeedFactor - 0.65f) / 0.35f + BoostFactor) * 14f * EffectsSettings.Intensity;
             streakDebt += rate * dt;
             var cam = view.transform;
             var heading = car.transform.forward * Mathf.Sign(car.Speed == 0f ? 1f : car.Speed);
@@ -412,7 +471,7 @@ namespace Dogpatch.Look
             {
                 streakDebt -= 1f;
                 float side = random.Next(2) == 0 ? -1f : 1f;
-                var offset = cam.right * side * R(2.2f, 7f) + Vector3.up * R(-0.6f, 4.5f);
+                var offset = cam.right * side * R(3.5f, 8f) + Vector3.up * R(0.5f, 5f);
                 streaks[nextStreak] = new Streak
                 {
                     Position = cam.position + heading * R(14f, 30f) + offset,
@@ -447,9 +506,41 @@ namespace Dogpatch.Look
                 }
             }
             puffMesh.vertices = puffVertices;
+            UpdateSoftPuffs(dt);
             if (!puffColorsDirty) return;
             puffMesh.colors = puffColors;
             puffColorsDirty = false;
+        }
+
+        void UpdateSoftPuffs(float dt)
+        {
+            int k = 0;
+            float alpha = Mathf.Min(SoftAlpha * EffectsSettings.Scale, 0.5f);
+            for (int i = 0; i < MaxSoftPuffs; i++)
+            {
+                ref var p = ref softPuffs[i];
+                float scale = 0f, fade = 0f;
+                if (p.Size > 0f && p.Age < p.Life)
+                {
+                    p.Age += dt;
+                    p.Position += p.Velocity * dt;
+                    p.Velocity *= 1f - 3f * dt;
+                    float t = p.Age / p.Life;
+                    scale = p.Size * (0.6f + 0.9f * t);
+                    fade = alpha * (1f - t) * (1f - t);
+                }
+                for (int f = 0; f < puffShape.Count; f++)
+                {
+                    var (a, b, c) = puffShape[f];
+                    var color = new Color(p.Tint.r * facetShade[f], p.Tint.g * facetShade[f], p.Tint.b * facetShade[f], fade);
+                    softColors[k] = softColors[k + 1] = softColors[k + 2] = color;
+                    softVertices[k++] = p.Position + p.Rotation * a * scale;
+                    softVertices[k++] = p.Position + p.Rotation * b * scale;
+                    softVertices[k++] = p.Position + p.Rotation * c * scale;
+                }
+            }
+            softMesh.vertices = softVertices;
+            softMesh.colors = softColors;
         }
 
         // Sparks and streaks are thin quads facing the camera, stretched along their motion.
@@ -471,7 +562,7 @@ namespace Dogpatch.Look
                 float t = s.Age / s.Life;
                 var color = Color.Lerp(SparkHot, SparkCool, t);
                 color.a = 1f - t * t;
-                Line(q, s.Position, s.Position - s.Velocity * 0.035f, 0.045f, eye, color);
+                Line(q, s.Position, s.Position - s.Velocity * 0.03f, 0.03f * EffectsSettings.Scale, eye, color);
             }
             for (int i = 0; i < MaxStreaks; i++, q++)
             {
@@ -483,7 +574,7 @@ namespace Dogpatch.Look
                 }
                 s.Age += dt;
                 float t = s.Age / s.Life;
-                Line(q, s.Position, s.Position - s.Direction * s.Length, 0.035f, eye, new Color(1f, 1f, 1f, 0.55f * Mathf.Sin(t * Mathf.PI)));
+                Line(q, s.Position, s.Position - s.Direction * s.Length, 0.022f, eye, new Color(1f, 1f, 1f, Mathf.Min(0.3f * EffectsSettings.Scale, 0.5f) * Mathf.Sin(t * Mathf.PI)));
             }
             glowMesh.vertices = glowVertices;
             glowMesh.colors = glowColors;
@@ -520,7 +611,7 @@ namespace Dogpatch.Look
             {
                 var d = ground - last;
                 if (d.sqrMagnitude < 0.09f) return;
-                var side = Vector3.Cross(Vector3.up, d.normalized) * (MarkWidth * 0.5f);
+                var side = Vector3.Cross(Vector3.up, d.normalized) * (MarkWidth * 0.5f * EffectsSettings.Scale);
                 int v = nextMark * 4;
                 markVertices[v] = last + side;
                 markVertices[v + 1] = last - side;

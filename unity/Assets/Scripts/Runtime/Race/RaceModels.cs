@@ -54,7 +54,6 @@ namespace Dogpatch.Race
         public bool finished;
         public long finishMs;
         public bool left;
-        public int smash;
         public long updatedAt;
     }
 
@@ -103,7 +102,6 @@ namespace Dogpatch.Race
         public bool finished;
         public long finishMs;
         public int calls;
-        public int smash;
         public string award;
     }
 

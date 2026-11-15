@@ -16,7 +16,7 @@ namespace Dogpatch.World
         const float ChunkSize = 200f;
         const float Piece = 100f;
         const float ColumnSpacing = 30f;
-        const float SurfaceLift = 0.06f;
+        const float SurfaceLift = 0.02f;
 
         public static FreewayGraph Build(WorldData data, WorldContext ctx, Material material)
         {
@@ -45,7 +45,7 @@ namespace Dogpatch.World
                     for (int i = start; i <= end; i++)
                     {
                         center[i - start] = new Vector2(way.Points[i].x, way.Points[i].z);
-                        heights[i - start] = Mathf.Max(way.Points[i].y, SurfaceLift);
+                        heights[i - start] = way.Points[i].y + SurfaceLift;
                     }
                     float s0 = way.Along[start], s1 = way.Along[end];
                     var mine = bents.FindAll(s => s >= s0 && s < s1).ConvertAll(s => s - s0);

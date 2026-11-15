@@ -8,6 +8,11 @@
  * @module
  */
 
+import type * as avatarData from "../avatarData.js";
+import type * as avatarDecision from "../avatarDecision.js";
+import type * as avatarModel from "../avatarModel.js";
+import type * as avatarPhoto from "../avatarPhoto.js";
+import type * as avatars from "../avatars.js";
 import type * as events from "../events.js";
 import type * as http from "../http.js";
 import type * as jev from "../jev.js";
@@ -30,6 +35,11 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  avatarData: typeof avatarData;
+  avatarDecision: typeof avatarDecision;
+  avatarModel: typeof avatarModel;
+  avatarPhoto: typeof avatarPhoto;
+  avatars: typeof avatars;
   events: typeof events;
   http: typeof http;
   jev: typeof jev;

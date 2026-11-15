@@ -439,7 +439,7 @@ namespace Dogpatch.Slipstream
                     var bar = new Rect(block.xMax + 2f * s, y, 250f * s, 40f * s);
                     Panel(bar, Paper);
                     Panel(block, Sun);
-                    Icon(new Rect(block.x + 8f * s, block.y + 6f * s, 28f * s, 28f * s), mine.award == "CHAOS CALLER" ? "call" : mine.award == "WRECKING BALL" ? "traffic" : "yc", Ink);
+                    Icon(new Rect(block.x + 8f * s, block.y + 6f * s, 28f * s, 28f * s), mine.award == "CHAOS CALLER" ? "call" : "yc", Ink);
                     Text(new Rect(bar.x + 14f * s, bar.y, bar.width, bar.height), mine.award, 20f, Ink);
                     if (p < 1f) Stripes(block.x - 6f * s, y + 10f * s, 30f * s, 60f * s, Sun, false);
                 }

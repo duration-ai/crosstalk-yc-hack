@@ -5,7 +5,9 @@ using UnityEngine;
 namespace Dogpatch.Gameplay
 {
     // Debug performance readout: FPS, frame time, draw calls, triangles and world build time in a
-    // corner, off by default. Launch with -perf (or --perf) or tap with three fingers to toggle.
+    // corner, off by default. Launch with -perf (or --perf), set DOGPATCH_PERF in the launch
+    // environment (devicectl passes environment variables but not arguments on a physical iPhone),
+    // or tap with three fingers to toggle.
     // While on, it logs a one-line summary every 5 s through Debug.Log, which reaches Xcode and
     // "devicectl device process launch --console" on a physical phone.
     public sealed class PerfReadout : MonoBehaviour
@@ -29,6 +31,7 @@ namespace Dogpatch.Gameplay
         {
             foreach (var arg in Environment.GetCommandLineArgs())
                 if (arg == "-perf" || arg == "--perf") on = true;
+            if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DOGPATCH_PERF"))) on = true;
             if (on) Enable();
         }
 

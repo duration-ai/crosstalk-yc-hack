@@ -69,8 +69,22 @@ namespace Dogpatch.Gameplay
             Jumped?.Invoke();
         }
 
+        // Every placement (spawn, respawn, getting out of a car, race lobby and grid) lands standing on
+        // the walkable surface under the requested spot: the highest upward-facing solid no more than
+        // StepUp above it (a sidewalk, a station platform, a freeway deck), with the capsule bottom a
+        // skin above it. With nothing below, the spot is used as given.
         public void Teleport(Vector3 position, float heading)
         {
+            const float StepUp = 1.5f;
+            const float Skin = 0.02f;
+            Physics.SyncTransforms();
+            float ground = float.NegativeInfinity;
+            foreach (var hit in Physics.RaycastAll(position + Vector3.up * StepUp, Vector3.down, StepUp + 4f, ~0, QueryTriggerInteraction.Ignore))
+            {
+                if (hit.normal.y < 0.6f || hit.collider == body || hit.collider.attachedRigidbody != null) continue;
+                ground = Mathf.Max(ground, hit.point.y);
+            }
+            if (!float.IsNegativeInfinity(ground)) position.y = ground + Skin - (body.center.y - body.height * 0.5f);
             body.enabled = false;
             transform.SetPositionAndRotation(position, Quaternion.Euler(0f, heading, 0f));
             body.enabled = true;
