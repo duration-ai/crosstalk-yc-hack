@@ -13,6 +13,13 @@ namespace Dogpatch.Smash
     //   carDamageScale: multiplies car-on-car damage (impact x mass ratio x (1 - barge strength)).
     //   breakableDamageScale: multiplies what smashing a lamp, sign, hydrant, bin, bench or tree costs.
     //   lightSmokeBelowHealth / greySmokeBelowHealth: health share at which smoke starts and thickens.
+    //   maxRiseSpeed: m/s a car may move upward after any hit, launch or shove (3.5 is a hop of about
+    //     0.6 m); also the cap on a launch's lift.
+    //   maxTumbleSpin: rad/s of roll and pitch a car may have while tumbling.
+    //   airborneGravity: gravity multiplier for an undriven or stunned car off the ground, so it
+    //     lands within a second.
+    //   maxDepenetration: m/s at which physics may push apart overlapping bodies, so a parked or AI
+    //     car that turns physical while overlapping something slides out instead of shooting up.
     [Serializable]
     public sealed class DamageTuning
     {
@@ -24,6 +31,10 @@ namespace Dogpatch.Smash
         public float breakableDamageScale = 1f;
         public float lightSmokeBelowHealth = 0.6f;
         public float greySmokeBelowHealth = 0.3f;
+        public float maxRiseSpeed = 3.5f;
+        public float maxTumbleSpin = 3f;
+        public float airborneGravity = 2.5f;
+        public float maxDepenetration = 1f;
 
         static DamageTuning current;
 
