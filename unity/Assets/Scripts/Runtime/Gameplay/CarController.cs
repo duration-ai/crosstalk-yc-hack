@@ -57,7 +57,7 @@ namespace Dogpatch.Gameplay
         float swingSign;
         float recoverUntil;
 
-        const float FullLockAngle = 12f;
+        public const float FullLockAngle = 12f;
         const float SwingSpeed = 6f;
         const float SwingRate = 260f;
 
