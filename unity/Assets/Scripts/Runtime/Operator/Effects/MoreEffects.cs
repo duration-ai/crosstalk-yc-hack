@@ -93,11 +93,11 @@ namespace Dogpatch.Operator
     // across the lot over a low rubble patch.
     public sealed class DemolishEffect : OperatorEffect
     {
-        static readonly Color[] Chunks = { Smash.SmashFx.SmokeGrey, Smash.SmashFx.SmokeDark, WorldEffectsB.Hex("#C9B79C"), WorldEffectsB.Hex("#8A7C6B") };
+        static readonly Color[] Chunks = { Dogpatch.Smash.SmashFx.SmokeGrey, Dogpatch.Smash.SmashFx.SmokeDark, WorldEffectsB.Hex("#C9B79C"), WorldEffectsB.Hex("#8A7C6B") };
 
         public override void Apply(string strength, EffectTarget target)
         {
-            var fx = Smash.SmashWorld.Instance?.Fx;
+            var fx = Dogpatch.Smash.SmashWorld.Instance?.Fx;
             foreach (var tag in target.Entities)
             {
                 var b = tag.WorldBounds;
@@ -108,18 +108,18 @@ namespace Dogpatch.Operator
                 Object.Destroy(fire.gameObject, 3f);
                 for (int i = 0; i < 8; i++)
                 {
-                    var from = foot + Vector3.up * (b.size.y * Random.Range(0.1f, 0.7f));
-                    var fling = Random.insideUnitSphere * size * 1.5f + Vector3.up * Random.Range(8f, 18f);
+                    var from = foot + Vector3.up * (b.size.y * UnityEngine.Random.Range(0.1f, 0.7f));
+                    var fling = UnityEngine.Random.insideUnitSphere * size * 1.5f + Vector3.up * UnityEngine.Random.Range(8f, 18f);
                     fx?.Debris(from, fling, Chunks, 6, 0.9f);
                 }
-                fx?.Smoke(foot + Vector3.up * 2f, Smash.SmashFx.SmokeGrey, size, 20, 2.5f);
-                WorldEffectsB.Poof(b.center, size, Smash.SmashFx.SmokeLight, 16);
-                Audio.SoundSystem.Play("wreck", b.center, Audio.Bus.Sfx, 1f, 0.7f, 220, 200f);
+                fx?.Smoke(foot + Vector3.up * 2f, Dogpatch.Smash.SmashFx.SmokeGrey, size, 20, 2.5f);
+                WorldEffectsB.Poof(b.center, size, Dogpatch.Smash.SmashFx.SmokeLight, 16);
+                Dogpatch.Audio.SoundSystem.Play("wreck", b.center, Dogpatch.Audio.Bus.Sfx, 1f, 0.7f, 220, 200f);
                 var cam = Camera.main;
-                if (cam != null && Feel.CameraFeel.Instance != null)
+                if (cam != null && Dogpatch.Feel.CameraFeel.Instance != null)
                 {
                     float d = Vector3.Distance(cam.transform.position, b.center);
-                    if (d < 150f) Feel.CameraFeel.Instance.AddTrauma(Mathf.Lerp(0.9f, 0.2f, d / 150f));
+                    if (d < 150f) Dogpatch.Feel.CameraFeel.Instance.AddTrauma(Mathf.Lerp(0.9f, 0.2f, d / 150f));
                 }
 
                 if (tag.Span != null)
@@ -137,7 +137,7 @@ namespace Dogpatch.Operator
 
         void Rubble(string id, Vector3 foot, Vector3 size)
         {
-            var mb = new Vehicles.MeshBuilder();
+            var mb = new Dogpatch.World.MeshBuilder();
             var rng = new System.Random(id.GetHashCode());
             float w = size.x * 0.45f, l = size.z * 0.45f;
             for (int i = 0; i < 14; i++)
@@ -147,7 +147,7 @@ namespace Dogpatch.Operator
                 at.y = s * 0.15f;
                 mb.Box(at, new Vector3(s, s * 0.3f, s * 0.8f), Quaternion.Euler(0f, rng.Next(0, 90), 0f), Chunks[rng.Next(Chunks.Length)]);
             }
-            mb.Box(new Vector3(0f, 0.04f, 0f), new Vector3(size.x * 0.95f, 0.08f, size.z * 0.95f), Quaternion.identity, Smash.SmashFx.SmokeDark);
+            mb.Box(new Vector3(0f, 0.04f, 0f), new Vector3(size.x * 0.95f, 0.08f, size.z * 0.95f), Quaternion.identity, Dogpatch.Smash.SmashFx.SmokeDark);
             var go = new GameObject(id + " (rubble)");
             go.transform.position = foot;
             go.AddComponent<MeshFilter>().sharedMesh = mb.ToMesh(id + " rubble");
