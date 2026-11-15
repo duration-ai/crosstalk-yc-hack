@@ -9,7 +9,7 @@ using UnityEngine;
 namespace Dogpatch.Nav
 {
     // Headless check for the minimap and the direction arrow: run the player build with
-    //   -nav-capture <folder>
+    //   -offline -nav-capture <folder>
     // and it shoots free roam on foot toward a ringing payphone, free roam driving at speed, the race
     // on autopilot, the race after leaving the course (the A* reroute), and the map toggled off.
     public sealed class NavCapture : MonoBehaviour
