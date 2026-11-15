@@ -25,10 +25,14 @@ namespace Dogpatch.Gameplay
         }
 
         public bool Split;
-        public bool Dragging => move.Id >= 0;
+        public bool Dragging { get; private set; }
         public Vector2 Anchor { get; private set; }
         public Vector2 Current { get; private set; }
         public event Action<Vector2> Tapped;
+
+        // Touches that begin where this returns true (the HUD's pause button, or anywhere while
+        // paused) are left to the HUD and never start a drag or a tap.
+        public Func<Vector2, bool> IgnoreAt;
 
         Finger move = new Finger { Id = -1 };
         Finger look = new Finger { Id = -1 };
@@ -64,6 +68,16 @@ namespace Dogpatch.Gameplay
             return d;
         }
 
+        // Drops the gestures in progress without a tap, so a finger already down when the game
+        // pauses neither keeps steering nor taps on release.
+        public void Cancel()
+        {
+            move.Id = -1;
+            look.Id = -1;
+            Dragging = false;
+            lookDelta = Vector2.zero;
+        }
+
         void Update()
         {
             if (Input.touchCount > 0)
@@ -90,6 +104,7 @@ namespace Dogpatch.Gameplay
 
         void Begin(int id, Vector2 position)
         {
+            if (IgnoreAt != null && IgnoreAt(position)) return;
             var finger = new Finger { Id = id, Start = position, Last = position, DownTime = Time.unscaledTime };
             if (Split && position.x > Screen.width * 0.5f)
             {
@@ -98,6 +113,7 @@ namespace Dogpatch.Gameplay
             }
             if (move.Id >= 0) return;
             move = finger;
+            Dragging = true;
             Anchor = Current = position;
         }
 
@@ -123,8 +139,9 @@ namespace Dogpatch.Gameplay
             Move(id, position);
             ref var finger = ref id == move.Id ? ref move : ref look;
             bool tap = finger.MaxTravel < TapSlop && Time.unscaledTime - finger.DownTime < TapSeconds;
+            if (id == move.Id) Dragging = false;
             finger.Id = -1;
-            if (tap) Tapped?.Invoke(position);
+            if (tap && (IgnoreAt == null || !IgnoreAt(position))) Tapped?.Invoke(position);
         }
     }
 }
