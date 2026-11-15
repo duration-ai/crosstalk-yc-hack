@@ -337,7 +337,7 @@ namespace Dogpatch.Operator
         // balance. In the solo room (a free-asks room) the local race session keeps the count instead.
         async void SpendLocalAsk()
         {
-            if (RaceOnline) return;
+            if (RaceOnline || !race.Calls.CountsAsks) return;
             try
             {
                 var spent = await race.Session.SpendAskAsync(race.MyId, race.RoomId);
