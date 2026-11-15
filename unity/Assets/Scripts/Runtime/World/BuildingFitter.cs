@@ -55,6 +55,7 @@ namespace Dogpatch.World
             float area = Mathf.Abs(Geometry.SignedArea(poly));
             var centroid = Geometry.Centroid(poly);
             landmarks.TryGetValue(building.id ?? "", out var landmark);
+            if (landmark != null && landmark.kind == "smokestack") return;
             string role = Role(building, landmark, box, area, height, centroid, out string colour);
 
             // The street side: whichever box face points most toward the nearest road.
