@@ -2,7 +2,8 @@ using UnityEngine;
 
 namespace Dogpatch.Gameplay
 {
-    // Minimal IMGUI overlay: street, mode and speed, the drag stick, a hint and attribution.
+    // Minimal IMGUI overlay: street, mode and speed, the drag stick (ring only in the car), a hint
+    // and attribution.
     public sealed class Hud : MonoBehaviour
     {
         public GameController Game;
@@ -68,7 +69,7 @@ namespace Dogpatch.Gameplay
 
             string hint = Game.Driving
                 ? "Drag to steer and drive · release to stop · tap your car to get out"
-                : "Drag anywhere to walk · tap to jump · tap a car to get in";
+                : "Left thumb to walk · drag the right side to look · tap to jump or get in a car";
             GUI.Label(new Rect(left, Screen.height - safe.yMin - 92 * s, width, 60 * s), hint, small);
             GUI.Label(new Rect(left, Screen.height - safe.yMin - 38 * s, safe.width - 40 * s, 30 * s), "© OpenStreetMap contributors · DataSF · polyfork.dev", small);
 
@@ -101,7 +102,7 @@ namespace Dogpatch.Gameplay
                 var a = new Vector2(Input.Anchor.x, Screen.height - Input.Anchor.y);
                 var c = new Vector2(Input.Current.x, Screen.height - Input.Current.y);
                 var offset = Vector2.ClampMagnitude(c - a, reach);
-                GUI.DrawTexture(new Rect(a.x - reach, a.y - reach, reach * 2f, reach * 2f), ring);
+                if (!Input.Split) GUI.DrawTexture(new Rect(a.x - reach, a.y - reach, reach * 2f, reach * 2f), ring);
                 float k = 46 * s;
                 GUI.DrawTexture(new Rect(a.x + offset.x - k, a.y + offset.y - k, k * 2f, k * 2f), dot);
             }
