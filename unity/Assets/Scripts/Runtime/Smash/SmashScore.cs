@@ -29,7 +29,8 @@ namespace Dogpatch.Smash
         }
     }
 
-    // Smash points per car. Every break, barge, near miss and wreck scores; events within
+    // Internal smash events per car, never shown as points: audio, haptics, camera feel and race
+    // logic react to Scored. Every break, barge, near miss and wreck raises one; events within
     // ComboWindow of the last one chain, and every second link raises the multiplier, up to x5.
     public static class SmashScore
     {
