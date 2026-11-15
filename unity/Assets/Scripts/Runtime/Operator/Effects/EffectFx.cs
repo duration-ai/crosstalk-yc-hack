@@ -33,7 +33,7 @@ namespace Dogpatch.Operator
             float height = Mathf.Clamp(burning.size.y, 0.6f, 14f);
             float k = Mathf.Sqrt(Mathf.Max(radius, height * 0.4f)) * size;
             var go = new GameObject("Fire");
-            go.transform.position = new Vector3(burning.center.x, burning.min.y + height * 0.55f, burning.center.z);
+            go.transform.position = new Vector3(burning.center.x, burning.max.y - height * 0.6f * 0.35f, burning.center.z);
             var fx = go.AddComponent<FireFx>();
             fx.seed = Random.value * 10f;
             var box = new Vector3(Mathf.Max(burning.size.x * 0.75f, 0.35f), Mathf.Max(height * 0.6f, 0.3f), Mathf.Max(burning.size.z * 0.75f, 0.35f));

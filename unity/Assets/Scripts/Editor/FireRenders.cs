@@ -75,7 +75,13 @@ namespace Dogpatch.EditorTools
                 cam.transform.LookAt(carBounds.center + Vector3.up * 2f);
                 foreach (float t in new[] { 0.12f, 0.4f, 1f, 2f })
                 {
-                    foreach (var ps in blast.Systems) ps.Simulate(t, true, true);
+                    foreach (var ps in blast.Systems)
+                    {
+                        ps.Simulate(Mathf.Min(t, 1.4f), true, true);
+                        if (t <= 1.4f) continue;
+                        ps.Stop(false, ParticleSystemStopBehavior.StopEmitting);
+                        ps.Simulate(t - 1.4f, true, false);
+                    }
                     cam.Render();
                     Save(rt, Path.Combine(output, $"explode-{tag}-{t:F2}s.png"));
                 }

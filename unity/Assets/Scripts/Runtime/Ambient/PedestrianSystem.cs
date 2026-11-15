@@ -25,6 +25,11 @@ namespace Dogpatch.Ambient
         // Scales every pedestrian's whole body; the voice Operator's bigger/smaller effects set it.
         public static float SizeScale = 1f;
 
+        // The crowd shader's head scale (big_heads), mirrored here so culling covers the bigger heads.
+        public static float HeadScale = 1f;
+
+        public static float CullScale => SizeScale * Mathf.Max(1f, HeadScale);
+
         public static int Count, Near, Drawn, DrawCalls;
         public static float AiMs, RenderMs;
 
@@ -340,7 +345,8 @@ namespace Dogpatch.Ambient
         bool InView(Vector2 p, float distance)
         {
             if (distance > 140f) return false;
-            return GeometryUtility.TestPlanesAABB(planes, new Bounds(new Vector3(p.x, 1f, p.y), new Vector3(2.5f, 2.6f, 2.5f)));
+            float s = CullScale;
+            return GeometryUtility.TestPlanesAABB(planes, new Bounds(new Vector3(p.x, s, p.y), new Vector3(2.5f, 2.6f, 2.5f) * s));
         }
 
         // --- spawning ------------------------------------------------------------------------------

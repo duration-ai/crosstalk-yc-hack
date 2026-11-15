@@ -141,12 +141,26 @@ namespace Dogpatch.Operator
         }
     }
 
+    // While a size effect lasts, every car gets CarFx (which applies CarFx.SizeTarget), including
+    // traffic spawned or reactivated after the effect started.
+    public sealed class SizeSweep : MonoBehaviour
+    {
+        float next;
+
+        void Update()
+        {
+            if (Time.time < next) return;
+            next = Time.time + 0.5f;
+            foreach (var car in Object.FindObjectsByType<CarController>(FindObjectsSortMode.None)) CarFx.On(car);
+        }
+    }
+
     public static class MoreEffects
     {
         // Everyone: racers, their cars, traffic and pedestrians.
         static Action Racers(OperatorEffect e, float k)
         {
-            foreach (var car in Object.FindObjectsByType<CarController>(FindObjectsSortMode.None)) CarFx.On(car);
+            var sweep = e.Context.Host.gameObject.AddComponent<SizeSweep>();
             CarFx.SizeTarget = k;
             Ambient.PedestrianSystem.SizeScale = k;
             var player = e.Context.Game.Player;
@@ -156,6 +170,7 @@ namespace Dogpatch.Operator
             {
                 CarFx.SizeTarget = 1f;
                 Ambient.PedestrianSystem.SizeScale = 1f;
+                Object.Destroy(sweep);
                 if (player != null) player.transform.localScale = before;
             };
         }

@@ -238,6 +238,7 @@ namespace Dogpatch.Operator
         {
             float size = Scale(strength, 2.5f, 3.5f, 4.5f);
             Shader.SetGlobalFloat(CrowdHeadScale, size);
+            Ambient.PedestrianSystem.HeadScale = size;
             var people = new List<GameObject>();
             foreach (var tag in EntityTag.All)
                 if (EntityClasses.IsA(tag.Class, "person")) people.Add(tag.gameObject);
@@ -256,6 +257,7 @@ namespace Dogpatch.Operator
         public override void Revert()
         {
             Shader.SetGlobalFloat(CrowdHeadScale, 1f);
+            Ambient.PedestrianSystem.HeadScale = 1f;
             foreach (var h in heads) if (h != null) h.Target = 1f;
             heads.Clear();
         }
