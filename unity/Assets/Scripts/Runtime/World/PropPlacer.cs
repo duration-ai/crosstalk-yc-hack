@@ -72,6 +72,7 @@ namespace Dogpatch.World
             if (!placed.TryGetValue(cell, out var pl)) placed[cell] = pl = new List<Vector2>();
             pl.Add(p);
             if (colliderRadius > 0f) colliders.Add((position, colliderRadius, Mathf.Min(mesh.bounds.size.y * scale, 4f)));
+            if (role == "bench" || role == "busshelter") ctx.Furniture.Add((role, p, yaw));
             return true;
         }
 
@@ -216,39 +217,6 @@ namespace Dogpatch.World
                 capsule.height = Mathf.Max(height, radius * 2f);
                 capsule.center = new Vector3(0f, capsule.height * 0.5f, 0f);
             }
-        }
-
-        // A few animated locals standing around near the start and in the parks.
-        public void PlaceNpcs(WorldContext world, Material material)
-        {
-            var spawn = new Vector2(world.PlayerSpawn.Position.x, world.PlayerSpawn.Position.z);
-            int placedCount = 0;
-            for (int tries = 0; tries < 200 && placedCount < 8; tries++)
-            {
-                float radius = placedCount < 3 ? 25f : 160f;
-                var p = spawn + Random2(radius);
-                if (Vector2.Distance(p, spawn) < 6f || !Free(p, 1f)) continue;
-                string id = Pick("npc");
-                var asset = id == null ? null : models.Get(id);
-                if (asset == null) return;
-                var npc = asset.Instantiate(material, world.Root.transform);
-                npc.name = "NPC " + id;
-                npc.transform.position = new Vector3(p.x, 0.03f, p.y);
-                npc.transform.rotation = Quaternion.Euler(0f, (float)random.NextDouble() * 360f, 0f);
-                npc.GetComponent<GlbAnimator>()?.Play("Idle");
-                var cap = npc.AddComponent<CapsuleCollider>();
-                cap.radius = 0.3f;
-                cap.height = 1.7f;
-                cap.center = new Vector3(0f, 0.85f, 0f);
-                placedCount++;
-            }
-        }
-
-        Vector2 Random2(float radius)
-        {
-            float a = (float)random.NextDouble() * Mathf.PI * 2f;
-            float r = Mathf.Sqrt((float)random.NextDouble()) * radius;
-            return new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * r;
         }
 
         static float Mod(float a, float m) => ((a % m) + m) % m;

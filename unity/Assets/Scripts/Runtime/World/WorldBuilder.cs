@@ -22,6 +22,7 @@ namespace Dogpatch.World
         public Pose2D PlayerSpawn;
         public Pose2D HeroCar;
         public List<Pose2D> ParkedCars = new List<Pose2D>();
+        public List<(string role, Vector2 position, float yaw)> Furniture = new List<(string, Vector2, float)>();
         public Rect Bounds;
     }
 
@@ -81,7 +82,6 @@ namespace Dogpatch.World
             props.PlaceRooftops(data, buildingPolys);
             ChooseSpawns(ctx, models, random);
             props.Emit(ctx.Root.transform, material);
-            props.PlaceNpcs(ctx, material);
             return ctx;
         }
 

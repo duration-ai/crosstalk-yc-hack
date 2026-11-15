@@ -1,0 +1,467 @@
+{
+ "source": "https://polyfork.dev",
+ "characters": [
+  {
+   "id": "cafe-customer-ca7e8e",
+   "clips": "cafe-customer-ca7e8e",
+   "role": "walker",
+   "weight": 1.0,
+   "age": "adult",
+   "top": [
+    "#c99a3a",
+    "#b88a32"
+   ],
+   "under": [
+    "#8cc4a4"
+   ],
+   "bottom": [
+    "#5f7285",
+    "#52657a"
+   ],
+   "hair": [
+    "#4a3825"
+   ],
+   "skin": [
+    "#e0a96d",
+    "#8e6a4e"
+   ]
+  },
+  {
+   "id": "cafe-customer-ca7e8e-masc",
+   "clips": "cafe-customer-ca7e8e",
+   "role": "walker",
+   "weight": 1.0,
+   "age": "adult",
+   "top": [
+    "#c99a3a",
+    "#b88a32"
+   ],
+   "under": [
+    "#8cc4a4"
+   ],
+   "bottom": [
+    "#5f7285",
+    "#52657a"
+   ],
+   "hair": [
+    "#4a3825"
+   ],
+   "skin": [
+    "#e0a96d",
+    "#8e6a4e"
+   ]
+  },
+  {
+   "id": "visitor-with-badge-1005a3",
+   "clips": "visitor-with-badge-1005a3",
+   "role": "walker",
+   "weight": 1.0,
+   "age": "adult",
+   "top": [
+    "#515c6a",
+    "#4a5364"
+   ],
+   "under": [
+    "#54504a",
+    "#54504a"
+   ],
+   "bottom": [
+    "#9f8c72",
+    "#8e7c64"
+   ],
+   "hair": [
+    "#7d6a55",
+    "#8b735d"
+   ],
+   "skin": [
+    "#c9a889",
+    "#ab896b"
+   ]
+  },
+  {
+   "id": "visitor-with-badge-1005a3-fem",
+   "clips": "visitor-with-badge-1005a3",
+   "role": "walker",
+   "weight": 1.0,
+   "age": "adult",
+   "top": [
+    "#515c6a",
+    "#4a5364"
+   ],
+   "under": [
+    "#54504a",
+    "#54504a"
+   ],
+   "bottom": [
+    "#9f8c72",
+    "#8e7c64"
+   ],
+   "hair": [
+    "#7d6a55",
+    "#8b735d"
+   ],
+   "skin": [
+    "#c9a889",
+    "#ab896b"
+   ]
+  },
+  {
+   "id": "student-with-backpack-65d2b4",
+   "clips": "student-with-backpack-65d2b4",
+   "role": "walker",
+   "weight": 0.8,
+   "age": "young",
+   "top": [
+    "#93bcc2",
+    "#76a0a7"
+   ],
+   "under": [
+    "#3b4c5f"
+   ],
+   "bottom": [
+    "#444542"
+   ],
+   "hair": [
+    "#5a1a18"
+   ],
+   "skin": [
+    "#e4b793"
+   ]
+  },
+  {
+   "id": "student-with-backpack-65d2b4-fem",
+   "clips": "student-with-backpack-65d2b4",
+   "role": "walker",
+   "weight": 0.8,
+   "age": "young",
+   "top": [
+    "#93bcc2",
+    "#76a0a7"
+   ],
+   "under": [
+    "#3b4c5f"
+   ],
+   "bottom": [
+    "#444542"
+   ],
+   "hair": [
+    "#5a1a18"
+   ],
+   "skin": [
+    "#e4b793"
+   ]
+  },
+  {
+   "id": "student-in-a-hoodie-7c8223",
+   "clips": "student-in-a-hoodie-7c8223",
+   "role": "walker",
+   "weight": 0.8,
+   "age": "young",
+   "top": [
+    "#d2c9be"
+   ],
+   "under": [],
+   "bottom": [
+    "#55524e"
+   ],
+   "hair": [
+    "#d6ac72"
+   ],
+   "skin": [
+    "#ddb591"
+   ]
+  },
+  {
+   "id": "shopper-base",
+   "clips": "shopper-base",
+   "role": "walker",
+   "weight": 0.8,
+   "age": "old",
+   "top": [
+    "#bf9f78",
+    "#9c7c5c"
+   ],
+   "under": [
+    "#6c6668"
+   ],
+   "bottom": [
+    "#626b6d"
+   ],
+   "hair": [
+    "#949493"
+   ],
+   "skin": [
+    "#dcb79e",
+    "#b98f78",
+    "#c8937c"
+   ]
+  },
+  {
+   "id": "motel-clerk-950c39",
+   "clips": "motel-clerk-950c39",
+   "role": "walker",
+   "weight": 0.6,
+   "age": "old",
+   "top": [
+    "#d3b353"
+   ],
+   "under": [
+    "#fffaec"
+   ],
+   "bottom": [
+    "#384669"
+   ],
+   "hair": [],
+   "skin": [
+    "#f2cba0"
+   ]
+  },
+  {
+   "id": "teen-player-37865e",
+   "clips": "teen-player-37865e",
+   "role": "walker",
+   "weight": 0.7,
+   "age": "young",
+   "top": [
+    "#3a977a"
+   ],
+   "under": [],
+   "bottom": [
+    "#2c2b2b"
+   ],
+   "hair": [
+    "#2b2a29"
+   ],
+   "skin": [
+    "#d6b293"
+   ]
+  },
+  {
+   "id": "suburban-resident-a9db9c",
+   "clips": "suburban-resident-a9db9c",
+   "role": "walker",
+   "weight": 1.0,
+   "age": "adult",
+   "top": [
+    "#62798c",
+    "#62798c"
+   ],
+   "under": [
+    "#b9b0a2"
+   ],
+   "bottom": [
+    "#4f3d30",
+    "#46352a",
+    "#4f3d30"
+   ],
+   "hair": [
+    "#6e3613",
+    "#6e3613"
+   ],
+   "skin": [
+    "#ceaa88",
+    "#8e6a4e"
+   ]
+  },
+  {
+   "id": "suburban-resident-a9db9c-fem",
+   "clips": "suburban-resident-a9db9c",
+   "role": "walker",
+   "weight": 1.0,
+   "age": "adult",
+   "top": [
+    "#62798c",
+    "#62798c"
+   ],
+   "under": [
+    "#b9b0a2"
+   ],
+   "bottom": [
+    "#4f3d30",
+    "#46352a",
+    "#4f3d30"
+   ],
+   "hair": [
+    "#6e3613",
+    "#6e3613"
+   ],
+   "skin": [
+    "#ceaa88",
+    "#8e6a4e"
+   ]
+  },
+  {
+   "id": "suburban-resident-a9db9c-old",
+   "clips": "suburban-resident-a9db9c",
+   "role": "walker",
+   "weight": 0.6,
+   "age": "old",
+   "top": [
+    "#62798c",
+    "#62798c"
+   ],
+   "under": [
+    "#b9b0a2"
+   ],
+   "bottom": [
+    "#4f3d30",
+    "#46352a",
+    "#4f3d30"
+   ],
+   "hair": [
+    "#6e3613",
+    "#6e3613"
+   ],
+   "skin": [
+    "#ceaa88",
+    "#8e6a4e"
+   ]
+  },
+  {
+   "id": "neighborhood-child-8cc5ac",
+   "clips": "neighborhood-child-8cc5ac",
+   "role": "walker",
+   "weight": 0.4,
+   "age": "kid",
+   "top": [
+    "#d38069",
+    "#d38069"
+   ],
+   "under": [],
+   "bottom": [
+    "#3d4857",
+    "#3d4857"
+   ],
+   "hair": [],
+   "skin": [
+    "#dbb088"
+   ]
+  },
+  {
+   "id": "standing-worker-on-a-8a0f9a",
+   "clips": "standing-worker-on-a-8a0f9a",
+   "role": "walker",
+   "weight": 0.8,
+   "age": "adult",
+   "top": [
+    "#7097ab",
+    "#4c6b7c"
+   ],
+   "under": [],
+   "bottom": [
+    "#8f7655",
+    "#7a6448"
+   ],
+   "hair": [
+    "#472d14",
+    "#5c4022"
+   ],
+   "skin": [
+    "#d8ab88",
+    "#b98f6e"
+   ]
+  },
+  {
+   "id": "standing-worker-on-a-8a0f9a-fem",
+   "clips": "standing-worker-on-a-8a0f9a",
+   "role": "walker",
+   "weight": 0.8,
+   "age": "adult",
+   "top": [
+    "#7097ab",
+    "#4c6b7c"
+   ],
+   "under": [],
+   "bottom": [
+    "#8f7655",
+    "#7a6448"
+   ],
+   "hair": [
+    "#472d14",
+    "#5c4022"
+   ],
+   "skin": [
+    "#d8ab88",
+    "#b98f6e"
+   ]
+  },
+  {
+   "id": "family-road-tripper-247570",
+   "clips": "family-road-tripper-247570",
+   "role": "walker",
+   "weight": 0.6,
+   "age": "adult",
+   "top": [],
+   "under": [],
+   "bottom": [
+    "#f6eccc"
+   ],
+   "hair": [
+    "#f0cc78"
+   ],
+   "skin": [
+    "#e2b391"
+   ]
+  },
+  {
+   "id": "street-skater-4ee28b-noboard",
+   "clips": "street-skater-4ee28b",
+   "role": "skater",
+   "weight": 1.0,
+   "age": "young",
+   "top": [
+    "#5c544b"
+   ],
+   "under": [],
+   "bottom": [
+    "#8fa0a8"
+   ],
+   "hair": [
+    "#8a4a2c"
+   ],
+   "skin": [
+    "#d8a57e"
+   ]
+  }
+ ],
+ "props": [
+  {
+   "id": "skateboard-667a82",
+   "role": "skateboard",
+   "from": [
+    "#3E4A52",
+    "#D9C9A8",
+    "#4E8148",
+    "#F0A03C",
+    "#F2F1EE",
+    "#8E3A2E"
+   ],
+   "to": [
+    "#1C2347",
+    "#FFF3DA",
+    "#48C26A",
+    "#FFC21A",
+    "#F7F8F9",
+    "#FF9C86"
+   ]
+  },
+  {
+   "id": "abandoned-shopping-trolley-3de6cb",
+   "role": "cart",
+   "from": [
+    "#8d969e",
+    "#1f5f9e",
+    "#2d8fbf",
+    "#ff7a1f",
+    "#9bd23c"
+   ],
+   "to": [
+    "#C9CDD4",
+    "#E2603F",
+    "#FFCB1F",
+    "#FFE27A",
+    "#8CE3BF"
+   ]
+  }
+ ]
+}
