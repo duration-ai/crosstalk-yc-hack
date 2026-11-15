@@ -89,6 +89,7 @@ export default defineSchema({
   }).index("by_room_status", ["roomId", "status"]),
   operatorCalls: defineTable({
     roomId: v.id("rooms"),
+    raceNumber: v.optional(v.number()),
     playerId: v.id("players"),
     transcript: v.string(),
     view: v.any(),
@@ -106,7 +107,7 @@ export default defineSchema({
       sttMs: v.optional(v.number()),
     }),
     createdAt: v.number(),
-  }).index("by_room", ["roomId"]),
+  }).index("by_room_race", ["roomId", "raceNumber"]),
   scribeTokenMints: defineTable({
     playerId: v.id("players"),
     at: v.number(),

@@ -1,10 +1,10 @@
 import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
-import { action, internalMutation, internalQuery, mutation, query, type MutationCtx } from "./_generated/server";
+import { action, internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { askJev, buildInput, buildQuestions, JevUnavailable } from "./jev";
 import { fail, getPlayer, movementMode } from "./model";
-import { COUNTERS, EXCLUSIVE, effectInfo, rollDuration } from "./operatorCatalogue";
+import { COUNTERS, EXCLUSIVE, effectInfo, isA, rollDuration } from "./operatorCatalogue";
 import { decide, REFUSAL_MESSAGES, type Command, type EffectCommand, type View } from "./operatorRules";
 import { getMembership, getRoom } from "./raceModel";
 
@@ -96,6 +96,11 @@ export type CallResult = {
   timings: { jevMs: number; totalMs: number; attempts: number };
 };
 
+async function activeMembership(ctx: QueryCtx, room: Doc<"rooms">, playerId: Id<"players">) {
+  const row = await getMembership(ctx, room, playerId);
+  if (row.left) fail("CONFLICT", "Player left this room");
+}
+
 function activeRows(ctx: MutationCtx, roomId: Id<"rooms">) {
   return ctx.db
     .query("activeEffects")
@@ -122,6 +127,18 @@ async function activate(ctx: MutationCtx, fields: EffectFields, now: number, pen
   if (countered) {
     for (const row of active) if (countered.includes(row.effect)) await end(ctx, row, "countered");
   }
+  if (fields.effect === "extinguish") {
+    const fires = active.filter((row) => row.effect === "set_fire");
+    const doused = fields.target
+      ? (fires.find((row) => row.target === fields.target) ?? fires.find((row) => row.target === "" && isA(fields.targetClass, row.targetClass)))
+      : undefined;
+    for (const row of fires) {
+      const overlaps = fields.target
+        ? row === doused
+        : isA(row.targetClass, fields.targetClass) || (row.target === "" && isA(fields.targetClass, row.targetClass));
+      if (overlaps) await end(ctx, row, "extinguished");
+    }
+  }
   if (fields.effect === "undo_last") {
     const newest = active.filter((row) => !row.instant).sort((a, b) => b.startsAt - a.startsAt || b._creationTime - a._creationTime)[0];
     if (newest) await end(ctx, newest, "undone");
@@ -137,6 +154,7 @@ async function activate(ctx: MutationCtx, fields: EffectFields, now: number, pen
         endsAt,
         durationS: repeat.durationS + fields.durationS,
         strength: fields.strength,
+        theme: fields.theme,
       });
       await schedule(ctx, repeat._id, endsAt);
       return (await ctx.db.get(repeat._id))!;
@@ -161,8 +179,7 @@ export const context = internalQuery({
   handler: async (ctx, args) => {
     const player = await getPlayer(ctx, args.playerId);
     const room = await getRoom(ctx, args.roomId);
-    const row = await getMembership(ctx, room, player._id);
-    if (row.left) fail("CONFLICT", "Player left this room");
+    await activeMembership(ctx, room, player._id);
     const active = await ctx.db
       .query("activeEffects")
       .withIndex("by_room_status", (q) => q.eq("roomId", room._id).eq("status", "active"))
@@ -252,6 +269,8 @@ export const apply = internalMutation({
   },
   handler: async (ctx, args): Promise<CallResult> => {
     const now = Date.now();
+    const room = await getRoom(ctx, args.roomId);
+    await activeMembership(ctx, room, args.playerId);
     const command = args.command as Command;
     let result: Omit<CallResult, "timings" | "serverNow">;
     if (command.kind === "refuse") {
@@ -268,6 +287,7 @@ export const apply = internalMutation({
     const timings = { jevMs: args.timings.jevMs, attempts: args.timings.attempts, totalMs: now - args.timings.startedAt };
     await ctx.db.insert("operatorCalls", {
       roomId: args.roomId,
+      raceNumber: room.raceNumber,
       playerId: args.playerId,
       transcript: args.transcript,
       view: args.view,
@@ -326,6 +346,7 @@ export const confirm = mutation({
     if (row.requestedBy !== args.playerId) fail("CONFLICT", "Only the player who asked can confirm");
     const now = Date.now();
     if (row.status !== "pending" || now > row.confirmBy) fail("CONFLICT", "The confirm window has closed");
+    await activeMembership(ctx, (await ctx.db.get(row.roomId))!, row.requestedBy);
     if (row.expiryJob) await ctx.scheduler.cancel(row.expiryJob);
     const { _id, _creationTime, status, startsAt, endsAt, confirmBy, expiryJob, endedBy, ...fields } = row;
     return toEffect(await activate(ctx, fields, now, row._id));

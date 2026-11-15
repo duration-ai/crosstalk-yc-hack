@@ -264,17 +264,30 @@ export function decide(a: Answers, view: View, active: ActiveSummary[]): Command
   }
 }
 
+const OWN_CAR: ViewEntity = {
+  id: "veh_me",
+  class: "car",
+  desc: "the player's own car",
+  color: "",
+  screen: "",
+  distance_m: 0,
+  view_rank: 0,
+  protected: false,
+  controlledBy: "me",
+};
+
 /** Rule 10. */
 function decideObject(a: Answers, view: View, active: ActiveSummary[]): Command {
   const effect = a.object_effect.choice;
   if (!OBJECT_EFFECTS[effect]) return refuse("vague");
   const visible = [...view.entities].sort((x, y) => x.view_rank - y.view_rank);
+  if (view.mode === "driving" && !visible.some((e) => e.controlledBy === "me")) visible.push(OWN_CAR);
   const described = a.described >= 0.5 ? visible.find((e) => e.id === a.target.choice) : undefined;
 
   let entity: ViewEntity | undefined;
   if (namedClass(a)) {
-    const ofClass = visible.filter((e) => isA(e.class, a.class.choice));
-    entity = described && ofClass.includes(described) ? described : ofClass[0];
+    const ofClass = visible.filter((e) => isA(e.class, a.class.choice) && e.controlledBy !== "me");
+    entity = described && isA(described.class, a.class.choice) ? described : ofClass[0];
   } else {
     entity =
       described ??

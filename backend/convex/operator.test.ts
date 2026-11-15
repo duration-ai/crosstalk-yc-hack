@@ -200,6 +200,66 @@ describe("operator.call", () => {
     expect(await effects()).toEqual([]);
   });
 
+  it("puts out the fire it extinguishes", async () => {
+    const { say, effects } = await room();
+    const fire = { scope: "object", object_effect: "set_fire", class: "waymo" };
+    await say("set the Waymo on fire", fire);
+    expect((await effects()).map((e) => e.effect)).toEqual(["set_fire"]);
+    const out = await say("put out the fire", { scope: "object", object_effect: "extinguish", class: "waymo" });
+    expect(out.effect).toMatchObject({ effect: "extinguish", target: "veh_12" });
+    expect((await effects()).map((e) => e.effect)).toEqual(["extinguish"]);
+    expect(await say("put out the fire", { scope: "object", object_effect: "extinguish", class: "waymo" })).toMatchObject({
+      refusal: { reason: "no_op" },
+    });
+  });
+
+  it("switches the theme when a theme party is asked for again", async () => {
+    const { say, effects } = await room();
+    const party = (theme: string) => ({ scope: "world", world_group: "population", population_effect: "ped_theme", theme });
+    const elvis = (await say("everyone dress like elvis", party("elvis"))).effect!;
+    const beach = (await say("beach party", party("beach_party"))).effect!;
+    expect(beach).toMatchObject({ id: elvis.id, theme: "beach_party" });
+    expect((await effects()).map((e) => e.theme)).toEqual(["beach_party"]);
+  });
+
+  it("drops the call and the confirm of a player who left the room", async () => {
+    const { t, tim, roomId, say, effects } = await room();
+    const pending = await say("slow him down", { scope: "object", object_effect: "slow_down", other_player: 0.95 }, tim.id, "driving");
+    await t.mutation(api.rooms.leave, { playerId: tim.id, roomId });
+    await expect(t.mutation(api.operator.confirm, { playerId: tim.id, effectId: pending.effect!.id })).rejects.toThrow(/not in room|left/);
+    await expect(
+      t.mutation(internal.operator.apply, {
+        roomId: roomId as any,
+        playerId: tim.id as any,
+        transcript: "make it rain",
+        view: view(),
+        input: "",
+        answers: null,
+        command: { kind: "effect", scope: "world", effect: "rain", target: "", targetClass: "", strength: "medium", color: "", theme: "", confirm: false },
+        timings: { jevMs: 0, attempts: 1, startedAt: Date.now() },
+      }),
+    ).rejects.toThrow(/not in room|left/);
+    expect(await effects()).toEqual([]);
+  });
+
+  it("counts applied Operator calls toward the race's CHAOS CALLER", async () => {
+    const { t, tim, maya, roomId, say } = await room();
+    let started;
+    for (const p of [tim, maya]) started = (await t.mutation(api.rooms.setReady, { playerId: p.id, roomId, ready: true })).room;
+    vi.setSystemTime(started!.startsAt);
+    await say("make it rain", RAIN, maya.id);
+    await say("night", { scope: "world", world_group: "sky", sky_effect: "night" }, maya.id);
+    await say("spawn a dragon", { scope: "reject", reject_reason: "spawning" }, tim.id);
+    await t.mutation(api.race.update, { playerId: tim.id, roomId, position: { x: 0, y: 0.5, z: 800 }, heading: 0 });
+    await t.mutation(api.race.update, { playerId: maya.id, roomId, position: { x: 0, y: 0.5, z: 800 }, heading: 0 });
+    const done = await t.query(internal.rooms.poll, { roomId, now: Date.now() + 1 });
+    expect(done.room.status).toBe("finished");
+    expect(Object.fromEntries(done.results.map((r) => [r.displayName, [r.calls, r.award]]))).toMatchObject({
+      Tim: [0, expect.any(String)],
+      Maya: [2, "CHAOS CALLER"],
+    });
+  });
+
   it("retries Jev once, then refuses as unavailable and logs the error", async () => {
     const { t, say } = await room();
     replies.push(new Error("socket hang up"));

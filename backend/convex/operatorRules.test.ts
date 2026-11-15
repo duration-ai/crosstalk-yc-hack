@@ -294,6 +294,19 @@ describe("rule 10: object targets", () => {
     expect(decide(grow, driving, [])).toEqual(effect({ scope: "players", effect: "bigger", confirm: false }));
   });
 
+  it("finds your own car when the view left it out", () => {
+    const noOwnCar: View = { ...onFoot, mode: "driving" };
+    const a = answers({ scope: "object", object_effect: "recolor", class: "car", color: "gold", described: 0.9, target: "veh_me", self_ref: 0.9 });
+    expect(decide(a, noOwnCar, [])).toEqual(effect({ target: "veh_me", color: "gold" }));
+    const grow = answers({ scope: "object", object_effect: "grow" });
+    expect(decide(grow, noOwnCar, [])).toEqual(effect({ scope: "players", effect: "bigger" }));
+  });
+
+  it("never picks your own car as the first of a class", () => {
+    const a = answers({ scope: "object", object_effect: "recolor", class: "car", color: "red" });
+    expect(decide(a, driving, [])).toEqual(effect({ scope: "object", target: "veh_12", color: "red" }));
+  });
+
   it("recolors your own car locally", () => {
     const a = answers({ scope: "object", object_effect: "recolor", color: "rainbow" });
     expect(decide(a, driving, [])).toEqual(effect({ scope: "object", target: "veh_me", color: "rainbow", strength: "" }));
