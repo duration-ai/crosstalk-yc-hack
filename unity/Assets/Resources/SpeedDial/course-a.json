@@ -1,0 +1,37 @@
+{
+  "startName": "Indiana St at 26th (Viaduct Run)",
+  "start": {
+    "lat": 37.751244,
+    "lon": -122.390582
+  },
+  "finishName": "YC (580 20th St)",
+  "finish": {
+    "lat": 37.760777,
+    "lon": -122.386636
+  },
+  "via": [
+    {
+      "lat": 37.752881,
+      "lon": -122.39073
+    },
+    {
+      "lat": 37.758169,
+      "lon": -122.392226
+    },
+    {
+      "lat": 37.764117,
+      "lon": -122.392488
+    },
+    {
+      "lat": 37.764195,
+      "lon": -122.387795
+    },
+    {
+      "lat": 37.762396,
+      "lon": -122.387113
+    }
+  ],
+  "finishRadius": 15,
+  "ringRadius": 7.2,
+  "freeway": true
+}
