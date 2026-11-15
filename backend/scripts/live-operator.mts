@@ -61,6 +61,7 @@ const CASES: Case[] = [
   ["give me a sports car", { effect: "change_vehicle", vehicle: "sports_car" }, "players"],
   ["put me in a bus", { effect: "change_vehicle", vehicle: "bus" }, "players"],
   ["I want a bike", { effect: "change_vehicle", vehicle: "bike" }, "players"],
+  ["give me a flying car", { effect: "change_vehicle", vehicle: "flying_car" }, "players"],
   ["give everyone big heads", { effect: "big_heads" }, "world"],
   ["make all the traffic lights green", { effect: "green_lights" }, "world"],
   ["super speed", { effect: "vehicle_faster" }, "players"],
