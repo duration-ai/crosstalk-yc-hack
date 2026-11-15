@@ -509,7 +509,10 @@ namespace Dogpatch.Race
         {
             launchContacts.TryGetValue(kind, out int n);
             launchContacts[kind] = n + 1;
-            Debug.Log($"[SpeedDial] launch contact {kind}: {a.name} hit {b.name} at {Time.time - StartedAt:F1} s");
+            var p = RoutePath.Flat(b.transform.position);
+            float along = Course.Route.Project(p);
+            float off = Vector2.Dot(p - Course.Route.PointAt(along), Course.Route.RightAt(along));
+            Debug.Log($"[SpeedDial] launch contact {kind}: {a.name} hit {b.name} at {Time.time - StartedAt:F1} s, {along:F0} m along the route and {off:+0.0;-0.0} m off it");
         }
 
         IEnumerator BackToLobby()

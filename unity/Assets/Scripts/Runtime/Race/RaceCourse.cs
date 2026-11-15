@@ -216,22 +216,23 @@ namespace Dogpatch.Race
         }
 
         // How many things are in the way of a grid whose front slot is `front` metres along the route: a
-        // bend, kerbs, buildings, or a parked or standing vehicle on a slot or in its lane for the first 20 m.
+        // bend, kerbs, buildings, or a parked or standing vehicle on a slot or within a car's width of its
+        // lane for the first 30 m.
         int GridProblems(float front)
         {
             int problems = 0;
             float back = front - 3f * GridStep;
-            if (Route.TurnAhead(back - 2f, front - back + 20f) > 12f) problems++;
+            if (Route.TurnAhead(back - 2f, front - back + 30f) > 12f) problems++;
             for (int slot = 0; slot < 4; slot++)
             {
                 if (world.Buildings.Blocked(GridPoint(front, slot), 1.5f)) problems++;
-                for (float ahead = 0f; ahead <= 20f; ahead += 5f)
+                for (float ahead = 0f; ahead <= 30f; ahead += 2.5f)
                 {
                     var q = GridPoint(front + ahead, slot);
                     if (!world.Roads.OnCurbedCarriageway(q, -1.2f)) problems++;
                     if (occupied != null && occupied(q)) problems++;
                     foreach (var car in world.ParkedCars)
-                        if ((new Vector2(car.Position.x, car.Position.z) - q).sqrMagnitude < 2.3f * 2.3f) problems++;
+                        if ((new Vector2(car.Position.x, car.Position.z) - q).sqrMagnitude < 3f * 3f) problems++;
                 }
             }
             return problems;
