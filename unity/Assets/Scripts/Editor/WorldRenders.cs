@@ -33,7 +33,7 @@ namespace Dogpatch.EditorTools
                 var models = new ModelLibrary();
                 var ctx = WorldBuilder.Build(data, models, material);
                 Park(ctx, models, material);
-                Render(ctx, data, Environment.GetEnvironmentVariable("RENDER_DIR") ?? "../Builds/renders");
+                Render(ctx, data, Environment.GetEnvironmentVariable("RENDER_DIR") ?? "../Builds/renders", ViewsFrom(Environment.GetEnvironmentVariable("RENDER_VIEWS")));
                 EditorApplication.Exit(0);
             }
             catch (Exception e)
@@ -89,6 +89,21 @@ namespace Dogpatch.EditorTools
             }
             var eye = a - d * back;
             return new View { Name = name, Eye = new Vector3(eye.x, height, eye.y), Target = new Vector3(a.x + d.x * 60f, 2f, a.y + d.y * 60f), Fov = 60f };
+        }
+
+        // Extra views from a file, one per line: name eyeX eyeY eyeZ targetX targetY targetZ fov.
+        static List<View> ViewsFrom(string path)
+        {
+            if (string.IsNullOrEmpty(path)) return null;
+            var views = new List<View>();
+            foreach (var line in File.ReadAllLines(path))
+            {
+                var f = line.Split((char[])null, StringSplitOptions.RemoveEmptyEntries);
+                if (f.Length < 8) continue;
+                float F(int i) => float.Parse(f[i], System.Globalization.CultureInfo.InvariantCulture);
+                views.Add(new View { Name = f[0], Eye = new Vector3(F(1), F(2), F(3)), Target = new Vector3(F(4), F(5), F(6)), Fov = F(7) });
+            }
+            return views;
         }
 
         public static List<View> Views(WorldContext ctx, WorldData data)

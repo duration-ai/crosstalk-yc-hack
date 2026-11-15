@@ -1,0 +1,32 @@
+{
+  "startName": "22nd Street Caltrain (Iron & Steam)",
+  "start": {
+    "lat": 37.757286,
+    "lon": -122.3924
+  },
+  "finishName": "YC (580 20th St)",
+  "finish": {
+    "lat": 37.760777,
+    "lon": -122.386636
+  },
+  "via": [
+    {
+      "lat": 37.757854,
+      "lon": -122.388477
+    },
+    {
+      "lat": 37.755291,
+      "lon": -122.388477
+    },
+    {
+      "lat": 37.755291,
+      "lon": -122.383359
+    },
+    {
+      "lat": 37.760417,
+      "lon": -122.383245
+    }
+  ],
+  "finishRadius": 15,
+  "ringRadius": 7.2
+}

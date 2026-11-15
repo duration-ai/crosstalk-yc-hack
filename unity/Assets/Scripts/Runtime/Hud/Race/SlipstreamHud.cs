@@ -274,7 +274,12 @@ namespace Dogpatch.Slipstream
                 WorldTags();
                 NetChip();
             }
-            if (Race.Last == null) return;
+            if (Race.Last == null)
+            {
+                OperatorAndNews();
+                PhoneButton(false);
+                return;
+            }
 
             var room = Race.Room;
             bool lobby = !Race.Gridded && (room.status == RoomStatus.Lobby || room.status == RoomStatus.Countdown) && NearRing();
