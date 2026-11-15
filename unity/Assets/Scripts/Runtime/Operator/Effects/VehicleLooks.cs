@@ -8,8 +8,9 @@ using Random = UnityEngine.Random;
 
 namespace Dogpatch.Operator
 {
-    // A visible part for each car mechanic effect (boosters for speed, a drag chute for slow, oil
-    // for slidey tyres, springs for bouncy, hover rings for low gravity), attached to every racer's
+    // A visible part for each car mechanic effect (boosters for speed, an anchor for slow, oil
+    // for slidey tyres, springs for bouncy, hover rings for low gravity, chrome and an anvil for
+    // heavy, a wind-up key for tiny, monster-truck dress for giant, jump jets for hop), attached to every racer's
     // car the row reaches while it runs and popped off when it ends. Every device runs the same
     // activeEffects rows, so remote racers' cars wear the look too.
     public static class VehicleLooks
@@ -20,11 +21,15 @@ namespace Dogpatch.Operator
         {
             ["vehicle_faster"] = (car, box, k, m) => Boosters(box, k, m, false),
             ["nitro"] = (car, box, k, m) => Boosters(box, k, m, true),
-            ["vehicle_slower"] = (car, box, k, m) => Parachute(box, k, m),
+            ["vehicle_slower"] = (car, box, k, m) => Anchor(box, k, m),
             ["grip_down"] = (car, box, k, m) => Oil(box, k, m),
             ["slippery_ground"] = (car, box, k, m) => Oil(box, k, m),
             ["bouncy"] = Springs,
             ["gravity_lower"] = HoverRings,
+            ["gravity_higher"] = (car, box, k, m) => Anvil(box, k, m),
+            ["smaller"] = (car, box, k, m) => WindUpKey(box, k, m),
+            ["bigger"] = (car, box, k, m) => Stacks(box, k, m),
+            ["vehicle_hop"] = (car, box, k, m) => HopJets(box, k, m),
         };
 
         public static Action Attach(EffectContext context, ActiveEffect row, EffectTarget target)
@@ -32,7 +37,7 @@ namespace Dogpatch.Operator
             if (row.instant || !Looks.TryGetValue(row.effect, out var build)) return null;
             float k = OperatorEffect.Scale(row.strength, 0.85f, 1f, 1.2f);
             var looks = new Dictionary<CarController, GameObject>();
-            var lifted = new List<ShapeLayers>();
+            var undo = new List<Action>();
             var key = new object();
             void Sweep()
             {
@@ -41,15 +46,12 @@ namespace Dogpatch.Operator
                     if (looks.ContainsKey(car)) continue;
                     var shape = Racers.CarShape(car);
                     if (shape == null) continue;
+                    if (row.effect == "bouncy") undo.Add(Bounce(shape, key, k));
+                    if (row.effect == "gravity_higher") undo.Add(Heavy(car, shape, key));
                     var look = build(car, Racers.Box(car), k, context.Material);
                     look.transform.SetParent(shape, false);
                     Pop.In(look);
                     looks[car] = look;
-                    if (row.effect != "bouncy") continue;
-                    var layers = Racers.Layers(shape);
-                    float phase = Random.value * 6f;
-                    layers.Lift(key, () => (0.42f + 0.14f * Mathf.Sin(Time.time * 7f + phase)) * k);
-                    lifted.Add(layers);
                 }
             }
             Sweep();
@@ -64,9 +66,37 @@ namespace Dogpatch.Operator
             {
                 if (ticker != null) Object.Destroy(ticker);
                 foreach (var look in looks.Values) Pop.Out(look);
-                foreach (var layers in lifted) if (layers != null) layers.Remove(key);
+                foreach (var u in undo) u();
                 looks.Clear();
-                lifted.Clear();
+                undo.Clear();
+            };
+        }
+
+        // bouncy: the body rides up on its springs and bobs.
+        static Action Bounce(Transform shape, object key, float k)
+        {
+            var layers = Racers.Layers(shape);
+            float phase = Random.value * 6f;
+            layers.Lift(key, () => (0.42f + 0.14f * Mathf.Sin(Time.time * 7f + phase)) * k);
+            return () =>
+            {
+                if (layers != null) layers.Remove(key);
+            };
+        }
+
+        // gravity_higher: the car turns to polished chrome and squats low on its wheels.
+        static Action Heavy(CarController car, Transform shape, object key)
+        {
+            var layers = Racers.Layers(shape);
+            layers.Pivot = 0f;
+            layers.Scale(key, new Vector3(1.05f, 0.84f, 1.02f));
+            var morph = Morph.On(car.gameObject);
+            var chrome = new Morph.Mod { Mix = new Color(0.8f, 0.84f, 0.9f), Amount = 0.7f, Rim = 0.4f };
+            morph.Add(chrome);
+            return () =>
+            {
+                if (layers != null) layers.Remove(key);
+                if (morph != null) morph.Remove(chrome);
             };
         }
 
@@ -174,42 +204,40 @@ namespace Dogpatch.Operator
             return root;
         }
 
-        // vehicle_slower: a red and white drag chute billowing behind on its lines.
-        static GameObject Parachute((Vector3 center, Vector3 size) box, float k, Material material)
+        // vehicle_slower: a ship's anchor on a chain, dragging along the road behind the car.
+        static GameObject Anchor((Vector3 center, Vector3 size) box, float k, Material material)
         {
-            var root = Root("Parachute");
-            float hz = box.size.z * 0.5f, top = box.center.y + box.size.y * 0.5f;
-            var hitch = new Vector3(box.center.x, box.center.y, box.center.z - hz);
-            var tow = new MeshBuilder();
-            tow.Box(hitch + Vector3.back * 0.2f, new Vector3(0.12f, 0.12f, 0.4f), Quaternion.identity, C("#2B2F3A"));
-            Part(root, "Hitch", tow, material, Vector3.zero);
-
-            var chute = new MeshBuilder();
-            float R = 0.85f * k, depth = 0.6f * k, dist = 1.5f * k;
-            var rim = new Vector3(0f, top + 0.9f * k - hitch.y, -dist);
-            var apex = rim + Vector3.back * depth;
-            var red = C("#E8333A");
-            var white = C("#F4F4F0");
-            var line = C("#E9E4D8");
-            const int n = 10;
-            Vector3 P(float r, float z, int i)
+            var root = Root("Anchor");
+            float hz = box.size.z * 0.5f, bottom = box.center.y - box.size.y * 0.5f;
+            var iron = C("#2B2F3A");
+            var rust = C("#8A4B2A");
+            var steel = C("#8C93A6");
+            var hitch = new Vector3(box.center.x, bottom + 0.35f, box.center.z - hz);
+            var mb = new MeshBuilder();
+            var drop = new Vector3(0f, bottom + 0.75f * k - hitch.y, -1.0f * k);
+            const int links = 7;
+            for (int i = 0; i < links; i++)
             {
-                float t = i * Mathf.PI * 2f / n;
-                return rim + new Vector3(Mathf.Cos(t) * r, Mathf.Sin(t) * r, z);
+                float t = (i + 0.5f) / links;
+                var at = Vector3.Lerp(Vector3.zero, drop, t) + Vector3.down * Mathf.Sin(t * Mathf.PI) * 0.2f;
+                var size = i % 2 == 0 ? new Vector3(0.05f, 0.16f, 0.24f) : new Vector3(0.16f, 0.05f, 0.24f);
+                mb.Box(at, size * k, Quaternion.LookRotation(drop), steel);
             }
-            for (int i = 0; i < n; i++)
+            var ring = drop + Vector3.down * 0.05f * k;
+            var crown = drop + new Vector3(0f, -0.75f * k, -0.35f * k);
+            Prism(mb, ring, crown, 0.07f * k, 0.07f * k, 6, iron);
+            mb.Box(Vector3.Lerp(ring, crown, 0.15f), new Vector3(0.5f, 0.08f, 0.08f) * k, Quaternion.LookRotation(crown - ring), rust);
+            foreach (float side in new[] { -1f, 1f })
             {
-                var color = i % 2 == 0 ? red : white;
-                Vector3 a0 = P(R, 0f, i), a1 = P(R, 0f, i + 1), b0 = P(R * 0.72f, -depth * 0.65f, i), b1 = P(R * 0.72f, -depth * 0.65f, i + 1);
-                var outward = ((a0 + a1 + b0 + b1) * 0.25f - rim + Vector3.forward * depth * 0.3f).normalized;
-                chute.Quad(a0, a1, b1, b0, color, outward);
-                chute.Quad(a0, b0, b1, a1, color, -outward);
-                var cap = ((b0 + b1) * 0.5f - rim).normalized + Vector3.back;
-                chute.Triangle(b0, b1, apex, color, cap);
-                chute.Triangle(b0, apex, b1, color, -cap);
-                if (i % 2 == 0) Strut(chute, Vector3.zero, a0, 0.03f, line);
+                var tip = crown + new Vector3(side * 0.42f * k, 0.3f * k, 0.05f * k);
+                Prism(mb, crown, tip, 0.06f * k, 0.06f * k, 6, iron);
+                mb.Triangle(tip + new Vector3(side * 0.12f, 0.12f, 0f) * k, tip + new Vector3(-side * 0.08f, -0.06f, 0f) * k, tip + new Vector3(side * 0.02f, -0.2f, 0f) * k, rust, Vector3.back);
+                mb.Triangle(tip + new Vector3(side * 0.12f, 0.12f, 0f) * k, tip + new Vector3(-side * 0.08f, -0.06f, 0f) * k, tip + new Vector3(side * 0.02f, -0.2f, 0f) * k, rust, Vector3.forward);
             }
-            Part(root, "Chute", chute, material, hitch + Vector3.back * 0.4f, LookMotion.Kind.Billow);
+            Part(root, "Anchor", mb, material, hitch, LookMotion.Kind.Billow).transform.localScale = Vector3.one * 1.5f;
+            var hook = new MeshBuilder();
+            hook.Box(Vector3.back * 0.12f, new Vector3(0.14f, 0.14f, 0.24f), Quaternion.identity, iron);
+            Part(root, "Hitch", hook, material, hitch);
             return root;
         }
 
@@ -291,6 +319,98 @@ namespace Dogpatch.Operator
             return root;
         }
 
+        // gravity_higher: a black iron anvil stamped with a yellow band on the roof.
+        static GameObject Anvil((Vector3 center, Vector3 size) box, float k, Material material)
+        {
+            var root = Root("Anvil");
+            float top = box.center.y + box.size.y * 0.5f;
+            var iron = C("#2B2F3A");
+            var edge = C("#4B5368");
+            var mb = new MeshBuilder();
+            var at = new Vector3(box.center.x, top, box.center.z - box.size.z * 0.08f);
+            mb.Box(at + new Vector3(0f, 0.1f * k, 0f), new Vector3(0.7f, 0.2f, 0.5f) * k, Quaternion.identity, iron);
+            mb.Box(at + new Vector3(0f, 0.3f * k, 0f), new Vector3(0.36f, 0.22f, 0.28f) * k, Quaternion.identity, edge);
+            mb.Box(at + new Vector3(0f, 0.5f * k, -0.05f * k), new Vector3(0.5f, 0.2f, 0.95f) * k, Quaternion.identity, iron);
+            Prism(mb, at + new Vector3(0f, 0.53f * k, 0.42f * k), at + new Vector3(0f, 0.5f * k, 0.85f * k), 0.1f * k, 0f, 6, iron);
+            mb.Box(at + new Vector3(0f, 0.5f * k, -0.05f * k), new Vector3(0.52f, 0.06f, 0.4f) * k, Quaternion.identity, C("#FFCB1F"));
+            Part(root, "Anvil", mb, material, Vector3.zero);
+            return root;
+        }
+
+        // smaller: a brass wind-up key turning on the roof, like a toy car.
+        static GameObject WindUpKey((Vector3 center, Vector3 size) box, float k, Material material)
+        {
+            var root = Root("Wind-up key");
+            float top = box.center.y + box.size.y * 0.5f;
+            var brass = C("#E0B33C");
+            var shine = C("#FFE08A");
+            float s = Mathf.Max(0.6f, box.size.x * 0.32f) * k;
+            var mb = new MeshBuilder();
+            Prism(mb, Vector3.zero, Vector3.up * 0.5f * s, 0.08f * s, 0.08f * s, 6, brass);
+            foreach (float side in new[] { -1f, 1f })
+            {
+                var lobe = new Vector3(side * 0.42f * s, 0.75f * s, 0f);
+                mb.Box(new Vector3(side * 0.16f * s, 0.62f * s, 0f), new Vector3(0.36f * s, 0.12f * s, 0.08f * s), Quaternion.Euler(0f, 0f, side * 25f), brass);
+                Prism(mb, lobe + Vector3.back * 0.05f * s, lobe + Vector3.forward * 0.05f * s, 0.26f * s, 0.26f * s, 8, brass);
+                Prism(mb, lobe + Vector3.back * 0.06f * s, lobe + Vector3.forward * 0.06f * s, 0.12f * s, 0.12f * s, 8, shine, true);
+            }
+            Part(root, "Key", mb, material, new Vector3(box.center.x, top - 0.02f, box.center.z - box.size.z * 0.12f), LookMotion.Kind.Wind);
+            return root;
+        }
+
+        // bigger: monster-truck dress, twin chrome exhaust stacks, a roof light bar and a bull bar.
+        static GameObject Stacks((Vector3 center, Vector3 size) box, float k, Material material)
+        {
+            var root = Root("Monster");
+            float hx = box.size.x * 0.5f, hz = box.size.z * 0.5f;
+            float top = box.center.y + box.size.y * 0.5f, bottom = box.center.y - box.size.y * 0.5f;
+            var chrome = C("#D7DCE2");
+            var dark = C("#2B2F3A");
+            var amber = C("#FFB21F");
+            var mb = new MeshBuilder();
+            foreach (float side in new[] { -1f, 1f })
+            {
+                var foot = new Vector3(box.center.x + side * (hx + 0.08f), box.center.y, box.center.z - hz * 0.1f);
+                Prism(mb, foot, foot + Vector3.up * (top - box.center.y + 0.9f * k), 0.1f * k, 0.12f * k, 8, chrome);
+                Prism(mb, foot + Vector3.up * (top - box.center.y + 0.9f * k), foot + Vector3.up * (top - box.center.y + 1.0f * k) + Vector3.back * 0.12f, 0.12f * k, 0.13f * k, 8, dark);
+            }
+            mb.Box(new Vector3(box.center.x, top + 0.08f, box.center.z + hz * 0.15f), new Vector3(box.size.x * 0.75f, 0.1f, 0.18f), Quaternion.identity, dark);
+            for (int i = -2; i <= 2; i++)
+                mb.Box(new Vector3(box.center.x + i * box.size.x * 0.14f, top + 0.16f, box.center.z + hz * 0.15f), new Vector3(0.18f, 0.1f, 0.12f), Quaternion.identity, amber);
+            float front = box.center.z + hz + 0.15f;
+            mb.Box(new Vector3(box.center.x, bottom + 0.35f, front), new Vector3(box.size.x * 0.9f, 0.1f, 0.1f), Quaternion.identity, chrome);
+            mb.Box(new Vector3(box.center.x, bottom + 0.6f, front), new Vector3(box.size.x * 0.7f, 0.1f, 0.1f), Quaternion.identity, chrome);
+            foreach (float side in new[] { -1f, 1f })
+                mb.Box(new Vector3(box.center.x + side * box.size.x * 0.35f, bottom + 0.48f, front), new Vector3(0.1f, 0.4f, 0.1f), Quaternion.identity, chrome);
+            Part(root, "Stacks", mb, material, Vector3.zero);
+            return root;
+        }
+
+        // vehicle_hop: four jump jets under the sills, firing down.
+        static GameObject HopJets((Vector3 center, Vector3 size) box, float k, Material material)
+        {
+            var root = Root("Hop jets");
+            float hx = box.size.x * 0.5f, hz = box.size.z * 0.5f;
+            float bottom = box.center.y - box.size.y * 0.5f;
+            var dark = C("#2B2F3A");
+            var mb = new MeshBuilder();
+            foreach (float side in new[] { -1f, 1f })
+            foreach (float end in new[] { -1f, 1f })
+            {
+                var at = new Vector3(box.center.x + side * (hx + 0.18f), bottom + 0.4f, box.center.z + end * hz * (end < 0f ? 0.8f : 0.55f));
+                Prism(mb, at + Vector3.up * 0.35f * k, at, 0.14f * k, 0.2f * k, 8, C("#E8333A"));
+                mb.Box(at + new Vector3(-side * 0.12f, 0.2f * k, 0f), new Vector3(0.24f, 0.08f, 0.12f) * k, Quaternion.identity, dark);
+                Prism(mb, at, at + Vector3.down * 0.12f * k, 0.15f * k, 0.2f * k, 8, dark);
+                var jet = new MeshBuilder();
+                Prism(jet, Vector3.zero, Vector3.back * 0.5f * k, 0.17f * k, 0f, 7, C("#FF7A1A"));
+                Prism(jet, Vector3.back * 0.02f, Vector3.back * 0.3f * k, 0.1f * k, 0f, 7, C("#FFE14D"));
+                var go = Part(root, "Jet", jet, material, at + Vector3.down * 0.12f * k, LookMotion.Kind.Flicker, false);
+                go.transform.localRotation = Quaternion.Euler(-90f, 0f, 0f);
+            }
+            Part(root, "Nozzles", mb, material, Vector3.zero);
+            return root;
+        }
+
         static void Ring(MeshBuilder mb, float radius, float width, float y, Color color)
         {
             const int n = 12;
@@ -312,7 +432,7 @@ namespace Dogpatch.Operator
     // Keeps a look's parts alive: jets flicker, chutes billow, rings spin.
     public sealed class LookMotion : MonoBehaviour
     {
-        public enum Kind { Flicker, Billow, Spin }
+        public enum Kind { Flicker, Billow, Spin, Wind }
 
         public Kind Mode;
         Vector3 rest;
@@ -343,6 +463,9 @@ namespace Dogpatch.Operator
                 case Kind.Spin:
                     transform.localRotation = restRotation * Quaternion.Euler(0f, t * 140f, 0f);
                     transform.localScale = rest * (1f + 0.08f * Mathf.Sin(t * 6f));
+                    break;
+                case Kind.Wind:
+                    transform.localRotation = restRotation * Quaternion.Euler(0f, t * 90f, 0f);
                     break;
             }
         }
