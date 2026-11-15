@@ -24,6 +24,13 @@ export const enter = internalMutation({
   handler: async (ctx, args) => {
     const player = await getPlayer(ctx, args.playerId);
     const now = Date.now();
+    for (const row of await ctx.db.query("roomPlayers").withIndex("by_player", (q) => q.eq("playerId", player._id)).collect()) {
+      if (row.left) continue;
+      const room = (await ctx.db.get(row.roomId))!;
+      if (room.kind === "mission" && room.mission === args.mission && phase(room, now) !== "finished") {
+        return joinedResponse(ctx, room._id, player._id, now);
+      }
+    }
     const shard = (await findPresence(ctx, player._id))?.shard ?? 0;
     const recent = await ctx.db
       .query("rooms")
@@ -36,8 +43,6 @@ export const enter = internalMutation({
       const status = phase(room, now);
       if (status !== "lobby" && status !== "countdown") continue;
       const rows = await roomPlayers(ctx, room._id);
-      const mine = rows.find((row) => row.playerId === player._id && !row.left);
-      if (mine) return joinedResponse(ctx, room._id, player._id, now);
       if (isLocked(room, now) || rows.length >= MAX_PLAYERS) continue;
       await leaveOtherRooms(ctx, player._id, room._id, now);
       const taken = new Set(rows.map((row) => row.slot));

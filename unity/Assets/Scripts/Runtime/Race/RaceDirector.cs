@@ -216,7 +216,6 @@ namespace Dogpatch.Race
         {
             RoomId = room.room.id;
             RoomCode = room.room.code;
-            IsHost = host;
             raceNumber = room.room.raceNumber;
             cursor = null;
             MySlot = room.you.slot;
@@ -308,8 +307,11 @@ namespace Dogpatch.Race
             everInRing = onRing;
         }
 
+        // One poll in flight at a time; while the server can't be reached the last state stays up
+        // and the next try backs off with jitter.
         IEnumerator PollLoop()
         {
+            int failures = 0;
             while (true)
             {
                 if (RoomId == null)
@@ -319,8 +321,15 @@ namespace Dogpatch.Race
                 }
                 string polled = RoomId;
                 var poll = Session.PollAsync(polled, cursor);
-                yield return Wait(poll);
-                if (poll.Status == TaskStatus.RanToCompletion && polled == RoomId) yield return Handle(poll.Result);
+                while (!poll.IsCompleted) yield return null;
+                if (poll.Status != TaskStatus.RanToCompletion)
+                {
+                    if (++failures == 1) Debug.LogWarning("[SpeedDial] poll: " + poll.Exception?.GetBaseException().Message);
+                    yield return Pause(Backoff(failures));
+                    continue;
+                }
+                failures = 0;
+                if (polled == RoomId) yield return Handle(poll.Result);
                 yield return Pause(PollEvery);
             }
         }
@@ -537,6 +546,7 @@ namespace Dogpatch.Race
 
         IEnumerator SendLoop()
         {
+            int failures = 0;
             while (true)
             {
                 if (RoomId == null)
@@ -552,7 +562,15 @@ namespace Dogpatch.Race
                     var t = BodyOf(bot.Id);
                     sends.Add(Session.UpdateAsync(bot.Id, RoomId, new Vec3(t.position.x, t.position.y, t.position.z), t.eulerAngles.y));
                 }
-                yield return Wait(Task.WhenAll(sends));
+                var all = Task.WhenAll(sends);
+                while (!all.IsCompleted) yield return null;
+                if (all.Status != TaskStatus.RanToCompletion)
+                {
+                    if (++failures == 1) Debug.LogWarning("[SpeedDial] update: " + all.Exception?.GetBaseException().Message);
+                    yield return Pause(Backoff(failures));
+                    continue;
+                }
+                failures = 0;
                 yield return Pause(SendEvery);
             }
         }
@@ -726,6 +744,7 @@ namespace Dogpatch.Race
 
             if (Started && !ResultsIn) BotRaceBehaviour();
             else if (!Gridded) BotLobbyBehaviour();
+            if (Online) MissionRing();
         }
 
         // A bot on its own spends an ask for each call, like a player. Online the server only charges

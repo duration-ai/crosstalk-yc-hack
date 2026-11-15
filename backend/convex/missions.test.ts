@@ -59,6 +59,9 @@ describe("mission lobby", () => {
     vi.setSystemTime(T0 + MISSION_COUNTDOWN_MS + 1);
     const late = await t.mutation(internal.missions.enter, { playerId: ids[2], mission: "yc" });
     expect(late.room.id).not.toBe(first.room.id);
+    const retry = await t.mutation(internal.missions.enter, { playerId: ids[0], mission: "yc" });
+    expect(retry.room.id).toBe(first.room.id);
+    expect(retry.room.status).toBe("racing");
     const world = await t.run(async (ctx) => (await ctx.db.query("roomPlayers").collect()).filter((r) => r.roomId === worldRoomId && !r.left));
     expect(world).toHaveLength(3);
   });
