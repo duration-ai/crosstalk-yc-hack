@@ -18,7 +18,7 @@ namespace Dogpatch.Race
     // the last three seconds, the race to YC, results and the rematch. Everything a server would
     // own (rooms, readiness, countdown, places, events, results) only flows through IRaceSession and
     // IOperator, so swapping LocalRaceSession for a Convex client changes nothing here.
-    public sealed class RaceDirector : MonoBehaviour
+    public sealed partial class RaceDirector : MonoBehaviour
     {
         static readonly string[] BotNames = { "Maya", "Jun", "Rosa" };
         static readonly float[] BotSkill = { 0.95f, 0.91f, 0.87f };
@@ -81,7 +81,7 @@ namespace Dogpatch.Race
         float botCallsAfter;
         bool lobbyCam;
 
-        public long NowMs => (long)(epochMs + Time.timeAsDouble * 1000.0);
+        public long NowMs => convex != null ? convex.ServerNowMs : (long)(epochMs + Time.timeAsDouble * 1000.0);
         public Room Room => Last?.room;
         public Racer Me => Last?.racers?.FirstOrDefault(r => r.playerId == MyId);
         public float MsToStart => Room == null || Room.startsAt == 0 ? float.MaxValue : Room.startsAt - NowMs;
@@ -113,6 +113,7 @@ namespace Dogpatch.Race
             if (!Setup) yield break;
             StartCoroutine(PollLoop());
             StartCoroutine(SendLoop());
+            AutoRoom();
         }
 
         async Task SetupAsync()
@@ -139,44 +140,17 @@ namespace Dogpatch.Race
                 phones.Add(phone);
             }
 
-            Session = new LocalRaceSession(id => Game.Backend.GetPlayerAsync(id), () => NowMs, Catalog);
-            Operator = new LocalOperator(Session, Catalog);
             MyId = Game.Profile.id;
-            var route = Course.RouteWorld.Select(v => new Vec3(v.x, v.y, v.z)).ToList();
-            var created = await Session.CreateRoomAsync(MyId, route, Course.Data.finishRadius, 2);
-            RoomId = created.room.id;
-            raceNumber = created.room.raceNumber;
-            MySlot = created.you.slot;
-            for (int i = 0; i < BotNames.Length; i++)
-            {
-                var player = await Game.Backend.CreatePlayerAsync(BotNames[i]);
-                var joined = await Session.JoinRoomAsync(player.id, created.room.code);
-                bots.Add(new Bot { Name = BotNames[i], Id = player.id, Slot = joined.you.slot });
-            }
+            var url = ConvexRaceSession.ConfiguredUrl();
+            if (!string.IsNullOrEmpty(url)) await ConnectAsync(url);
+            if (!Online) Session = new LocalRaceSession(id => Game.Backend.GetPlayerAsync(id), () => NowMs, Catalog);
+            Operator = new LocalOperator(Session, Catalog);
 
             if (Game.CurrentCar != null) await Game.ExitCar();
             myCar = Game.Cars.Values.First();
             foreach (var car in Game.Cars.Values) CarFx.On(car);
-            PaintJob.For(myCar.gameObject, myCar.ModelId).SetBase(PaintJob.Linear(SlotHex[MySlot]));
-            var carAsset = Game.Models.Get(myCar.ModelId);
-            var avatarAsset = Game.Models.Get(Game.Models.Role("player")[0].id);
-            foreach (var bot in bots)
-            {
-                var spot = Course.Grid[bot.Slot];
-                bot.Car = CarController.Create("bot-" + bot.Name.ToLowerInvariant(), carAsset, material, spot.Position, spot.Heading);
-                bot.Car.name = "Car " + bot.Name;
-                bot.Car.transform.SetParent(Game.World.Root.transform, true);
-                CarFx.On(bot.Car);
-                PaintJob.For(bot.Car.gameObject, bot.Car.ModelId).SetBase(PaintJob.Linear(SlotHex[bot.Slot]));
-                bot.Driver = bot.Car.gameObject.AddComponent<BotDriver>();
-                bot.Driver.name = bot.Name;
-                bot.Driver.Car = bot.Car;
-                bot.Driver.Route = Course.Route;
-                bot.Driver.Skill = BotSkill[bots.IndexOf(bot)];
-                bot.Driver.Lane = bot.Slot % 2 == 0 ? -1.9f : 1.9f;
-                bot.Avatar = RacerAvatar.Create(avatarAsset, material, PaintJob.Linear(SlotHex[bot.Slot]), bot.Name);
-                bot.Avatar.transform.SetParent(Game.World.Root.transform, true);
-            }
+            Remotes = gameObject.AddComponent<RemoteRacers>();
+            Remotes.Race = this;
 
             Game.Player.gameObject.AddComponent<PlayerShoveable>();
             Changes = gameObject.AddComponent<WorldChangeDirector>();
@@ -198,9 +172,79 @@ namespace Dogpatch.Race
             Shove.IgnoreTouch = Hud.HitTest;
             Game.Drag.IgnoreTouch = Hud.HitTest;
 
+            Debug.Log($"[SpeedDial] {(Online ? "online at " + convex.BaseUrl : "offline")}: {Course.Data.startName} -> {Course.Data.finishName}, {Course.Route.Length:F0} m, ring at ({Course.RingCenter.x:F0},{Course.RingCenter.z:F0}), finish at ({Course.Finish.x:F0},{Course.Finish.z:F0}), {phones.Count} payphones");
+            if (!Online)
+            {
+                var created = await Session.CreateRoomAsync(MyId, RouteWire(), Course.Data.finishRadius, 2);
+                EnterRoom(created, true);
+                await AddBotsAsync();
+                Debug.Log($"[SpeedDial] local room {created.room.code} with bots {string.Join("/", BotNames)}");
+            }
             PlaceForLobby(false);
             Setup = true;
-            Debug.Log($"[SpeedDial] room {created.room.code}: {Course.Data.startName} -> {Course.Data.finishName}, {Course.Route.Length:F0} m, ring at ({Course.RingCenter.x:F0},{Course.RingCenter.z:F0}), finish at ({Course.Finish.x:F0},{Course.Finish.z:F0}), {phones.Count} payphones, racers You/{string.Join("/", BotNames)}");
+        }
+
+        List<Vec3> RouteWire() => Course.RouteWorld.Select(v => new Vec3(v.x, v.y, v.z)).ToList();
+
+        // Seats a room's racer, from creating or joining it: my slot, color and the poll cursor.
+        void EnterRoom(RoomResponse room, bool host)
+        {
+            RoomId = room.room.id;
+            RoomCode = room.room.code;
+            IsHost = host;
+            raceNumber = room.room.raceNumber;
+            cursor = null;
+            MySlot = room.you.slot;
+            PaintJob.For(myCar.gameObject, myCar.ModelId).SetBase(PaintJob.Linear(SlotHex[MySlot]));
+        }
+
+        // Fills the room's empty slots with Maya, Jun and Rosa, driven on this device. Offline they
+        // always race; online only when the host turns them on.
+        async Task AddBotsAsync()
+        {
+            var carAsset = Game.Models.Get(myCar.ModelId);
+            var avatarAsset = Game.Models.Get(Game.Models.Role("player")[0].id);
+            var material = Game.SharedMaterial;
+            foreach (var botName in BotNames)
+            {
+                if (bots.Any(b => b.Name == botName)) continue;
+                if (Last != null && Last.racers.Count(r => !r.left) >= 4) break;
+                var player = Online ? await convex.CreatePlayerAsync(botName) : await Game.Backend.CreatePlayerAsync(botName);
+                var joined = await Session.JoinRoomAsync(player.id, RoomCode);
+                var bot = new Bot { Name = botName, Id = player.id, Slot = joined.you.slot };
+                var spot = Course.Grid[bot.Slot];
+                bot.Car = CarController.Create("bot-" + bot.Name.ToLowerInvariant(), carAsset, material, spot.Position, spot.Heading);
+                bot.Car.name = "Car " + bot.Name;
+                bot.Car.transform.SetParent(Game.World.Root.transform, true);
+                CarFx.On(bot.Car);
+                PaintJob.For(bot.Car.gameObject, bot.Car.ModelId).SetBase(PaintJob.Linear(SlotHex[bot.Slot]));
+                bot.Driver = bot.Car.gameObject.AddComponent<BotDriver>();
+                bot.Driver.name = bot.Name;
+                bot.Driver.Car = bot.Car;
+                bot.Driver.Route = Course.Route;
+                bot.Driver.Skill = BotSkill[Array.IndexOf(BotNames, botName)];
+                bot.Driver.Lane = bot.Slot % 2 == 0 ? -1.9f : 1.9f;
+                bot.Avatar = RacerAvatar.Create(avatarAsset, material, PaintJob.Linear(SlotHex[bot.Slot]), bot.Name);
+                bot.Avatar.transform.SetParent(Game.World.Root.transform, true);
+                bot.Car.SetDriven(false);
+                bot.Driver.ResetProgress(spot.Progress);
+                bot.LastProgress = spot.Progress;
+                bot.Avatar.Stand(RingSpot(bot.Slot), LobbyHeading);
+                bots.Add(bot);
+                Debug.Log($"[SpeedDial] bot {bot.Name} joined as slot {bot.Slot}");
+            }
+        }
+
+        async Task RemoveBotsAsync()
+        {
+            foreach (var bot in bots.ToList())
+            {
+                bots.Remove(bot);
+                if (bot.Car != null) Destroy(bot.Car.gameObject);
+                if (bot.Avatar != null) Destroy(bot.Avatar.gameObject);
+                try { await Session.LeaveRoomAsync(bot.Id, RoomId); }
+                catch (BackendException e) { Debug.LogWarning($"[SpeedDial] {bot.Name} could not leave: {e.Code}"); }
+            }
         }
 
         Vector3 LobbyRight => Vector3.Cross(Vector3.up, -Course.RingFacing);
@@ -240,16 +284,30 @@ namespace Dogpatch.Race
         {
             while (true)
             {
-                var poll = Session.PollAsync(RoomId, cursor);
+                if (RoomId == null)
+                {
+                    yield return null;
+                    continue;
+                }
+                string polled = RoomId;
+                var poll = Session.PollAsync(polled, cursor);
                 yield return Wait(poll);
-                if (poll.Status == TaskStatus.RanToCompletion) yield return Handle(poll.Result);
-                yield return new WaitForSeconds(PollEvery);
+                if (poll.Status == TaskStatus.RanToCompletion && polled == RoomId) yield return Handle(poll.Result);
+                yield return Pause(PollEvery);
             }
         }
 
         IEnumerator Handle(PollResponse poll)
         {
             Last = poll;
+            Remotes.Sync(poll);
+            var room = poll.room;
+            bool rematch = room.raceNumber != raceNumber;
+            if (rematch)
+            {
+                raceNumber = room.raceNumber;
+                yield return BackToLobby();
+            }
             foreach (var e in poll.events)
             {
                 if (cursor.HasValue && e.seq <= cursor.Value) continue;
@@ -257,18 +315,12 @@ namespace Dogpatch.Race
                 EventArrived?.Invoke(e);
             }
             cursor = poll.cursor;
-            var room = poll.room;
-            if (room.raceNumber != raceNumber)
-            {
-                raceNumber = room.raceNumber;
-                yield return BackToLobby();
-                yield break;
-            }
+            if (rematch) yield break;
 
             if (room.status == RoomStatus.Lobby || room.status == RoomStatus.Countdown)
             {
                 if (room.status == RoomStatus.Countdown && MsToStart <= LockMs && !Gridded) yield return ToGrid();
-                bool go = everInRing || (Me != null && Me.ready) || Time.time - lobbySince > 25f;
+                bool go = (Me != null && Me.ready) || (!Online && (everInRing || Time.time - lobbySince > 25f));
                 if (go && !Gridded)
                     for (int i = 0; i < bots.Count; i++)
                     {
@@ -356,15 +408,21 @@ namespace Dogpatch.Race
         {
             while (true)
             {
+                if (RoomId == null)
+                {
+                    yield return null;
+                    continue;
+                }
+                var sends = new List<Task>();
                 var me = BodyOf(MyId);
-                if (me != null) yield return Wait(Session.UpdateAsync(MyId, RoomId, new Vec3(me.position.x, me.position.y, me.position.z), me.eulerAngles.y));
+                if (me != null) sends.Add(Session.UpdateAsync(MyId, RoomId, new Vec3(me.position.x, me.position.y, me.position.z), me.eulerAngles.y));
                 foreach (var bot in bots)
                 {
                     var t = BodyOf(bot.Id);
-                    var update = Session.UpdateAsync(bot.Id, RoomId, new Vec3(t.position.x, t.position.y, t.position.z), t.eulerAngles.y);
-                    yield return Wait(update);
+                    sends.Add(Session.UpdateAsync(bot.Id, RoomId, new Vec3(t.position.x, t.position.y, t.position.z), t.eulerAngles.y));
                 }
-                yield return new WaitForSeconds(SendEvery);
+                yield return Wait(Task.WhenAll(sends));
+                yield return Pause(SendEvery);
             }
         }
 
@@ -408,15 +466,20 @@ namespace Dogpatch.Race
             var me = BodyOf(MyId);
             if (me != null) yield return me;
             foreach (var bot in bots) yield return BodyOf(bot.Id);
+            foreach (var remote in Remotes.All)
+                if (remote.Body != null) yield return remote.Body;
         }
 
+        // Every racer's body in the world: mine, this device's bots, and remote players.
         public Transform BodyOf(string playerId)
         {
             if (playerId == MyId) return Game.CurrentCar != null ? Game.CurrentCar.transform : Game.Player.transform;
             var bot = bots.FirstOrDefault(b => b.Id == playerId);
-            if (bot == null) return null;
+            if (bot == null) return Remotes.Get(playerId)?.Body;
             return Gridded ? bot.Car.transform : bot.Avatar.transform;
         }
+
+        public bool IsLocalBot(string playerId) => bots.Any(b => b.Id == playerId);
 
         public void MoveBody(string playerId, Vector3 position, float heading)
         {
@@ -450,7 +513,7 @@ namespace Dogpatch.Race
             return racer != null ? racer.progress : 0f;
         }
 
-        public string NameOf(string playerId) => playerId == MyId ? "You" : bots.FirstOrDefault(b => b.Id == playerId)?.Name ?? "";
+        public string NameOf(string playerId) => playerId == MyId ? "You" : bots.FirstOrDefault(b => b.Id == playerId)?.Name ?? Remotes.Get(playerId)?.Name ?? "";
 
         // Makes a bot call in a world change, as the scripted play-through does; null picks one.
         public void BotCall(string botName, WorldChangeCommand command)
