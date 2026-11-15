@@ -55,6 +55,7 @@ namespace Dogpatch.Race
             public string WorldMode;
             public int Protocol;
             internal string SwapType;
+            internal GameObject Rider;
             internal float WorldSeenAt = -1000f;
             internal long ModeSince;
             internal long WorldUpdatedAt;
@@ -158,10 +159,26 @@ namespace Dogpatch.Race
                 {
                     remote.SwapType = player.vehicleType;
                     Vehicles.VehicleRoster.SwapInto(remote.Car, player.vehicleType);
+                    SeatRider(remote);
                     foreach (var c in remote.Car.GetComponents<Collider>()) c.isTrigger = true;
                     remote.PaintedHex = null;
                 }
                 if (!remote.InRace) AddSample(remote, player.updatedAt, player.position, player.heading, serverTime);
+            }
+        }
+
+        // On a bike, scooter or cart the player's own figure rides it, as it does on their phone,
+        // in place of the courier the roster seats on delivery bikes.
+        static void SeatRider(Remote remote)
+        {
+            if (remote.Rider != null) Destroy(remote.Rider);
+            remote.Rider = Vehicles.VehicleRoster.MountPlayer(remote.Car);
+            if (remote.Rider == null) return;
+            var identity = remote.Car.GetComponent<Vehicles.VehicleIdentity>();
+            if (identity != null && identity.Rider != null)
+            {
+                Destroy(identity.Rider);
+                identity.Rider = null;
             }
         }
 
