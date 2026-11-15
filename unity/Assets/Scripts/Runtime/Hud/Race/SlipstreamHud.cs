@@ -676,7 +676,7 @@ namespace Dogpatch.Slipstream
                 }
             }
 
-            if (calls.Asks != null)
+            if (calls.CountsAsks)
             {
                 var badge = new Rect(r.x + size - 20f * s, r.y - 10f * s, 30f * s, 24f * s);
                 Panel(new Rect(badge.x - 2f * s, badge.y - 2f * s, badge.width + 4f * s, badge.height + 4f * s), Ink);
