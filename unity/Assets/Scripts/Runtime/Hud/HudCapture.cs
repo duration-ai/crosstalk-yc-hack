@@ -10,8 +10,8 @@ namespace Dogpatch.Slipstream
 {
     // Headless renders of the HUD layout options: run the player build with
     //   -offline -safe-iphone -hud-layout A|B|C -hud-capture <folder>
-    // and it shoots free roam on foot (stick held, talking on a payphone call), driving (stick held),
-    // the mission lobby on the start ring, and mid-race with a news line and a call ringing, then writes every
+    // and it shoots free roam on foot (stick held, talking to the Operator), driving (stick held),
+    // the mission lobby on the start ring, and mid-race with a news line, then writes every
     // HudLayout slot to layout.json.
     public sealed class HudCapture : MonoBehaviour
     {
@@ -41,19 +41,14 @@ namespace Dogpatch.Slipstream
             yield return Seconds(1f);
             Log($"layout {HudLayout.Option} at {Screen.width}x{Screen.height}, safe {HudLayout.Safe}");
 
-            var phone = race.Calls.Phones[race.Calls.Phones.Count / 2];
-            var phonePos = new Vector2(phone.transform.position.x, phone.transform.position.z);
-            if (game.World.Roads.Nearest(phonePos + new Vector2(18f, 12f), 40f, out var hit))
+            var phonePos = new Vector2(race.Course.RingCenter.x, race.Course.RingCenter.z) + new Vector2(120f, 90f);
+            if (game.World.Roads.Nearest(phonePos, 60f, out var hit))
             {
-                var at = new Vector3(hit.Point.x, 0.3f, hit.Point.y);
-                var to = phone.transform.position - at;
-                game.Player.Teleport(at, Mathf.Atan2(to.x, to.z) * Mathf.Rad2Deg);
+                game.Player.Teleport(new Vector3(hit.Point.x, 0.3f, hit.Point.y), Mathf.Atan2(hit.Direction.x, hit.Direction.y) * Mathf.Rad2Deg);
                 game.Follow.Snap(game.Player.transform, false);
             }
             game.Drag.Hold(new Vector2(0.35f, 0.8f));
             yield return Seconds(0.8f);
-            race.Calls.Grab(phone);
-            yield return Seconds(0.4f);
             race.Calls.BeginTalk();
             yield return Seconds(0.4f);
             yield return Shot("1-free-roam");
@@ -73,7 +68,6 @@ namespace Dogpatch.Slipstream
             while (!enter.IsCompleted) yield return null;
             game.Follow.Snap(car.transform, true);
             game.Drag.Hold(new Vector2(0.25f, 0.95f));
-            race.Calls.Grab(race.Calls.Phones[1 % race.Calls.Phones.Count]);
             yield return Seconds(3f);
             Log($"driving {car.ModelId} at {car.Speed * 3.6f:F0} km/h with the stick at (0.25, 0.95), heading {car.transform.eulerAngles.y:F0}, kinematic {car.GetComponent<Rigidbody>().isKinematic}, direction {game.Drag.Direction} strength {game.Drag.Strength:F2}");
             yield return Shot("2-driving");
@@ -81,9 +75,7 @@ namespace Dogpatch.Slipstream
             var exit = game.ExitCar();
             while (!exit.IsCompleted) yield return null;
 
-            race.Calls.HangUp();
             game.Player.Teleport(race.RingSpot(race.MySlot), 0f);
-            race.Calls.Grab(race.Calls.Phones[2 % race.Calls.Phones.Count]);
             yield return Seconds(1.6f);
             yield return Shot("4-lobby");
             race.Calls.HangUp();
@@ -94,7 +86,6 @@ namespace Dogpatch.Slipstream
             if (!race.Started) { Log("FAILED waiting for the race"); Application.Quit(1); yield break; }
             race.EnableAutopilot();
             yield return Seconds(4f);
-            race.Calls.Grab(race.Calls.Phones[3 % race.Calls.Phones.Count]);
             race.Hud.PushNews("MAYA LOWERED GRAVITY", "gravity", "purple");
             yield return Seconds(0.7f);
             yield return Shot("3-race");
@@ -123,7 +114,7 @@ namespace Dogpatch.Slipstream
             R("pause", new Rect(pause.x, Screen.height - pause.yMax, pause.width, pause.height));
             R("band", new Rect(HudLayout.Left, HudLayout.Band, HudLayout.Right - HudLayout.Left, 38f * u));
             R("arrowBand", HudLayout.ArrowBand);
-            R("call", HudLayout.Call(140f * u, 60f * u));
+            R("call", HudLayout.Call(72f * u, 72f * u));
             R("hearing", HudLayout.Hearing(200f * u, 30f * u));
             var chips = HudLayout.Chips;
             R("chips", new Rect(chips.x, chips.y, 160f * u, 49f * u));

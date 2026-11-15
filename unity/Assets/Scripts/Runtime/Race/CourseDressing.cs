@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using Dogpatch.Glb;
 using Dogpatch.World;
 using Dogpatch.WorldChanges;
 using UnityEngine;
@@ -8,13 +7,15 @@ namespace Dogpatch.Race
 {
     // The race's own objects in the world, all flat vertex-colored geometry on the shared material:
     // the yellow start ring, the YC finish (checkered line, banner and a tall checkered flag), turn
-    // chevrons painted on the route, and the hotline-pink payphones.
+    // and chevrons painted on the route, and the pink ask tokens.
     public static class CourseDressing
     {
         static readonly Color Yellow = PaintJob.Linear("#FFCB1F");
         static readonly Color Cream = PaintJob.Linear("#FCE9A8");
         static readonly Color White = PaintJob.Linear("#F7F8F9");
         static readonly Color Ink = PaintJob.Linear("#1C2347");
+        static readonly Color Pink = PaintJob.Linear("#FF3E8E");
+        static readonly Color DeepPink = PaintJob.Linear("#C8246A");
 
         static GameObject Emit(Transform parent, string name, MeshBuilder mb, Vector3 position, float heading, Material material)
         {
@@ -54,6 +55,36 @@ namespace Dogpatch.Race
             var c2 = P(back + thickness, -halfWidth);
             mb.Quad(a, a2, b2, b, color, Vector3.up);
             mb.Quad(b, b2, c2, c, color, Vector3.up);
+        }
+
+        // An ask pickup: a pink ring on the street and above it a standing pink coin with a white plus
+        // on both faces. The coin is the first child, for AskPickups to spin.
+        public static GameObject AskToken(Transform parent, Vector3 position, Material material)
+        {
+            var ground = new MeshBuilder();
+            Annulus(ground, 1.9f, 2.4f, 0.05f, Pink, 24);
+            var token = Emit(parent, "AskToken", ground, position, 0f, material);
+
+            var coin = new MeshBuilder();
+            const int sides = 8;
+            const float r = 1.1f;
+            const float half = 0.16f;
+            Vector3 Rim(int i, float z) => new Vector3(Mathf.Cos(i * Mathf.PI * 2f / sides + Mathf.PI / sides) * r, Mathf.Sin(i * Mathf.PI * 2f / sides + Mathf.PI / sides) * r, z);
+            for (int i = 0; i < sides; i++)
+            {
+                coin.Triangle(Vector3.forward * -half, Rim(i + 1, -half), Rim(i, -half), Pink, Vector3.back);
+                coin.Triangle(Vector3.forward * half, Rim(i, half), Rim(i + 1, half), Pink, Vector3.forward);
+                var mid = (Rim(i, 0f) + Rim(i + 1, 0f)).normalized;
+                coin.Quad(Rim(i, -half), Rim(i + 1, -half), Rim(i + 1, half), Rim(i, half), DeepPink, mid);
+            }
+            foreach (float z in new[] { -half - 0.01f, half + 0.01f })
+            {
+                coin.Box(new Vector3(0f, 0f, z), new Vector3(1.15f, 0.3f, 0.02f), Quaternion.identity, White);
+                coin.Box(new Vector3(0f, 0f, z), new Vector3(0.3f, 1.15f, 0.02f), Quaternion.identity, White);
+            }
+            var c = Emit(token.transform, "Coin", coin, position + Vector3.up * 1.6f, 0f, material);
+            c.transform.SetAsFirstSibling();
+            return token;
         }
 
         public static GameObject StartRing(Transform parent, Vector3 center, float radius, Material material)
@@ -147,19 +178,6 @@ namespace Dogpatch.Race
                 }
             }
             Emit(parent, "RouteChevrons", mb, Vector3.zero, 0f, material);
-        }
-
-        public static GameObject Payphone(Transform parent, GlbAsset model, Spot spot, Material material)
-        {
-            var go = model.Instantiate(material, parent);
-            go.name = "Payphone";
-            go.transform.SetPositionAndRotation(spot.Position, Quaternion.Euler(0f, spot.Heading, 0f));
-            go.transform.localScale = Vector3.one * 0.8f;
-            PaintJob.For(go, model.Id);
-            var box = go.AddComponent<BoxCollider>();
-            box.center = new Vector3(0f, 1.1f, 0f);
-            box.size = new Vector3(0.95f, 2.2f, 0.55f);
-            return go;
         }
     }
 

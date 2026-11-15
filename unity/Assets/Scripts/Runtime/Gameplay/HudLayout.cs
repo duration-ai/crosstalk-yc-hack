@@ -7,7 +7,7 @@ namespace Dogpatch.Gameplay
 
     // Every HUD position in one place, for portrait and landscape, so the pieces drawn by different
     // files (Hud, SlipstreamHud, OperatorHud, Minimap, AvatarCapture, PerfReadout, DragInput) can
-    // never overlap. Three candidate layouts for Tim's pick (-hud-layout A|B|C):
+    // never overlap. Three layouts, C by default; the others for Tim's pick (-hud-layout A|B|C):
     //   A  Corners: minimap bottom left, fixed stick bottom right, Call above the stick, place top
     //      left, meters top right.
     //   B  Map up top: minimap top right under pause, place and meters stacked top left, Call
@@ -31,8 +31,8 @@ namespace Dogpatch.Gameplay
         {
             var args = Environment.GetCommandLineArgs();
             int at = Array.IndexOf(args, "-hud-layout");
-            string v = at >= 0 && at + 1 < args.Length ? args[at + 1].ToUpperInvariant() : "A";
-            return v == "B" ? HudOption.B : v == "C" ? HudOption.C : HudOption.A;
+            string v = at >= 0 && at + 1 < args.Length ? args[at + 1].ToUpperInvariant() : "C";
+            return v == "A" ? HudOption.A : v == "B" ? HudOption.B : HudOption.C;
         }
 
         public static bool Portrait => Screen.height > Screen.width;
@@ -188,7 +188,7 @@ namespace Dogpatch.Gameplay
         // The transcript bar, attached to the top of the Call plate.
         public static Rect Hearing(float w, float h)
         {
-            var call = Call(140f * U, 60f * U);
+            var call = Call(72f * U, 72f * U);
             float x = Option == HudOption.A ? Mathf.Max(Left, call.xMax - w) : call.x;
             return new Rect(x, call.y - 10f * U - h, w, h);
         }

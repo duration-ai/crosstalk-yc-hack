@@ -13,8 +13,7 @@ namespace Dogpatch.Map
     // (place and the lobby roster top left, meters and pause top right, Call and Ready bottom right).
     // A circle with an ink rim, heading-up with the camera, zooming out with speed. The map is a
     // texture baked once at startup (MapBaker) and drawn as a textured fan under the rim, so there is
-    // no second camera. On top: the route (sunshine), the start ring, payphones (pink dots), ask
-    // pickups, the finish flag, your parked race car, the other racers as their colour blocks, and
+    // no second camera. On top: the route (sunshine), the start ring, ask pickups, the finish flag, your parked race car, the other racers as their colour blocks, and
     // you. Racers and the objective outside the circle are pinned to its rim as small chevrons
     // pointing their way. It draws only, so touches fall through to the drag control.
     public sealed class Minimap : MonoBehaviour
@@ -219,16 +218,6 @@ namespace Dogpatch.Map
                 if (Inside(ring, 6f * s)) Ring(ring, Mathf.Max(race.Course.RingRadius * pxPerMeter, 4.5f * s), 1.8f * s, Sunshine);
             }
 
-            if (raceUp && race.Calls != null)
-                foreach (var phone in race.Calls.Phones)
-                {
-                    if (phone == null) continue;
-                    var p = ToMap(phone.transform.position);
-                    if (!Inside(p, 3f * s)) continue;
-                    Disc(p, 3.5f * s, Ink, 12);
-                    Disc(p, 2.5f * s, phone.Ringing ? Pink : new Color(Pink.r, Pink.g, Pink.b, 0.45f), 12);
-                }
-
             foreach (var (target, _) in MapMarkers.All)
             {
                 var p = ToMap(target.position);
@@ -245,10 +234,10 @@ namespace Dogpatch.Map
             if (nav != null && nav.HasObjective)
             {
                 var p = ToMap(nav.Objective);
-                var color = nav.Kind == NavKind.Payphone ? Pink : Sunshine;
+                var color = nav.Kind == NavKind.Mission ? Pink : Sunshine;
                 if (!Inside(p, 5f * s)) Pin(p, 4.4f * s, color);
                 else if (nav.Kind == NavKind.Waypoint) Flag(p, Sunshine);
-                else if (nav.Kind == NavKind.Payphone) Ring(p, (5.2f + Mathf.Sin(Time.unscaledTime * 6f) * 0.8f) * s, 1.4f * s, Pink);
+                else if (nav.Kind == NavKind.Mission) Ring(p, (5.2f + Mathf.Sin(Time.unscaledTime * 6f) * 0.8f) * s, 1.4f * s, Pink);
             }
 
             var mySlotColor = raceUp ? SpeedDial.Hex(RaceDirector.SlotHex[race.MySlot]) : White;

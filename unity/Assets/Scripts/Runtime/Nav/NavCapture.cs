@@ -10,7 +10,7 @@ namespace Dogpatch.Nav
 {
     // Headless check for the minimap and the direction arrow: run the player build with
     //   -offline -nav-capture <folder>
-    // and it shoots free roam on foot toward a ringing payphone, free roam driving at speed, the race
+    // and it shoots free roam on foot toward the start ring, free roam driving at speed, the race
     // on autopilot, the race after leaving the course (the A* reroute), and the map toggled off.
     public sealed class NavCapture : MonoBehaviour
     {
@@ -40,9 +40,8 @@ namespace Dogpatch.Nav
             var nav = NavService.Instance;
             yield return Seconds(1f);
 
-            var phone = race.Calls.Phones[race.Calls.Phones.Count / 2];
-            var phonePos = new Vector2(phone.transform.position.x, phone.transform.position.z);
-            if (game.World.Roads.Nearest(phonePos + new Vector2(90f, 60f), 80f, out var hit))
+            var anchor = new Vector2(race.Course.RingCenter.x, race.Course.RingCenter.z);
+            if (game.World.Roads.Nearest(anchor + new Vector2(90f, 60f), 80f, out var hit))
             {
                 game.Player.Teleport(new Vector3(hit.Point.x, 0.3f, hit.Point.y), 0f);
                 yield return Seconds(0.3f);
@@ -57,7 +56,7 @@ namespace Dogpatch.Nav
             CarController car = null;
             foreach (var candidate in game.Cars.Values)
                 if (candidate != race.MyCar) { car = candidate; break; }
-            if (game.World.Roads.Nearest(phonePos + new Vector2(-260f, -180f), 120f, out hit))
+            if (game.World.Roads.Nearest(anchor + new Vector2(-260f, -180f), 120f, out hit))
             {
                 car.Place(new Vector3(hit.Point.x, 0.3f, hit.Point.y), Mathf.Atan2(hit.Direction.x, hit.Direction.y) * Mathf.Rad2Deg);
                 game.Player.Teleport(car.transform.position + car.transform.right * 2.2f, car.transform.eulerAngles.y);
@@ -137,6 +136,14 @@ namespace Dogpatch.Nav
             if (arrow != null)
             {
                 var cam = RaceDirector.Instance.Game.View;
+                var b = arrow.GetComponent<MeshFilter>().sharedMesh.bounds;
+                float x0 = float.MaxValue, y0 = float.MaxValue, x1 = float.MinValue, y1 = float.MinValue;
+                for (int i = 0; i < 8; i++)
+                {
+                    var p = cam.WorldToScreenPoint(arrow.transform.TransformPoint(b.center + Vector3.Scale(b.extents, new Vector3((i & 1) == 0 ? -1 : 1, (i & 2) == 0 ? -1 : 1, (i & 4) == 0 ? -1 : 1))));
+                    x0 = Mathf.Min(x0, p.x); x1 = Mathf.Max(x1, p.x); y0 = Mathf.Min(y0, p.y); y1 = Mathf.Max(y1, p.y);
+                }
+                Log($"arrow screen rect x {x0:F0}-{x1:F0} y {y0:F0}-{y1:F0} of {Screen.width}x{Screen.height} (origin bottom left)");
                 Log($"arrow enabled={arrow.enabled} active={arrow.gameObject.activeInHierarchy} at {arrow.transform.position} scale {arrow.transform.localScale.x:F2} viewport {cam.WorldToViewportPoint(arrow.transform.position)} mesh {arrow.GetComponent<MeshFilter>().sharedMesh?.name} bounds {arrow.bounds}");
             }
             var tex = ScreenCapture.CaptureScreenshotAsTexture();

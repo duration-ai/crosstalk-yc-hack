@@ -35,6 +35,7 @@ namespace Dogpatch.Slipstream
         float s;
         float left, right, top, bottom;
         float band;
+        bool narrow;
         readonly Queue<News> queue = new Queue<News>();
         News showing;
         int place;
@@ -46,6 +47,7 @@ namespace Dogpatch.Slipstream
         bool callVisible;
         int readyFinger = int.MinValue;
         int callFinger = int.MinValue;
+        bool paused;
 
         public float NewsSince => showing == null || showing.Start < 0f ? -1f : Time.time - showing.Start;
 
@@ -69,7 +71,12 @@ namespace Dogpatch.Slipstream
         void Start()
         {
             Race.EventArrived += OnEvent;
+            Audio.GameEvents.Paused += OnPaused;
         }
+
+        void OnDestroy() => Audio.GameEvents.Paused -= OnPaused;
+
+        void OnPaused(bool on) => paused = on;
 
         void OnEnable() => Gameplay.ScreenShape.Changed += CancelPresses;
 
@@ -114,7 +121,6 @@ namespace Dogpatch.Slipstream
         void Update()
         {
             if (Race == null || !Race.Setup) return;
-            OnlineUpdate();
             for (int i = 0; i < Input.touchCount; i++)
             {
                 var t = Input.GetTouch(i);
@@ -242,36 +248,38 @@ namespace Dogpatch.Slipstream
         {
             if (Race == null || !Race.Setup) return;
             buttons.Clear();
-            if (Race.Last == null && !(Race.Online && Race.RoomId == null)) return;
+            if (Race.Last == null && !Race.Online) return;
             GUI.depth = -5;
             s = Gameplay.HudLayout.U;
             left = Gameplay.HudLayout.Left;
             right = Gameplay.HudLayout.Right;
             top = Gameplay.HudLayout.Top;
             bottom = Gameplay.HudLayout.Bottom;
+            narrow = Gameplay.HudLayout.Narrow;
             band = Gameplay.HudLayout.Band;
             readyVisible = false;
             callVisible = false;
             Gameplay.HudLayout.LobbyShowing = false;
-            if (Race.Last == null)
+            if (Race.Online)
             {
-                Menu();
-                return;
+                WorldTags();
+                NetChip();
             }
+            if (Race.Last == null) return;
 
             var room = Race.Room;
             bool lobby = !Race.Gridded && (room.status == RoomStatus.Lobby || room.status == RoomStatus.Countdown) && NearRing();
             bool racing = Race.Started && !Race.ResultsIn;
 
-            Markers();
             if (!Race.ResultsIn) NameTags();
-            if (lobby) Lobby(room);
-            if (Race.Online && (lobby || Race.ResultsIn)) RoomCorner(room, lobby);
+            if (racing) FindMe();
+            if (lobby && !paused) Lobby(room);
+            if (Race.Online && lobby && !paused) MissionPlate(room);
             if (Race.Gridded && !Race.ResultsIn) Countdown();
             if (racing) RaceCorners();
             if (Race.ResultsIn) Results();
             OperatorAndNews();
-            CallPlate(lobby || Race.ResultsIn);
+            PhoneButton(lobby || Race.ResultsIn);
         }
 
         // The mission lobby only shows while you stand in or by the start ring.
@@ -289,11 +297,7 @@ namespace Dogpatch.Slipstream
             Gameplay.HudLayout.LobbyShowing = true;
             var racers = Race.Last.racers.OrderBy(r => r.slot).ToList();
             var at = Gameplay.HudLayout.LobbyPanel;
-            var plate = new Rect(at.x, at.y, 183f * s, 30f * s);
-            Panel(plate, Sun);
-            Icon(new Rect(plate.x + 10f * s, plate.y + 4f * s, 22f * s, 22f * s), "yc", Ink);
-            Text(new Rect(plate.x + 40f * s, plate.y, plate.width, plate.height), "RACE TO YC", 16f, Ink);
-            float y = plate.yMax + 6f * s;
+            float y = at.y;
             foreach (var r in racers)
             {
                 bool me = r.playerId == Race.MyId;
@@ -301,7 +305,7 @@ namespace Dogpatch.Slipstream
                 var bar = new Rect(block.xMax + 3f * s, y, 150f * s, 24f * s);
                 Panel(bar, me ? Ink : Paper);
                 Panel(block, SlotColor(r.color));
-                Icon(new Rect(block.x + 6f * s, block.y + 2f * s, 20f * s, 20f * s), r.ready ? "ready" : "dash", White);
+                if (!Race.Online) Icon(new Rect(block.x + 6f * s, block.y + 2f * s, 20f * s, 20f * s), r.ready ? "ready" : "dash", White);
                 Text(new Rect(bar.x + 12f * s, bar.y, bar.width, bar.height), me ? "YOU" : r.displayName.ToUpperInvariant(), 14f, me ? White : Ink);
                 y += 31f * s;
             }
@@ -333,6 +337,7 @@ namespace Dogpatch.Slipstream
                 }
             }
 
+            if (!Race.Online) ReadyButton(Race.Me != null && Race.Me.ready);
         }
 
         void ReadyButton(bool pressed)
@@ -413,7 +418,7 @@ namespace Dogpatch.Slipstream
             if (since < 0.45f && previousPlace > 0)
             {
                 float a = 1f - since / 0.45f;
-                Panel(new Rect(left - 6f * s, top + 30f * s, digit.width + 70f * s, 14f * s), new Color(Sun.r, Sun.g, Sun.b, a));
+                Panel(new Rect(left - 6f * s, top + 58f * s, digit.width + 64f * s, 7f * s), new Color(Sun.r, Sun.g, Sun.b, a));
             }
             if (since < 0.28f && previousPlace > 0)
             {
@@ -425,8 +430,9 @@ namespace Dogpatch.Slipstream
                 GUI.EndGroup();
             }
             else Text(digit, place.ToString(), 64f, Sun, TextAnchor.UpperLeft, 2.6f * s);
-            var suffix = Measure(Ordinal(place), 22f);
-            Text(new Rect(digit.xMax - 2f * s, top + 4f * s, suffix.x, suffix.y), Ordinal(place), 22f, White, TextAnchor.UpperLeft, 1.6f * s);
+            int shown = since < 0.14f && previousPlace > 0 ? previousPlace : place;
+            var suffix = Measure(Ordinal(shown), 22f);
+            Text(new Rect(digit.xMax - 2f * s, top + 4f * s, suffix.x, suffix.y), Ordinal(shown), 22f, White, TextAnchor.UpperLeft, 1.6f * s);
             Text(new Rect(digit.xMax - 8f * s, top + 28f * s, 60f * s, suffix.y), "/" + total, 22f, White, TextAnchor.UpperLeft, 1.6f * s);
 
             float length = Mathf.Max(Race.Room.routeLength, 1f);
@@ -515,7 +521,7 @@ namespace Dogpatch.Slipstream
                 float t = Time.time - calls.StateSince;
                 float inP = EaseOut(Mathf.Clamp01(t / 0.18f));
                 float outP = Mathf.Clamp01((t - 2.3f) / 0.25f);
-                float baseX = Gameplay.HudLayout.Narrow ? left : Screen.width * 0.5f - 150f * s;
+                float baseX = narrow ? left : Screen.width * 0.5f - 150f * s;
                 float x = Mathf.Lerp(-360f * s, baseX, inP) - outP * outP * (baseX + 400f * s);
                 float lineY = band;
                 var size = Measure(calls.Line, 18f);
@@ -541,7 +547,7 @@ namespace Dogpatch.Slipstream
                 showing = null;
                 return;
             }
-            float baseLeft = Gameplay.HudLayout.Narrow ? left : Mathf.Max(left + 150f * s, Screen.width * 0.5f - 270f * s);
+            float baseLeft = narrow ? left : Mathf.Max(left + 150f * s, Screen.width * 0.5f - 270f * s);
             float offset;
             float lean;
             if (since < 0.12f)
@@ -580,69 +586,73 @@ namespace Dogpatch.Slipstream
             Stripes(bar.xMax + 6f * s, y + 8f * s, 24f * s, stripeLength, showing.Color, true);
         }
 
-        void CallPlate(bool readyShowing)
+        // The cell-phone button: the Operator, always in reach. Hold to talk, let go to send. The badge is
+        // the asks left; with none the button greys out and pressing it shows the no-asks line. It
+        // wiggles and pulses when the phone buzzes (a new ask, GO).
+        void PhoneButton(bool readyShowing)
         {
             var calls = Race.Calls;
-            if (calls.State == CallState.None) return;
-            float t = Time.time - calls.StateSince;
+            float now = Time.time;
             bool live = calls.State == CallState.Talking || calls.State == CallState.Waiting;
-            float width = (live ? 140f : 106f) * s;
-            float height = 60f * s;
-            var slot = Gameplay.HudLayout.Call(width, height, readyShowing);
-            float x = slot.x, y = slot.y;
-            float offscreen = Gameplay.HudLayout.CallFromLeft ? -(x + width + 40f * s) : Screen.width - x + 40f * s;
-            if (calls.State == CallState.Holding && t < 0.25f) x += (1f - EaseOut(t / 0.25f)) * offscreen;
-            if (calls.State == CallState.Answered) x += EaseOut(Mathf.Clamp01(t / 0.25f)) * offscreen;
-            var r = new Rect(x, y, width, height);
+            bool hasAsks = calls.HasAsks;
+            float size = 72f * s;
+            float width = live ? 150f * s : size;
+            var slot = Gameplay.HudLayout.Call(width, size, readyShowing);
+            float x = slot.x;
+            float y = slot.y;
+            float buzz = now - calls.BuzzedAt;
+            if (buzz < 1.2f && !live) x += Mathf.Sin(buzz * 42f) * 4f * s * (1f - buzz / 1.2f);
+            var r = new Rect(x, y, width, size);
             callRect = r;
-            callVisible = calls.State == CallState.Holding || calls.State == CallState.Talking;
+            callVisible = true;
 
-            if (calls.State == CallState.Holding)
+            if (buzz < 1.2f && !live)
             {
-                float pulse = 0.5f + 0.5f * Mathf.Sin(Time.time * 6f);
-                var frame = Inflate(new Rect(r.x + 6f * s, r.y + 6f * s, r.width, r.height), pulse * 3f * s);
-                DrawFrame(frame, new Color(Pink.r, Pink.g, Pink.b, 0.55f + 0.45f * pulse), 1.8f * s);
-                Stripes(r.x - 10f * s, r.y + 16f * s, 30f * s, 46f * s, Pink, false);
-                Panel(r, Pink);
-                Icon(new Rect(r.center.x - 17f * s, r.center.y - 17f * s, 34f * s, 34f * s), "call", White);
-                return;
+                float pulse = 0.5f + 0.5f * Mathf.Sin(buzz * 18f);
+                DrawFrame(Inflate(new Rect(r.x + 6f * s, r.y + 6f * s, r.width, r.height), pulse * 4f * s), new Color(Pink.r, Pink.g, Pink.b, 0.5f + 0.5f * pulse), 2f * s);
             }
-            if (calls.State == CallState.Talking && t < 0.12f)
-            {
-                var p = new Rect(r.x + 2f * s + r.width * 0.02f, r.y + 2f * s + r.height * 0.02f, r.width * 0.96f, r.height * 0.96f);
-                Framed(p, White, Pink, 3f * s);
-                Icon(new Rect(p.x + 12f * s, p.center.y - 15f * s, 30f * s, 30f * s), "call", Pink);
-                return;
-            }
-            Panel(r, Pink);
-            Icon(new Rect(r.x + 12f * s, r.center.y - 15f * s, 30f * s, 30f * s), "call", White);
-            float level = calls.State == CallState.Talking ? 1f : calls.State == CallState.Waiting ? 0.35f : 0.15f;
-            for (int i = 0; i < 6; i++)
-            {
-                float h = (0.3f + 0.7f * Mathf.Abs(Mathf.Sin(Time.time * (7f + i * 1.7f) + i * 1.3f))) * level;
-                float bh = Mathf.Max(4f * s, h * 34f * s);
-                var bar = new Rect(r.x + 52f * s + i * 13f * s, r.center.y + 17f * s - bh, 6.5f * s, bh);
-                Panel(bar, White, 0.12f);
-            }
-        }
 
-        void Markers()
-        {
-            var calls = Race.Calls;
-            if (calls.State != CallState.None || Race.Game.CurrentCar != null && Race.Started) return;
-            var cam = Race.Game.View;
-            foreach (var phone in calls.Phones)
+            var fill = hasAsks ? Pink : new Color(0.55f, 0.57f, 0.63f);
+            bool pressed = calls.State == CallState.Talking && now - calls.StateSince < 0.12f;
+            if (pressed) Framed(new Rect(r.x + r.width * 0.02f, r.y + r.height * 0.02f, r.width * 0.96f, r.height * 0.96f), White, Pink, 3f * s);
+            else
             {
-                if (!phone.Ringing) continue;
-                var world = phone.transform.position + Vector3.up * 2.3f;
-                var sp = cam.WorldToScreenPoint(world);
-                if (sp.z < 1f || sp.z > 70f) continue;
-                float size = Mathf.Clamp(26f * 18f / sp.z, 15f, 30f) * s;
-                var block = new Rect(sp.x - size * 0.5f, Screen.height - sp.y - size, size, size * 0.86f);
-                Panel(block, Pink);
-                Icon(new Rect(block.x + size * 0.14f, block.y + size * 0.08f, size * 0.72f, size * 0.72f), "call", White);
-                float ring = 0.5f + 0.5f * Mathf.Sin(Time.time * 8f);
-                Icon(new Rect(block.xMax - size * 0.05f, block.y - size * 0.1f, size, size), "waves", new Color(Pink.r, Pink.g, Pink.b, 0.6f + 0.4f * ring));
+                Panel(new Rect(r.x - 3f * s, r.y - 3f * s, r.width + 6f * s, r.height + 6f * s), Ink);
+                Panel(r, fill);
+            }
+            var icon = new Rect(r.x + (size - 50f * s) * 0.5f, r.center.y - 25f * s, 50f * s, 50f * s);
+            Icon(icon, "cellphone", pressed ? Pink : hasAsks ? White : new Color(1f, 1f, 1f, 0.6f));
+
+            if (live)
+            {
+                float level = calls.State == CallState.Talking ? 1f : 0.35f;
+                for (int i = 0; i < 6; i++)
+                {
+                    float h = (0.3f + 0.7f * Mathf.Abs(Mathf.Sin(now * (7f + i * 1.7f) + i * 1.3f))) * level;
+                    float bh = Mathf.Max(4f * s, h * 38f * s);
+                    Panel(new Rect(r.x + size + i * 12f * s, r.center.y + 19f * s - bh, 6.5f * s, bh), White, 0.12f);
+                }
+            }
+
+            if (calls.Asks != null)
+            {
+                var badge = new Rect(r.x + size - 20f * s, r.y - 10f * s, 30f * s, 24f * s);
+                Panel(new Rect(badge.x - 2f * s, badge.y - 2f * s, badge.width + 4f * s, badge.height + 4f * s), Ink);
+                Panel(badge, hasAsks ? Sun : Paper);
+                Text(badge, Mathf.Max(0, calls.Asks()).ToString(), 15f, Ink, TextAnchor.MiddleCenter);
+            }
+
+            float refused = now - calls.TurnedDownAt;
+            if (refused < 2.2f)
+            {
+                float a = Mathf.Clamp01(refused / 0.1f) * Mathf.Clamp01((2.2f - refused) / 0.3f);
+                string line = CallController.NoAsksLine.ToUpperInvariant();
+                var m = Measure(line, 14f);
+                var bar = Gameplay.HudLayout.CallFromLeft
+                    ? new Rect(r.xMax + 10f * s, r.center.y - 15f * s, m.x + 24f * s, 30f * s)
+                    : new Rect(r.x - m.x - 34f * s, r.center.y - 15f * s, m.x + 24f * s, 30f * s);
+                Panel(bar, new Color(Ink.r, Ink.g, Ink.b, a));
+                Text(new Rect(bar.x + 12f * s, bar.y, bar.width, bar.height), line, 14f, new Color(1f, 1f, 1f, a));
             }
         }
     }

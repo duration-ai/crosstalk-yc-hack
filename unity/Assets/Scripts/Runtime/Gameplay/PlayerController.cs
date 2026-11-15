@@ -9,10 +9,10 @@ namespace Dogpatch.Gameplay
     [RequireComponent(typeof(CharacterController))]
     public sealed class PlayerController : MonoBehaviour
     {
-        const float RunSpeed = 7f;
-        const float Acceleration = 18f;
+        const float RunSpeed = 8.6f;
+        const float Acceleration = 22f;
         const float Gravity = -20f;
-        const float JumpVelocity = 6.5f;
+        const float JumpVelocity = 7f;
 
         public static float RunScale = 1f;
         public static float JumpScale = 1f;
@@ -28,6 +28,7 @@ namespace Dogpatch.Gameplay
         Transform visual;
 
         public float Speed => speed;
+        public float VerticalVelocity { get => verticalVelocity; set => verticalVelocity = value; }
         public Transform Visual => visual;
         public event Action Jumped;
         public event Action<float> Landed;
@@ -95,6 +96,9 @@ namespace Dogpatch.Gameplay
             speed = 0f;
             verticalVelocity = 0f;
         }
+
+        // Hands back control mid-stride, e.g. coming up running out of a bail-out roll.
+        public void CarryOn(float runSpeed) => speed = runSpeed;
 
         void Update()
         {

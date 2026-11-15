@@ -12,16 +12,16 @@
     "raceStartBoost": 1
   },
   "speedLines": {
-    "count": 30,
-    "alpha": 0.8,
-    "width": 2.6,
-    "innerRadius": 0.62,
-    "lengthMin": 0.18,
-    "lengthMax": 0.42,
-    "flow": 2.4,
-    "bandShare": 0.2,
-    "bandAlpha": 0.25,
-    "bandWidth": 9,
+    "count": 44,
+    "alpha": 1,
+    "width": 7,
+    "innerRadius": 0.6,
+    "lengthMin": 0.35,
+    "lengthMax": 0.75,
+    "flow": 0.9,
+    "bandShare": 0.22,
+    "bandAlpha": 0.32,
+    "bandWidth": 30,
     "centerY": 0.06,
     "fadeIn": 3,
     "fadeOut": 2
@@ -32,11 +32,11 @@
     "width": 0.03
   },
   "puffs": {
-    "alpha": 0.78,
-    "size": 0.3,
-    "life": 0.55,
-    "carry": 0.6,
-    "kick": 2,
+    "alpha": 0.62,
+    "size": 0.42,
+    "life": 0.6,
+    "carry": 0.75,
+    "kick": 1.6,
     "launchRate": 12,
     "launchMaxSpeedShare": 0.45,
     "launchAccelShare": 0.6,
@@ -49,12 +49,14 @@
     "shardChance": 0.35,
     "shardSize": 0.07,
     "boostPuffs": 4,
-    "boostSize": 0.4
+    "boostSize": 0.4,
+    "cruiseRate": 3.5,
+    "cruiseSize": 0.36
   },
   "landing": {
     "minStrength": 0.2,
     "puffs": 8,
-    "size": 0.4,
+    "size": 0.5,
     "spread": 3.5,
     "life": 0.5,
     "shards": 6,
@@ -62,11 +64,11 @@
   },
   "sparks": {
     "countMin": 5,
-    "countMax": 18,
+    "countMax": 24,
     "lifeMin": 0.18,
     "lifeMax": 0.42,
-    "width": 0.04,
-    "trail": 0.045
+    "width": 0.07,
+    "trail": 0.06
   },
   "squash": {
     "takeoffStretch": 0.12,
@@ -75,10 +77,10 @@
     "damping": 0.35
   },
   "camera": {
-    "fovSpeed": 14,
+    "fovSpeed": 9,
     "fovSpeedPower": 1.2,
-    "fovBoost": 8,
-    "fovPunch": 7,
+    "fovBoost": 6,
+    "fovPunch": 6,
     "punchSeconds": 0.35,
     "fovResponse": 6,
     "leanMax": 3.5,

@@ -181,10 +181,14 @@ namespace Dogpatch.EditorTools
         static void Registry()
         {
             var registry = EffectRegistry.Default();
-            Check(EffectRegistry.Catalogue.Length == 74 && EffectRegistry.Catalogue.Distinct().Count() == 74, "74 catalogue ids, no duplicates");
+            Check(EffectRegistry.Catalogue.Length == 73 && EffectRegistry.Catalogue.Distinct().Count() == 73, "73 catalogue ids, no duplicates");
+            Check(!registry.Has("undo_last"), "no undo effect");
             foreach (var id in EffectRegistry.Catalogue) Check(registry.Has(id), "registered: " + id);
             foreach (var id in EffectRegistry.Built) Check(!registry.IsStub(id), "built for real: " + id);
-            Check(registry.IsStub("sandstorm") && registry.Create("sandstorm", null, new ActiveEffect()) is StubEffect, "unbuilt ids are logged stubs");
+            foreach (var id in registry.Ids)
+                if (!registry.IsStub(id) && !EffectRegistry.Counters.Contains(id)) Check(EffectRegistry.Built.Contains(id), "listed in built-effects.json: " + id);
+            var unbuilt = EffectRegistry.Catalogue.FirstOrDefault(id => registry.IsStub(id));
+            Check(unbuilt == null || registry.Create(unbuilt, null, new ActiveEffect()) is StubEffect, "unbuilt ids are logged stubs");
             Check(registry.Create("not_in_catalogue", null, new ActiveEffect()) is StubEffect, "unknown ids fall back to a stub");
         }
 

@@ -45,7 +45,6 @@ namespace Dogpatch.World
             return c.linear;
         }
 
-        static readonly Color Land = Look.SpeedDial.Land;
         static readonly Color Water = Look.SpeedDial.Bay;
         static readonly Color Park = Look.SpeedDial.Park;
 
@@ -102,13 +101,13 @@ namespace Dogpatch.World
             Emit(ctx.Root.transform, "Water", water.ToMesh("water"), material, false);
 
             var ground = RoadSurface.GroundMaterial(material);
-            var land = new MeshBuilder();
-            foreach (var poly in data.land) land.Polygon(Geometry.ToPoints(poly.pts), 0f, Land);
-            Emit(ctx.Root.transform, "Land", land.ToMesh("land"), ground, false);
+            var land = new Vector2[data.land.Length][];
+            for (int i = 0; i < land.Length; i++) land[i] = Geometry.ToPoints(data.land[i].pts);
+            GroundCover.Build(ctx.Root.transform, land, ground);
 
             var parks = new MeshBuilder();
-            foreach (var poly in data.parks) parks.Polygon(Geometry.ToPoints(poly.pts), 0.01f, Park);
-            Emit(ctx.Root.transform, "Parks", parks.ToMesh("parks"), ground, false);
+            foreach (var poly in data.parks) parks.Polygon(Geometry.ToPoints(poly.pts), 0f, Park);
+            Emit(ctx.Root.transform, "Parks", parks.ToMesh("parks"), GroundCover.Layer(ground, GroundCover.ParkLayer), false);
 
             var seabed = new GameObject("Seabed");
             seabed.transform.SetParent(ctx.Root.transform, false);

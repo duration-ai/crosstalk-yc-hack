@@ -1,12 +1,12 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
 import { action, internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { askJev, buildInput, buildQuestions, JevUnavailable } from "./jev";
 import { fail, getPlayer, movementMode } from "./model";
 import { COUNTERS, EXCLUSIVE, effectInfo, isA, rollDuration } from "./operatorCatalogue";
-import { decide, REFUSAL_MESSAGES, type Command, type EffectCommand, type View } from "./operatorRules";
-import { getMembership, getRoom } from "./raceModel";
+import { decide, REFUSAL_MESSAGES, type Command, type EffectCommand, type RefusalReason, type View } from "./operatorRules";
+import { getMembership, getRoom, phase } from "./raceModel";
 
 const MAX_TRANSCRIPT = 300;
 const MAX_ENTITIES = 8;
@@ -108,6 +108,18 @@ function activeRows(ctx: MutationCtx, roomId: Id<"rooms">) {
     .collect();
 }
 
+/** Charges the caller one ask (internal.race.spendAsk) for an effect about to go live; the refusal when it can't. */
+async function chargeAsk(ctx: MutationCtx, room: Doc<"rooms">, playerId: Id<"players">, now: number): Promise<RefusalReason | null> {
+  if (phase(room, now) === "finished") return "race_over";
+  try {
+    await ctx.runMutation(internal.race.spendAsk, { roomId: room._id, playerId });
+    return null;
+  } catch (caught) {
+    if (caught instanceof ConvexError && caught.data?.code === "CONFLICT") return "no_asks";
+    throw caught;
+  }
+}
+
 async function end(ctx: MutationCtx, row: Row, endedBy: string) {
   if (row.expiryJob) await ctx.scheduler.cancel(row.expiryJob);
   await ctx.db.patch(row._id, { status: "expired", endedBy });
@@ -118,7 +130,7 @@ async function schedule(ctx: MutationCtx, id: Id<"activeEffects">, endsAt: numbe
   await ctx.db.patch(id, { expiryJob: job });
 }
 
-/** Makes an effect live: counters, undo and contradicting effects end what they replace, and a repeat extends. */
+/** Makes an effect live: counters and contradicting effects end what they replace, and a repeat extends. */
 async function activate(ctx: MutationCtx, fields: EffectFields, now: number, pendingId?: Id<"activeEffects">) {
   const active = await activeRows(ctx, fields.roomId);
   const sameTarget = (row: Row) => row.target === fields.target && row.targetClass === fields.targetClass;
@@ -139,11 +151,6 @@ async function activate(ctx: MutationCtx, fields: EffectFields, now: number, pen
       if (overlaps) await end(ctx, row, "extinguished");
     }
   }
-  if (fields.effect === "undo_last") {
-    const newest = active.filter((row) => !row.instant).sort((a, b) => b.startsAt - a.startsAt || b._creationTime - a._creationTime)[0];
-    if (newest) await end(ctx, newest, "undone");
-  }
-
   if (!fields.instant) {
     const repeat = active.find((row) => row.effect === fields.effect && sameTarget(row));
     if (repeat) {
@@ -271,7 +278,11 @@ export const apply = internalMutation({
     const now = Date.now();
     const room = await getRoom(ctx, args.roomId);
     await activeMembership(ctx, room, args.playerId);
-    const command = args.command as Command;
+    let command = args.command as Command;
+    if (command.kind === "effect" && !command.confirm) {
+      const broke = await chargeAsk(ctx, room, args.playerId, now);
+      if (broke) command = { kind: "refuse", reason: broke };
+    }
     let result: Omit<CallResult, "timings" | "serverNow">;
     if (command.kind === "refuse") {
       const message = REFUSAL_MESSAGES[command.reason];
@@ -346,7 +357,10 @@ export const confirm = mutation({
     if (row.requestedBy !== args.playerId) fail("CONFLICT", "Only the player who asked can confirm");
     const now = Date.now();
     if (row.status !== "pending" || now > row.confirmBy) fail("CONFLICT", "The confirm window has closed");
-    await activeMembership(ctx, (await ctx.db.get(row.roomId))!, row.requestedBy);
+    const room = (await ctx.db.get(row.roomId))!;
+    await activeMembership(ctx, room, row.requestedBy);
+    const broke = await chargeAsk(ctx, room, row.requestedBy, now);
+    if (broke) fail("CONFLICT", REFUSAL_MESSAGES[broke]);
     if (row.expiryJob) await ctx.scheduler.cancel(row.expiryJob);
     const { _id, _creationTime, status, startsAt, endsAt, confirmBy, expiryJob, endedBy, ...fields } = row;
     return toEffect(await activate(ctx, fields, now, row._id));

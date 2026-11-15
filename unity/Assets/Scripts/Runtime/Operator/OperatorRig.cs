@@ -13,7 +13,7 @@ namespace Dogpatch.Operator
 {
     // Wires the voice Operator into the Speed Dial race once RaceDirector is set up: tags the
     // city for view snapshots, adds the effect layer and its HUD, and, when a Convex deployment is
-    // configured and reachable, swaps the payphone's LocalOperator for ConvexOperator with a
+    // configured and reachable, swaps the phone's LocalOperator for ConvexOperator with a
     // Scribe microphone, a Convex player and room of its own, and the room's activeEffects
     // subscription. Offline (or -operator-local, or the scripted demo) LocalOperator stays.
     // When the race itself is online (RaceDirector's session is not the local one), the Operator
@@ -63,6 +63,13 @@ namespace Dogpatch.Operator
         class CreatePlayerArgs
         {
             public string displayName;
+        }
+
+        [Serializable]
+        class SoloRoomArgs
+        {
+            public string playerId;
+            public bool freeAsks;
         }
 
         [Serializable]
@@ -126,7 +133,7 @@ namespace Dogpatch.Operator
                 while (!connect.IsCompleted) yield return null;
                 if (connect.IsFaulted) Debug.LogWarning("[Operator] Convex setup failed, keeping LocalOperator: " + connect.Exception?.GetBaseException().Message);
             }
-            else Debug.Log("[Operator] no Convex deployment configured; LocalOperator answers the payphones");
+            else Debug.Log("[Operator] no Convex deployment configured; LocalOperator answers the phone");
 
             if (queuedLink != null) OnDeepLink(queuedLink);
             var args = Environment.GetCommandLineArgs();
@@ -151,7 +158,7 @@ namespace Dogpatch.Operator
             {
                 PlayerId = await EnsurePlayerAsync(client);
                 var json = string.IsNullOrEmpty(Config.roomCode)
-                    ? await client.MutationAsync("rooms:create", JsonUtility.ToJson(new PlayerArgs { playerId = PlayerId }))
+                    ? await client.MutationAsync("rooms:create", JsonUtility.ToJson(new SoloRoomArgs { playerId = PlayerId, freeAsks = true }))
                     : await client.MutationAsync("rooms:join", JsonUtility.ToJson(new JoinArgs { playerId = PlayerId, code = Config.roomCode }));
                 var room = JsonUtility.FromJson<RoomResult>(json).room;
                 UseRoom(room.id, room.code);
@@ -165,7 +172,6 @@ namespace Dogpatch.Operator
             calls.PlayerId = () => PlayerId;
             calls.RoomId = () => RoomId;
             calls.Voice = voice;
-            if (calls.State == CallState.Holding) voice.Open();
             EntityTagger.MyPlayerId = PlayerId;
             EntityTagger.TagDynamic(race.Game, race);
             Effects.ServerNow = () => convex.ServerNowMs;
@@ -224,7 +230,9 @@ namespace Dogpatch.Operator
             var racer = race.Last?.racers?.FirstOrDefault(r => r.playerId == row.requestedBy);
             var who = row.requestedBy == PlayerId ? "YOU" : racer != null ? WorldChangeCatalog.ShortName(racer.displayName) : "SOMEONE";
             var words = $"{who} CALLED {(row.label ?? row.effect).Replace('_', ' ')}".ToUpperInvariant().Split(' ');
-            hud.PushNews(string.Join(" ", words.Take(4)), NewsPicto(row.effect), racer?.color ?? "blue");
+            var news = string.Join(" ", words.Take(4));
+            hud.PushNews(news, NewsPicto(row.effect), racer?.color ?? "blue");
+            Debug.Log($"[Operator] news \"{news}\" for {row.effect} {row.id}");
         }
 
         static string NewsPicto(string effect)
@@ -290,7 +298,11 @@ namespace Dogpatch.Operator
         void OnAnswered(OperatorResponse reply)
         {
             if (reply.outcome == null) return;
-            if (reply.outcome == "applied" && reply.effect != null) Effects.Optimistic(reply.effect);
+            if (reply.outcome == "applied" && reply.effect != null)
+            {
+                Effects.Optimistic(reply.effect);
+                SpendLocalAsk();
+            }
             else if (reply.outcome == "pending" && reply.effect != null) Hud.Confirm(reply.effect);
             else if (reply.outcome == "refused") Hud.Toast(reply.refusal?.message ?? reply.line);
         }
@@ -298,11 +310,36 @@ namespace Dogpatch.Operator
         async void OnConfirm(ActiveEffect row, bool yes)
         {
             if (!yes || Convex == null) return;
-            try { Effects.Optimistic(await Convex.ConfirmAsync(PlayerId, row.id)); }
+            if (!RaceOnline && !race.Calls.HasAsks)
+            {
+                Hud.Toast(CallController.NoAsksLine);
+                return;
+            }
+            try
+            {
+                Effects.Optimistic(await Convex.ConfirmAsync(PlayerId, row.id));
+                SpendLocalAsk();
+            }
             catch (ConvexException e)
             {
                 Debug.LogWarning($"[Operator] confirm {row.id} failed {e.Code}: {e.Message}");
-                Hud.Toast("Too late, sugar.");
+                Hud.Toast(e.Message == CallController.NoAsksLine ? e.Message : "Too late, sugar.");
+            }
+        }
+
+        // Online, operator:call spends the caller's ask on the race server and the poll brings the new
+        // balance. In the solo room (a free-asks room) the local race session keeps the count instead.
+        async void SpendLocalAsk()
+        {
+            if (RaceOnline) return;
+            try
+            {
+                var spent = await race.Session.SpendAskAsync(race.MyId, race.RoomId);
+                Debug.Log($"[Operator] spent a local ask, {spent.asks} left");
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[Operator] local ask spend failed: " + e.Message);
             }
         }
 
@@ -325,7 +362,7 @@ namespace Dogpatch.Operator
                 var key = pair.Substring(0, eq);
                 var value = Uri.UnescapeDataString(pair.Substring(eq + 1).Replace('+', ' '));
                 if (key == "room") JoinRoom(value);
-                else if (key == "say") race.Calls.Say(value);
+                else if (key == "say" && Config.debugInput) race.Calls.Say(value);
             }
         }
     }

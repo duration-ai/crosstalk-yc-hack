@@ -1,6 +1,7 @@
 import {
   COUNTERS,
   OBJECT_EFFECTS,
+  PLAYABLE,
   PLAYER_EFFECTS,
   WORLD_EFFECTS,
   isA,
@@ -60,7 +61,11 @@ export type RefusalReason =
   | "incompatible"
   | "not_visible"
   | "protected"
-  | "unavailable";
+  | "unavailable"
+  | "undo"
+  | "not_built"
+  | "no_asks"
+  | "race_over";
 
 export type EffectCommand = {
   kind: "effect";
@@ -93,6 +98,10 @@ export const REFUSAL_MESSAGES: Record<RefusalReason, string> = {
   not_visible: "Can't see one.",
   protected: "That landmark's protected.",
   unavailable: "Operator busy. Retry.",
+  undo: "No take-backs, sugar.",
+  not_built: "Can't do that one yet.",
+  no_asks: "No asks! Find a pink token.",
+  race_over: "The race is over.",
 };
 
 const NONE = "none";
@@ -108,8 +117,6 @@ function worldEffect(a: Answers): ChoiceAnswer {
       return a.physics_effect;
     case "population":
       return a.population_effect;
-    case "undo":
-      return { ...a.world_group, choice: "undo_last" };
     default:
       return { choice: NONE, confidence: 0, probabilities: {} };
   }
@@ -159,6 +166,7 @@ function effectCommand(
 ): Command {
   const info = PLAYER_EFFECTS[effect] ?? WORLD_EFFECTS[effect] ?? OBJECT_EFFECTS[effect];
   if (!info) return refuse("vague");
+  if (!PLAYABLE.has(effect)) return refuse("not_built");
   let color = "";
   let theme = "";
   if (effect === "recolor") {
@@ -245,7 +253,6 @@ export function decide(a: Answers, view: View, active: ActiveSummary[]): Command
       if (effect === NONE || !WORLD_EFFECTS[effect]) return refuse("vague");
       const countered = COUNTERS[effect];
       if (countered && !active.some((e) => countered.includes(e.effect))) return refuse("no_op");
-      if (effect === "undo_last" && !active.some((e) => !e.instant)) return refuse("no_op");
       return effectCommand(a, "world", effect);
     }
     case "class": {

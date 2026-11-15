@@ -1,8 +1,12 @@
 Shader "Dogpatch/Sky"
 {
-    // Unlit sky dome. Vertex color red is the blend from horizon to middle and green the blend from
-    // middle to top; the three colors are globals so time of day and weather can move them. Drawn
-    // first, never writes depth, never fogged.
+    // Unlit sky dome. The gradient is computed per pixel from the view direction's elevation, so it
+    // is exact at any dome tessellation and on every graphics API: pale _SkyHorizon on and below the
+    // horizon, a thin pale band, _SkyMid a few degrees up and deep _SkyTop by the top of the frame.
+    // _SkySpan (set by SkyRig from the camera) is the sine of the elevation where the top colour is
+    // reached, so a low chase camera still shows the whole deep-to-pale gradient. The three colours
+    // are globals so time of day and weather can move them. Drawn first, never writes depth, never
+    // fogged.
     SubShader
     {
         Tags { "RenderType" = "Background" "Queue" = "Background" "PreviewType" = "Skybox" }
@@ -18,19 +22,27 @@ Shader "Dogpatch/Sky"
             float4 _SkyTop;
             float4 _SkyMid;
             float4 _SkyHorizon;
+            float _SkySpan;
 
-            struct appdata { float4 vertex : POSITION; float4 color : COLOR; };
-            struct v2f { float4 pos : SV_POSITION; float4 color : COLOR; };
+            struct appdata { float4 vertex : POSITION; };
+            struct v2f { float4 pos : SV_POSITION; float3 world : TEXCOORD0; };
 
             v2f vert(appdata v)
             {
                 v2f o;
                 o.pos = UnityObjectToClipPos(v.vertex);
-                o.color = float4(lerp(lerp(_SkyHorizon.rgb, _SkyMid.rgb, v.color.r), _SkyTop.rgb, v.color.g), 1);
+                o.world = mul(unity_ObjectToWorld, v.vertex).xyz;
                 return o;
             }
 
-            fixed4 frag(v2f i) : SV_Target { return i.color; }
+            float4 frag(v2f i) : SV_Target
+            {
+                float3 dir = normalize(i.world - _WorldSpaceCameraPos);
+                float g = saturate(dir.y / max(_SkySpan, 0.02));
+                float3 c = lerp(_SkyHorizon.rgb, _SkyMid.rgb, smoothstep(0.0, 0.3, g));
+                c = lerp(c, _SkyTop.rgb, smoothstep(0.25, 0.8, g));
+                return float4(c, 1);
+            }
             ENDCG
         }
     }

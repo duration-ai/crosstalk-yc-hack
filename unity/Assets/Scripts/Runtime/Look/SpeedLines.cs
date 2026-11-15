@@ -68,7 +68,7 @@ namespace Dogpatch.Look
         Line NewLine(MotionTuning.SpeedLineFeel t, bool scatter) => new Line
         {
             Angle = PickAngle(),
-            Radius = t.innerRadius + (scatter ? R(0f, 0.7f) : R(0f, 0.12f)),
+            Radius = t.innerRadius + (scatter ? R(0f, 0.5f) : R(0f, 0.1f)),
             Length = R(t.lengthMin, t.lengthMax),
             Flow = R(0.75f, 1.3f),
             Band = random.NextDouble() < t.bandShare,
@@ -110,7 +110,7 @@ namespace Dogpatch.Look
             {
                 ref var line = ref lines[i];
                 line.Radius += t.flow * line.Flow * dt * (0.5f + level);
-                if (line.Radius > 1.45f) line = NewLine(t, false);
+                if (line.Radius > 1.2f) line = NewLine(t, false);
                 int v = i * 4;
                 if (i >= active)
                 {
@@ -132,9 +132,9 @@ namespace Dogpatch.Look
                 vertices[v + 3] = View(mid - normal, h, depth);
                 var c = new Color(1f, 1f, 1f, fade);
                 colors[v + 1] = colors[v + 3] = c;
-                c.a = fade * 0.6f;
+                c.a = fade * 0.9f;
                 colors[v + 2] = c;
-                c.a = 0f;
+                c.a = fade * 0.15f;
                 colors[v] = c;
             }
             mesh.vertices = vertices;

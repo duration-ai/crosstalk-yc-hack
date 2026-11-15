@@ -13,11 +13,18 @@ export const COLORS = [
 export const MAX_PLAYERS = COLORS.length;
 export const COUNTDOWN_MS = 3_000;
 export const AUTO_START_MS = 10_000;
+export const MISSION_COUNTDOWN_MS = 10_000;
 export const CLOSE_AFTER_FIRST_FINISH_MS = 60_000;
 export const PHOTO_FINISH_MS = 1_000;
 export const DEFAULT_FINISH_RADIUS = 15;
 export const MAX_ROUTE_POINTS = 512;
 export const EVENTS_PER_POLL = 100;
+export const DEFAULT_ASKS = 2;
+export const MAX_ASKS = 9;
+export const MAX_PICKUPS = 64;
+export const DEFAULT_PICKUP_RADIUS = 4;
+/** Slack on top of the pickup radius for the racer's reported position, which lags the car a little. */
+export const COLLECT_SLACK = 3;
 export const DEFAULT_ROUTE: Vec3[] = [
   { x: 0, y: 0, z: 0 },
   { x: 0, y: 0, z: 800 },
@@ -133,6 +140,18 @@ export function countdownPatch(room: Room, rows: RoomPlayer[], now: number) {
   return { status: "lobby" as const, startsAt: 0 };
 }
 
+/** A mission lobby counts down once it has minPlayers, restarting the countdown on every join or leave. */
+export function missionPatch(room: Room, rows: RoomPlayer[], now: number) {
+  if (rows.filter((row) => !row.left).length >= room.minPlayers) {
+    return { status: "countdown" as const, startsAt: now + MISSION_COUNTDOWN_MS };
+  }
+  return { status: "lobby" as const, startsAt: 0 };
+}
+
+export function lobbyPatch(room: Room, rows: RoomPlayer[], now: number) {
+  return room.kind === "mission" ? missionPatch(room, rows, now) : countdownPatch(room, rows, now);
+}
+
 /** Ends the race once nobody still in it is driving. */
 export async function finishIfDone(ctx: MutationCtx, room: Room) {
   const rows = await roomPlayers(ctx, room._id);
@@ -146,7 +165,7 @@ export async function removeFromRoom(ctx: MutationCtx, room: Room, row: RoomPlay
   const status = phase(room, now);
   if (status === "lobby" || status === "countdown") {
     await ctx.db.delete(row._id);
-    await ctx.db.patch(room._id, countdownPatch(room, await roomPlayers(ctx, room._id), now));
+    await ctx.db.patch(room._id, lobbyPatch(room, await roomPlayers(ctx, room._id), now));
     return;
   }
   await ctx.db.patch(row._id, { left: true, ready: false, updatedAt: now });
@@ -168,7 +187,19 @@ export function toRoom(room: Room, rows: RoomPlayer[], now: number) {
     finish: finishPoint(room),
     finishRadius: room.finishRadius,
     createdAt: room.createdAt,
+    asks: startingAsks(room),
+    pickups: room.pickups ?? [],
+    pickupRadius: room.pickupRadius ?? DEFAULT_PICKUP_RADIUS,
   };
+}
+
+export function startingAsks(room: Room) {
+  return room.asks ?? DEFAULT_ASKS;
+}
+
+/** The racer's asks; rows from before asks existed start with the room's count. */
+export function asksOf(room: Room, row: RoomPlayer) {
+  return row.asks ?? startingAsks(room);
 }
 
 export function finishMs(room: Room, row: RoomPlayer) {
@@ -190,6 +221,8 @@ export function toRacer(room: Room, row: RoomPlayer, place: number) {
     finished: row.finishedAt > 0,
     finishMs: finishMs(room, row),
     smash: row.smash ?? 0,
+    asks: asksOf(room, row),
+    collected: row.collected ?? [],
     left: row.left,
     updatedAt: row.updatedAt,
   };
