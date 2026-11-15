@@ -94,7 +94,6 @@ namespace Dogpatch.Race
         float stillFor;
         bool inRing;
         bool everInRing;
-        float lobbySince;
         float botCallsAfter;
         bool lobbyCam;
         bool ghosted;
@@ -426,7 +425,6 @@ namespace Dogpatch.Race
             else Game.Player.Teleport(Course.RingCenter + Course.RingFacing * (Course.RingRadius + 2.5f) + Vector3.up * 0.1f, LobbyHeading + 180f);
             Game.Follow.enabled = true;
             Game.Follow.Snap(Game.Player.transform, false);
-            lobbySince = Time.time;
             everInRing = onRing;
         }
 
@@ -483,7 +481,7 @@ namespace Dogpatch.Race
             if (room.status == RoomStatus.Lobby || room.status == RoomStatus.Countdown)
             {
                 if (room.status == RoomStatus.Countdown && MsToStart <= LockMs && !Gridded) yield return ToGrid();
-                bool go = (Me != null && Me.ready) || (!Online && (everInRing || Time.time - lobbySince > 25f));
+                bool go = Me != null && Me.ready;
                 if (go && !Gridded)
                     for (int i = 0; i < bots.Count; i++)
                     {

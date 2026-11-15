@@ -50,8 +50,8 @@ namespace Dogpatch.Slipstream
         void MissionPlate(Room room)
         {
             if (room.status != RoomStatus.Lobby) return;
-            int more = Mathf.Max(1, room.minPlayers - room.playerCount);
-            var label = "RACE: " + Race.RouteName(Race.RouteId) + "  ·  WAITING FOR " + more + " MORE";
+            int unready = room.playerCount - room.readyCount;
+            var label = "RACE: " + Race.RouteName(Race.RouteId) + (unready > 0 ? "  ·  WAITING FOR " + unready + " TO READY" : "  ·  ALL READY");
             var size = Measure(label, 16f);
             var r = new Rect(Screen.width * 0.5f - size.x * 0.5f - 18f * s, top + 2f * s, size.x + 36f * s, 32f * s);
             Panel(r, Ink);

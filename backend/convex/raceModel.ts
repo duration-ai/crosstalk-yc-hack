@@ -12,7 +12,6 @@ export const COLORS = [
 
 export const MAX_PLAYERS = COLORS.length;
 export const COUNTDOWN_MS = 3_000;
-export const AUTO_START_MS = 10_000;
 export const MISSION_COUNTDOWN_MS = 10_000;
 export const CLOSE_AFTER_FIRST_FINISH_MS = 30_000;
 export const PHOTO_FINISH_MS = 1_000;
@@ -126,24 +125,23 @@ export function placeOrder(rows: RoomPlayer[]) {
   );
 }
 
-/** Recomputes the lobby countdown after a join, leave or ready change. */
+/** Recomputes the lobby countdown after a join, leave or ready change: it runs only while everyone in
+ * the lobby (at least minPlayers) is ready, so any unready racer, a new joiner included, holds it. */
 export function countdownPatch(room: Room, rows: RoomPlayer[], now: number) {
-  const ready = rows.filter((row) => row.ready).length;
   const running = room.status === "countdown";
-  if (rows.length > 0 && rows.length >= room.minPlayers && ready === rows.length) {
+  if (rows.length > 0 && rows.length >= room.minPlayers && rows.every((row) => row.ready)) {
     const startsAt = now + COUNTDOWN_MS;
     return { status: "countdown" as const, startsAt: running ? Math.min(room.startsAt, startsAt) : startsAt };
-  }
-  if (ready >= Math.max(2, room.minPlayers)) {
-    return { status: "countdown" as const, startsAt: running ? room.startsAt : now + AUTO_START_MS };
   }
   return { status: "lobby" as const, startsAt: 0 };
 }
 
-/** A mission lobby counts down once it has minPlayers, restarting the countdown on every join or leave. */
+/** A mission lobby counts down once everyone in it, even one racer alone, is ready; anyone unready, a new
+ * joiner included, holds it. */
 export function missionPatch(room: Room, rows: RoomPlayer[], now: number) {
-  if (rows.filter((row) => !row.left).length >= room.minPlayers) {
-    return { status: "countdown" as const, startsAt: now + MISSION_COUNTDOWN_MS };
+  const live = rows.filter((row) => !row.left);
+  if (live.length > 0 && live.every((row) => row.ready)) {
+    return { status: "countdown" as const, startsAt: room.status === "countdown" ? room.startsAt : now + MISSION_COUNTDOWN_MS };
   }
   return { status: "lobby" as const, startsAt: 0 };
 }

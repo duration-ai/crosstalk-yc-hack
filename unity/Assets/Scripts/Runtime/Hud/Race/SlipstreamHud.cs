@@ -383,7 +383,7 @@ namespace Dogpatch.Slipstream
                 }
             }
 
-            if (!Race.Online) ReadyButton(Race.Me != null && Race.Me.ready);
+            ReadyButton(Race.Me != null && Race.Me.ready);
         }
 
         void ReadyButton(bool pressed)
