@@ -108,7 +108,7 @@ namespace Dogpatch.Operator
             live.Clear();
 
             Hearing(right, bottom);
-            Chips(left, top + 92f * s);
+            Chips(left, top + (right - left < 700f * s ? 124f : 92f) * s);
             Toasting();
             ConfirmSheet();
             if (DebugInput) DebugField(left, bottom);

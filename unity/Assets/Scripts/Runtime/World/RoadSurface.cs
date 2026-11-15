@@ -20,7 +20,10 @@ namespace Dogpatch.World
         public const float SidewalkY = 0.03f;
         public const float SidewalkWidth = 3f;
         public const float CrosswalkDepth = 3f;
-        const float PaintY = RoadY + 0.015f;
+        const float PaintY = RoadY + 0.02f;
+        const float StopGap = 1.2f;
+        const float Bar = 0.8f;
+        const float BarGap = 0.8f;
         const float FlushY = 0.04f;
         const float PathY = 0.036f;
         const float Sample = 0.5f;
@@ -48,8 +51,16 @@ namespace Dogpatch.World
         }
 
         public readonly List<Junction> Junctions = new List<Junction>();
-        public readonly List<Vector2> MidBlockCrosswalks = new List<Vector2>();
-        public int CrosswalkCount { get; private set; }
+        public struct Crosswalk
+        {
+            public int Road;
+            public Vector2 Center;
+            public Vector2 Along;
+            public float HalfWidth;
+            public bool MidBlock;
+        }
+
+        public readonly List<Crosswalk> Crosswalks = new List<Crosswalk>();
         public int StopLineCount { get; private set; }
 
         readonly WorldContext ctx;
@@ -109,6 +120,7 @@ namespace Dogpatch.World
             Active = this;
             var watch = System.Diagnostics.Stopwatch.StartNew();
             FindJunctions();
+            PlanCrossings();
             for (int r = 0; r < net.Roads.Length; r++)
             {
                 var road = net.Roads[r];
@@ -155,7 +167,7 @@ namespace Dogpatch.World
             Colliders("Sidewalks", sidewalkColliders);
             long paint = watch.ElapsedMilliseconds;
             Colliders("Ground", LandColliders());
-            Debug.Log($"[Dogpatch] streets: {Junctions.Count} junctions, {CrosswalkCount} crosswalks, {StopLineCount} stop lines; surfaces {paint} ms, ground colliders {watch.ElapsedMilliseconds - paint} ms");
+            Debug.Log($"[Dogpatch] streets: {Junctions.Count} junctions, {Crosswalks.Count} crosswalks, {ramps.Count} curb ramps, {StopLineCount} stop lines; surfaces {paint} ms, ground colliders {watch.ElapsedMilliseconds - paint} ms");
         }
 
         void Colliders(string name, ChunkedMeshBuilder builders)
@@ -170,8 +182,8 @@ namespace Dogpatch.World
 
         static Vector2Int Key(Vector2 p) => Vector2Int.RoundToInt(p * 2f);
 
-        // A junction is a vertex shared by curbed streets with at least three legs. Each street's
-        // crosswalk starts a metre past the widest crossing street's curb.
+        // A junction is a vertex shared by curbed streets with at least three legs. clear is how far the
+        // widest crossing street's curb line is from the junction along each street.
         void FindJunctions()
         {
             var refs = new Dictionary<Vector2Int, List<(int road, int idx)>>();
@@ -201,9 +213,8 @@ namespace Dogpatch.World
                     foreach (var (other, _) in list)
                         if (other != road) clear = Mathf.Max(clear, RoadNetwork.HalfWidth(net.Roads[other]));
                     if (clear == 0f) clear = RoadNetwork.HalfWidth(net.Roads[road]);
-                    clear += 1f;
                     nodes[road].Add((idx, clear));
-                    float hold = clear + CrosswalkDepth + 1f;
+                    float hold = clear + CrosswalkDepth + StopGap + 1.5f;
                     quiet[road].Add((arc[road][idx] - hold, arc[road][idx] + hold));
                     radius = Mathf.Max(radius, clear + CrosswalkDepth);
                 }
@@ -211,110 +222,272 @@ namespace Dogpatch.World
             }
         }
 
-        void PaintCrossingsAndStops()
+        // Where the crosswalks, their curb ramps and the stop bars go. A junction crosswalk continues the
+        // crossing street's sidewalk across this street (snapped to the OSM crossing node on that leg when
+        // there is one), curb to curb, and never reaches into the junction box. Legs shorter than two
+        // crosswalks between junctions (the middle of a divided street's crossing) get none. Mid-block OSM
+        // crossings are painted where they are unless OSM says they are unmarked. Two crosswalks on curbed
+        // streets never overlap. Marked crossings on flush ground-level roads (service roads) are painted
+        // at their node, without curb ramps.
+        void PlanCrossings()
         {
-            var stops = new HashSet<(int, int)>();
+            var legCrosswalk = new Dictionary<(int, int, int), float>();
             for (int r = 0; r < net.Roads.Length; r++)
             {
                 var road = net.Roads[r];
                 if (!RoadNetwork.IsCurbed(road)) continue;
-                float total = ArcLength(r);
-
                 foreach (var (idx, clear) in nodes[r])
                 {
-                    float s = arc[r][idx];
-                    if (idx < arc[r].Length - 1 && s + clear + CrosswalkDepth + 1f < total) Crosswalk(r, s + clear + CrosswalkDepth * 0.5f);
-                    if (idx > 0 && s - clear - CrosswalkDepth - 1f > 0f) Crosswalk(r, s - clear - CrosswalkDepth * 0.5f);
+                    for (int step = -1; step <= 1; step += 2)
+                    {
+                        if (step < 0 ? idx == 0 : idx == arc[r].Length - 1) continue;
+                        float s0 = arc[r][idx];
+                        float room = step > 0 ? ArcLength(r) - s0 : s0;
+                        bool compound = false;
+                        foreach (var (idx2, clear2) in nodes[r])
+                        {
+                            float gap = step * (arc[r][idx2] - s0);
+                            if (gap > 0.1f && gap < clear + clear2 + 2f * CrosswalkDepth) compound = true;
+                        }
+                        if (compound) continue;
+                        float want = clear + CrosswalkDepth * 0.5f;
+                        float mark = float.MaxValue;
+                        foreach (float sm in Marks(road, r, "crossing"))
+                        {
+                            float g = step * (sm - s0);
+                            if (g > clear - 1f && g < clear + 10f) mark = Mathf.Min(mark, g);
+                        }
+                        if (mark < float.MaxValue) want = Mathf.Max(want, mark);
+                        for (float extra = 0f; extra <= 4f; extra += 0.5f)
+                        {
+                            float g = want + extra;
+                            if (g + CrosswalkDepth * 0.5f + 1f > room) break;
+                            if (!TryCrosswalk(r, s0 + step * g, false)) continue;
+                            legCrosswalk[(r, idx, step)] = s0 + step * g;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            for (int r = 0; r < net.Roads.Length; r++)
+            {
+                var road = net.Roads[r];
+                if (!RoadNetwork.IsCurbed(road))
+                {
+                    if (road.kind == "path" || road.bridge || road.tunnel || road.layer != 0) continue;
+                    foreach (float s in Marks(road, r, "crossing"))
+                    {
+                        PointAt(r, s, out var p, out var d);
+                        if (!Unmarked(p)) Crosswalks.Add(new Crosswalk { Road = r, Center = p, Along = d, HalfWidth = RoadNetwork.HalfWidth(road), MidBlock = true });
+                    }
+                    continue;
+                }
+                foreach (float s in Marks(road, r, "crossing"))
+                {
+                    bool atJunction = false;
+                    foreach (var (idx, clear) in nodes[r])
+                        if (Mathf.Abs(arc[r][idx] - s) < clear + 10f) atJunction = true;
+                    if (atJunction) continue;
+                    PointAt(r, s, out var p, out var d);
+                    if (Unmarked(p)) continue;
+                    float away = 1f;
+                    float nearest = float.MaxValue;
+                    foreach (var j in Junctions)
+                    {
+                        float dist = (j.Point - p).sqrMagnitude;
+                        if (dist >= nearest) continue;
+                        nearest = dist;
+                        away = Vector2.Dot(p - j.Point, d) >= 0f ? 1f : -1f;
+                    }
+                    for (float extra = 0f; extra <= 3f; extra += 0.5f)
+                        if (TryCrosswalk(r, s + away * extra, true)) break;
                 }
 
-                if (road.markIdx == null || road.markKind == null) continue;
-                float lastCrossing = float.NegativeInfinity;
-                for (int k = 0; k < road.markIdx.Length && k < road.markKind.Length; k++)
+                var lanes = RoadNetwork.Lanes(road);
+                foreach (float s in Marks(road, r, "stop_sign", "traffic_signal"))
                 {
-                    int markIdx = road.markIdx[k];
-                    if (markIdx < 0 || markIdx >= arc[r].Length) continue;
-                    float s = arc[r][markIdx];
-                    string kind = road.markKind[k];
-                    if (kind == "crossing")
+                    int best = -1;
+                    float bestGap = 30f;
+                    for (int n = 0; n < nodes[r].Count; n++)
                     {
-                        if (NearNode(r, s, CrosswalkDepth + 4f) || s - lastCrossing < 5f) continue;
-                        if (s < CrosswalkDepth || s > total - CrosswalkDepth) continue;
-                        lastCrossing = s;
-                        Crosswalk(r, s);
-                        PointAt(r, s, out var p, out _);
-                        MidBlockCrosswalks.Add(p);
-                        quiet[r].Add((s - CrosswalkDepth * 0.5f - 1f, s + CrosswalkDepth * 0.5f + 1f));
+                        float gap = Mathf.Abs(arc[r][nodes[r][n].idx] - s);
+                        if (gap >= bestGap) continue;
+                        bestGap = gap;
+                        best = n;
                     }
-                    else if (kind == "stop_sign" || kind == "traffic_signal")
+                    if (best < 0) continue;
+                    var (idx, clear) = nodes[r][best];
+                    float at = arc[r][idx];
+                    bool onNode = Mathf.Abs(s - at) < 1.5f;
+                    for (int step = -1; step <= 1; step += 2)
                     {
-                        int best = -1;
-                        float bestGap = 30f;
-                        for (int n = 0; n < nodes[r].Count; n++)
-                        {
-                            float gap = Mathf.Abs(arc[r][nodes[r][n].idx] - s);
-                            if (gap < bestGap)
-                            {
-                                bestGap = gap;
-                                best = n;
-                            }
-                        }
-                        if (best < 0) continue;
-                        var (idx, clear) = nodes[r][best];
-                        float at = arc[r][idx];
-                        bool onNode = Mathf.Abs(s - at) < 1.5f;
-                        if ((onNode || s > at) && stops.Add((r, idx * 2))) StopLine(r, idx, clear, true);
-                        if ((onNode || s < at) && stops.Add((r, idx * 2 + 1))) StopLine(r, idx, clear, false);
+                        if (!onNode && Mathf.Sign(s - at) != step) continue;
+                        if (step < 0 ? idx == 0 : idx == arc[r].Length - 1) continue;
+                        float bar = legCrosswalk.TryGetValue((r, idx, step), out float cw) ? cw + step * (CrosswalkDepth * 0.5f + StopGap) : at + step * (clear + StopGap);
+                        if (bar < 0.5f || bar > ArcLength(r) - 0.5f) continue;
+                        float hw = RoadNetwork.HalfWidth(road);
+                        float from = step > 0 ? lanes.Divider : -hw;
+                        float to = step > 0 ? hw : lanes.Divider;
+                        if (step > 0 && lanes.Backward == 0) continue;
+                        from += 0.3f;
+                        to -= 0.3f;
+                        if (to - from < 1f || !stops.Add((r, idx, step))) continue;
+                        stopBars.Add((r, bar, from, to));
+                        quiet[r].Add((bar - 1f, bar + 1f));
                     }
                 }
             }
         }
 
-        bool NearNode(int r, float s, float extra)
+        readonly HashSet<(int, int, int)> stops = new HashSet<(int, int, int)>();
+        readonly List<(int road, float s, float from, float to)> stopBars = new List<(int, float, float, float)>();
+
+        // True when OSM tags the crossing node at p as having no paint.
+        bool Unmarked(Vector2 p)
         {
-            foreach (var (idx, clear) in nodes[r])
-                if (Mathf.Abs(arc[r][idx] - s) < clear + extra) return true;
+            foreach (var prop in data.props)
+                if (prop.kind == "crossing" && prop.tags != null && (new Vector2(prop.x, prop.z) - p).sqrMagnitude < 9f
+                    && (Array.IndexOf(prop.tags, "crossing=unmarked") >= 0 || Array.IndexOf(prop.tags, "crossing:markings=no") >= 0)) return true;
             return false;
         }
 
-        // Continental zebra: bars along the street, 0.6 m wide with 0.6 m gaps, across the full width.
-        void Crosswalk(int r, float s)
+        IEnumerable<float> Marks(Road road, int r, params string[] kinds)
         {
+            if (road.markIdx == null || road.markKind == null) yield break;
+            for (int k = 0; k < road.markIdx.Length && k < road.markKind.Length; k++)
+            {
+                int i = road.markIdx[k];
+                if (i >= 0 && i < arc[r].Length && Array.IndexOf(kinds, road.markKind[k]) >= 0) yield return arc[r][i];
+            }
+        }
+
+        // Places a crosswalk on street r at s when its whole footprint is on this street's asphalt and
+        // clear of every other crosswalk, with a curb ramp at each end that has a sidewalk.
+        bool TryCrosswalk(int r, float s, bool midBlock)
+        {
+            if (s < CrosswalkDepth * 0.5f + 0.5f || s > ArcLength(r) - CrosswalkDepth * 0.5f - 0.5f) return false;
             PointAt(r, s, out var c, out var d);
             var n = new Vector2(-d.y, d.x);
             float hw = RoadNetwork.HalfWidth(net.Roads[r]);
-            var mb = visual.At(c);
-            for (float u = -hw + 0.5f; u + 0.6f <= hw - 0.2f; u += 1.2f)
-                Rect(mb, c + n * (u + 0.3f), d, CrosswalkDepth * 0.5f, 0.3f, White);
-            CrosswalkCount++;
+            string name = net.Roads[r].name;
+            foreach (var other in Crosswalks)
+            {
+                var delta = other.Center - c;
+                if (Mathf.Abs(Vector2.Dot(other.Along, d)) < 0.7f) continue;
+                if (Mathf.Abs(Vector2.Dot(delta, d)) < CrosswalkDepth + 1f && Mathf.Abs(Vector2.Dot(delta, n)) < Mathf.Max(hw, other.HalfWidth)) return false;
+            }
+            for (int a = -1; a <= 1; a++)
+                for (int l = -2; l <= 2; l++)
+                    if (net.OnOtherStreet(c + d * (a * CrosswalkDepth * 0.5f) + n * (l * 0.5f * (hw - 0.3f)), r, name)) return false;
+
+            Crosswalks.Add(new Crosswalk { Road = r, Center = c, Along = d, HalfWidth = hw, MidBlock = midBlock });
+            quiet[r].Add((s - CrosswalkDepth * 0.5f - 1f, s + CrosswalkDepth * 0.5f + 1f));
+            for (int side = -1; side <= 1; side += 2)
+            {
+                var outward = n * side;
+                var center = c + outward * (hw + SidewalkWidth * 0.5f);
+                if (net.OnCurbedCarriageway(center, 0f, r)) continue;
+                int index = ramps.Count;
+                ramps.Add((r, center, d, outward));
+                var cell = Vector2Int.FloorToInt(center / RampCell);
+                for (int x = -1; x <= 1; x++)
+                    for (int z = -1; z <= 1; z++)
+                    {
+                        var key = cell + new Vector2Int(x, z);
+                        if (!rampGrid.TryGetValue(key, out var list)) rampGrid[key] = list = new List<int>();
+                        list.Add(index);
+                    }
+            }
+            return true;
         }
 
-        // A stop bar across the lanes that approach the junction on this leg.
-        void StopLine(int r, int idx, float clear, bool forwardLeg)
+        const float RampCell = 8f;
+        const float RampRun = 1.5f;
+        readonly List<(int road, Vector2 center, Vector2 along, Vector2 outward)> ramps = new List<(int, Vector2, Vector2, Vector2)>();
+        readonly Dictionary<Vector2Int, List<int>> rampGrid = new Dictionary<Vector2Int, List<int>>();
+
+        bool InRamp(Vector2 p)
         {
-            float s = arc[r][idx] + (forwardLeg ? 1f : -1f) * (clear + CrosswalkDepth + 0.6f);
-            if (s < 0.5f || s > ArcLength(r) - 0.5f) return;
-            var road = net.Roads[r];
-            var lanes = RoadNetwork.Lanes(road);
-            float hw = RoadNetwork.HalfWidth(road);
-            float from, to;
-            if (forwardLeg)
+            if (!rampGrid.TryGetValue(Vector2Int.FloorToInt(p / RampCell), out var list)) return false;
+            foreach (int i in list)
             {
-                if (lanes.Backward == 0) return;
-                from = lanes.Divider;
-                to = hw;
+                var (_, c, d, o) = ramps[i];
+                var local = p - c;
+                if (Mathf.Abs(Vector2.Dot(local, d)) < CrosswalkDepth * 0.5f && Mathf.Abs(Vector2.Dot(local, o)) < SidewalkWidth * 0.5f + 0.05f) return true;
             }
-            else
+            return false;
+        }
+
+        // Continental crosswalk: bars running with traffic, curb to curb, evenly spaced and centred.
+        void PaintCrosswalk(Crosswalk cw)
+        {
+            var n = new Vector2(-cw.Along.y, cw.Along.x);
+            float span = 2f * (cw.HalfWidth - 0.3f);
+            int bars = Mathf.Max(1, Mathf.FloorToInt((span + BarGap) / (Bar + BarGap)));
+            float start = -(bars * Bar + (bars - 1) * BarGap) * 0.5f + Bar * 0.5f;
+            var mb = visual.At(cw.Center);
+            float y = RoadNetwork.IsCurbed(net.Roads[cw.Road]) ? PaintY : FlushY + 0.02f;
+            for (int i = 0; i < bars; i++)
+                Rect(mb, cw.Center + n * (start + i * (Bar + BarGap)), cw.Along, CrosswalkDepth * 0.5f, Bar * 0.5f, White, y);
+        }
+
+        // A curb ramp: the sidewalk slopes from a lip just above the asphalt up to sidewalk height over
+        // RampRun, then runs flat to the back of the sidewalk. Where the ramp's side meets a street (a
+        // corner), a curb face closes it.
+        void PaintRamp(int r, Vector2 c, Vector2 d, Vector2 o)
+        {
+            const float Lip = 0.02f;
+            float h = CrosswalkDepth * 0.5f, w = SidewalkWidth * 0.5f;
+            var inner = c - o * w;
+            var mid = c - o * (w - RampRun);
+            var outer = c + o * w;
+            var mb = visual.At(c);
+            var cb = sidewalkColliders.At(c);
+            Vector3 P(Vector2 p, float side, float y) => MeshBuilder.At(p + d * (side * h), y);
+            void Both(Vector3 a, Vector3 b, Vector3 e, Vector3 f, Color color, Vector3 facing)
             {
-                from = -hw;
-                to = lanes.Divider;
+                mb.Quad(a, b, e, f, color, facing);
+                cb.Quad(a, b, e, f, color, facing);
             }
-            from += 0.2f;
-            to -= 0.2f;
-            if (to - from < 1f) return;
-            PointAt(r, s, out var c, out var d);
-            var n = new Vector2(-d.y, d.x);
-            Rect(visual.At(c), c + n * ((from + to) * 0.5f), d, 0.25f, (to - from) * 0.5f, White);
-            StopLineCount++;
+            Both(P(inner, -1f, RoadY + Lip), P(inner, 1f, RoadY + Lip), P(mid, 1f, SidewalkY), P(mid, -1f, SidewalkY), Sidewalk, Vector3.up);
+            Both(P(mid, -1f, SidewalkY), P(mid, 1f, SidewalkY), P(outer, 1f, SidewalkY), P(outer, -1f, SidewalkY), Sidewalk, Vector3.up);
+            for (int side = -1; side <= 1; side += 2)
+            {
+                if (!net.OnCurbedCarriageway(c + d * (side * (h + 0.4f)) - o * (w * 0.5f), 0f, r)) continue;
+                var facing = new Vector3(d.x, 0f, d.y) * side;
+                Both(P(inner, side, RoadY), P(mid, side, RoadY), P(mid, side, SidewalkY), P(inner, side, RoadY + Lip), CurbFace, facing);
+                Both(P(mid, side, RoadY), P(outer, side, RoadY), P(outer, side, SidewalkY), P(mid, side, SidewalkY), CurbFace, facing);
+            }
+        }
+
+        public bool NearestCrosswalk(int road, Vector2 p, float within, out Crosswalk found)
+        {
+            found = default;
+            float best = within * within;
+            string name = net.Roads[road].name;
+            foreach (var cw in Crosswalks)
+            {
+                if (cw.Road != road && (string.IsNullOrEmpty(name) || net.Roads[cw.Road].name != name)) continue;
+                float d = (cw.Center - p).sqrMagnitude;
+                if (d >= best) continue;
+                best = d;
+                found = cw;
+            }
+            return best < within * within;
+        }
+
+        void PaintCrossingsAndStops()
+        {
+            foreach (var cw in Crosswalks) PaintCrosswalk(cw);
+            foreach (var (r, c, d, o) in ramps) PaintRamp(r, c, d, o);
+            foreach (var (r, s, from, to) in stopBars)
+            {
+                PointAt(r, s, out var c, out var d);
+                var n = new Vector2(-d.y, d.x);
+                Rect(visual.At(c), c + n * ((from + to) * 0.5f), d, 0.225f, (to - from) * 0.5f, White);
+            }
+            StopLineCount = stopBars.Count;
         }
 
         void PaintLanes()
@@ -391,12 +564,12 @@ namespace Dogpatch.World
             return pieces;
         }
 
-        static void Rect(MeshBuilder mb, Vector2 c, Vector2 along, float halfAlong, float halfAcross, Color color)
+        static void Rect(MeshBuilder mb, Vector2 c, Vector2 along, float halfAlong, float halfAcross, Color color, float y = PaintY)
         {
             var n = new Vector2(-along.y, along.x);
             var a = along * halfAlong;
             var w = n * halfAcross;
-            mb.Quad(MeshBuilder.At(c - a - w, PaintY), MeshBuilder.At(c + a - w, PaintY), MeshBuilder.At(c + a + w, PaintY), MeshBuilder.At(c - a + w, PaintY), color, Vector3.up);
+            mb.Quad(MeshBuilder.At(c - a - w, y), MeshBuilder.At(c + a - w, y), MeshBuilder.At(c + a + w, y), MeshBuilder.At(c - a + w, y), color, Vector3.up);
         }
 
         public void PointAt(int r, float s, out Vector2 point, out Vector2 dir)
@@ -455,7 +628,7 @@ namespace Dogpatch.World
                     float t = (k + 0.5f) / count;
                     var pa = Vector2.Lerp(a0, a1, t);
                     var pb = Vector2.Lerp(b0, b1, t);
-                    onAsphalt[k] = net.OnCurbedCarriageway(pa, -0.05f, own) || net.OnCurbedCarriageway((pa + pb) * 0.5f, -0.05f, own) || net.OnCurbedCarriageway(pb, -0.05f, own);
+                    onAsphalt[k] = net.OnCurbedCarriageway(pa, -0.05f, own) || net.OnCurbedCarriageway((pa + pb) * 0.5f, -0.05f, own) || net.OnCurbedCarriageway(pb, -0.05f, own) || (curb && InRamp((pa + pb) * 0.5f));
                 }
 
                 if (pending && onAsphalt[0]) EndFace(pendingA, pendingB, pendingDir, y, colliders);
@@ -641,8 +814,8 @@ namespace Dogpatch.World
         }
 
         // Ground the player and parked cars stand on away from the streets: a 1 m raster of the land
-        // polygons with every curbed street removed (dilated so the hole edge stays under a sidewalk),
-        // merged into rectangles of at most 64 m a side.
+        // polygons with every curbed street and every curb ramp's slope removed (dilated so the hole edge
+        // stays under a sidewalk), merged into rectangles of at most 64 m a side.
         ChunkedMeshBuilder LandColliders()
         {
             const float Cell = 1f;
@@ -693,6 +866,25 @@ namespace Dogpatch.World
                             if ((c - Geometry.ClosestPointOnSegment(c, pts[s], pts[s + 1], out _)).sqrMagnitude < reach * reach) solid[j * w + i] = false;
                         }
                 }
+            }
+
+            const float CellReach = 0.75f;
+            foreach (var (_, c, d, o) in ramps)
+            {
+                var inner = c - o * (SidewalkWidth * 0.5f);
+                float halfAlong = CrosswalkDepth * 0.5f + CellReach;
+                var reach = new Vector2(Mathf.Abs(d.x) * halfAlong + Mathf.Abs(o.x) * (RampRun + CellReach), Mathf.Abs(d.y) * halfAlong + Mathf.Abs(o.y) * (RampRun + CellReach));
+                var min = inner - reach;
+                var max = inner + reach;
+                int i0 = Mathf.Max(0, Mathf.FloorToInt((min.x - bounds.xMin) / Cell)), i1 = Mathf.Min(w - 1, Mathf.FloorToInt((max.x - bounds.xMin) / Cell));
+                int j0 = Mathf.Max(0, Mathf.FloorToInt((min.y - bounds.yMin) / Cell)), j1 = Mathf.Min(h - 1, Mathf.FloorToInt((max.y - bounds.yMin) / Cell));
+                for (int j = j0; j <= j1; j++)
+                    for (int i = i0; i <= i1; i++)
+                    {
+                        var local = new Vector2(bounds.xMin + (i + 0.5f) * Cell, bounds.yMin + (j + 0.5f) * Cell) - inner;
+                        float across = Vector2.Dot(local, o);
+                        if (Mathf.Abs(Vector2.Dot(local, d)) < halfAlong && across > -CellReach && across < RampRun + CellReach) solid[j * w + i] = false;
+                    }
             }
 
             var result = new ChunkedMeshBuilder(ChunkSize);

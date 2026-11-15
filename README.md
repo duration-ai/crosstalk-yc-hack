@@ -15,7 +15,8 @@ Walk the real street grid, tap a parked car to get in, and drive down Tennessee,
 | `unity/Assets/Resources/Polyfork/` | Polyfork GLBs (as `.bytes`) and `catalog.json`. |
 | `tools/DataPrep/` | .NET 8 tool that fetches OSM, DataSF and Polyfork and writes the files above. |
 | `scripts/` | Headless Unity install, license activation, and build scripts. |
-| `backend/` | Convex backend (separate work; the game does not call it yet). |
+| `backend/` | Convex backend: players, Speed Dial rooms and races, the voice Operator. |
+| `tools/race-bot/` | Bot client that joins a race room by code and drives the real route, for testing multiplayer alone. |
 
 ## How it works
 
@@ -41,6 +42,33 @@ Holding the pink Call plate talks to the Operator on the Convex backend (`backen
 - **HUD** (`OperatorHud`): countdown chips, refusal toasts, and the confirm sheet ("This will affect everyone, including you." calls `operator:confirm` within 10 s). There's also a debug text field.
 
 Settings live in `Resources/Operator/operator.json`: Convex URL, transport, room code, Scribe model, `commitStrategy` (`manual` or `vad`), `silencePadMs`, keyterms, chunk and pre-roll sizes. You can override them with `-operator-convex <url>`, `-operator-local`, `-operator-transport`, `-operator-room <code>`, `-operator-commit`, `-operator-pad-ms`, `-operator-say "<words>"` or `CONVEX_URL`. The app makes its own Convex player (kept in PlayerPrefs) and room. If Convex is unreachable, if you pass `-operator-local`, or in the scripted demo, the on-device `LocalOperator` answers instead. Deep links skip the microphone: `speeddial://operator?say=make%20it%20rain` and `speeddial://operator?room=ABCD`. Run `./scripts/operator-selftest.sh` for headless checks of the resampler, ranking, wire JSON and registry.
+
+## Multiplayer races
+
+Speed Dial races up to four players on their own phones through the Convex race backend (`backend/CONTRACT.md`, "Speed Dial races"). At startup `RaceDirector` tries the deployment (`https://rapid-gnat-965.convex.site` by default; override with `-convex-url <url>` or `DOGPATCH_CONVEX_URL`). If it answers within 6 s the race runs on `ConvexRaceSession` (HTTP polling at about 8 Hz); if not, or with `-offline`, it runs on `LocalRaceSession` with the bots Maya, Jun and Rosa as before.
+
+Online, the bottom-right corner shows **HOST** and **JOIN**. HOST creates a room and puts its 4-letter code big in the bottom-left corner; JOIN opens the keyboard for a code. Tap your name tab (top left) before joining to change your name. In the lobby everyone's name tab shows their colour block and Ready tick; the host can tap **BOTS** to fill empty slots with bots (off by default), and anyone can **LEAVE**. When everyone is ready the server counts down 3 s (10 s once two are ready), then the race starts on every phone at once. Other players appear on foot in the lobby and in their car during the race, drawn about 150 ms behind the server with a floating name tab; bumping a remote car pushes yours aside locally. World changes from the room's event log apply on every phone in order, the server's results show on every phone, and Ready on the results screen asks for a rematch.
+
+### Three phones in one room
+
+1. Install the same build on all three phones (all default to `rapid-gnat-965`).
+2. Phone A: tap HOST. The room code appears bottom left, for example `QMTX`.
+3. Phones B and C: tap JOIN and type `QMTX`. Each name tab appears on every phone within a second.
+4. Everyone walks onto the yellow start ring and taps Ready. The countdown runs, everyone drives to YC, and the results come from the server. Tap Ready on the results for a rematch.
+
+### Testing alone with the bot client
+
+`tools/race-bot/race-bot.mjs` (Node 18+, no install) is a fake racer: it joins a room by code, readies up, drives the room's route at race speed, fires a world change halfway (rain by default), finishes and prints the results.
+
+```
+node tools/race-bot/race-bot.mjs --join QMTX --name Rosa            # join the room your phone hosts
+node tools/race-bot/race-bot.mjs --join QMTX --name Jun --fire fog --at 0.3
+node tools/race-bot/race-bot.mjs --host --min 2 --name Maya         # bot hosts; join its code on the phone
+```
+
+Host on the phone, start one or two bots with its code, then tap Ready: the bots ready up as soon as another racer is in the room. `--host` sends `tools/race-bot/route.json`, the game's route written by the multiplayer check below. Run `--help`-style options from the header of the script (`--speed`, `--lane`, `--races`, `--hz`, `--url`).
+
+The Linux player runs the same check headless: `Dogpatch.x86_64 -speeddial-host -speeddial-autopilot -speeddial-code-file code.txt -speeddial-mp-out shots/` hosts a room, waits for two other racers, readies, races on autopilot and saves screenshots of the lobby, a remote racer, each world change and the results (`MultiplayerCheck`). The client mapping has contract tests: `Unity -batchmode -nographics -quit -projectPath unity -executeMethod Dogpatch.EditorTools.ConvexRaceSessionTests.Run`.
 
 ## Rebuild the data
 

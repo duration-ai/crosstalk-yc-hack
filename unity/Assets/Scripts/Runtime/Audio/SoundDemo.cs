@@ -213,7 +213,7 @@ namespace Dogpatch.Audio
             string path = Arg("-soundDemoOut", Path.Combine(Application.persistentDataPath, "sound-demo.wav"));
             recorder.Save(path);
             File.WriteAllLines(Path.ChangeExtension(path, ".timeline.txt"), log);
-            Debug.Log($"[SoundDemo] wrote {path}: {recorder.Seconds:F1}s, culled={SoundSystem.Culled} stolen={SoundSystem.Stolen}, resident audio {SoundBank.Bytes / 1024} KB");
+            Debug.Log($"[SoundDemo] wrote {path}: {recorder.Seconds:F1}s, culled={SoundSystem.Culled} stolen={SoundSystem.Stolen} limiterMinGain={MasterLimiter.MinGain:F2}, resident audio {SoundBank.Bytes / 1024} KB");
             yield return Wait(0.5f);
             Application.Quit();
         }

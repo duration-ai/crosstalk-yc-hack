@@ -20,6 +20,7 @@ namespace Dogpatch.Gameplay
         // Scales every car's top speed; the voice Operator's faster/slower/nitro effects set it.
         public static float SpeedScale = 1f;
         public float Speed => forwardSpeed;
+        public bool Reversing => reversing;
         public Vector3 HalfExtents { get; private set; }
         public bool Stunned => Time.time < stunnedUntil;
 

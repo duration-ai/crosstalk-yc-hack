@@ -10,7 +10,7 @@ namespace Dogpatch.Slipstream
     // the four corners, Exo 2 Black Italic numbers with a thin ink outline, and the guide's motion
     // (news shooting in from the right, the Call plate sliding in under the right thumb, countdown
     // segments dropping, numbers slamming in). Drawn with IMGUI under a shear matrix.
-    public sealed class SlipstreamHud : MonoBehaviour
+    public sealed partial class SlipstreamHud : MonoBehaviour
     {
         public RaceDirector Race;
 
@@ -34,6 +34,7 @@ namespace Dogpatch.Slipstream
         GUIStyle style;
         float s;
         float left, right, top, bottom;
+        float band;
         readonly Queue<News> queue = new Queue<News>();
         News showing;
         int place;
@@ -70,6 +71,19 @@ namespace Dogpatch.Slipstream
             Race.EventArrived += OnEvent;
         }
 
+        void OnEnable() => Gameplay.ScreenShape.Changed += CancelPresses;
+
+        void OnDisable() => Gameplay.ScreenShape.Changed -= CancelPresses;
+
+        // A rotation moves every button, so presses that began in the old layout never land; a
+        // held Call keeps talking until its finger lifts.
+        void CancelPresses()
+        {
+            readyFinger = int.MinValue;
+            plateFinger = int.MinValue;
+            platePressed = -1;
+        }
+
         void OnEvent(RaceEvent e)
         {
             var def = Race.Catalog.Get(e.type);
@@ -85,12 +99,14 @@ namespace Dogpatch.Slipstream
             queue.Enqueue(new News { Text = text, Picto = def?.pictogram ?? e.type, Color = SlotColor(e.color) });
         }
 
+        public void PushNews(string text, string picto, string color) => queue.Enqueue(new News { Text = text, Picto = picto, Color = SlotColor(color) });
+
         // True when a screen point (pixels, origin bottom left) lands on a live button.
         public bool HitTest(Vector2 screen)
         {
             var p = new Vector2(screen.x, Screen.height - screen.y);
             float pad = 12f * s;
-            return (readyVisible && Inflate(readyRect, pad).Contains(p)) || (callVisible && Inflate(callRect, pad).Contains(p));
+            return (readyVisible && Inflate(readyRect, pad).Contains(p)) || (callVisible && Inflate(callRect, pad).Contains(p)) || OnlineHit(p);
         }
 
         static Rect Inflate(Rect r, float by) => new Rect(r.x - by, r.y - by, r.width + by * 2f, r.height + by * 2f);
@@ -98,6 +114,7 @@ namespace Dogpatch.Slipstream
         void Update()
         {
             if (Race == null || !Race.Setup) return;
+            OnlineUpdate();
             for (int i = 0; i < Input.touchCount; i++)
             {
                 var t = Input.GetTouch(i);
@@ -114,6 +131,7 @@ namespace Dogpatch.Slipstream
         void Press(int finger, Vector2 p)
         {
             float pad = 12f * s;
+            if (OnlinePress(finger, p)) return;
             if (callVisible && Inflate(callRect, pad).Contains(p))
             {
                 callFinger = finger;
@@ -124,6 +142,7 @@ namespace Dogpatch.Slipstream
 
         void Release(int finger, Vector2 p)
         {
+            if (OnlineRelease(finger, p)) return;
             if (finger == callFinger)
             {
                 callFinger = int.MinValue;
@@ -221,7 +240,9 @@ namespace Dogpatch.Slipstream
 
         void OnGUI()
         {
-            if (Race == null || !Race.Setup || Race.Last == null) return;
+            if (Race == null || !Race.Setup) return;
+            buttons.Clear();
+            if (Race.Last == null && !(Race.Online && Race.RoomId == null)) return;
             GUI.depth = -5;
             s = Mathf.Min(Screen.height / 402f, Screen.width / 560f);
             var safe = Screen.safeArea;
@@ -229,15 +250,23 @@ namespace Dogpatch.Slipstream
             right = safe.xMax - 22f * s;
             top = Screen.height - safe.yMax + 14f * s;
             bottom = Screen.height - safe.yMin - 20f * s;
+            band = right - left < 700f * s ? top + 76f * s : top + 4f * s;
             readyVisible = false;
             callVisible = false;
+            if (Race.Last == null)
+            {
+                Menu();
+                return;
+            }
 
             var room = Race.Room;
             bool lobby = !Race.Gridded && (room.status == RoomStatus.Lobby || room.status == RoomStatus.Countdown);
             bool racing = Race.Started && !Race.ResultsIn;
 
             Markers();
+            if (!Race.ResultsIn) NameTags();
             if (lobby) Lobby(room);
+            if (Race.Online && (lobby || Race.ResultsIn)) RoomCorner(room, lobby);
             if (Race.Gridded && !Race.ResultsIn) Countdown();
             if (racing) RaceCorners();
             if (Race.ResultsIn) Results();
@@ -469,9 +498,9 @@ namespace Dogpatch.Slipstream
                 float t = Time.time - calls.StateSince;
                 float inP = EaseOut(Mathf.Clamp01(t / 0.18f));
                 float outP = Mathf.Clamp01((t - 2.3f) / 0.25f);
-                float baseX = Screen.width * 0.5f - 150f * s;
+                float baseX = band > top + 4f * s ? left : Screen.width * 0.5f - 150f * s;
                 float x = Mathf.Lerp(-360f * s, baseX, inP) - outP * outP * (baseX + 400f * s);
-                float lineY = top + 4f * s;
+                float lineY = band;
                 var size = Measure(calls.Line, 18f);
                 var handset = new Rect(x, lineY, 40f * s, 38f * s);
                 var line = new Rect(handset.xMax + 2f * s, lineY, size.x + 34f * s, 38f * s);
@@ -495,7 +524,7 @@ namespace Dogpatch.Slipstream
                 showing = null;
                 return;
             }
-            float baseLeft = Mathf.Max(left + 150f * s, Screen.width * 0.5f - 270f * s);
+            float baseLeft = band > top + 4f * s ? left : Mathf.Max(left + 150f * s, Screen.width * 0.5f - 270f * s);
             float offset;
             float lean;
             if (since < 0.12f)
@@ -521,7 +550,7 @@ namespace Dogpatch.Slipstream
                 offset = -p * p * (baseLeft + 500f * s);
                 lean = Mathf.Lerp(Lean, 0.45f, p);
             }
-            float y = top + 4f * s;
+            float y = band;
             var textSize = Measure(showing.Text, 15f);
             var block = new Rect(baseLeft + offset, y, 40f * s, 30f * s);
             var bar = new Rect(block.xMax + 2f * s, y, Mathf.Max(textSize.x + 28f * s, 150f * s), 30f * s);
