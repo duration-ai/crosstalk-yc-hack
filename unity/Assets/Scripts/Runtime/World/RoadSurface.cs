@@ -27,19 +27,19 @@ namespace Dogpatch.World
         const float ChunkSize = 200f;
         const int StencilRef = 1;
 
-        static Color Hex(string hex)
-        {
-            ColorUtility.TryParseHtmlString(hex, out var c);
-            return c.linear;
-        }
+        static readonly Color Asphalt = Look.SpeedDial.Asphalt;
+        static readonly Color Sidewalk = Look.SpeedDial.Sidewalk;
+        static readonly Color CurbFace = Look.SpeedDial.Hex("#DCD3C3").linear;
+        static readonly Color Yellow = Look.SpeedDial.DoubleYellow;
+        static readonly Color White = Look.SpeedDial.LaneWhite;
+        static readonly Color RailBed = Look.SpeedDial.RailBed;
+        static readonly Color Rail = Look.SpeedDial.Rail;
 
-        static readonly Color Asphalt = Hex("#A9ADB4");
-        static readonly Color Sidewalk = Hex("#EEE7DA");
-        static readonly Color CurbFace = Hex("#DCD3C3");
-        static readonly Color Yellow = Hex("#FFCB1F");
-        static readonly Color White = Hex("#F7F8F9");
-        static readonly Color RailBed = Hex("#8E877C");
-        static readonly Color Rail = Hex("#6C758B");
+        // The streets of the current world, for code that places things on the ground by position.
+        public static RoadSurface Active { get; private set; }
+
+        // Height of the drivable ground at p: the recessed asphalt on curbed streets, grade elsewhere.
+        public static float GroundY(Vector2 p) => Active != null && Active.net.OnCurbedCarriageway(p, 0.2f) ? RoadY : 0f;
 
         public struct Junction
         {
@@ -106,6 +106,7 @@ namespace Dogpatch.World
 
         public void Build(Material shared)
         {
+            Active = this;
             FindJunctions();
             for (int r = 0; r < net.Roads.Length; r++)
             {
@@ -536,6 +537,100 @@ namespace Dogpatch.World
                 cb.Quad(MeshBuilder.At(i0, SidewalkY), MeshBuilder.At(i1, SidewalkY), MeshBuilder.At(o1, SidewalkY), MeshBuilder.At(o0, SidewalkY), Sidewalk, Vector3.up);
                 var inward = -(u0 + u1).normalized;
                 Wall(mb, cb, MeshBuilder.At(i0, 0f), MeshBuilder.At(i1, 0f), SidewalkY, new Vector3(inward.x, 0f, inward.y));
+            }
+        }
+
+        // Cars parallel-parked in the parking lane along each curb, facing the way traffic flows in the
+        // lane beside them: the right-hand curb of each direction on two-way streets, both curbs facing
+        // forward on one-way streets. Spaces are 6.4 m with about a quarter left empty, and none at a
+        // junction, crosswalk, driveway or side street, hydrant, bus stop, rail line, median or keepClear.
+        public void PlanParking(System.Random random, List<Pose2D> into, List<Vector2> keepClear)
+        {
+            const float Space = 6.4f;
+            const float HalfLength = 2.5f;
+            var avoid = new List<(Vector2 p, float r)>();
+            foreach (var prop in data.props)
+            {
+                float r = prop.kind == "fire_hydrant" ? 4.6f : prop.kind == "bus_stop" ? 12f : prop.kind == "level_crossing" ? 10f : prop.kind == "crossing" ? 5f : 0f;
+                if (r > 0f) avoid.Add((new Vector2(prop.x, prop.z), r));
+            }
+            foreach (var p in keepClear) avoid.Add((p, 14f));
+            foreach (var j in Junctions) avoid.Add((j.Point, j.Radius + HalfLength));
+            var avoidGrid = new Dictionary<Vector2Int, List<int>>();
+            for (int i = 0; i < avoid.Count; i++)
+            {
+                var c = Vector2Int.FloorToInt(avoid[i].p / 20f);
+                for (int x = -1; x <= 1; x++)
+                    for (int z = -1; z <= 1; z++)
+                    {
+                        var key = c + new Vector2Int(x, z);
+                        if (!avoidGrid.TryGetValue(key, out var list)) avoidGrid[key] = list = new List<int>();
+                        list.Add(i);
+                    }
+            }
+            var rails = new HashSet<Vector2Int>();
+            foreach (var rail in data.rails)
+            {
+                var pts = Geometry.ToPoints(rail.pts);
+                for (int i = 0; i < pts.Length - 1; i++)
+                {
+                    float len = Vector2.Distance(pts[i], pts[i + 1]);
+                    for (float t = 0f; t <= len; t += 1f)
+                    {
+                        var c = Vector2Int.FloorToInt(Vector2.Lerp(pts[i], pts[i + 1], t / Mathf.Max(len, 1e-3f)) / 2f);
+                        for (int x = -1; x <= 1; x++)
+                            for (int z = -1; z <= 1; z++) rails.Add(c + new Vector2Int(x, z));
+                    }
+                }
+            }
+            var parked = new Dictionary<Vector2Int, List<Vector2>>();
+
+            bool Clear(int r, Vector2 pos, Vector2 along, Vector2 outward, float hw)
+            {
+                if (rails.Contains(Vector2Int.FloorToInt(pos / 2f))) return false;
+                if (avoidGrid.TryGetValue(Vector2Int.FloorToInt(pos / 20f), out var near))
+                    foreach (int i in near)
+                        if ((avoid[i].p - pos).sqrMagnitude < avoid[i].r * avoid[i].r) return false;
+                if (net.OnCurbedCarriageway(pos + outward * 1.6f, 0f, r)) return false;
+                for (float k = -1f; k <= 1f; k += 1f)
+                    if (net.Nearest(pos + along * (HalfLength * k), 0.8f, out _, r)) return false;
+                if (ctx.Buildings.Blocked(pos, 0.3f)) return false;
+                var cell = Vector2Int.FloorToInt(pos / 10f);
+                for (int x = -1; x <= 1; x++)
+                    for (int z = -1; z <= 1; z++)
+                        if (parked.TryGetValue(cell + new Vector2Int(x, z), out var cars))
+                            foreach (var q in cars)
+                                if ((q - pos).sqrMagnitude < 5.5f * 5.5f) return false;
+                if (!parked.TryGetValue(cell, out var mine)) parked[cell] = mine = new List<Vector2>();
+                mine.Add(pos);
+                return true;
+            }
+
+            for (int r = 0; r < net.Roads.Length; r++)
+            {
+                var road = net.Roads[r];
+                if (!RoadNetwork.IsCurbed(road) || road.kind.EndsWith("_link") || net.Points[r].Length < 2) continue;
+                var lanes = RoadNetwork.Lanes(road);
+                float hw = RoadNetwork.HalfWidth(road);
+                float travelHalf = (lanes.Forward + lanes.Backward) * lanes.Width * 0.5f;
+                float total = ArcLength(r);
+                for (int side = -1; side <= 1; side += 2)
+                {
+                    if (hw - travelHalf < RoadNetwork.ParkingLane - 0.3f) continue;
+                    bool facingForward = road.oneway || lanes.Backward == 0 || side < 0;
+                    for (float s = HalfLength + 1f + (float)random.NextDouble() * Space; s < total - HalfLength - 1f; s += Space)
+                    {
+                        if (random.NextDouble() < 0.25) continue;
+                        float at = s + ((float)random.NextDouble() - 0.5f) * 0.6f;
+                        if (!Unquiet(r, at - HalfLength, at + HalfLength).Contains((at - HalfLength, at + HalfLength))) continue;
+                        PointAt(r, at, out var c, out var d);
+                        var outward = new Vector2(-d.y, d.x) * side;
+                        var pos = c + outward * (hw - 1.15f);
+                        if (!Clear(r, pos, d, outward, hw)) continue;
+                        var facing = facingForward ? d : -d;
+                        into.Add(new Pose2D { Position = MeshBuilder.At(pos, RoadY + 0.05f), Heading = Mathf.Atan2(facing.x, facing.y) * Mathf.Rad2Deg, Street = road.name });
+                    }
+                }
             }
         }
 
