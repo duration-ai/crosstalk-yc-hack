@@ -82,6 +82,7 @@ namespace Dogpatch.Operator
                 return cars;
             }
             foreach (var car in Racers.Cars(context, target)) if (car != null) cars.Add(car);
+            if (!string.IsNullOrEmpty(target.Owner)) return cars;
             foreach (var tag in EntityTag.All)
                 if (tag != null && (tag.ControlledBy == "me" || tag.ControlledBy == "player") && tag.TryGetComponent<CarController>(out var racer) && !cars.Contains(racer)) cars.Add(racer);
             return cars;

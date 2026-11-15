@@ -1,6 +1,7 @@
 import { convexTest } from "convex-test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "./_generated/api";
+import { selfScoped } from "./operator";
 import { OBJECT_EFFECTS, PLAYABLE, PLAYER_EFFECTS, WORLD_EFFECTS } from "./operatorCatalogue";
 import schema from "./schema";
 
@@ -183,6 +184,7 @@ describe("operator.call", () => {
   });
 
   it("holds a promoted effect until the requester confirms within 10 s", async () => {
+    vi.stubEnv("OPERATOR_SELF_SCOPE", "false");
     const { t, tim, maya, say, effects } = await room();
     const pending = await say("slow him down", { scope: "object", object_effect: "slow_down", other_player: 0.95 }, tim.id, "driving");
     expect(pending).toMatchObject({ outcome: "pending", line: "Confirm for everyone?" });
@@ -197,6 +199,7 @@ describe("operator.call", () => {
   });
 
   it("lets an unconfirmed effect lapse after 10 s", async () => {
+    vi.stubEnv("OPERATOR_SELF_SCOPE", "false");
     const { t, tim, say, effects } = await room();
     const pending = await say("shrink her", { scope: "object", object_effect: "shrink", other_player: 0.9 });
     vi.setSystemTime(T0 + 10_500);
@@ -229,6 +232,7 @@ describe("operator.call", () => {
   });
 
   it("drops the call and the confirm of a player who left the room", async () => {
+    vi.stubEnv("OPERATOR_SELF_SCOPE", "false");
     const { t, tim, roomId, say, effects } = await room();
     const pending = await say("slow him down", { scope: "object", object_effect: "slow_down", other_player: 0.95 }, tim.id, "driving");
     await t.mutation(api.rooms.leave, { playerId: tim.id, roomId });
@@ -268,6 +272,7 @@ describe("operator.call", () => {
   });
 
   it("charges a promoted effect when it is confirmed, not when it is asked for", async () => {
+    vi.stubEnv("OPERATOR_SELF_SCOPE", "false");
     vi.stubEnv("OPERATOR_ANYWHERE", "false");
     const { t, tim, say, effects, asksOf } = await room({ asks: 1 });
     const slow = { scope: "object", object_effect: "slow_down", other_player: 0.95 };
@@ -287,6 +292,25 @@ describe("operator.call", () => {
     await say("make it rain", RAIN);
     expect(await say("night", { scope: "world", world_group: "sky", sky_effect: "night" })).toMatchObject({ outcome: "applied" });
     expect(await asksOf(tim.id)).toBe(1);
+  });
+
+  it("lands car and avatar changes on the caller only while OPERATOR_SELF_SCOPE is on", async () => {
+    const { tim, maya, say, effects } = await room();
+    const fly = { scope: "world", world_group: "physics", physics_effect: "cars_fly" };
+    await say("cars fly", fly);
+    await say("cars fly", fly, maya.id);
+    await say("make it rain", RAIN);
+    const rows = await effects();
+    expect(rows.filter((e) => e.effect === "cars_fly").map((e) => e.target).sort()).toEqual([`self:${maya.id}`, `self:${tim.id}`].sort());
+    expect(rows.find((e) => e.effect === "rain")).toMatchObject({ target: "" });
+  });
+
+  it("puts class-wide and other-racer car effects on the caller's car", () => {
+    const bouncy = { kind: "effect", scope: "class", effect: "bouncy", target: "", targetClass: "vehicle", strength: "medium", color: "", theme: "", vehicle: "", confirm: false } as const;
+    expect(selfScoped(bouncy, "p1")).toMatchObject({ scope: "object", target: "car:p1", targetClass: "car" });
+    expect(selfScoped({ ...bouncy, scope: "object", target: "car:p2", targetClass: "car", confirm: true }, "p1")).toMatchObject({ target: "car:p1", confirm: false });
+    expect(selfScoped({ ...bouncy, effect: "set_fire", scope: "object", target: "bld_1", targetClass: "building" }, "p1")).toMatchObject({ target: "bld_1" });
+    expect(selfScoped({ ...bouncy, effect: "vehicle_slower", scope: "players", targetClass: "", confirm: true }, "p1")).toMatchObject({ target: "self:p1", confirm: false });
   });
 
   it("never runs a freeAsks room out of asks", async () => {

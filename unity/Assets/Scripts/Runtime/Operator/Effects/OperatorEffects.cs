@@ -112,6 +112,12 @@ namespace Dogpatch.Operator
         EffectTarget Run(OperatorEffect effect, ActiveEffect row)
         {
             var target = Resolve(row);
+            if (!target.IncludesMe && !RemoteVisible.Contains(row.effect))
+            {
+                Debug.Log($"[Operator] {row.effect} {row.id} is another racer's own change; their car shows it, ours stays as is");
+                Started?.Invoke(row);
+                return target;
+            }
             Debug.Log($"[Operator] apply {row.effect} {row.id} {row.scope}:{row.target}{row.targetClass} on {target.Entities.Count} entities, {row.strength} {row.color}{row.theme}{(row.instant ? " (instant)" : $" for {SecondsLeft(row):F0}s")}");
             try { effect.Apply(row.strength, target); }
             catch (Exception e) { Debug.LogError($"[Operator] {row.effect} apply failed: {e}"); }
@@ -129,10 +135,21 @@ namespace Dogpatch.Operator
             catch (Exception e) { Debug.LogError($"[Operator] {r.Row.effect} look removal failed: {e}"); }
         }
 
+        // SELF effects that only touch the owner's car and avatar models, so other devices can draw them
+        // on that racer; the rest also turn this device's own knobs and run on the caller's device only.
+        static readonly HashSet<string> RemoteVisible = new HashSet<string> { "chunky", "skinny", "cars_fly", "cars_on_water", "floaty_crashes", "change_vehicle" };
+
         public EffectTarget Resolve(ActiveEffect row)
         {
             var target = new EffectTarget { Scope = row.scope, Id = row.target, Class = row.targetClass, Color = row.color, Theme = row.theme };
             EntityTagger.TagDynamic(Context.Game, Context.Race);
+            if (row.target != null && row.target.StartsWith("self:"))
+            {
+                var who = target.Owner = row.target.Substring(5);
+                foreach (var tag in EntityTag.All)
+                    if (tag.Id == "car:" + who || tag.Id == "racer:" + who || (tag.ControlledBy == "me" && target.IncludesMe)) target.Entities.Add(tag);
+                return target;
+            }
             switch (row.scope)
             {
                 case "object":
