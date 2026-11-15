@@ -104,10 +104,10 @@ namespace Dogpatch.Smash
             }
         }
 
-        public void Smoke(Vector3 point, Color color, float size, int count = 1, float rise = 1.2f, Vector3 drift = default)
-            => EmitSmoke(point, color, size, EffectsSettings.Count(count), rise, drift);
+        public void Smoke(Vector3 point, Color color, float size, int count = 1, float rise = 1.2f, Vector3 drift = default, float lifetime = 0.7f)
+            => EmitSmoke(point, color, size, EffectsSettings.Count(count), rise, drift, lifetime);
 
-        void EmitSmoke(Vector3 point, Color color, float size, int count, float rise, Vector3 drift)
+        void EmitSmoke(Vector3 point, Color color, float size, int count, float rise, Vector3 drift, float lifetime = 0.7f)
         {
             size *= 0.55f * EffectsSettings.Scale;
             for (int i = 0; i < count; i++)
@@ -119,7 +119,7 @@ namespace Dogpatch.Smash
                     velocity = drift + Vector3.up * rise * Random.Range(0.7f, 1.3f) + Random.insideUnitSphere * 0.5f,
                     startColor = tint,
                     startSize = size * Random.Range(0.75f, 1.25f),
-                    startLifetime = Random.Range(0.5f, 0.9f),
+                    startLifetime = lifetime * Random.Range(0.72f, 1.28f),
                     rotation3D = RandomRotation(),
                     angularVelocity3D = Random.insideUnitSphere * 60f,
                 }, 1);

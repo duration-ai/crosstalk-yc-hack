@@ -21,6 +21,7 @@ namespace Dogpatch.Operator
         string strength = "medium";
         string street = "3rd Street";
         int serial;
+        Smash.VehicleDamage burning;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Boot()
@@ -47,6 +48,7 @@ namespace Dogpatch.Operator
             "ped_theme" => ("world", null, "elvis"),
             "extinguish" or "see_through" or "rock_solid" or "ghost" => ("object", "building", null),
             "bouncy" or "soft" or "icy" => ("class", "car", null),
+            "set_fire" => ("object", "car", null),
             _ => ("world", null, null),
         };
 
@@ -97,6 +99,7 @@ namespace Dogpatch.Operator
                     }
                     row.target = target.Id;
                     row.targetClass = "";
+                    burning = target.GetComponent<Smash.VehicleDamage>();
                     if (id == "extinguish")
                     {
                         var fire = new ActiveEffect { id = "capture-fire-" + serial++, effect = "set_fire", scope = "object", target = target.Id, strength = strength, status = "active", startsAt = row.startsAt, endsAt = row.endsAt };
@@ -119,6 +122,8 @@ namespace Dogpatch.Operator
                 yield return Shoot(rt, id + "-1-during");
                 yield return Hold(cam, eye, look, 3f);
                 yield return Shoot(rt, id + "-2-during");
+                if (burning != null) Debug.Log($"[EffectCapture] {id} target health {burning.Health01:F2} after 4 s");
+                burning = null;
                 effects.OnActiveList(new ActiveEffect[0]);
                 yield return Hold(cam, eye, look, 3f);
                 yield return Shoot(rt, id + "-3-after");
