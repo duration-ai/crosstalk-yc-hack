@@ -137,6 +137,8 @@ namespace Dogpatch.Operator
 
             if (queuedLink != null) OnDeepLink(queuedLink);
             var args = Environment.GetCommandLineArgs();
+            int pickupSay = Array.IndexOf(args, "-operator-pickup-say");
+            if (pickupSay >= 0 && pickupSay + 1 < args.Length) race.Calls.PickupSay = args[pickupSay + 1];
             int say = Array.IndexOf(args, "-operator-say");
             var words = say >= 0 && say + 1 < args.Length ? args[say + 1] : Environment.GetEnvironmentVariable("OPERATOR_SAY");
             if (!string.IsNullOrWhiteSpace(words))
@@ -166,6 +168,7 @@ namespace Dogpatch.Operator
 
             var voice = gameObject.AddComponent<ScribeVoice>();
             voice.Config = Config;
+            voice.AskPermission();
             voice.MintToken = () => convex.MintScribeTokenAsync(PlayerId);
             var calls = race.Calls;
             calls.Operator = convex;

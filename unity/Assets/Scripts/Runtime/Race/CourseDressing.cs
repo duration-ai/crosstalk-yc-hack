@@ -6,12 +6,11 @@ using UnityEngine;
 namespace Dogpatch.Race
 {
     // The race's own objects in the world, all flat vertex-colored geometry on the shared material:
-    // the yellow start ring, the YC finish (checkered line, banner and a tall checkered flag), turn
+    // the start ring (its beacon and floor overlay are StartRingFx), the YC finish (checkered line, banner and a tall checkered flag), turn
     // and chevrons painted on the route, and the pink ask tokens.
     public static class CourseDressing
     {
         static readonly Color Yellow = PaintJob.Linear("#FFCB1F");
-        static readonly Color Cream = PaintJob.Linear("#FCE9A8");
         static readonly Color White = PaintJob.Linear("#F7F8F9");
         static readonly Color Ink = PaintJob.Linear("#1C2347");
         static readonly Color Pink = PaintJob.Linear("#FF3E8E");
@@ -65,47 +64,29 @@ namespace Dogpatch.Race
             Annulus(ground, 1.9f, 2.4f, 0.05f, Pink, 24);
             var token = Emit(parent, "AskToken", ground, position, 0f, material);
 
-            var coin = new MeshBuilder();
-            const int sides = 8;
-            const float r = 1.1f;
-            const float half = 0.16f;
-            Vector3 Rim(int i, float z) => new Vector3(Mathf.Cos(i * Mathf.PI * 2f / sides + Mathf.PI / sides) * r, Mathf.Sin(i * Mathf.PI * 2f / sides + Mathf.PI / sides) * r, z);
-            for (int i = 0; i < sides; i++)
-            {
-                coin.Triangle(Vector3.forward * -half, Rim(i + 1, -half), Rim(i, -half), Pink, Vector3.back);
-                coin.Triangle(Vector3.forward * half, Rim(i, half), Rim(i + 1, half), Pink, Vector3.forward);
-                var mid = (Rim(i, 0f) + Rim(i + 1, 0f)).normalized;
-                coin.Quad(Rim(i, -half), Rim(i + 1, -half), Rim(i + 1, half), Rim(i, half), DeepPink, mid);
-            }
+            var phone = new MeshBuilder();
+            const float half = 0.2f;
+            phone.Box(Vector3.zero, new Vector3(1.3f, 2.3f, half * 2f), Quaternion.identity, Pink);
+            phone.Box(new Vector3(0.42f, 1.45f, 0f), new Vector3(0.18f, 0.6f, 0.18f), Quaternion.identity, DeepPink);
             foreach (float z in new[] { -half - 0.01f, half + 0.01f })
             {
-                coin.Box(new Vector3(0f, 0f, z), new Vector3(1.15f, 0.3f, 0.02f), Quaternion.identity, White);
-                coin.Box(new Vector3(0f, 0f, z), new Vector3(0.3f, 1.15f, 0.02f), Quaternion.identity, White);
+                phone.Box(new Vector3(0f, 0.2f, z), new Vector3(1.04f, 1.45f, 0.02f), Quaternion.identity, Ink);
+                phone.Box(new Vector3(0f, 0.2f, z * 1.05f), new Vector3(0.5f, 0.5f, 0.02f), Quaternion.identity, Pink);
+                phone.Box(new Vector3(0f, 0.86f, z * 1.05f), new Vector3(0.36f, 0.07f, 0.02f), Quaternion.identity, White);
+                phone.Box(new Vector3(0f, -0.78f, z), new Vector3(0.3f, 0.2f, 0.02f), Quaternion.identity, White);
             }
-            var c = Emit(token.transform, "Coin", coin, position + Vector3.up * 1.6f, 0f, material);
+            var c = Emit(token.transform, "Phone", phone, position + Vector3.up * 1.6f, 0f, material);
             c.transform.SetAsFirstSibling();
             return token;
         }
 
         public static GameObject StartRing(Transform parent, Vector3 center, float radius, Material material)
         {
-            var mb = new MeshBuilder();
-            float inner = radius * 0.62f;
-            float white = inner + 0.45f;
-            Annulus(mb, 0f, inner, 0.03f, Cream, 48);
-            Annulus(mb, inner, white, 0.035f, White, 48);
-            Annulus(mb, white, radius, 0.04f, Yellow, 48);
-            int count = 14;
-            float mid = (white + radius) * 0.5f;
-            for (int i = 0; i < count; i++)
-            {
-                float ang = i * Mathf.PI * 2f / count;
-                var c = Polar(ang, mid, 0f);
-                var tangent = new Vector3(-Mathf.Sin(ang), 0f, Mathf.Cos(ang));
-                var radial = new Vector3(Mathf.Cos(ang), 0f, Mathf.Sin(ang));
-                Chevron(mb, c, tangent, radial, 0.7f, (radius - white) * 0.32f, 0.32f, 0.05f, Ink);
-            }
-            return Emit(parent, "StartRing", mb, center, 0f, material);
+            var ring = new GameObject("StartRing");
+            ring.transform.SetParent(parent, false);
+            ring.transform.position = center;
+            StartRingFx.Attach(ring, radius, material);
+            return ring;
         }
 
         public static void Finish(Transform parent, Vector3 line, float heading, float halfWidth, Vector3 site, Material material)

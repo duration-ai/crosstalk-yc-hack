@@ -45,6 +45,9 @@ namespace Dogpatch.Slipstream
         Rect callRect;
         bool readyVisible;
         bool callVisible;
+
+        // Off while Chris tests with 100 asks; on, races are hands-free only (phone pickups).
+        public static bool HidePhoneInRaces = false;
         int readyFinger = int.MinValue;
         int callFinger = int.MinValue;
         bool paused;
@@ -286,7 +289,9 @@ namespace Dogpatch.Slipstream
             if (racing && Race.CrossedFinish) FinishedBanner();
             if (Race.ResultsIn) Results();
             OperatorAndNews();
-            PhoneButton(lobby || Race.ResultsIn);
+            if (!(HidePhoneInRaces && Race.Gridded)) PhoneButton(lobby || Race.ResultsIn);
+            if (Race.Wrecking) WreckedBanner();
+            if (Race.WreckFade > 0f) Panel(new Rect(0f, 0f, Screen.width, Screen.height), new Color(Ink.r, Ink.g, Ink.b, Race.WreckFade), 0f);
         }
 
         // The mission lobby only shows while you stand in or by the start ring.
@@ -408,6 +413,21 @@ namespace Dogpatch.Slipstream
         }
 
         // Once you're over the line: your place and time, and how long until the results at the latest.
+        // Your car is a wreck: the word slams in, and after a second you can tap to get going again.
+        void WreckedBanner()
+        {
+            float since = Time.time - Race.WreckedAt;
+            float scale = since < 0.12f ? Mathf.Lerp(2.4f, 1f, since / 0.12f) : 1f;
+            var label = "WRECKED!";
+            var size = Measure(label, 72f * scale);
+            var r = new Rect(Screen.width * 0.5f - size.x * 0.5f, Screen.height * 0.3f - size.y * 0.5f, size.x, size.y);
+            Text(r, label, 72f * scale, Pink, TextAnchor.UpperLeft, 3.5f * s * scale);
+            if (since < RaceDirector.WreckSkipAfter) return;
+            var hint = "TAP TO SKIP";
+            var hintSize = Measure(hint, 20f);
+            Text(new Rect(Screen.width * 0.5f - hintSize.x * 0.5f, r.yMax + 6f * s, hintSize.x, hintSize.y), hint, 20f, White, TextAnchor.UpperLeft, 1.6f * s);
+        }
+
         void FinishedBanner()
         {
             var me = Race.Me;

@@ -102,7 +102,7 @@ export const REFUSAL_MESSAGES: Record<RefusalReason, string> = {
   unavailable: "Operator busy. Retry.",
   undo: "No take-backs, sugar.",
   not_built: "Can't do that one yet.",
-  no_asks: "No asks! Find a pink token.",
+  no_asks: "Grab a phone first!",
   race_over: "The race is over.",
 };
 
@@ -198,19 +198,29 @@ function effectCommand(
   };
 }
 
-/** Rule 5: an object effect aimed at a player becomes the matching players effect. */
+const PROMOTED: Record<string, (onFoot: boolean) => string> = {
+  slow_down: (onFoot) => (onFoot ? "run_slower" : "vehicle_slower"),
+  speed_up: (onFoot) => (onFoot ? "run_faster" : "vehicle_faster"),
+  grow: () => "bigger",
+  shrink: () => "smaller",
+  icy: () => "grip_down",
+  rock_solid: () => "tougher",
+};
+
+const promotes = (objectEffect: string) => objectEffect in PROMOTED;
+
+/** Rule 5: an object effect aimed at the other racers becomes the matching players effect. */
 function promote(a: Answers, view: View, objectEffect: string, confirm: boolean): Command {
-  const onFoot = view.mode === "onFoot";
-  const effect = {
-    slow_down: onFoot ? "run_slower" : "vehicle_slower",
-    speed_up: onFoot ? "run_faster" : "vehicle_faster",
-    grow: "bigger",
-    shrink: "smaller",
-    icy: "grip_down",
-    rock_solid: "tougher",
-  }[objectEffect];
+  const effect = PROMOTED[objectEffect]?.(view.mode === "onFoot");
   if (!effect) return refuse("player_target");
   return effectCommand(a, "players", effect, { confirm });
+}
+
+/** Object effects that work on a racer's own car rather than becoming a players effect. */
+const CAR_EFFECTS = new Set(["ghost", "see_through", "bouncy", "icy", "rock_solid", "soft", "grow", "shrink", "recolor", "launch"]);
+
+function onCar(a: Answers, effect: string, car: ViewEntity, confirm: boolean): Command {
+  return effectCommand(a, "object", effect, { target: car.id, targetClass: car.class, confirm });
 }
 
 function allows(effect: string, cls: string) {
@@ -255,7 +265,10 @@ export function decide(a: Answers, view: View, active: ActiveSummary[]): Command
   }
 
   if (scope !== "players" && scope !== "reject" && a.other_player >= 0.8) {
-    return promote(a, view, a.object_effect.choice, true);
+    const effect = a.object_effect.choice;
+    const racer = [...view.entities].sort((x, y) => x.view_rank - y.view_rank).find((e) => e.controlledBy === "player");
+    if (CAR_EFFECTS.has(effect) && racer && !promotes(effect)) return onCar(a, effect, racer, true);
+    return promote(a, view, effect, true);
   }
 
   switch (scope) {
@@ -324,8 +337,9 @@ function decideObject(a: Answers, view: View, active: ActiveSummary[]): Command 
   }
   if (!entity) return refuse("not_visible");
   if (entity.protected) return refuse("protected");
+  if (entity.controlledBy && CAR_EFFECTS.has(effect)) return onCar(a, effect, entity, entity.controlledBy === "player");
   if (entity.controlledBy === "player") return promote(a, view, effect, true);
-  if (entity.controlledBy === "me" && effect !== "recolor") return promote(a, view, effect, false);
+  if (entity.controlledBy === "me") return promote(a, view, effect, false);
   if (!allows(effect, entity.class)) return refuse("incompatible");
   if (
     effect === "extinguish" &&
