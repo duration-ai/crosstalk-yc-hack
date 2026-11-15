@@ -8,6 +8,7 @@ using Dogpatch.Glb;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
+using Avatar = Dogpatch.Backend.Avatar;
 
 namespace Dogpatch.EditorTools
 {
@@ -15,10 +16,13 @@ namespace Dogpatch.EditorTools
     // or a full upload response) writes RENDER_DIR/<name>.png showing the avatar (remix GLB,
     // recoloured, retargeted Idle) on the left and the stock model on the right, lit like the game.
     // A photo next to the JSON with the same name (.jpg/.jpeg/.png) is placed to the left of both.
+    // AVATAR_DIR=stub runs the offline path instead: the bundled test photo goes through
+    // InMemoryGameBackend's stub (AnalyzeAvatarPhotoAsync, then GetAvatarAsync) and the avatar it
+    // returns is loaded and rendered as RENDER_DIR/stub.png.
     // Run under a virtual display (xvfb-run), not -nographics; see scripts/avatar-renders.sh.
     public static class AvatarRenders
     {
-        [Serializable] class Envelope { public PlayerAvatar avatar; }
+        [Serializable] class Envelope { public Avatar avatar; }
 
         const int Height = 900;
         const int FigureWidth = 1000;
@@ -35,12 +39,9 @@ namespace Dogpatch.EditorTools
                 var material = new Material(Resources.Load<Shader>("Shaders/FlatVertexColor")) { name = "FlatVertexColor" };
                 var cam = SetupScene();
                 using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(90) };
-                var files = Directory.GetFiles(input, "*.json").OrderBy(f => f).ToArray();
-                if (files.Length == 0) throw new Exception("no avatar JSON in " + Path.GetFullPath(input));
-                foreach (var file in files)
+                var jobs = input == "stub" ? new[] { ("stub", StubAvatar(), (string)null) } : Jobs(input);
+                foreach (var (name, avatar, file) in jobs)
                 {
-                    string name = Path.GetFileNameWithoutExtension(file);
-                    var avatar = Parse(File.ReadAllText(file));
                     var (remixBytes, remixNote) = Fetch(http, avatar.glbUrl);
                     var (stockBytes, _) = Fetch(http, avatar.fallbackGlbUrl);
                     if (remixBytes == null) { remixBytes = stockBytes; remixNote += " -> fallback"; }
@@ -56,7 +57,7 @@ namespace Dogpatch.EditorTools
                     var shot = Shoot(cam);
                     UnityEngine.Object.DestroyImmediate(root);
 
-                    var photo = Photo(file);
+                    var photo = file != null ? Photo(file) : TestPhoto();
                     var final = photo != null ? SideBySide(photo, shot) : shot;
                     string path = Path.Combine(output, name + ".png");
                     File.WriteAllBytes(path, final.EncodeToPNG());
@@ -71,11 +72,37 @@ namespace Dogpatch.EditorTools
             }
         }
 
-        static PlayerAvatar Parse(string json)
+        static (string, Avatar, string)[] Jobs(string input)
+        {
+            var files = Directory.GetFiles(input, "*.json").OrderBy(f => f).ToArray();
+            if (files.Length == 0) throw new Exception("no avatar JSON in " + Path.GetFullPath(input));
+            return files.Select(f => (Path.GetFileNameWithoutExtension(f), Parse(File.ReadAllText(f)), f)).ToArray();
+        }
+
+        // The game's stub path, as a phone with no server would run it.
+        static Avatar StubAvatar()
+        {
+            var backend = new InMemoryGameBackend(null);
+            string id = backend.CreatePlayerAsync("Dogpatch Driver").Result.id;
+            var bytes = Resources.Load<TextAsset>("Avatar/test-photo").bytes;
+            var result = backend.AnalyzeAvatarPhotoAsync(id, bytes).Result;
+            var avatar = backend.GetAvatarAsync(id).Result;
+            Debug.Log($"[AvatarRenders] stub: player={id} photo={bytes.Length / 1024} KB provider={result.decision.provider} base={avatar.@base} glb={avatar.glbUrl}");
+            return avatar;
+        }
+
+        static Texture2D TestPhoto()
+        {
+            var tex = new Texture2D(2, 2);
+            tex.LoadImage(Resources.Load<TextAsset>("Avatar/test-photo").bytes);
+            return tex;
+        }
+
+        static Avatar Parse(string json)
         {
             var wrapped = JsonUtility.FromJson<Envelope>(json)?.avatar;
             if (wrapped != null && !wrapped.IsEmpty) return wrapped;
-            var bare = JsonUtility.FromJson<PlayerAvatar>(json);
+            var bare = JsonUtility.FromJson<Avatar>(json);
             if (bare == null || bare.IsEmpty) throw new Exception("not an avatar JSON");
             return bare;
         }
@@ -83,6 +110,8 @@ namespace Dogpatch.EditorTools
         static (byte[], string) Fetch(HttpClient http, string url)
         {
             if (string.IsNullOrEmpty(url)) return (null, "none");
+            var bundled = AvatarLoader.Bundled(url);
+            if (bundled != null) return (bundled, "bundled");
             var response = http.GetAsync(url).Result;
             var bytes = response.Content.ReadAsByteArrayAsync().Result;
             string remix = response.Headers.TryGetValues("x-remix", out var values) ? values.First() : "-";
