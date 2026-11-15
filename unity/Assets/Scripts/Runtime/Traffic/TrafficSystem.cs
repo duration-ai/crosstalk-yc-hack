@@ -20,6 +20,7 @@ namespace Dogpatch.Traffic
         const float NearRadius = 90f;
         const float SpawnMin = 80f;
         const float SpawnMax = 210f;
+        const float KeepRadius = 150f;
         const int RobotaxiQuota = 12;
         const int EverydayQuota = 12;
         const int RiderQuota = 6;
@@ -51,6 +52,7 @@ namespace Dogpatch.Traffic
         float nextParkedScan;
         float nextCandidates;
         float nextLog;
+        Vector3 lastFocus;
         int tick;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -91,6 +93,7 @@ namespace Dogpatch.Traffic
             SpawnDockBikes(fallback);
             SpawnShowroom();
             for (int i = 0; i < 600 && Deficit(out _) > 0; i++) TrySpawn(true);
+            lastFocus = Focus;
 
             GameController.VehicleEntered += OnEntered;
             GameController.VehicleExited += OnExited;
@@ -129,7 +132,7 @@ namespace Dogpatch.Traffic
                 var agent = Agents[i];
                 float d = Vector3.Distance(agent.transform.position, focus);
                 bool fixedRoute = agent.OnRail || agent.Route != null || agent.Car == game.Current;
-                if (!fixedRoute && (d > 240f || (d > 150f && !Visible(agent.transform.position)) || (agent.Idle > 40f && !Visible(agent.transform.position))))
+                if (!fixedRoute && (d > 240f || (d > KeepRadius && !Visible(agent.transform.position)) || (agent.Idle > 40f && !Visible(agent.transform.position))))
                 {
                     Despawn(agent);
                     continue;
@@ -139,7 +142,13 @@ namespace Dogpatch.Traffic
                 if (far && (tick + i) % 3 != 0) continue;
                 agent.Step(far ? dt * 3f : dt, this);
             }
-            if (tick % 2 == 0) TrySpawn(false);
+            if ((focus - lastFocus).sqrMagnitude > SpawnMin * SpawnMin)
+            {
+                nextCandidates = 0f;
+                for (int i = 0; i < 600 && Deficit(out _) > 0; i++) TrySpawn(true);
+            }
+            else if (tick % 2 == 0) TrySpawn(false);
+            lastFocus = focus;
             watch.Stop();
             frameAccumulator += (float)watch.Elapsed.TotalMilliseconds;
         }
@@ -263,7 +272,7 @@ namespace Dogpatch.Traffic
             var p = lane.Path.Sample(s, out _);
             var world = new Vector3(p.x, RoadSurface.GroundY(p) + 0.05f, p.y);
             float d = Vector2.Distance(p, f2);
-            if (d > SpawnMax || d < (initial ? 25f : SpawnMin)) return;
+            if (d > (initial ? KeepRadius : SpawnMax) || d < (initial ? 25f : SpawnMin)) return;
             if (!initial && d < 170f && Visible(world)) return;
             foreach (var a in Agents)
                 if ((a.transform.position - world).sqrMagnitude < 14f * 14f) return;
