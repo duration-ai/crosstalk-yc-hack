@@ -1,6 +1,7 @@
 import { convexTest } from "convex-test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
 import schema from "./schema";
 import { AUTO_START_MS, CLOSE_AFTER_FIRST_FINISH_MS, COUNTDOWN_MS } from "./raceModel";
 import { WORLD_CHANGE_TYPES, newsText, type WorldChange } from "./worldChanges";
@@ -452,5 +453,78 @@ describe("race HTTP API", () => {
     expect(badType).toMatchObject({ status: 400, body: { error: { code: "INVALID_ARGUMENT" } } });
     expect((await call(t, "POST", "/api/operator", { playerId, roomId })).status).toBe(400);
 
+  });
+});
+
+describe("asks", () => {
+  const pickups = [at(100, 60), at(400, -80)];
+
+  async function soloRace(asks?: number) {
+    const t = convexTest(schema, modules);
+    const tim = await t.mutation(api.players.create, { displayName: "Tim" });
+    const { room, you } = await t.mutation(api.rooms.create, { playerId: tim.id, minPlayers: 1, asks, pickups, pickupRadius: 4 });
+    return { t, tim, room, you };
+  }
+
+  async function go(t: ReturnType<typeof convexTest>, playerId: string, roomId: string) {
+    const ready = await t.mutation(api.rooms.setReady, { playerId, roomId, ready: true });
+    vi.setSystemTime(ready.room.startsAt);
+  }
+
+  it("starts every racer with the room's asks and publishes the pickups", async () => {
+    const { t, room, you } = await soloRace();
+    expect(room).toMatchObject({ asks: 2, pickups, pickupRadius: 4 });
+    expect(you).toMatchObject({ asks: 2, collected: [] });
+    const rosa = await t.mutation(api.players.create, { displayName: "Rosa" });
+    const joined = await t.mutation(api.rooms.join, { playerId: rosa.id, code: room.code });
+    expect(joined.you).toMatchObject({ asks: 2, collected: [] });
+    expect((await soloRace(3)).you.asks).toBe(3);
+  });
+
+  it("rejects bad ask settings", async () => {
+    const t = convexTest(schema, modules);
+    const tim = await t.mutation(api.players.create, { displayName: "Tim" });
+    await expect(t.mutation(api.rooms.create, { playerId: tim.id, asks: 12 })).rejects.toThrow(/asks/);
+    await expect(t.mutation(api.rooms.create, { playerId: tim.id, pickupRadius: 50 })).rejects.toThrow(/pickupRadius/);
+    const many = Array.from({ length: 65 }, (_, i) => at(i));
+    await expect(t.mutation(api.rooms.create, { playerId: tim.id, pickups: many })).rejects.toThrow(/pickups/);
+  });
+
+  it("collects each pickup once a race, only while racing and only up close", async () => {
+    const { t, tim, room } = await soloRace();
+    const collect = (pickup: number, position = pickups[pickup]) =>
+      t.mutation(api.race.collect, { playerId: tim.id, roomId: room.id, pickup, position });
+    await expect(collect(0)).rejects.toThrow(/while racing/);
+    await go(t, tim.id, room.id);
+
+    await expect(collect(0, at(100, 40))).rejects.toThrow(/Too far/);
+    await expect(collect(2, at(0))).rejects.toThrow(/pickup must index/);
+    expect(await collect(0, at(103, 63))).toEqual({ collected: true, asks: 3 });
+    expect(await collect(0)).toEqual({ collected: false, asks: 3 });
+    expect(await collect(1)).toEqual({ collected: true, asks: 4 });
+    expect((await poll(t, room.id)).racers[0]).toMatchObject({ asks: 4, collected: [0, 1] });
+  });
+
+  it("spends asks for Operator requests until none are left", async () => {
+    const { t, tim, room } = await soloRace();
+    const spend = () => t.mutation(internal.race.spendAsk, { playerId: tim.id as Id<"players">, roomId: room.id as Id<"rooms"> });
+    expect(await spend()).toEqual({ asks: 1 });
+    expect(await spend()).toEqual({ asks: 0 });
+    await expect(spend()).rejects.toThrow(/No asks left/);
+    expect((await poll(t, room.id)).racers[0].asks).toBe(0);
+  });
+
+  it("gives everyone their asks back and clears pickups on the rematch", async () => {
+    const { t, tim, room } = await soloRace();
+    await go(t, tim.id, room.id);
+    await t.mutation(api.race.collect, { playerId: tim.id, roomId: room.id, pickup: 0, position: pickups[0] });
+    await t.mutation(internal.race.spendAsk, { playerId: tim.id as Id<"players">, roomId: room.id as Id<"rooms"> });
+    await t.mutation(api.race.update, { playerId: tim.id, roomId: room.id, position: at(800), heading: 0 });
+    expect((await poll(t, room.id)).room.status).toBe("finished");
+    await expect(t.mutation(internal.race.spendAsk, { playerId: tim.id as Id<"players">, roomId: room.id as Id<"rooms"> })).rejects.toThrow(/over/);
+
+    vi.setSystemTime(T0 + 30_000);
+    await t.mutation(api.rooms.setReady, { playerId: tim.id, roomId: room.id, ready: true });
+    expect((await poll(t, room.id)).racers[0]).toMatchObject({ asks: 2, collected: [] });
   });
 });

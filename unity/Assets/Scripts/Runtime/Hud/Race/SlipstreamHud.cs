@@ -47,6 +47,7 @@ namespace Dogpatch.Slipstream
         bool callVisible;
         int readyFinger = int.MinValue;
         int callFinger = int.MinValue;
+        bool paused;
 
         public float NewsSince => showing == null || showing.Start < 0f ? -1f : Time.time - showing.Start;
 
@@ -70,7 +71,12 @@ namespace Dogpatch.Slipstream
         void Start()
         {
             Race.EventArrived += OnEvent;
+            Audio.GameEvents.Paused += OnPaused;
         }
+
+        void OnDestroy() => Audio.GameEvents.Paused -= OnPaused;
+
+        void OnPaused(bool on) => paused = on;
 
         void OnEnable() => Gameplay.ScreenShape.Changed += CancelPresses;
 
@@ -267,7 +273,7 @@ namespace Dogpatch.Slipstream
 
             if (!Race.ResultsIn) NameTags();
             if (racing) FindMe();
-            if (lobby) Lobby(room);
+            if (lobby && !paused) Lobby(room);
             if (Race.Online && (lobby || Race.ResultsIn)) RoomCorner(room, lobby);
             if (Race.Gridded && !Race.ResultsIn) Countdown();
             if (racing) RaceCorners();

@@ -47,6 +47,7 @@ namespace Dogpatch.Audio
         public static event Action<MusicMood> Mood;
         public static event Action<bool> Boost;
         public static event Action<Transform> Horn;
+        public static event Action<Vector3> AskCollected;
 
         public static float Hour { get; private set; } = 13f;
         public static float Rain { get; private set; }
@@ -72,6 +73,7 @@ namespace Dogpatch.Audio
         public static void RaiseUiTap() => UiTap?.Invoke();
         public static void RaiseUiReady() { Log("UiReady"); UiReady?.Invoke(); }
         public static void RaiseHorn(Transform vehicle) { Log("Horn"); Horn?.Invoke(vehicle); }
+        public static void RaiseAskCollected(Vector3 position) { Log("AskCollected"); AskCollected?.Invoke(position); }
 
         public static void SetMood(MusicMood mood)
         {
