@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Dogpatch.Ambient;
 using Dogpatch.Backend;
 using Dogpatch.Data;
 using Dogpatch.Glb;
@@ -88,6 +89,7 @@ namespace Dogpatch.Gameplay
             PerfReadout.WorldBuildSeconds = Time.realtimeSinceStartup - t0;
             gameObject.AddComponent<PerfReadout>().Game = this;
             Debug.Log($"[Dogpatch] world built in {Time.realtimeSinceStartup - t0:F1}s: {data.roads.Length} roads, {data.buildings.Length} buildings, {world.ParkedCars.Count + 1} cars");
+            PedestrianSystem.Create(world, data);
 
             input = gameObject.AddComponent<DragInput>();
             input.Tapped += OnTap;
@@ -194,7 +196,9 @@ namespace Dogpatch.Gameplay
         {
             if (!ready) return;
 
-            follow.Hold = input.Dragging && current == null;
+            input.Split = current == null;
+            var look = input.TakeLook();
+            if (current == null) follow.Orbit(look);
             var dir2 = input.Direction;
             var dir = dir2 == Vector2.zero ? Vector3.zero : Quaternion.Euler(0f, follow.Yaw, 0f) * new Vector3(dir2.x, 0f, dir2.y);
             if (ExternalInput) { }
@@ -203,7 +207,7 @@ namespace Dogpatch.Gameplay
 
             var focus = current != null ? current.transform : player.transform;
             NearestCar = current == null ? FindNearestCar(player.transform.position, 40f) : null;
-            StreetName = world.Roads.StreetNameAt(new Vector2(focus.position.x, focus.position.z));
+            StreetName = world.Roads.StreetNameAt(focus.position);
             float kmh = Mathf.Abs(current != null ? current.Speed : player.Speed) * 3.6f;
             StatusLine = (Riding ? "Riding" : current != null ? "Driving" : "On foot") + $" · {kmh:F0} km/h";
 
@@ -298,7 +302,7 @@ namespace Dogpatch.Gameplay
         {
             var result = await backend.EnterVehicleAsync(profile.id, car.VehicleId);
             TakeWheel(car, result);
-            Debug.Log($"[Dogpatch] entered car {car.VehicleId} ({car.ModelId}) on {world.Roads.StreetNameAt(new Vector2(car.transform.position.x, car.transform.position.z))}");
+            Debug.Log($"[Dogpatch] entered car {car.VehicleId} ({car.ModelId}) on {world.Roads.StreetNameAt(car.transform.position)}");
         }
 
         void TakeWheel(CarController car, VehicleResult result)

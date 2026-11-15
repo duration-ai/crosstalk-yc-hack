@@ -62,9 +62,9 @@ namespace Dogpatch.Audio
 
         void OnLanded(float fallSpeed)
         {
-            float v = Mathf.Clamp01(fallSpeed / 9f);
-            SoundSystem.Play("land", transform.position, Bus.Sfx, 0.35f + 0.6f * v, Random.Range(0.92f, 1.05f), 170, 25f);
-            Step(0.6f);
+            float v = Mathf.InverseLerp(6f, 16f, fallSpeed);
+            SoundSystem.Play("land", transform.position, Bus.Sfx, 0.25f + 0.55f * v, Random.Range(0.92f, 1.05f), 170, 25f);
+            Step(0.45f);
         }
     }
 }

@@ -9,7 +9,8 @@ const STATUS: Record<string, number> = {
   INVALID_ARGUMENT: 400,
   NOT_FOUND: 404,
   CONFLICT: 409,
-  NOT_IMPLEMENTED: 501,
+  RATE_LIMITED: 429,
+  UNAVAILABLE: 503,
 };
 
 function json(status: number, body: unknown) {
@@ -42,22 +43,10 @@ async function readInput(request: Request) {
   return body as Record<string, unknown>;
 }
 
-async function readAudio(request: Request) {
-  const mimeType = request.headers.get("Content-Type") ?? "";
-  if (!mimeType.startsWith("audio/")) {
-    throw new ConvexError({ code: "INVALID_ARGUMENT", message: "Content-Type must be audio/*" });
-  }
-  return {
-    ...Object.fromEntries(new URL(request.url).searchParams),
-    audio: await request.arrayBuffer(),
-    mimeType,
-  };
-}
-
-function endpoint(handler: Handler, successStatus = 200, read: (request: Request) => Promise<Record<string, any>> = readInput) {
+function endpoint(handler: Handler, successStatus = 200) {
   return httpAction(async (ctx, request) => {
     try {
-      return json(successStatus, await handler(ctx, await read(request)));
+      return json(successStatus, await handler(ctx, await readInput(request)));
     } catch (error) {
       return errorResponse(error);
     }
@@ -192,22 +181,19 @@ http.route({
   ),
 });
 
+const NO_VIEW = { mode: "onFoot" as const, entities: [] };
+
 http.route({
   path: "/api/operator",
   method: "POST",
-  handler: endpoint((ctx, { playerId, roomId, text }) =>
-    ctx.runAction(api.operator.call, { playerId, roomId, text: text ?? "" }),
-  ),
-});
-
-http.route({
-  path: "/api/operator/audio",
-  method: "POST",
-  handler: endpoint(
-    (ctx, { playerId, roomId, audio, mimeType }) =>
-      ctx.runAction(api.operator.call, { playerId, roomId, audio, mimeType }),
-    200,
-    readAudio,
+  handler: endpoint((ctx, { playerId, roomId, text, transcript, view, clientTimings }) =>
+    ctx.runAction(api.operator.call, {
+      playerId,
+      roomId,
+      transcript: transcript ?? text ?? "",
+      view: view ?? NO_VIEW,
+      clientTimings,
+    }),
   ),
 });
 

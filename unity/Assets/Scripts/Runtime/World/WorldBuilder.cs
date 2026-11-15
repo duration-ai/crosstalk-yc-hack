@@ -86,6 +86,7 @@ namespace Dogpatch.World
             BuildGround(data, ctx, material);
             BuildStreets(data, ctx, material);
             BuildBuildings(data, ctx, models, measure);
+            ctx.Roads.AttachFreeway(Freeway.Build(data, ctx, material));
             ctx.Furniture = new StreetFurniture(ctx, ctx.Statics);
             ctx.Furniture.PlaceTrees(data.treeRecords);
             ctx.Furniture.PlaceProps(data.props);
@@ -95,7 +96,6 @@ namespace Dogpatch.World
 
             var lod = ctx.Root.AddComponent<DistanceLod>();
             ctx.Statics.Emit(ctx.Root.transform, material, lod);
-            new PropPlacer(ctx, models, random).PlaceNpcs(ctx, material);
             return ctx;
         }
 
