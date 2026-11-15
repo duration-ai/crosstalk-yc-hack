@@ -193,7 +193,7 @@ namespace Dogpatch.Race
         void PickRouteByRing()
         {
             if (Busy || Switching) return;
-            if (Online ? RoomId != null : Gridded || (Started && !ResultsIn) || Room?.status == RoomStatus.Countdown) return;
+            if (Online ? RoomId != null : (Gridded && !ResultsIn) || Room?.status == RoomStatus.Countdown) return;
             var body = BodyOf(MyId);
             if (body == null) return;
             var me = RoutePath.Flat(body.position);
