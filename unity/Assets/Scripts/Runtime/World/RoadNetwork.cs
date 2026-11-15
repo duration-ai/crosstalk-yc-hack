@@ -6,7 +6,7 @@ namespace Dogpatch.World
 {
     // Spatial lookup over the street network: nearest street (for the HUD and spawning),
     // intersection detection, and per-road polylines in local metres.
-    public sealed class RoadNetwork
+    public sealed partial class RoadNetwork
     {
         const float Cell = 40f;
 

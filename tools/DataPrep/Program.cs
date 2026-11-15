@@ -7,6 +7,7 @@ using P = (double x, double z);
 
 // Dogpatch data extract: OSM (Overpass) + DataSF -> unity/Assets/Resources/World/dogpatch.json, data/extract-stats.json, data/preview.png, data/validation/*.png
 // One command:  dotnet run --project tools/DataPrep -c Release -- [--refresh] [--models] [--no-validate]
+// Freeway graph only (I-280 and its ramps -> unity/Assets/Resources/World/freeway.json):  ... -- --freeway
 //
 // Bounds (kept from the first extract): 37.7495..37.7645 N, -122.3965..-122.3800 W. YC (580 20th St, OSM node 11657169276) is >=400 m from every edge
 // and the whole Pier 70 site up to the bay edge (coastline at lon -122.3816 at lat 37.7626) is inside, so the box was not expanded.
@@ -39,6 +40,11 @@ string[] Kv(Dictionary<string, string> t, params string[] keys) => keys.Where(k 
 // ---- OpenStreetMap, query 1: roads, rails, buildings, parks, trees, coastline (unchanged from the first extract)
 const double Pad = 0.02;
 string bbox = string.Join(",", South, West, North, East);
+if (args.Contains("--freeway"))
+{
+    await FreewayPrep.Run(fetch, Rel("unity", "Assets", "Resources", "World", "freeway.json"), bbox, minX, maxX, minZ, maxZ);
+    return;
+}
 string pbbox = string.Join(",", South - Pad, West - Pad, North + Pad, East + Pad);
 var query = $"""
 [out:json][timeout:240];
