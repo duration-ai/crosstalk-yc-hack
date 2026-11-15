@@ -31,6 +31,70 @@ namespace Dogpatch.Traffic
 
         public static TrafficSystem Instance { get; private set; }
 
+        sealed class Zone
+        {
+            public int Id;
+            public Vector2[] Points;
+            public float Radius;
+            public float Until;
+        }
+
+        static readonly List<Zone> zones = new List<Zone>();
+        static int nextZoneId = 1;
+
+        // Closes part of the map to AI traffic for a while (a race start and its first stretch):
+        // nothing spawns inside, AI cars inside despawn, the bus and the trains hide until it
+        // reopens, and everything else turns away from it or holds at its edge. The zone is every
+        // point within radius of the path (one point for a circle). Returns an id for EndZone.
+        public static int ClearZone(Vector3 center, float radius, float seconds) => ClearZone(new[] { center }, radius, seconds);
+
+        public static int ClearZone(IReadOnlyList<Vector3> path, float radius, float seconds)
+        {
+            var points = new Vector2[path.Count];
+            for (int i = 0; i < path.Count; i++) points[i] = new Vector2(path[i].x, path[i].z);
+            var zone = new Zone { Id = nextZoneId++, Points = points, Radius = radius, Until = Time.time + seconds };
+            zones.Add(zone);
+            return zone.Id;
+        }
+
+        // Reopens a zone before its time is up (a countdown that was called off).
+        public static void EndZone(int id) => zones.RemoveAll(z => z.Id == id);
+
+        public static bool HasZones => zones.Count > 0;
+
+        public static bool InZone(Vector2 p, float pad = 0f)
+        {
+            for (int z = zones.Count - 1; z >= 0; z--)
+            {
+                var zone = zones[z];
+                if (Time.time >= zone.Until)
+                {
+                    zones.RemoveAt(z);
+                    continue;
+                }
+                float r = zone.Radius + pad;
+                var pts = zone.Points;
+                for (int i = 0; i < pts.Length; i++)
+                {
+                    var a = pts[i];
+                    var b = pts[Mathf.Min(i + 1, pts.Length - 1)];
+                    var ab = b - a;
+                    float t = ab.sqrMagnitude > 1e-4f ? Mathf.Clamp01(Vector2.Dot(p - a, ab) / ab.sqrMagnitude) : 0f;
+                    if ((a + ab * t - p).sqrMagnitude <= r * r) return true;
+                }
+            }
+            return false;
+        }
+
+        public static bool Crosses(StreetGraph.Lane lane, float pad)
+        {
+            if (zones.Count == 0) return false;
+            var path = lane.Path;
+            for (float s = 0f; s < path.Length + 4f; s += 4f)
+                if (InZone(path.Sample(Mathf.Min(s, path.Length), out _), pad)) return true;
+            return false;
+        }
+
         public StreetGraph Graph { get; private set; }
         public readonly List<TrafficAgent> Agents = new List<TrafficAgent>();
         public readonly List<Obstacle> Obstacles = new List<Obstacle>();
@@ -136,6 +200,19 @@ namespace Dogpatch.Traffic
                 var agent = Agents[i];
                 float d = Vector3.Distance(agent.transform.position, focus);
                 bool fixedRoute = agent.OnRail || agent.Route != null || agent.Car == game.Current;
+                if (zones.Count > 0 && agent.Car != game.Current)
+                {
+                    var p = agent.transform.position;
+                    bool closed = InZone(new Vector2(p.x, p.z), agent.Car.HalfExtents.z);
+                    if (closed && !fixedRoute)
+                    {
+                        Despawn(agent);
+                        continue;
+                    }
+                    if (agent.gameObject.activeSelf == closed) agent.gameObject.SetActive(!closed);
+                    if (closed) continue;
+                }
+                else if (!agent.gameObject.activeSelf) agent.gameObject.SetActive(true);
                 if (!fixedRoute && (d > 240f || (d > KeepRadius && !Visible(agent.transform.position)) || (agent.Idle > 40f && !Visible(agent.transform.position))))
                 {
                     Despawn(agent);
@@ -281,6 +358,7 @@ namespace Dogpatch.Traffic
             float s = Random.Range(4f, lane.Path.Length - 6f);
             var p = lane.Path.Sample(s, out _);
             var world = new Vector3(p.x, RoadSurface.GroundY(p) + 0.05f, p.y);
+            if (InZone(p, 8f)) return;
             float d = Vector2.Distance(p, f2);
             if (d > (initial ? KeepRadius : SpawnMax) || d < (initial ? 25f : SpawnMin)) return;
             if (!initial && d < 170f && Visible(world)) return;

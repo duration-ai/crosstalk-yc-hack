@@ -54,6 +54,7 @@ namespace Dogpatch.Traffic
             if (hud != null && scenario != "perf") hud.enabled = false;
             yield return null;
 
+            if (scenario == "zone") StageZone();
             if (scenario == "stop") StageStop();
             else if (scenario == "tthird") StageTrain();
             if (scenario != "perf") cam.GetComponent<FollowCamera>().enabled = false;
@@ -97,9 +98,33 @@ namespace Dogpatch.Traffic
             string line = subject != null
                 ? string.Format(CultureInfo.InvariantCulture, "t={0:F1}s {1} speed={2:F2} m/s state={3}", frame / 30f, subject.Spec.Title, subject.Speed, subject.State)
                 : string.Format(CultureInfo.InvariantCulture, "t={0:F1}s agents={1} traffic={2:F3} ms", frame / 30f, system.Agents.Count, system.FrameMs);
+            if (scenario == "zone")
+            {
+                int inside = 0, holding = 0, hidden = 0;
+                foreach (var a in system.Agents)
+                {
+                    var p = a.transform.position;
+                    if (!a.gameObject.activeSelf) hidden++;
+                    else if (TrafficSystem.InZone(new Vector2(p.x, p.z))) inside++;
+                    if (a.State == "holding for closed road") holding++;
+                }
+                line += string.Format(CultureInfo.InvariantCulture, " zoneOpen={0} inside={1} holding={2} hidden={3}", TrafficSystem.HasZones, inside, holding, hidden);
+            }
             if (subject != null && lane != null) line += string.Format(CultureInfo.InvariantCulture, " to stop line={0:F1} m", lane.Path.Length - subject.S - subject.Car.HalfExtents.z - 0.6f);
             log.AppendLine(line);
             overlay = line;
+        }
+
+        // A 60 m zone around the player closed to traffic for 10 s, filmed from above.
+        void StageZone()
+        {
+            var focus = game.Focus.position;
+            int id = TrafficSystem.ClearZone(focus, 60f, 10f);
+            cam.GetComponent<FollowCamera>().enabled = false;
+            cam.transform.position = focus + new Vector3(0f, 110f, -60f);
+            cam.transform.LookAt(focus);
+            cam.fieldOfView = 60f;
+            log.AppendLine(string.Format(CultureInfo.InvariantCulture, "[Capture] zone scenario: zone {0}, 60 m around ({1:F1},{2:F1}) for 10 s", id, focus.x, focus.z));
         }
 
         // A robotaxi SUV 48 m before the stop-controlled junction nearest the player, filmed from the corner.
