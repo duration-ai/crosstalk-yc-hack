@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { OBJECT_EFFECTS, PLAYABLE, PLAYER_EFFECTS, WORLD_EFFECTS } from "./operatorCatalogue";
-import { decide, route, type ActiveSummary, type Answers, type ChoiceAnswer, type View, type ViewEntity } from "./operatorRules";
+import { decide, nextBest, route, standInLine, type ActiveSummary, type Answers, type ChoiceAnswer, type View, type ViewEntity } from "./operatorRules";
 
 // These tests cover the routing rules for the whole catalogue; operatorPlayable.test.ts covers the
 // built-effects gate with the real shared list.
@@ -23,7 +23,10 @@ type Spec = {
   color?: string;
   theme?: string;
   vehicle?: string;
-  reject_reason?: string;
+  reject_reason?: string | Record<string, number>;
+  nearest?: string;
+  nearest_vehicle?: string;
+  stretch?: number;
   confidence?: Record<string, number>;
 };
 
@@ -54,6 +57,9 @@ function answers(spec: Spec): Answers {
     theme: c("theme", "none"),
     vehicle: c("vehicle", "none"),
     reject_reason: c("reject_reason", "none"),
+    nearest: c("nearest", "none"),
+    nearest_vehicle: c("nearest_vehicle", "none"),
+    stretch: spec.stretch ?? 0.05,
   };
 }
 
@@ -375,5 +381,53 @@ describe("rule 11: parameters", () => {
     expect(decide(answers({ scope: "object", object_effect: "grow", class: "tree", strength: "small" }), onFoot, [])).toEqual(
       effect({ strength: "small" }),
     );
+  });
+});
+
+describe("next best thing", () => {
+  const play = (spec: Spec) => nextBest(answers(spec), decide(answers(spec), onFoot, []));
+
+  it("swaps a tank for the closest ride", () => {
+    const tank = { scope: "players", player_effect: "change_vehicle", nearest: "change_vehicle", nearest_vehicle: "cybertruck", stretch: 0.9 };
+    expect(decide(answers(tank), onFoot, [])).toEqual(refused("vague"));
+    expect(play(tank)).toEqual(effect({ scope: "players", effect: "change_vehicle", vehicle: "cybertruck", substitute: true }));
+  });
+
+  it("grants rain for raining frogs, owning up to the frogs", () => {
+    const frogs = { scope: "world", world_group: "sky", sky_effect: "rain", nearest: "rain", stretch: 0.85 };
+    expect(play(frogs)).toEqual(effect({ scope: "world", effect: "rain", substitute: true }));
+  });
+
+  it("answers a summoned Godzilla with an earthquake", () => {
+    const godzilla = { scope: "reject", reject_reason: "spawning", nearest: "earthquake", stretch: 0.9 };
+    expect(play(godzilla)).toEqual(effect({ scope: "world", effect: "earthquake", strength: "medium", substitute: true }));
+  });
+
+  it("turns a dragon wish into a flying car", () => {
+    const dragon = { scope: "reject", reject_reason: "transformation", nearest: "change_vehicle", nearest_vehicle: "flying_car", stretch: 0.9 };
+    expect(play(dragon)).toEqual(effect({ effect: "change_vehicle", vehicle: "flying_car", substitute: true }));
+  });
+
+  it("answers a teleport with flight", () => {
+    const teleport = { scope: "reject", reject_reason: "teleport", nearest: "flight" };
+    expect(play(teleport)).toEqual(effect({ scope: "players", effect: "flight", substitute: true }));
+  });
+
+  it("keeps safety and scope refusals, and plain asks unmarked", () => {
+    expect(play({ scope: "reject", reject_reason: "cheat", nearest: "flight" })).toEqual(refused("cheat"));
+    expect(play({ scope: "reject", reject_reason: "undo", nearest: "rain" })).toEqual(refused("undo"));
+    expect(play({ scope: "reject", reject_reason: "not_a_request", nearest: "rain" })).toEqual(refused("not_a_request"));
+    const halfUndo = { scope: "reject", reject_reason: { vague: 0.41, undo: 0.38, none: 0.16, unsupported: 0.05 }, nearest: "slow_motion" };
+    expect(play(halfUndo)).toEqual(refused("vague"));
+    expect(play({ scope: "world", world_group: "sky", sky_effect: "rain" })).not.toHaveProperty("substitute");
+  });
+
+  it("says the swap playfully in under a dozen words", () => {
+    for (const said of ["give me a tank", "make it rain frogs", "summon Godzilla", "turn me into a dragon", "teleport me home"]) {
+      const line = standInLine(said, "Earthquake", said.includes("tank") ? "cybertruck" : "");
+      expect(line.split(/\s+/).length, line).toBeLessThanOrEqual(12);
+      expect(line, line).toMatch(/sugar|hon/);
+      expect(line).toContain(said.includes("tank") ? "a cybertruck" : "Earthquake");
+    }
   });
 });

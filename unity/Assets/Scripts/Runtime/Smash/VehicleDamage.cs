@@ -451,7 +451,7 @@ namespace Dogpatch.Smash
             var world = SmashWorld.Instance;
             if (world != null)
             {
-                world.Fx.Poof(transform.position + Vector3.up, 2.2f, SmashFx.SmokeDark, 10);
+                BlastFx.Spawn(transform.position, 2.5f, false);
                 var wheel = FindDeep(transform, "wheel-fl") ?? FindDeep(transform, "wheel-fr");
                 if (wheel != null)
                 {

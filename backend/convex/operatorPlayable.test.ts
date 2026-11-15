@@ -12,7 +12,7 @@ function worldAnswers(group: string, field: "sky_effect" | "physics_effect" | "p
   return {
     scope: pick("world"), player_effect: none, world_group: pick(group), sky_effect: none, physics_effect: none,
     population_effect: none, object_effect: none, class: none, target: none, described: 0, self_ref: 0,
-    other_player: 0, strength: pick("medium"), color: none, theme: none, vehicle: none, reject_reason: none, [field]: pick(effect),
+    other_player: 0, strength: pick("medium"), color: none, theme: none, vehicle: none, reject_reason: none, nearest: none, nearest_vehicle: none, stretch: 0, [field]: pick(effect),
   };
 }
 

@@ -148,7 +148,7 @@ def loopify(x, xf=0.25, sr=SR):
 
 
 def write(folder, name, x, sr=SR, peak=0.89, stereo=False):
-    if folder == "Music" or f"{folder}/{name}" in RECORDED:
+    if folder == "Music" or f"{folder}/{name}" in RECORDED or f"{folder}/{name}" in ("Ambience/day_birds", "Ambience/night_crickets"):
         return
     path = os.path.join(ROOT, folder)
     os.makedirs(path, exist_ok=True)

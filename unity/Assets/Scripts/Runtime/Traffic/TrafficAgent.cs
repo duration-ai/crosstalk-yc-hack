@@ -263,7 +263,7 @@ namespace Dogpatch.Traffic
             float cruise = OnRail ? Spec.CruiseSpeed
                 : Express ? Mathf.Max(Car.Handling.TopSpeed, 25f)
                 : Mathf.Min(Spec.CruiseSpeed, Lane.Speed * (Spec.Robotaxi ? 0.8f : 1f));
-            float target = cruise * Mathf.Clamp(CarController.SpeedScale * Pace * (1f + Rage * 0.6f), 0.3f, 2.5f);
+            float target = cruise * Mathf.Clamp(Pace * (1f + Rage * 0.6f), 0.3f, 2.5f);
             if (!OnRail && Link != null && Mathf.Abs(Link.Turn) > 30f) target = Mathf.Min(target, Express ? 9f : Spec.Robotaxi ? 4.5f : 6f);
             float rate = brake;
             State = "cruising";
