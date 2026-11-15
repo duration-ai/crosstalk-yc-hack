@@ -14,6 +14,9 @@ namespace Dogpatch.Look
         const float FogBankRadius = 1650f;
         Camera view;
 
+        public Material Props { get; private set; }
+        public Transform Bank { get; private set; }
+
         public static SkyRig Create(Camera view)
         {
             var go = new GameObject("SkyRig");
@@ -23,13 +26,14 @@ namespace Dogpatch.Look
             var flat = Resources.Load<Shader>("Shaders/FlatVertexColor");
             var material = new Material(flat) { name = "Sky props" };
 
+            rig.Props = material;
             Add(go.transform, "Dome", Dome(), new Material(Resources.Load<Shader>("Shaders/Sky")) { name = "Sky" });
             Add(go.transform, "Clouds", Clouds(random), material);
-            Add(go.transform, "FogBank", FogBank(random), material);
+            rig.Bank = Add(go.transform, "FogBank", FogBank(random), material);
             return rig;
         }
 
-        static void Add(Transform parent, string name, Mesh mesh, Material material)
+        static Transform Add(Transform parent, string name, Mesh mesh, Material material)
         {
             var go = new GameObject(name);
             go.transform.SetParent(parent, false);
@@ -38,6 +42,7 @@ namespace Dogpatch.Look
             renderer.sharedMaterial = material;
             renderer.shadowCastingMode = ShadowCastingMode.Off;
             renderer.receiveShadows = false;
+            return go.transform;
         }
 
         void LateUpdate()
@@ -46,11 +51,12 @@ namespace Dogpatch.Look
             transform.position = new Vector3(p.x, 0f, p.z);
         }
 
+        // Gradient weights for the Sky shader: red blends horizon to middle, green middle to top.
         static Color SkyAt(float elevation)
         {
-            if (elevation <= 0f) return SpeedDial.SkyHorizon;
-            if (elevation < 18f) return Color.Lerp(SpeedDial.SkyHorizon, SpeedDial.SkyMid, Mathf.SmoothStep(0f, 1f, elevation / 18f));
-            return Color.Lerp(SpeedDial.SkyMid, SpeedDial.SkyTop, Mathf.SmoothStep(0f, 1f, (elevation - 18f) / 42f));
+            if (elevation <= 0f) return new Color(0f, 0f, 0f, 1f);
+            if (elevation < 18f) return new Color(Mathf.SmoothStep(0f, 1f, elevation / 18f), 0f, 0f, 1f);
+            return new Color(1f, Mathf.SmoothStep(0f, 1f, (elevation - 18f) / 42f), 0f, 1f);
         }
 
         static Mesh Dome()
