@@ -39,8 +39,8 @@ Shader "Dogpatch/Sky"
             {
                 float3 dir = normalize(i.world - _WorldSpaceCameraPos);
                 float g = saturate(dir.y / max(_SkySpan, 0.02));
-                float3 c = lerp(_SkyHorizon.rgb, _SkyMid.rgb, smoothstep(0.02, 0.38, g));
-                c = lerp(c, _SkyTop.rgb, smoothstep(0.3, 1.0, g));
+                float3 c = lerp(_SkyHorizon.rgb, _SkyMid.rgb, smoothstep(0.0, 0.3, g));
+                c = lerp(c, _SkyTop.rgb, smoothstep(0.25, 0.8, g));
                 return float4(c, 1);
             }
             ENDCG
