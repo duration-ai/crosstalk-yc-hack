@@ -52,6 +52,7 @@ namespace Dogpatch.Nav
             yield return Seconds(1.2f);
             Log($"on foot: objective {nav.Kind}, {nav.Remaining:F0} m along {nav.Path.Count} points, arrived={nav.Arrived}");
             yield return Shot("on-foot-free-roam");
+            yield return FullMap("full-map-free-roam");
 
             CarController car = null;
             foreach (var candidate in game.Cars.Values)
@@ -86,6 +87,7 @@ namespace Dogpatch.Nav
             yield return Seconds(3.5f);
             Log($"race: objective {nav.Kind}, {nav.Remaining:F0} m, meters to finish {race.Me?.metersToFinish:F0}");
             yield return Shot("race");
+            yield return FullMap("full-map-race");
 
             var route = race.Course.Route;
             float progress = route.Project(new Vector2(race.MyCar.transform.position.x, race.MyCar.transform.position.z));
@@ -105,6 +107,16 @@ namespace Dogpatch.Nav
             Minimap.Shown = true;
             Log("done");
             Application.Quit(0);
+        }
+
+        IEnumerator FullMap(string name)
+        {
+            var map = FindAnyObjectByType<Minimap>();
+            map.SetFull(true);
+            yield return Seconds(0.3f);
+            yield return Shot(name);
+            map.SetFull(false);
+            yield return null;
         }
 
         static IEnumerator Seconds(float seconds)

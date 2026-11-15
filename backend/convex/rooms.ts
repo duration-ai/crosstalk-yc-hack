@@ -1,6 +1,6 @@
-import { v } from "convex/values";
+import { v, type ObjectType } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
-import { internalQuery, mutation, type MutationCtx } from "./_generated/server";
+import { internalQuery, mutation, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { fail, getPlayer, vec3, type Vec3 } from "./model";
 import {
   COLORS,
@@ -244,53 +244,54 @@ export const setReady = mutation({
 });
 
 /** Takes `now` from the caller because Convex caches query results and a query's own clock would go stale. */
-export const poll = internalQuery({
-  args: { roomId: v.string(), after: v.optional(v.number()), now: v.number() },
-  handler: async (ctx, args) => {
-    if (args.after !== undefined && !(Number.isInteger(args.after) && args.after >= 0)) {
-      fail("INVALID_ARGUMENT", "after must be a non-negative integer");
+const pollArgs = { roomId: v.string(), after: v.optional(v.number()), now: v.number() };
+
+export async function pollRoom(ctx: QueryCtx, args: ObjectType<typeof pollArgs>) {
+  if (args.after !== undefined && !(Number.isInteger(args.after) && args.after >= 0)) {
+    fail("INVALID_ARGUMENT", "after must be a non-negative integer");
+  }
+  const room = await getRoom(ctx, args.roomId);
+  const now = args.now;
+  const rows = placeOrder(await roomPlayers(ctx, room._id));
+
+  const events =
+    args.after === undefined
+      ? await ctx.db
+          .query("roomEvents")
+          .withIndex("by_room_race", (q) => q.eq("roomId", room._id).eq("raceNumber", room.raceNumber))
+          .take(EVENTS_PER_POLL)
+      : await ctx.db
+          .query("roomEvents")
+          .withIndex("by_room_seq", (q) => q.eq("roomId", room._id).gt("seq", args.after!))
+          .take(EVENTS_PER_POLL);
+  const cursor = events.length > 0 ? events[events.length - 1].seq : (args.after ?? room.eventSeq);
+
+  let standings: ReturnType<typeof results> = [];
+  if (phase(room, now) === "finished") {
+    const raceEvents = await ctx.db
+      .query("roomEvents")
+      .withIndex("by_room_race", (q) => q.eq("roomId", room._id).eq("raceNumber", room.raceNumber))
+      .collect();
+    const calls = new Map<Id<"players">, number>();
+    for (const event of raceEvents) calls.set(event.playerId, (calls.get(event.playerId) ?? 0) + 1);
+    const operatorCalls = await ctx.db
+      .query("operatorCalls")
+      .withIndex("by_room_race", (q) => q.eq("roomId", room._id).eq("raceNumber", room.raceNumber))
+      .collect();
+    for (const call of operatorCalls) {
+      if (call.outcome !== "refused") calls.set(call.playerId, (calls.get(call.playerId) ?? 0) + 1);
     }
-    const room = await getRoom(ctx, args.roomId);
-    const now = args.now;
-    const rows = placeOrder(await roomPlayers(ctx, room._id));
+    standings = results(room, rows, calls);
+  }
 
-    const events =
-      args.after === undefined
-        ? await ctx.db
-            .query("roomEvents")
-            .withIndex("by_room_race", (q) => q.eq("roomId", room._id).eq("raceNumber", room.raceNumber))
-            .take(EVENTS_PER_POLL)
-        : await ctx.db
-            .query("roomEvents")
-            .withIndex("by_room_seq", (q) => q.eq("roomId", room._id).gt("seq", args.after!))
-            .take(EVENTS_PER_POLL);
-    const cursor = events.length > 0 ? events[events.length - 1].seq : (args.after ?? room.eventSeq);
+  return {
+    serverTime: now,
+    room: toRoom(room, rows, now),
+    racers: rows.map((row, i) => toRacer(room, row, i + 1)),
+    events: events.map(toEvent),
+    cursor,
+    results: standings,
+  };
+}
 
-    let standings: ReturnType<typeof results> = [];
-    if (phase(room, now) === "finished") {
-      const raceEvents = await ctx.db
-        .query("roomEvents")
-        .withIndex("by_room_race", (q) => q.eq("roomId", room._id).eq("raceNumber", room.raceNumber))
-        .collect();
-      const calls = new Map<Id<"players">, number>();
-      for (const event of raceEvents) calls.set(event.playerId, (calls.get(event.playerId) ?? 0) + 1);
-      const operatorCalls = await ctx.db
-        .query("operatorCalls")
-        .withIndex("by_room_race", (q) => q.eq("roomId", room._id).eq("raceNumber", room.raceNumber))
-        .collect();
-      for (const call of operatorCalls) {
-        if (call.outcome !== "refused") calls.set(call.playerId, (calls.get(call.playerId) ?? 0) + 1);
-      }
-      standings = results(room, rows, calls);
-    }
-
-    return {
-      serverTime: now,
-      room: toRoom(room, rows, now),
-      racers: rows.map((row, i) => toRacer(room, row, i + 1)),
-      events: events.map(toEvent),
-      cursor,
-      results: standings,
-    };
-  },
-});
+export const poll = internalQuery({ args: pollArgs, handler: pollRoom });

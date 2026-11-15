@@ -40,6 +40,10 @@ namespace Dogpatch.Gameplay
         // paused) are left to the HUD and never start a drag or a tap.
         public Func<Vector2, bool> IgnoreAt;
 
+        // Taps that end where this returns true (the minimap, which opens the full map) are not
+        // reported; drags that start there still steer.
+        public Func<Vector2, bool> IgnoreTap;
+
         Finger move = new Finger { Id = -1 };
         Finger look = new Finger { Id = -1 };
         readonly List<Finger> extra = new List<Finger>();
@@ -168,7 +172,7 @@ namespace Dogpatch.Gameplay
                 Move(id, position);
                 var f = extra[e];
                 extra.RemoveAt(e);
-                if (QuickTap(f) && (IgnoreAt == null || !IgnoreAt(position))) Tapped?.Invoke(position);
+                if (QuickTap(f) && TapAllowed(position)) Tapped?.Invoke(position);
                 return;
             }
             if (id != move.Id && id != look.Id) return;
@@ -179,8 +183,10 @@ namespace Dogpatch.Gameplay
                 : QuickTap(finger);
             if (id == move.Id) Dragging = false;
             finger.Id = -1;
-            if (tap && (IgnoreAt == null || !IgnoreAt(position))) Tapped?.Invoke(position);
+            if (tap && TapAllowed(position)) Tapped?.Invoke(position);
         }
+
+        bool TapAllowed(Vector2 p) => (IgnoreAt == null || !IgnoreAt(p)) && (IgnoreTap == null || !IgnoreTap(p));
 
         int ExtraIndex(int id)
         {
