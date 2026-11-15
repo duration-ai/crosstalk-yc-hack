@@ -38,11 +38,15 @@ namespace Dogpatch.Traffic
         public float AverageMs { get; private set; }
         public float MaxMs { get; private set; }
 
+        // Parked or abandoned cars count as obstacles only when they sit within reach of a lane
+        // centreline; the thousands parked along the curbs never block a lane.
         GameController game;
         Transform root;
         TrafficWorld data;
         readonly Dictionary<string, Stack<CarController>> pool = new Dictionary<string, Stack<CarController>>();
         readonly List<CarController> parked = new List<CarController>();
+        CarController[] allCars = System.Array.Empty<CarController>();
+        float nextCarListing;
         readonly List<StreetGraph.Lane> candidates = new List<StreetGraph.Lane>();
         readonly Stopwatch watch = new Stopwatch();
         readonly Dictionary<CarController, GameObject> playerRiders = new Dictionary<CarController, GameObject>();
@@ -202,12 +206,18 @@ namespace Dogpatch.Traffic
                 nextParkedScan = Time.time + 1f;
                 parked.Clear();
                 var focus = Focus;
-                foreach (var car in FindObjectsByType<CarController>(FindObjectsSortMode.None))
+                if (Time.time >= nextCarListing)
                 {
-                    if (car == current || !car.enabled) continue;
+                    nextCarListing = Time.time + 10f;
+                    allCars = FindObjectsByType<CarController>(FindObjectsSortMode.None);
+                }
+                foreach (var car in allCars)
+                {
+                    if (car == null || car == current || !car.enabled) continue;
                     var agent = car.GetComponent<TrafficAgent>();
                     if (agent != null && agent.enabled) continue;
-                    if ((car.transform.position - focus).sqrMagnitude < 260f * 260f) parked.Add(car);
+                    var p = car.transform.position;
+                    if ((p - focus).sqrMagnitude < 260f * 260f && Graph.Nearest(new Vector2(p.x, p.z), Vector2.zero, 2.6f, out _, out _) != null) parked.Add(car);
                 }
             }
             foreach (var car in parked)
