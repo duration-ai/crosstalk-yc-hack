@@ -148,6 +148,10 @@ namespace Dogpatch.Traffic
         public bool Express;
         public StreetGraph.Lane GoalLane;
         public float GoalS;
+        float pass;
+        float passUntil;
+        float boxed;
+        float ghostUntil;
 
         public void DriveTo(List<StreetGraph.Lane> route, StreetGraph.Lane goal, float goalS)
         {
@@ -257,10 +261,10 @@ namespace Dogpatch.Traffic
             float now = Time.time;
 
             float cruise = OnRail ? Spec.CruiseSpeed
-                : Express ? Mathf.Min(Car.Handling.TopSpeed, Mathf.Max(Spec.CruiseSpeed, Lane.Speed * 1.2f))
+                : Express ? Mathf.Max(Car.Handling.TopSpeed, 25f)
                 : Mathf.Min(Spec.CruiseSpeed, Lane.Speed * (Spec.Robotaxi ? 0.8f : 1f));
             float target = cruise * Mathf.Clamp(CarController.SpeedScale * Pace * (1f + Rage * 0.6f), 0.3f, 2.5f);
-            if (!OnRail && Link != null && Mathf.Abs(Link.Turn) > 30f) target = Mathf.Min(target, Spec.Robotaxi ? 4.5f : 6f);
+            if (!OnRail && Link != null && Mathf.Abs(Link.Turn) > 30f) target = Mathf.Min(target, Express ? 9f : Spec.Robotaxi ? 4.5f : 6f);
             float rate = brake;
             State = "cruising";
 
@@ -273,7 +277,7 @@ namespace Dogpatch.Traffic
                     toGoal = Lane.Path.Length - S + (nextLink != null ? nextLink.Path.Length : 0f) + GoalS;
                 if (toGoal < float.MaxValue)
                 {
-                    Limit(ref target, toGoal, brake);
+                    Limit(ref target, toGoal, brake * 2f);
                     State = "pulling up";
                 }
             }
@@ -376,6 +380,21 @@ namespace Dogpatch.Traffic
                 float obLat = ob.Half.y * sn + ob.Half.x * c;
                 if (Mathf.Abs(l) > halfWidth + obLat + 0.35f) continue;
                 float gap = f - halfLength - obLong;
+                if (Express && !ob.Player)
+                {
+                    if (now < ghostUntil) continue;
+                    if (gap < 30f && Link == null)
+                    {
+                        pass = -(Lane.Width + 0.4f);
+                        passUntil = now + 2.5f;
+                        State = "overtaking";
+                    }
+                    float tight = gap - 0.8f;
+                    float before2 = target;
+                    Limit(ref target, tight, brake * 1.5f);
+                    if (target < before2) blockedByAgent = true;
+                    continue;
+                }
                 float lead = Mathf.Max(0f, Vector2.Dot(ob.Velocity, forward));
                 float allowed = gap - minGap * (1f - Rage * 0.6f) - headway * (1f - Rage * 0.7f) * Mathf.Max(0f, Speed - lead) * 0.5f + lead * lead / (2f * brake);
                 float before = target;
@@ -390,6 +409,19 @@ namespace Dogpatch.Traffic
                 if (!OnRail && Link == null && gap < 16f && Mathf.Abs(l) > obLat * 0.25f)
                     swerve = Mathf.Clamp(-Mathf.Sign(l) * 1.3f, -Lane.Width * 0.4f, Lane.Width * 0.4f);
             }
+
+            if (Express)
+            {
+                boxed = blockedByAgent && Speed < 8f ? boxed + dt : 0f;
+                if (boxed > 1f)
+                {
+                    ghostUntil = now + 3f;
+                    boxed = 0f;
+                    State = "ghosting through";
+                }
+                if (now > passUntil) pass = Mathf.MoveTowards(pass, 0f, 2.5f * dt);
+            }
+            else pass = 0f;
 
             if (blockedByAgent && Speed < 0.2f)
             {
@@ -409,7 +441,7 @@ namespace Dogpatch.Traffic
                 State = "hit";
             }
 
-            Speed = Mathf.MoveTowards(Speed, target, (target > Speed ? accel : rate) * dt);
+            Speed = Mathf.MoveTowards(Speed, target, (target > Speed ? (Express ? accel * 2.5f : accel) : Express ? rate * 2f : rate) * dt);
             Idle = Speed < 0.05f ? Idle + dt : 0f;
             if (!playerAhead) swerve = Mathf.MoveTowards(swerve, 0f, 0.6f * dt);
 
@@ -471,8 +503,8 @@ namespace Dogpatch.Traffic
             var p = CurrentPath.Sample(S, out var t);
             var right = new Vector2(t.y, -t.x);
             bool dwelling = dwellUntil > 0f && !OnRail;
-            float wantLateral = baseLateral + swerve + (dwelling ? 0.8f : 0f) + Weave;
-            lateral = Mathf.MoveTowards(lateral, wantLateral, 1.5f * dt);
+            float wantLateral = baseLateral + swerve + pass + (dwelling ? 0.8f : 0f) + Weave;
+            lateral = Mathf.MoveTowards(lateral, wantLateral, (Express ? 5f : 1.5f) * dt);
             p += right * lateral;
             float yaw = Mathf.Atan2(t.x, t.y) * Mathf.Rad2Deg;
             var position = new Vector3(p.x, Dogpatch.World.RoadSurface.GroundY(p) + 0.05f, p.y);
@@ -498,7 +530,7 @@ namespace Dogpatch.Traffic
 
         void OnCollisionEnter(Collision collision)
         {
-            if (!enabled || Car == null) return;
+            if (!enabled || Car == null || Express) return;
             float impact = collision.relativeVelocity.magnitude;
             if (impact < 2f) return;
             if (Spec.Rider)
