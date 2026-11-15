@@ -8,7 +8,7 @@ namespace Dogpatch.Gameplay
 {
     // Headless screenshots of the selfie-avatar screens over the game, inert unless the player is
     // launched with -avatarUiCapture <dir>. Forgets any saved avatar, then walks the flow through
-    // AvatarCapture.Press exactly as taps would: the corner card, the pause menu chip, the capture
+    // AvatarCapture.Press exactly as taps would: the free-roam portrait button, the pause menu chip, the capture
     // screen, then three shutters whose answers come from whatever -dogpatch-avatar-url serves
     // (the expected order is 422, 503, then a slow 200), and finally the avatar in the world.
     // Run with -dogpatch-avatar-test-photo so the shutter has a photo without a camera.
@@ -25,7 +25,6 @@ namespace Dogpatch.Gameplay
             int i = Array.IndexOf(args, "-avatarUiCapture");
             if (i < 0 || i + 1 >= args.Length) return;
             PlayerPrefs.DeleteKey("dogpatch.avatar");
-            PlayerPrefs.DeleteKey("dogpatch.avatarPromptSkipped");
             PlayerPrefs.Save();
             Application.runInBackground = true;
             new GameObject("AvatarUiCapture").AddComponent<AvatarUiCapture>().output = args[i + 1];
@@ -40,9 +39,10 @@ namespace Dogpatch.Gameplay
                 if (Time.realtimeSinceStartup > deadline) { Finish("game never got ready"); yield break; }
                 yield return null;
             }
-            yield return Until("Prompt", 30f);
+            float until = Time.realtimeSinceStartup + 30f;
+            while (!capture.Showing("open") && Time.realtimeSinceStartup < until) yield return null;
             yield return new WaitForSecondsRealtime(2f);
-            yield return Shot("01-avatar-card");
+            yield return Shot("01-portrait-button");
 
             var setPaused = typeof(Hud).GetMethod("SetPaused", BindingFlags.Instance | BindingFlags.NonPublic);
             var hud = game.GetComponent<Hud>();
@@ -77,6 +77,7 @@ namespace Dogpatch.Gameplay
             setPaused.Invoke(hud, new object[] { false });
             yield return new WaitForSecondsRealtime(3f);
             yield return Shot("07-avatar-in-world");
+            if (!capture.Showing("open")) { Finish("no portrait button after the avatar changed"); yield break; }
 
             var follow = game.View.GetComponent<FollowCamera>();
             if (follow != null) follow.enabled = false;

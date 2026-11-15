@@ -84,6 +84,7 @@ namespace Dogpatch.Operator
 
         void Upsert(ActiveEffect row, bool listed)
         {
+            if (row.startsAt > 0 && row.startsAt < ClearedBefore) return;
             if (row.instant)
             {
                 if (instants.ContainsKey(row.id)) return;
@@ -177,6 +178,18 @@ namespace Dogpatch.Operator
         {
             foreach (var r in new List<Running>(running.Values)) End(r, "reset");
         }
+
+        // Rows that started before this server time stay off this device (0: none), so a race starts clean
+        // even while the room still lists effects called in the lobby.
+        public double ClearedBefore { get; private set; }
+
+        public void ClearUntilNow()
+        {
+            ClearedBefore = ServerNow();
+            ResetAll();
+        }
+
+        public void StopClearing() => ClearedBefore = 0;
 
         void Update()
         {

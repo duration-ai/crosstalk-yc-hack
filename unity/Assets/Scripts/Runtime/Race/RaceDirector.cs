@@ -108,6 +108,9 @@ namespace Dogpatch.Race
         public Racer Me => Last?.racers?.FirstOrDefault(r => r.playerId == MyId);
         public float MsToStart => Room == null || Room.startsAt == 0 ? float.MaxValue : Room.startsAt - NowMs;
         public bool Locked => Gridded && !Started;
+
+        // On the start ring, counting down or racing: the race owns the arrow and the route.
+        public bool Joined => Setup && (Gridded || inRing || (Room != null && Room.status == RoomStatus.Countdown));
         public CarController MyCar => myCar;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -355,7 +358,8 @@ namespace Dogpatch.Race
         // always race; online only when the host turns them on.
         async Task AddBotsAsync()
         {
-            var carAsset = Game.Models.Get(myCar.ModelId);
+            bool roster = Vehicles.VehicleCatalog.Has(myCar.ModelId);
+            var carAsset = Game.Models.Get(roster ? Game.Models.Role("car")[0].id : myCar.ModelId);
             var avatarAsset = Game.Models.Get(Game.Models.Role("player")[0].id);
             var material = Game.SharedMaterial;
             foreach (var botName in BotNames)
@@ -367,6 +371,7 @@ namespace Dogpatch.Race
                 var bot = new Bot { Name = botName, Id = player.id, Slot = joined.you.slot };
                 var spot = Course.Grid[bot.Slot];
                 bot.Car = CarController.Create("bot-" + bot.Name.ToLowerInvariant(), carAsset, material, spot.Position, spot.Heading);
+                if (roster) Vehicles.VehicleRoster.SwapInto(bot.Car, myCar.ModelId);
                 bot.Car.name = "Car " + bot.Name;
                 bot.Car.transform.SetParent(Game.World.Root.transform, true);
                 CarFx.On(bot.Car);

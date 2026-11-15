@@ -81,6 +81,9 @@ namespace Dogpatch.Vehicles
                     case VehicleTypes.FlyingCar: return ProceduralModels.FlyingCar(material);
                     case VehicleTypes.CableCar: return ProceduralModels.CableCar(material);
                     case VehicleTypes.Lowrider: return ProceduralModels.Lowrider(material);
+                    case VehicleTypes.MonsterTruck: return ProceduralModels.MonsterTruck(material);
+                    case VehicleTypes.WaymoOjai: return ProceduralModels.WaymoOjai(material);
+                    case VehicleTypes.WaymoSuv: return ProceduralModels.WaymoIPace(material);
                     case VehicleTypes.ArtCar: return ProceduralModels.ArtCar(material);
                 }
             }

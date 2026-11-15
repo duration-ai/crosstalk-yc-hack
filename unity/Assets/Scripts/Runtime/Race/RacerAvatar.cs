@@ -53,7 +53,8 @@ namespace Dogpatch.Race
             Home = position;
             HomeHeading = heading;
             transform.SetPositionAndRotation(position, Quaternion.Euler(0f, heading, 0f));
-            animator?.Play(speed > 3.5f ? "Run" : speed > 0.4f ? "Walk" : "Idle");
+            float stride = speed / Mathf.Max(transform.lossyScale.y, 0.1f);
+            animator?.Play(stride > 3.5f ? "Run" : stride > 0.4f ? "Walk" : "Idle");
         }
 
         public void Shove(Vector3 impulse, GameObject by)

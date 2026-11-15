@@ -18,12 +18,14 @@ namespace Dogpatch.Operator
                 case "flying_car": return VehicleTypes.FlyingCar;
                 case "cable_car": return VehicleTypes.CableCar;
                 case "lowrider": return VehicleTypes.Lowrider;
+                case "monster_truck": return VehicleTypes.MonsterTruck;
                 case "art_car": return VehicleTypes.ArtCar;
                 case "hatchback": return VehicleTypes.Hatchback;
                 case "sedan": return VehicleTypes.Sedan;
                 case "taxi": return VehicleTypes.YellowCab;
                 case "cybertruck": return VehicleTypes.Cybertruck;
                 case "waymo": return VehicleTypes.WaymoSuv;
+                case "waymo_ojai": return VehicleTypes.WaymoOjai;
                 case "van": return VehicleTypes.WaymoVan;
                 case "zoox": return VehicleTypes.Zoox;
                 case "bus": return VehicleTypes.MuniBus;

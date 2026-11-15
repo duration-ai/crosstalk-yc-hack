@@ -76,11 +76,12 @@ namespace Dogpatch.Gameplay
             }
             orbitYaw = 0f;
 
+            float grown = Target.lossyScale.y;
             var size = Driving && Target.TryGetComponent<CarController>(out var car) ? car.HalfExtents : new Vector3(0.9f, 0.75f, 2.3f);
             bool portrait = cam.aspect < 1f;
-            float wanted = Driving ? Mathf.Max(5.8f, size.z + 3.6f) * (portrait ? 1.6f : 1f) : 6.5f;
+            float wanted = (Driving ? Mathf.Max(5.8f, size.z + 3.6f) * (portrait ? 1.6f : 1f) : 6.5f) * grown;
             float pitch = Driving ? (portrait ? 12f : 8f) : footPitch;
-            var pivot = Target.position + Vector3.up * (Driving ? Mathf.Max(1.4f, size.y * 1.5f) : 1.5f);
+            var pivot = Target.position + Vector3.up * ((Driving ? Mathf.Max(1.4f, size.y * 1.5f) : 1.5f) * grown);
             var dir = Quaternion.Euler(pitch, yaw + (Driving ? driveLook : 0f), 0f) * Vector3.back;
 
             float allowed = wanted;

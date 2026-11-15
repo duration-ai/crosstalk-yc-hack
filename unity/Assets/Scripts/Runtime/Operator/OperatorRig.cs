@@ -39,6 +39,7 @@ namespace Dogpatch.Operator
         RaceDirector race;
         IDisposable watch;
         string queuedLink;
+        bool gridded;
 
         [Serializable]
         class PlayerRow
@@ -216,12 +217,22 @@ namespace Dogpatch.Operator
 
         void Update()
         {
+            if (race.Gridded && !gridded)
+            {
+                Effects.ClearUntilNow();
+                DemolishEffect.RebuildAll();
+                Debug.Log("[Operator] race locked: every effect cleared for a clean start");
+            }
+            else if (!race.Gridded && gridded) Effects.StopClearing();
+            gridded = race.Gridded;
             bool racing = RaceOnline && !string.IsNullOrEmpty(race.RoomId);
             var wanted = racing ? race.RoomId : race.WorldRoomId;
             if (Convex == null || string.IsNullOrEmpty(wanted) || (wanted == RoomId && race.MyId == PlayerId)) return;
             PlayerId = race.MyId;
             EntityTagger.MyPlayerId = PlayerId;
             Effects.ResetAll();
+            Effects.StopClearing();
+            if (racing) DemolishEffect.RebuildAll();
             UseRoom(wanted, racing ? race.Room?.code ?? "" : "world");
             Debug.Log($"[Operator] following the {(racing ? "race" : "world")} room {RoomCode} ({RoomId}) as {PlayerId}");
         }

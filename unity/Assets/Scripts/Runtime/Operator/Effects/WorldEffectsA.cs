@@ -116,8 +116,10 @@ namespace Dogpatch.Operator
                     var shape = Racers.Shape(player.Visual);
                     if (shape != null)
                     {
-                        var cape = PropMeshes.Attach(shape, "Cape (operator)", PropMeshes.Cape(), Context.Material, new Vector3(0f, 1.42f, -0.2f));
-                        cape.AddComponent<Flutter>().Player = player;
+                        var cape = PropMeshes.Attach(shape, "Cape (operator)", PropMeshes.Cape(), Context.Material, new Vector3(0f, 1.42f, 0f));
+                        var flutter = cape.AddComponent<Flutter>();
+                        flutter.Player = player;
+                        flutter.Hang(shape);
                         Pop.In(cape);
                         props.Add(cape);
                         var layers = Racers.Layers(shape);
@@ -200,16 +202,40 @@ namespace Dogpatch.Operator
             Physics.Raycast(new Vector3(at.x, transform.position.y + 0.2f, at.z), Vector3.down, out var hit, 80f, ~0, QueryTriggerInteraction.Ignore) ? hit.point.y : transform.position.y - Height;
     }
 
-    // A cape that streams back with speed and flutters.
+    // A cape hung behind both shoulders that streams back and up with speed and flutters. It follows
+    // the shoulder bones as the body animates, and never swings forward into the back or legs.
     public sealed class Flutter : MonoBehaviour
     {
         public PlayerController Player;
+        Transform left, right, neck;
+        Vector3 fallback;
+
+        public void Hang(Transform body)
+        {
+            fallback = transform.localPosition;
+            foreach (var t in body.GetComponentsInChildren<Transform>(true))
+            {
+                var n = t.name.ToLowerInvariant();
+                if (left == null && n.EndsWith("leftshoulder")) left = t;
+                else if (right == null && n.EndsWith("rightshoulder")) right = t;
+                else if (neck == null && n.EndsWith("neck")) neck = t;
+            }
+        }
 
         void LateUpdate()
         {
-            float speed = Player != null ? Mathf.Clamp01(Player.Speed / 9f) : 0f;
-            float flap = Mathf.Sin(Time.time * (6f + speed * 10f)) * (6f + speed * 8f);
-            transform.localRotation = Quaternion.Euler(-(15f + speed * 60f) - flap, 0f, Mathf.Sin(Time.time * 3.7f) * 4f);
+            var parent = transform.parent;
+            if (parent == null || Player == null) return;
+            var up = parent.up;
+            var back = Vector3.ProjectOnPlane(-Player.transform.forward, up);
+            if (back.sqrMagnitude < 1e-4f) back = -parent.forward;
+            back.Normalize();
+            float scale = parent.lossyScale.y;
+            Vector3? top = left != null && right != null ? (left.position + right.position) * 0.5f : neck != null ? neck.position : (Vector3?)null;
+            transform.position = (top ?? parent.TransformPoint(fallback)) + (back * 0.16f - up * 0.03f) * scale;
+            float speed = Mathf.Clamp01(Player.Speed / 9f);
+            float flap = Mathf.Sin(Time.time * (5f + speed * 9f)) * (3f + speed * 7f);
+            transform.rotation = Quaternion.LookRotation(-back, up) * Quaternion.Euler(10f + speed * 24f + flap, 0f, Mathf.Sin(Time.time * 3.1f) * 3f);
         }
     }
 

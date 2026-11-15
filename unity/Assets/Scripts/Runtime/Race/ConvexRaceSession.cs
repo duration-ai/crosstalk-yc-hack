@@ -188,8 +188,14 @@ namespace Dogpatch.Race
         public static Request Fire(string playerId, string roomId, WorldChangeCommand command) =>
             new Request("POST", "/api/rooms/events", JsonUtility.ToJson(new FireRequest { playerId = playerId, roomId = roomId, type = command?.type, @params = command?.@params ?? new WorldChangeParams() }));
 
-        public static Request Presence(string playerId, Vec3 position, float heading, float speed, string mode, string vehicleType) =>
-            new Request("POST", "/api/world/presence", JsonUtility.ToJson(new PresenceRequest { playerId = playerId, position = position, heading = Mathf.Repeat(heading, 360f), speed = speed, mode = mode, vehicleType = vehicleType ?? "", protocol = Protocol }));
+        // A bump is added only when there is one, so everyday presence still suits a deployment
+        // that predates bumps.
+        public static Request Presence(string playerId, Vec3 position, float heading, float speed, string mode, string vehicleType, PresenceBump bump = null)
+        {
+            var json = JsonUtility.ToJson(new PresenceRequest { playerId = playerId, position = position, heading = Mathf.Repeat(heading, 360f), speed = speed, mode = mode, vehicleType = vehicleType ?? "", protocol = Protocol });
+            if (bump != null) json = json.Substring(0, json.Length - 1) + ",\"bump\":" + JsonUtility.ToJson(bump) + "}";
+            return new Request("POST", "/api/world/presence", json);
+        }
 
         public static Request EnterMission(string playerId, string mission, IReadOnlyList<Vec3> route, float finishRadius, int asks, IReadOnlyList<Vec3> pickups, float pickupRadius)
         {
@@ -434,10 +440,10 @@ namespace Dogpatch.Race
             return poll;
         }
 
-        public async Task<WorldPresenceResponse> PresenceAsync(string playerId, Vec3 position, float heading, float speed, string mode, string vehicleType)
+        public async Task<WorldPresenceResponse> PresenceAsync(string playerId, Vec3 position, float heading, float speed, string mode, string vehicleType, PresenceBump bump = null)
         {
             double sent = LocalMs;
-            var request = Presence(playerId, position, heading, speed, mode, vehicleType);
+            var request = Presence(playerId, position, heading, speed, mode, vehicleType, bump);
             WorldPresenceResponse world = null;
             var s = Socket();
             if (s != null)

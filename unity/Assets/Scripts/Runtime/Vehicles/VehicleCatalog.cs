@@ -16,6 +16,8 @@ namespace Dogpatch.Vehicles
         public const string FlyingCar = "flying-car";
         public const string CableCar = "cable-car";
         public const string Lowrider = "lowrider";
+        public const string MonsterTruck = "monster-truck";
+        public const string WaymoOjai = "waymo-ojai";
         public const string ArtCar = "art-car";
         public const string MuniBus = "muni-bus";
         public const string ShoppingCart = "shopping-cart";
@@ -30,7 +32,7 @@ namespace Dogpatch.Vehicles
 
         public static readonly string[] All =
         {
-            WaymoSuv, WaymoVan, Zoox, Cybertruck, RaceCar, SportsCar, FlyingCar, CableCar, Lowrider, ArtCar, MuniBus, ShoppingCart, BayWheels, Scooter,
+            WaymoSuv, WaymoOjai, WaymoVan, Zoox, Cybertruck, RaceCar, SportsCar, FlyingCar, CableCar, MonsterTruck, Lowrider, ArtCar, MuniBus, ShoppingCart, BayWheels, Scooter,
             DoorDashBike, UberEatsBike, Hatchback, Sedan, YellowCab, TThird,
         };
     }
@@ -93,9 +95,7 @@ namespace Dogpatch.Vehicles
         {
             Add(new VehicleSpec
             {
-                Id = VehicleTypes.WaymoSuv, Title = "Robotaxi SUV", Source = ModelSource.Glb, Resource = "Vehicles/waymo-suv", PolyforkId = "family-crossover-suv-42027f",
-                Recolor = { ["#55636d"] = "#f4f4f0", ["#3e4a52"] = "#26292e", ["#a9b4b9"] = "#2b2e33", ["#7b8a93"] = "#3a3f46", ["#8fbfd9"] = "#2c4fa3", ["#cfd6d6"] = "#f4f4f0" },
-                Lamps = { ["#e8e7e1"] = 0.8f, ["#b9553f"] = 0.55f },
+                Id = VehicleTypes.WaymoSuv, Title = "Robotaxi SUV", Source = ModelSource.Procedural,
                 Handling = H(17f, 4.5f, 12f, 62f, 0.95f, 2200f, 80f, 0.4f, true), Robotaxi = true, CruiseSpeed = 9f,
             });
             Add(new VehicleSpec
@@ -105,6 +105,7 @@ namespace Dogpatch.Vehicles
                 Lamps = { ["#5b6e8c"] = 0.8f, ["#d6452f"] = 0.55f },
                 Handling = H(16f, 4f, 12f, 60f, 0.95f, 2400f, 85f, 0.45f), Robotaxi = true, CruiseSpeed = 8.5f,
             });
+            Add(new VehicleSpec { Id = VehicleTypes.WaymoOjai, Title = "Waymo Ojai", Source = ModelSource.Procedural, Handling = H(16f, 4f, 12f, 62f, 0.95f, 2300f, 85f, 0.45f, true), Robotaxi = true, CruiseSpeed = 8.5f });
             Add(new VehicleSpec
             {
                 Id = VehicleTypes.Zoox, Title = "Robotaxi pod", Source = ModelSource.Procedural,
@@ -136,6 +137,7 @@ namespace Dogpatch.Vehicles
             Add(new VehicleSpec { Id = VehicleTypes.FlyingCar, Title = "Flying car", Source = ModelSource.Procedural, Handling = hover, CruiseSpeed = 12f });
             var cable = H(11f, 2f, 5f, 28f, 1f, 16000f, 1e6f, 1f, false, 3f);
             cable.Coasting = 0.8f;
+            Add(new VehicleSpec { Id = VehicleTypes.MonsterTruck, Title = "Monster truck", Source = ModelSource.Procedural, Handling = H(24f, 9f, 16f, 70f, 1f, 3800f, 400f, 0.9f), CruiseSpeed = 12f, Ability = typeof(MonsterCrush) });
             Add(new VehicleSpec { Id = VehicleTypes.CableCar, Title = "Cable car", Source = ModelSource.Procedural, Handling = cable, CruiseSpeed = 6f });
             Add(new VehicleSpec
             {
