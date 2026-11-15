@@ -8,7 +8,7 @@ using Dogpatch.WorldChanges;
 namespace Dogpatch.Operator
 {
     // A stand-in Operator that runs on the device. Words she recognises pick the world change, the
-    // same keyword idea as the backend's keyword provider; a call with no words (the payphone has no
+    // same keyword idea as the backend's keyword provider; a call with no words (the phone has no
     // microphone yet, and she cannot hear audio) takes the next change in the catalog's roulette, so
     // each call cycles through them. She fires the change through the race session and answers with its line.
     public sealed class LocalOperator : IOperator
