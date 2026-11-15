@@ -266,7 +266,7 @@ namespace Dogpatch.Race
             state.Room.status = RoomStatus.Finished;
             Refresh(state);
             var ordered = state.Racers.OrderBy(r => r.place).ToList();
-            int maxCalls = state.Calls.Count == 0 ? 0 : state.Calls.Values.Max();
+            int maxCalls = ordered.Count == 0 ? 0 : ordered.Max(r => state.Calls.TryGetValue(r.playerId, out int c) ? c : 0);
             string caller = null;
             if (maxCalls > 0)
             {
