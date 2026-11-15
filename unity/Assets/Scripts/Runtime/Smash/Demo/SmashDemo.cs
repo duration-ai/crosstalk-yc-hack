@@ -15,6 +15,7 @@ namespace Dogpatch.Smash.Demo
     // Scripted smash sequences on a small street set, for recordings, perf numbers and the iOS
     // showcase build. Not part of the game: it only runs when asked for.
     //   Dogpatch.x86_64 -smashDemo lamps|parked|barge|wreck|dive|crash20|all [-capture <dir>] [-perf <file>]
+    // Several scenes run in order when comma separated (crash20,crash20 measures a warm second run).
     // Built with the SMASH_DEMO define (BUILD_DEFINES=SMASH_DEMO), the player loops all of them.
     public sealed class SmashDemo : MonoBehaviour
     {
@@ -97,7 +98,7 @@ namespace Dogpatch.Smash.Demo
             string[] all = { "lamps", "parked", "barge", "wreck", "dive", "crash20" };
             do
             {
-                foreach (var name in Scene == "all" || loop ? all : new[] { Scene })
+                foreach (var name in Scene == "all" || loop ? all : Scene.Split(','))
                 {
                     Debug.Log("[SmashDemo] scene " + name);
                     yield return Run(name);
@@ -434,9 +435,9 @@ namespace Dogpatch.Smash.Demo
             int n = 0;
             for (int row = 0; row < 5; row++)
                 for (int col = 0; col < 4 && n < 18; col++, n++)
-                    Prop(kinds[n % kinds.Length], -3.5f + col * 2.4f, 20f + row * 4f, n * 37f, kinds[n % kinds.Length] == "p-lamp" ? 0.2f : 0f, 3f);
-            Prop("t-street-egg-tree", -1f, 42f, 0f, 0.3f, 3f);
-            Prop("t-ornamental", 2.2f, 44f, 0f, 0.3f, 3f);
+                    Prop(kinds[n % kinds.Length], -1.6f + col * 1.1f + (row % 2) * 0.5f, 20f + row * 3.5f, n * 37f, kinds[n % kinds.Length] == "p-lamp" ? 0.2f : 0f, 3f);
+            Prop("t-street-egg-tree", -0.6f, 40f, 0f, 0.3f, 3f);
+            Prop("t-ornamental", 0.8f, 43f, 0f, 0.3f, 3f);
             Car("town-car-56eeb6", "parked-1", -1.5f, 52f, 90f);
             Car("family-minivan-924de0", "parked-2", 2.5f, 57f, 80f);
             var truck = Car("delivery-truck-a9537e", "truck", 0f, -35f, 0f);
@@ -468,12 +469,14 @@ namespace Dogpatch.Smash.Demo
 
         void Report(List<double> sim, List<double> frames, int peakBodies, int peakParticles)
         {
+            double first = sim.Count > 0 ? sim[0] : 0;
+            sim = sim.GetRange(Mathf.Min(5, sim.Count), Mathf.Max(0, sim.Count - 5));
             sim.Sort();
             frames.Sort();
             double P(List<double> l, double q) => l.Count == 0 ? 0 : l[Mathf.Clamp((int)(q * (l.Count - 1)), 0, l.Count - 1)];
             double Avg(List<double> l) { double s = 0; foreach (var v in l) s += v; return l.Count == 0 ? 0 : s / l.Count; }
             var line = $"crash20 broken={SmashWorld.Instance.BrokenCount} peakPieces={peakBodies} peakParticles={peakParticles} " +
-                       $"physicsMs avg={Avg(sim):F2} p95={P(sim, 0.95):F2} max={P(sim, 1):F2} " +
+                       $"physicsMs avg={Avg(sim):F2} p95={P(sim, 0.95):F2} p99={P(sim, 0.99):F2} max={P(sim, 1):F2} firstStep={first:F2} " +
                        $"frameMs avg={Avg(frames):F2} p95={P(frames, 0.95):F2} max={P(frames, 1):F2} frames={frames.Count} " +
                        $"score={SmashScore.TotalFor(hero)} cpu={SystemInfo.processorType} gfx={SystemInfo.graphicsDeviceName}";
             Debug.Log("[SmashDemo] " + line);
