@@ -10,6 +10,11 @@ namespace Dogpatch
         static void Boot()
         {
             if (Object.FindAnyObjectByType<GameController>() != null) return;
+            if (Smash.Demo.SmashDemo.Requested(out var scene))
+            {
+                new GameObject("SmashDemo").AddComponent<Smash.Demo.SmashDemo>().Scene = scene;
+                return;
+            }
             new GameObject("Game").AddComponent<GameController>();
         }
     }
