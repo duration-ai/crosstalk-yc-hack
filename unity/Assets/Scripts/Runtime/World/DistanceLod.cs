@@ -8,9 +8,9 @@ namespace Dogpatch.World
     // second against the main camera, which keeps an iPhone's triangle count bounded.
     public sealed class DistanceLod : MonoBehaviour
     {
-        public float BuildingDetail = 420f;
-        public float Trees = 380f;
-        public float Props = 170f;
+        public float BuildingDetail = 240f;
+        public float Trees = 300f;
+        public float Props = 150f;
 
         readonly List<(StaticModels.Layer layer, Renderer renderer, Bounds bounds)> entries = new List<(StaticModels.Layer, Renderer, Bounds)>();
         float next;
