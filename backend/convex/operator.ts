@@ -109,9 +109,14 @@ function activeRows(ctx: MutationCtx, roomId: Id<"rooms">) {
     .collect();
 }
 
+/** OPERATOR_ANYWHERE (default true, for testing): calls outside a running race are free and never refused as race_over. */
+const operatorAnywhere = () => process.env.OPERATOR_ANYWHERE !== "false";
+
 /** Charges the caller one ask (internal.race.spendAsk) for an effect about to go live; the refusal when it can't. */
 async function chargeAsk(ctx: MutationCtx, room: Doc<"rooms">, playerId: Id<"players">, now: number): Promise<RefusalReason | null> {
-  if (phase(room, now) === "finished") return "race_over";
+  const at = phase(room, now);
+  if (operatorAnywhere() && at !== "racing") return null;
+  if (at === "finished") return "race_over";
   try {
     await ctx.runMutation(internal.race.spendAsk, { roomId: room._id, playerId });
     return null;

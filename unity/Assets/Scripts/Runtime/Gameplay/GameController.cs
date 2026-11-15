@@ -373,6 +373,12 @@ namespace Dogpatch.Gameplay
         {
             var car = current;
             var t = car.transform;
+            if (car.Hovers)
+            {
+                car.Grounding = true;
+                float until = Time.time + 3f;
+                while (car.HoverAltitude > 0.3f && Time.time < until) await Task.Yield();
+            }
             var momentum = t.forward * car.Speed;
             float side = car.HalfExtents.x + 0.9f;
             var exit = t.position - t.right * side;

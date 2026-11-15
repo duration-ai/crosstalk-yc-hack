@@ -26,6 +26,14 @@ namespace Dogpatch.Gameplay
         public Vector3 HalfExtents { get; private set; }
         public bool Stunned => Time.time < stunnedUntil;
 
+        // Hover vehicles (HandlingProfile.HoverHeight > 0) ride that high above the static ground under
+        // them while driven, and settle onto it when not driven or while Grounding (getting out).
+        public bool Hovers => handling.HoverHeight > 0f;
+        public bool Grounding;
+        public float HoverAltitude { get; private set; }
+        public Vector3 HoverGround { get; private set; }
+        readonly RaycastHit[] hoverHits = new RaycastHit[16];
+
         // While true, something else (the traffic AI) moves this car and FixedUpdate leaves the body
         // alone, even with the player aboard as a passenger.
         public bool Autopilot { get; set; }
@@ -132,6 +140,7 @@ namespace Dogpatch.Gameplay
         public void SetDriven(bool driven)
         {
             Driven = driven;
+            Grounding = false;
             if (driven && !Autopilot) body.isKinematic = false;
             desired = Vector3.zero;
             strength = 0f;
@@ -175,6 +184,8 @@ namespace Dogpatch.Gameplay
 
         void FixedUpdate()
         {
+            bool hover = Hovers;
+            body.useGravity = !hover || Stunned;
             if (body.isKinematic || Stunned || Autopilot) return;
             float dt = Time.fixedDeltaTime;
             var forward = transform.forward;
@@ -184,7 +195,7 @@ namespace Dogpatch.Gameplay
             // smoothed surface so ramps climb and descend instead of stair-stepping. Streets, curbs and
             // steep faces never match, and then today's flat behaviour runs unchanged.
             bool onDeck = Physics.Raycast(body.position + Vector3.up * 0.5f, Vector3.down, out var ground, 1.2f, World.Freeway.DrivableMask, QueryTriggerInteraction.Ignore)
-                && Vector3.Angle(ground.normal, Vector3.up) < 20f;
+                && Vector3.Angle(ground.normal, Vector3.up) < 20f && !hover;
             groundNormal = onDeck ? Vector3.Slerp(groundNormal, ground.normal, 1f - Mathf.Exp(-12f * dt)).normalized : Vector3.up;
             var along = onDeck ? Vector3.ProjectOnPlane(forward, groundNormal).normalized : forward;
             forwardSpeed = Vector3.Dot(body.linearVelocity, along);
@@ -249,11 +260,32 @@ namespace Dogpatch.Gameplay
             float lateral = Vector3.Dot(body.linearVelocity, right);
             float keep = handbrake ? Mathf.Exp(-1.2f * dt) : Time.time < recoverUntil ? Mathf.Exp(-5f * dt) : grip >= 1f ? 0f : Mathf.Pow(1f - grip, dt * 10f);
             var slide = right * (lateral * keep);
-            body.linearVelocity = onDeck
+            var velocity = onDeck
                 ? along * forwardSpeed + slide - groundNormal * (Mathf.Max(ground.distance - 0.5f, 0f) * 10f)
                 : forward * forwardSpeed + slide + Vector3.up * Mathf.Min(body.linearVelocity.y, 0f);
+            if (hover) velocity.y = HoverVelocity(dt);
+            body.linearVelocity = velocity;
 
-            if (!Driven && Mathf.Abs(forwardSpeed) < 0.05f) body.isKinematic = true;
+            if (!Driven && Mathf.Abs(forwardSpeed) < 0.05f && (!hover || HoverAltitude < 0.2f)) body.isKinematic = true;
+        }
+
+        // The nearest static surface straight below (anything with a rigidbody, such as cars, or a
+        // character is flown over), then a springy climb or sink toward the hover height with a slow bob.
+        float HoverVelocity(float dt)
+        {
+            int n = Physics.RaycastNonAlloc(body.position + Vector3.up * 0.5f, Vector3.down, hoverHits, 40f, ~0, QueryTriggerInteraction.Ignore);
+            float nearest = float.MaxValue;
+            for (int i = 0; i < n; i++)
+            {
+                var hit = hoverHits[i];
+                if (hit.collider.attachedRigidbody != null || hit.collider is CharacterController || hit.distance >= nearest) continue;
+                nearest = hit.distance;
+                HoverGround = hit.point;
+            }
+            HoverAltitude = body.position.y - HoverGround.y;
+            float lift = Driven && !Grounding ? handling.HoverHeight + Mathf.Sin(Time.time * 2.1f) * 0.12f : 0f;
+            float wanted = Mathf.Clamp((HoverGround.y + lift - body.position.y) * 3f, -5f, 5f);
+            return Mathf.Lerp(body.linearVelocity.y, wanted, 1f - Mathf.Exp(-8f * dt));
         }
 
         void Update()
@@ -264,6 +296,7 @@ namespace Dogpatch.Gameplay
             if (visual != null)
             {
                 var tilt = Quaternion.FromToRotation(Vector3.up, transform.InverseTransformDirection(groundNormal));
+                if (Hovers) tilt *= Quaternion.Euler(0f, 0f, -steer * Mathf.Clamp01(Mathf.Abs(forwardSpeed) / 15f) * 12f);
                 visual.transform.localRotation = Quaternion.Slerp(visual.transform.localRotation, tilt, 1f - Mathf.Exp(-10f * Time.deltaTime));
             }
         }

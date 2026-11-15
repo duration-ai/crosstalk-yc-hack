@@ -190,6 +190,7 @@ namespace Dogpatch.Race
             Calls.PlayerId = () => MyId;
             Calls.RoomId = () => RoomId;
             Calls.Asks = () => Me?.asks ?? 0;
+            Calls.Racing = () => Started && !ResultsIn;
 
             Pickups = gameObject.AddComponent<AskPickups>();
             Pickups.Race = this;
