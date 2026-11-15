@@ -244,15 +244,15 @@ namespace Dogpatch.Slipstream
             buttons.Clear();
             if (Race.Last == null && !(Race.Online && Race.RoomId == null)) return;
             GUI.depth = -5;
-            s = Mathf.Min(Screen.height / 402f, Screen.width / 560f);
-            var safe = Screen.safeArea;
-            left = safe.xMin + 22f * s;
-            right = safe.xMax - 22f * s;
-            top = Screen.height - safe.yMax + 14f * s;
-            bottom = Screen.height - safe.yMin - 20f * s;
-            band = right - left < 700f * s ? top + 76f * s : top + 4f * s;
+            s = Gameplay.HudLayout.U;
+            left = Gameplay.HudLayout.Left;
+            right = Gameplay.HudLayout.Right;
+            top = Gameplay.HudLayout.Top;
+            bottom = Gameplay.HudLayout.Bottom;
+            band = Gameplay.HudLayout.Band;
             readyVisible = false;
             callVisible = false;
+            Gameplay.HudLayout.LobbyShowing = false;
             if (Race.Last == null)
             {
                 Menu();
@@ -260,7 +260,7 @@ namespace Dogpatch.Slipstream
             }
 
             var room = Race.Room;
-            bool lobby = !Race.Gridded && (room.status == RoomStatus.Lobby || room.status == RoomStatus.Countdown);
+            bool lobby = !Race.Gridded && (room.status == RoomStatus.Lobby || room.status == RoomStatus.Countdown) && NearRing();
             bool racing = Race.Started && !Race.ResultsIn;
 
             Markers();
@@ -274,14 +274,30 @@ namespace Dogpatch.Slipstream
             CallPlate(lobby || Race.ResultsIn);
         }
 
+        // The mission lobby only shows while you stand in or by the start ring.
+        bool NearRing()
+        {
+            var focus = Race.Game.Focus;
+            if (focus == null) return false;
+            var d = focus.position - Race.Course.RingCenter;
+            d.y = 0f;
+            return Race.Game.CurrentCar == null && d.magnitude < Race.Course.RingRadius * 1.5f;
+        }
+
         void Lobby(Room room)
         {
+            Gameplay.HudLayout.LobbyShowing = true;
             var racers = Race.Last.racers.OrderBy(r => r.slot).ToList();
-            float y = top + 2f * s;
+            var at = Gameplay.HudLayout.LobbyPanel;
+            var plate = new Rect(at.x, at.y, 183f * s, 30f * s);
+            Panel(plate, Sun);
+            Icon(new Rect(plate.x + 10f * s, plate.y + 4f * s, 22f * s, 22f * s), "yc", Ink);
+            Text(new Rect(plate.x + 40f * s, plate.y, plate.width, plate.height), "RACE TO YC", 16f, Ink);
+            float y = plate.yMax + 6f * s;
             foreach (var r in racers)
             {
                 bool me = r.playerId == Race.MyId;
-                var block = new Rect(left, y, 30f * s, 24f * s);
+                var block = new Rect(at.x, y, 30f * s, 24f * s);
                 var bar = new Rect(block.xMax + 3f * s, y, 150f * s, 24f * s);
                 Panel(bar, me ? Ink : Paper);
                 Panel(block, SlotColor(r.color));
@@ -317,12 +333,11 @@ namespace Dogpatch.Slipstream
                 }
             }
 
-            ReadyButton(Race.Me != null && Race.Me.ready);
         }
 
         void ReadyButton(bool pressed)
         {
-            var r = new Rect(right - 112f * s, bottom - 62f * s, 112f * s, 62f * s);
+            var r = Gameplay.HudLayout.Ready(112f * s, 62f * s);
             readyRect = r;
             readyVisible = true;
             bool held = readyFinger != int.MinValue;
@@ -416,15 +431,17 @@ namespace Dogpatch.Slipstream
 
             float length = Mathf.Max(Race.Room.routeLength, 1f);
             int meters = Mathf.Max(0, Mathf.RoundToInt(me.metersToFinish));
-            float edge = right - 64f * s;
+            var meterAt = Gameplay.HudLayout.Meters;
+            float edge = meterAt.x;
+            float mtop = meterAt.y;
             var mSize = Measure("M", 16f);
             var num = meters.ToString();
             var nSize = Measure(num, 40f);
-            var mRect = new Rect(edge - mSize.x, top + 20f * s, mSize.x, mSize.y);
+            var mRect = new Rect(edge - mSize.x, mtop + 20f * s, mSize.x, mSize.y);
             Text(mRect, "M", 16f, White, TextAnchor.UpperLeft, 1.4f * s);
-            var nRect = new Rect(mRect.x - nSize.x - 2f * s, top - 4f * s, nSize.x, nSize.y);
+            var nRect = new Rect(mRect.x - nSize.x - 2f * s, mtop - 4f * s, nSize.x, nSize.y);
             Text(nRect, num, 40f, White, TextAnchor.UpperLeft, 2.2f * s);
-            var flag = new Rect(nRect.x - 36f * s, top + 6f * s, 26f * s, 22f * s);
+            var flag = new Rect(nRect.x - 36f * s, mtop + 6f * s, 26f * s, 22f * s);
             Framed(flag, Sun, Ink, 1.6f * s);
             Icon(new Rect(flag.x + 4f * s, flag.y + 2f * s, 18f * s, 18f * s), "yc", Ink);
 
@@ -474,7 +491,7 @@ namespace Dogpatch.Slipstream
                 }
             }
 
-            float rowY = top + 2f * s;
+            float rowY = Gameplay.HudLayout.ResultsTop;
             foreach (var r in results.OrderBy(r => r.place))
             {
                 bool me = r.playerId == Race.MyId;
@@ -498,7 +515,7 @@ namespace Dogpatch.Slipstream
                 float t = Time.time - calls.StateSince;
                 float inP = EaseOut(Mathf.Clamp01(t / 0.18f));
                 float outP = Mathf.Clamp01((t - 2.3f) / 0.25f);
-                float baseX = band > top + 4f * s ? left : Screen.width * 0.5f - 150f * s;
+                float baseX = Gameplay.HudLayout.Narrow ? left : Screen.width * 0.5f - 150f * s;
                 float x = Mathf.Lerp(-360f * s, baseX, inP) - outP * outP * (baseX + 400f * s);
                 float lineY = band;
                 var size = Measure(calls.Line, 18f);
@@ -524,7 +541,7 @@ namespace Dogpatch.Slipstream
                 showing = null;
                 return;
             }
-            float baseLeft = band > top + 4f * s ? left : Mathf.Max(left + 150f * s, Screen.width * 0.5f - 270f * s);
+            float baseLeft = Gameplay.HudLayout.Narrow ? left : Mathf.Max(left + 150f * s, Screen.width * 0.5f - 270f * s);
             float offset;
             float lean;
             if (since < 0.12f)
@@ -571,10 +588,11 @@ namespace Dogpatch.Slipstream
             bool live = calls.State == CallState.Talking || calls.State == CallState.Waiting;
             float width = (live ? 140f : 106f) * s;
             float height = 60f * s;
-            float y = bottom - height - (readyShowing ? 84f * s : 0f);
-            float x = right - width;
-            if (calls.State == CallState.Holding && t < 0.25f) x += (1f - EaseOut(t / 0.25f)) * (Screen.width - x + 40f * s);
-            if (calls.State == CallState.Answered) x += EaseOut(Mathf.Clamp01(t / 0.25f)) * (Screen.width - x + 60f * s);
+            var slot = Gameplay.HudLayout.Call(width, height, readyShowing);
+            float x = slot.x, y = slot.y;
+            float offscreen = Gameplay.HudLayout.CallFromLeft ? -(x + width + 40f * s) : Screen.width - x + 40f * s;
+            if (calls.State == CallState.Holding && t < 0.25f) x += (1f - EaseOut(t / 0.25f)) * offscreen;
+            if (calls.State == CallState.Answered) x += EaseOut(Mathf.Clamp01(t / 0.25f)) * offscreen;
             var r = new Rect(x, y, width, height);
             callRect = r;
             callVisible = calls.State == CallState.Holding || calls.State == CallState.Talking;

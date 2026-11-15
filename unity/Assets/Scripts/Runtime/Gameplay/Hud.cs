@@ -6,12 +6,14 @@ namespace Dogpatch.Gameplay
 {
     // Slipstream HUD (handoffs/style/STYLE-GUIDE.md): the world fills the screen, the middle is
     // left to the game, and only a small pause button sits in the top-right corner. Also draws the
-    // faint drag trace under the thumb, which fades as soon as the finger lifts. Everything is flat
+    // fixed stick in the bottom-right corner: a faint ring with its dot at rest, brighter with a
+    // trace from the centre while a thumb holds it. Everything is flat
     // GL geometry in screen space; the only typeface is Exo 2 Black Italic. Speed lines are drawn
     // by Look.SpeedLines.
     public sealed class Hud : MonoBehaviour
     {
         const float TraceFade = 0.3f;
+        const float Rest = 0.45f;
 
         public GameController Game;
         public DragInput Input;
@@ -61,13 +63,7 @@ namespace Dogpatch.Gameplay
         float Scale => Mathf.Min(Screen.width, Screen.height) / 720f;
 
         // Pause button rect in screen pixels with the origin bottom-left, inside the safe area.
-        Rect PauseRect()
-        {
-            float s = Scale;
-            var safe = Screen.safeArea;
-            float w = 74f * s, h = 50f * s, m = 22f * s;
-            return new Rect(safe.xMax - m - w, safe.yMax - m - h, w, h);
-        }
+        static Rect PauseRect() => HudLayout.PauseScreen;
 
         void Update()
         {
@@ -81,7 +77,9 @@ namespace Dogpatch.Gameplay
             }
             else
             {
-                traceAlpha = Mathf.MoveTowards(traceAlpha, 0f, Time.unscaledDeltaTime / TraceFade);
+                traceAnchor = HudLayout.StickScreen;
+                traceAlpha = Mathf.MoveTowards(traceAlpha, Rest, Time.unscaledDeltaTime / TraceFade);
+                traceTip = Vector2.Lerp(traceTip, traceAnchor, 1f - Mathf.Exp(-Time.unscaledDeltaTime * 18f));
             }
 
         }
@@ -139,7 +137,7 @@ namespace Dogpatch.Gameplay
             GL.LoadPixelMatrix();
             GL.Begin(GL.TRIANGLES);
             DrawCarMarker(s);
-            if (traceAlpha > 0.01f) DrawTrace(s);
+            if (!Paused && Game != null && Game.IsReady) DrawStick(s);
             DrawPause(s);
             GL.End();
             GL.PopMatrix();
@@ -173,13 +171,15 @@ namespace Dogpatch.Gameplay
             Chevron(0f, Sunshine);
         }
 
-        void DrawTrace(float s)
+        void DrawStick(float s)
         {
-            float reach = Input != null ? Input.Reach : 200f * s;
-            var a = traceAnchor;
+            float reach = HudLayout.StickRadius;
+            var a = HudLayout.StickScreen;
             var tip = a + Vector2.ClampMagnitude(traceTip - a, reach);
-            float ring = 46f * s;
+            float ring = reach;
             var faint = new Color(1f, 1f, 1f, 0.5f * traceAlpha);
+            Disc(a, ring, new Color(Ink.r, Ink.g, Ink.b, 0.16f), 48);
+            Ring(a, ring + 1.4f * s, 1.4f * s, new Color(Ink.r, Ink.g, Ink.b, 0.5f * traceAlpha));
             Ring(a, ring, 2.6f * s, faint);
             Disc(a, 4f * s, faint);
             var d = tip - a;
@@ -194,7 +194,8 @@ namespace Dogpatch.Gameplay
                 var head = tip - dir * 22f * s;
                 Tri(head + dir * 9f * s, head - dir * 3f * s + n * 7f * s, head - dir * 3f * s - n * 7f * s, faint);
             }
-            Disc(tip, 15f * s, new Color(1f, 1f, 1f, 0.85f * traceAlpha));
+            Disc(tip, reach * 0.36f + 1.4f * s, new Color(Ink.r, Ink.g, Ink.b, 0.6f * traceAlpha), 32);
+            Disc(tip, reach * 0.36f, new Color(1f, 1f, 1f, 0.85f * traceAlpha), 32);
         }
 
         // Pause at rest: white forward-leaning plate, ink outline, ink bars. Pressed: inverted to
@@ -225,7 +226,7 @@ namespace Dogpatch.Gameplay
                 title = new GUIStyle { font = font, alignment = TextAnchor.MiddleLeft };
             }
             title.fontSize = Mathf.RoundToInt(44f * s);
-            var safe = Screen.safeArea;
+            var safe = HudLayout.Safe;
             float left = safe.xMin + 24f * s, top = Screen.height - safe.yMax + 22f * s;
             Outlined(new Rect(left, top, 400f * s, 56f * s), "PAUSED", title, White, s);
         }
@@ -250,7 +251,7 @@ namespace Dogpatch.Gameplay
         {
             if (chip == null) chip = new GUIStyle { font = font, alignment = TextAnchor.MiddleCenter };
             chip.fontSize = Mathf.RoundToInt(18f * s);
-            var safe = Screen.safeArea;
+            var safe = HudLayout.Safe;
             float left = safe.xMin + 24f * s, top = Screen.height - safe.yMax + 92f * s;
             float w = 104f * s, h = 40f * s, gap = 12f * s;
             for (int row = 0; row < EnvironmentRows.Length; row++)

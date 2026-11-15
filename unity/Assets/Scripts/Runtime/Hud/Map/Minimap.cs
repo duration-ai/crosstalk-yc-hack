@@ -149,11 +149,10 @@ namespace Dogpatch.Map
             var cam = Game.View;
             if (focus == null || cam == null) return;
 
-            s = Mathf.Min(Screen.height / 402f, Screen.width / 560f);
-            var safe = Screen.safeArea;
-            radius = 50f * s;
+            s = Gameplay.HudLayout.U;
+            radius = Gameplay.HudLayout.MinimapRadius;
             clip = radius - 0.5f * s;
-            center = new Vector2(safe.xMin + 22f * s + radius, safe.yMin + 18f * s + radius);
+            center = Gameplay.HudLayout.MinimapScreen;
             me = new Vector2(focus.position.x, focus.position.z);
             float yaw = cam.transform.eulerAngles.y * Mathf.Deg2Rad;
             forward = new Vector2(Mathf.Sin(yaw), Mathf.Cos(yaw));
@@ -394,7 +393,7 @@ namespace Dogpatch.Map
             style.fontSize = Mathf.RoundToInt(20f * s);
             var numSize = style.CalcSize(new GUIContent(num));
             float x = center.x + radius * 0.18f;
-            float baseline = Screen.height - (center.y + radius + 7f * s);
+            float baseline = HudLayout.MinimapReadoutBelow ? Screen.height - (center.y - radius - 9f * s) + numSize.y : Screen.height - (center.y + radius + 7f * s);
             Outlined(new Rect(x, baseline - numSize.y, numSize.x, numSize.y), num, 1.6f * s);
             style.fontSize = Mathf.RoundToInt(11f * s);
             var mSize = style.CalcSize(new GUIContent("M"));
