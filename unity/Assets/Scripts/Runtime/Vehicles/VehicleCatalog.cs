@@ -16,6 +16,7 @@ namespace Dogpatch.Vehicles
         public const string FlyingCar = "flying-car";
         public const string CableCar = "cable-car";
         public const string Lowrider = "lowrider";
+        public const string ArtCar = "art-car";
         public const string MuniBus = "muni-bus";
         public const string ShoppingCart = "shopping-cart";
         public const string BayWheels = "bay-wheels-ebike";
@@ -29,7 +30,7 @@ namespace Dogpatch.Vehicles
 
         public static readonly string[] All =
         {
-            WaymoSuv, WaymoVan, Zoox, Cybertruck, RaceCar, SportsCar, FlyingCar, CableCar, Lowrider, MuniBus, ShoppingCart, BayWheels, Scooter,
+            WaymoSuv, WaymoVan, Zoox, Cybertruck, RaceCar, SportsCar, FlyingCar, CableCar, Lowrider, ArtCar, MuniBus, ShoppingCart, BayWheels, Scooter,
             DoorDashBike, UberEatsBike, Hatchback, Sedan, YellowCab, TThird,
         };
     }
@@ -131,6 +132,7 @@ namespace Dogpatch.Vehicles
             var hover = H(25f, 10f, 18f, 85f, 1.05f, 900f, 40f, 0.15f);
             hover.HoverHeight = 3.75f;
             Add(new VehicleSpec { Id = VehicleTypes.Lowrider, Title = "Lowrider", Source = ModelSource.Procedural, Handling = H(23f, 9f, 14f, 72f, 0.95f, 1750f, 75f, 0.5f), CruiseSpeed = 10f, Ability = typeof(Hydraulics) });
+            Add(new VehicleSpec { Id = VehicleTypes.ArtCar, Title = "Art car", Source = ModelSource.Procedural, Handling = H(19f, 6f, 10f, 55f, 0.9f, 3800f, 200f, 0.9f), CruiseSpeed = 7f, Ability = typeof(Flamethrower) });
             Add(new VehicleSpec { Id = VehicleTypes.FlyingCar, Title = "Flying car", Source = ModelSource.Procedural, Handling = hover, CruiseSpeed = 12f });
             var cable = H(11f, 2f, 5f, 28f, 1f, 16000f, 1e6f, 1f, false, 3f);
             cable.Coasting = 0.8f;
