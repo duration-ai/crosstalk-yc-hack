@@ -10,7 +10,7 @@ using Avatar = Dogpatch.Backend.Avatar;
 namespace Dogpatch.Gameplay
 {
     // Selfie-to-avatar, never in the way: the player starts as the stock commuter. While there is
-    // no avatar yet, a small card in the top-left corner offers one for a few seconds (camera or
+    // no avatar yet, a small card in the bottom-left corner offers one for a few seconds (camera or
     // skip; skip is remembered). The pause menu carries an AVATAR chip that opens the camera any
     // time. The camera screen shows the live feed with a head-to-feet guide, a shutter, a skip
     // and a flip; the photo goes to IGameBackend.AnalyzeAvatarPhotoAsync under the game's own
@@ -40,6 +40,7 @@ namespace Dogpatch.Gameplay
         GlbAsset clipSource;
         Material material;
         DragInput drag;
+        Slipstream.SlipstreamHud raceHud;
         Func<Vector2, bool> ignore;
         Stage stage = Stage.Closed;
         string failure = "";
@@ -144,10 +145,14 @@ namespace Dogpatch.Gameplay
             return true;
         }
 
+        // The race HUD (lobby roster, Ready) draws above this screen and takes taps under its
+        // buttons, so it sits out while the camera screen is up.
         void Open()
         {
             stage = Stage.Viewfinder;
             if (drag != null) drag.enabled = false;
+            if (raceHud == null) raceHud = FindAnyObjectByType<Slipstream.SlipstreamHud>();
+            if (raceHud != null) raceHud.enabled = false;
             _ = StartFeedAsync();
         }
 
@@ -161,6 +166,7 @@ namespace Dogpatch.Gameplay
             stage = Stage.Closed;
             StopFeed();
             if (drag != null) drag.enabled = true;
+            if (raceHud != null) raceHud.enabled = true;
         }
 
         void Fail(string text)
@@ -327,6 +333,8 @@ namespace Dogpatch.Gameplay
 
         float Scale => Mathf.Min(Screen.width, Screen.height) / 720f;
 
+        bool PauseChipVisible => (stage == Stage.Closed || stage == Stage.Prompt) && hud != null && hud.Paused;
+
         bool PromptVisible => stage == Stage.Prompt && (hud == null || !hud.Paused) && (game == null || !game.Driving);
 
         // The label panel in the top-left corner, sized to its text; origin bottom-left.
@@ -337,6 +345,15 @@ namespace Dogpatch.Gameplay
             float h = 58f * s;
             float w = TextWidth(text, 34f * s) + h * Lean + 44f * s;
             return new Rect(safe.xMin + 22f * s, safe.yMax - 22f * s - h, w, h);
+        }
+
+        // The corner card's label, bottom left above its two buttons (the race roster owns the top left).
+        Rect PromptRect()
+        {
+            float s = Scale;
+            var tag = TagRect("YOUR AVATAR");
+            tag.y = Screen.safeArea.yMin + 40f * s + 60f * s + 16f * s;
+            return tag;
         }
 
         // Pause menu chip, a row under the HUD's time and weather chips.
@@ -357,13 +374,12 @@ namespace Dogpatch.Gameplay
             switch (stage)
             {
                 case Stage.Closed:
-                    if (hud != null && hud.Paused) list.Add(("open", PauseChipRect()));
-                    break;
                 case Stage.Prompt:
+                    if (PauseChipVisible) list.Add(("open", PauseChipRect()));
                     if (!PromptVisible) break;
-                    var tag = TagRect("YOUR AVATAR");
+                    var tag = PromptRect();
                     list.Add(("open", new Rect(tag.x + 10f * s, tag.y - 16f * s - 60f * s, 100f * s, 60f * s)));
-                    list.Add(("skip", new Rect(tag.x + 10f * s + 100f * s + 22f * s, tag.y - 16f * s - 50f * s, 74f * s, 50f * s)));
+                    list.Add(("skip", new Rect(tag.x + 10f * s + 100f * s + 22f * s, tag.y - 16f * s - 55f * s, 74f * s, 50f * s)));
                     break;
                 case Stage.Viewfinder:
                 case Stage.Refused:
@@ -421,12 +437,21 @@ namespace Dogpatch.Gameplay
             if (!up || pressed == null) return;
             string id = pressed;
             pressed = null;
-            if (Hit(buttons, p) != id) return;
+            if (Hit(buttons, p) == id) Press(id);
+        }
+
+        // What a tap on a button does; AvatarUiCapture drives the screens through it too.
+        internal void Press(string id)
+        {
             if (id == "open") Open();
             else if (id == "shutter") Shoot();
             else if (id == "flip") Flip();
             else if (id == "skip") Close(true);
         }
+
+        internal string StageName => stage.ToString();
+
+        internal bool Showing(string id) => Buttons().Any(b => b.id == id);
 
         void OnGUI()
         {
@@ -441,9 +466,8 @@ namespace Dogpatch.Gameplay
             if (type != EventType.Repaint) return;
             float s = Scale;
 
-            if (stage == Stage.Closed)
+            if (PauseChipVisible)
             {
-                if (hud == null || !hud.Paused) return;
                 var chip = PauseChipRect();
                 bool down = pressed == "open";
                 BeginShapes();
@@ -453,11 +477,12 @@ namespace Dogpatch.Gameplay
                 Label(new Rect(chip.x + 52f * s, chip.y, chip.width, chip.height), "AVATAR", down ? Ink : White, 18f * s);
                 return;
             }
+            if (stage == Stage.Closed) return;
 
             if (stage == Stage.Prompt)
             {
                 if (!PromptVisible) return;
-                var tag = TagRect("YOUR AVATAR");
+                var tag = PromptRect();
                 BeginShapes();
                 Para(tag, Ink);
                 foreach (var (id, rect) in Buttons())
