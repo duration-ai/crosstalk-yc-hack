@@ -38,7 +38,7 @@ namespace Dogpatch.Look
         public static float GetSurfaceGrip(Vector3 worldPosition) => GripMultiplier;
 
         internal static float TargetTime = PresetHours(TimePreset.Day);
-        internal static float TimeBlend;
+        internal static float TimeRate;
         internal static float TargetFog = DefaultFog;
         internal static float FogBlend;
         internal static float TargetRain;
@@ -62,8 +62,9 @@ namespace Dogpatch.Look
         public static void SetTime(float hours, float blendSeconds = 2f)
         {
             TargetTime = Mathf.Repeat(hours, 24f);
-            TimeBlend = Mathf.Max(blendSeconds, 0f);
-            if (TimeBlend == 0f) TimeOfDay = TargetTime;
+            float gap = Mathf.Abs(Mathf.DeltaAngle(TimeOfDay * 15f, TargetTime * 15f) / 15f);
+            TimeRate = blendSeconds > 0f ? gap / blendSeconds : float.PositiveInfinity;
+            if (blendSeconds <= 0f) TimeOfDay = TargetTime;
             Changed?.Invoke();
         }
 
@@ -106,8 +107,8 @@ namespace Dogpatch.Look
                 string key = kv[0].Trim().ToLowerInvariant(), value = kv[1].Trim().ToLowerInvariant();
                 if (key == "time")
                 {
-                    if (Enum.TryParse<TimePreset>(value, true, out var preset)) SetTime(preset, 0f);
-                    else if (float.TryParse(value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var hours)) SetTime(hours, 0f);
+                    if (float.TryParse(value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var hours)) SetTime(hours, 0f);
+                    else if (Enum.TryParse<TimePreset>(value, true, out var preset)) SetTime(preset, 0f);
                 }
                 else if (key == "fog" && float.TryParse(value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var fog)) SetFog(fog, 0f);
                 else if (key == "weather") weather = value;

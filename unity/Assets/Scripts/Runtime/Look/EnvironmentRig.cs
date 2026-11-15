@@ -87,7 +87,7 @@ namespace Dogpatch.Look
         {
             float tod = WorldEnvironment.TimeOfDay;
             float gap = Mathf.DeltaAngle(tod * 15f, WorldEnvironment.TargetTime * 15f) / 15f;
-            float hourStep = WorldEnvironment.TimeBlend <= 0f ? Mathf.Abs(gap) : Mathf.Max(Mathf.Abs(gap), 1f) * dt / WorldEnvironment.TimeBlend;
+            float hourStep = WorldEnvironment.TimeRate * dt;
             WorldEnvironment.TimeOfDay = tod = Mathf.Repeat(tod + Mathf.Clamp(gap, -hourStep, hourStep), 24f);
             WorldEnvironment.FogDensity = Toward(WorldEnvironment.FogDensity, WorldEnvironment.TargetFog, WorldEnvironment.FogBlend, dt);
             WorldEnvironment.Rain = Toward(WorldEnvironment.Rain, WorldEnvironment.TargetRain, WorldEnvironment.WeatherBlend, dt);
