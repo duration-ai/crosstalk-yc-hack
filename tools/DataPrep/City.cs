@@ -16,6 +16,7 @@ static class CityPrep
     {
         ["missionbay"] = (37.7645, 37.7790, -122.4010, -122.3800),
         ["southbeach"] = (37.7790, 37.7880, -122.4010, -122.3800),
+        ["soma"] = (37.7880, 37.7990, -122.4130, -122.3880),
     };
 
     static readonly Dictionary<string, float> Widths = new()
@@ -70,16 +71,30 @@ static class CityPrep
         way[waterway=riverbank]({bbox});
         way[leisure~"^(park|garden|pitch|playground)$"]({bbox});
         way[landuse~"^(grass|recreation_ground)$"]({bbox});
+        way[building][height]({bbox});
         );
         out geom;
         """;
         Console.WriteLine($"Fetching OSM for {name}...");
         var roads = new List<CityShape>(); var water = new List<CityShape>(); var parks = new List<CityShape>();
+        int raised = 0;
         foreach (var el in (await fetch.Overpassql(query))["elements"].AsArray())
         {
             var tags = el["tags"];
             var hw = tags?["highway"]?.GetValue<string>();
             var pts = Ring(el["geometry"]);
+            if (tags?["building"] != null)
+            {
+                // DataSF heights are a median over the roof, so spires and crowns (Salesforce Tower) come out
+                // short; an OSM height tag above it wins for the footprint whose centroid it contains.
+                if (!float.TryParse(tags["height"].GetValue<string>().Split(' ')[0], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var osmHeight)) continue;
+                foreach (var b in buildings)
+                {
+                    var ring = Enumerable.Range(0, b.Pts.Length / 2).Select(i => ((double)b.Pts[2 * i], (double)b.Pts[2 * i + 1])).ToList();
+                    if (osmHeight > b.H + 3 && Geo.PointInPoly(Geo.Centroid(ring), pts)) { b.H = osmHeight; raised++; }
+                }
+                continue;
+            }
             if (hw != null)
             {
                 if (tags["area"]?.GetValue<string>() == "yes" || tags["tunnel"] != null) continue;
@@ -107,7 +122,7 @@ static class CityPrep
         };
         var opts = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase, DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault };
         File.WriteAllText(outPath, JsonSerializer.Serialize(data, opts));
-        Console.WriteLine($"city {name}: {buildings.Count} buildings (tallest {buildings.Max(b => b.H)} m), {roads.Count} roads, {water.Count} water, {parks.Count} parks -> {outPath}");
+        Console.WriteLine($"city {name}: {raised} raised to their OSM height, {buildings.Count} buildings (tallest {buildings.Max(b => b.H)} m), {roads.Count} roads, {water.Count} water, {parks.Count} parks -> {outPath}");
     }
 }
 

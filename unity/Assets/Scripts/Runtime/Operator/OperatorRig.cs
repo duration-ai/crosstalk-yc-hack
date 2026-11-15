@@ -222,6 +222,7 @@ namespace Dogpatch.Operator
             PlayerId = race.MyId;
             EntityTagger.MyPlayerId = PlayerId;
             Effects.ResetAll();
+            if (racing) DemolishEffect.RebuildAll();
             UseRoom(wanted, racing ? race.Room?.code ?? "" : "world");
             Debug.Log($"[Operator] following the {(racing ? "race" : "world")} room {RoomCode} ({RoomId}) as {PlayerId}");
         }

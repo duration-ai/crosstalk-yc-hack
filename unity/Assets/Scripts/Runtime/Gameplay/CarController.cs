@@ -20,6 +20,7 @@ namespace Dogpatch.Gameplay
 
         // Scales every car's top speed; the voice Operator's faster/slower/nitro effects set it.
         public static float SpeedScale = 1f;
+        public static float AccelScale = 1f;
         public float SpeedMul = 1f;
         public float Speed => forwardSpeed;
         public bool Reversing => reversing;
@@ -258,7 +259,7 @@ namespace Dogpatch.Gameplay
             bool opposing = Mathf.Sign(target) != Mathf.Sign(forwardSpeed) && Mathf.Abs(forwardSpeed) > 0.5f;
             if (floating) target *= 0.8f;
             float grip = floating ? 0.55f : Mathf.Clamp01(handling.Grip * RoadConditions.GripMultiplier);
-            float rate = handbrake ? handling.Braking * 0.3f : brake ? handling.Braking : target == 0f ? handling.Coasting : opposing ? handling.Braking : handling.Acceleration;
+            float rate = handbrake ? handling.Braking * 0.3f : brake ? handling.Braking : target == 0f ? handling.Coasting : opposing ? handling.Braking : handling.Acceleration * AccelScale;
             rate *= Mathf.Lerp(0.5f, 1f, grip);
             brakeHeld = handbrake || brake || opposing;
             forwardSpeed = Mathf.MoveTowards(forwardSpeed, handbrake ? 0f : target, rate * dt);

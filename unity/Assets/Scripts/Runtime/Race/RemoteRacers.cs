@@ -202,7 +202,7 @@ namespace Dogpatch.Race
         {
             var game = Race.Game;
             var p = at != null ? new Vector3(at.x, at.y, at.z) : Race.Course.RingCenter;
-            var carAsset = game.Models.Get(Race.MyCar.ModelId);
+            var carAsset = game.Models.Entry(Race.MyCar.ModelId) != null ? game.Models.Get(Race.MyCar.ModelId) : game.Models.Get(game.Models.Role("car")[0].id);
             var car = CarController.Create("remote-" + playerId, carAsset, game.SharedMaterial, p, 0f);
             car.name = "Car " + displayName;
             car.Enterable = false;

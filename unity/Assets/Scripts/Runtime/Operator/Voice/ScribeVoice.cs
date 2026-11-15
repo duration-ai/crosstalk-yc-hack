@@ -171,6 +171,10 @@ namespace Dogpatch.Operator.Voice
             if (pending.Count > ScribeSession.SampleRate * 20) pending.RemoveRange(0, pending.Count - ScribeSession.SampleRate * 20);
         }
 
-        void OnDestroy() => Close();
+        void OnDestroy()
+        {
+            Close();
+            mic.Release();
+        }
     }
 }

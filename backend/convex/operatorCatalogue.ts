@@ -38,7 +38,7 @@ export const THEMES = ["beach_party", "tech_bros", "elvis", "delivery_riders"] a
 
 /** Rides change_vehicle can put the caller in; the Unity client maps each to a roster type. */
 export const VEHICLES = [
-  "sports_car", "race_car", "flying_car", "cable_car", "lowrider", "hatchback", "sedan", "taxi", "cybertruck", "waymo", "van", "zoox", "bus", "bike", "scooter",
+  "sports_car", "race_car", "flying_car", "cable_car", "monster_truck", "lowrider", "art_car", "hatchback", "sedan", "taxi", "cybertruck", "waymo", "van", "zoox", "bus", "bike", "scooter",
   "delivery_bike", "shopping_cart", "duck_boat", "fire_truck",
 ] as const;
 

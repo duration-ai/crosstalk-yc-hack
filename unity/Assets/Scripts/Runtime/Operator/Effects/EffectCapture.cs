@@ -48,7 +48,7 @@ namespace Dogpatch.Operator
             "ped_theme" => ("world", null, "elvis"),
             "extinguish" or "see_through" or "rock_solid" or "ghost" => ("object", "building", null),
             "bouncy" or "soft" or "icy" => ("class", "car", null),
-            "set_fire" => ("object", "car", null),
+            "set_fire" or "explode" => ("object", "car", null),
             _ => ("world", null, null),
         };
 
@@ -118,6 +118,18 @@ namespace Dogpatch.Operator
                 yield return Hold(cam, eye, look, 1f);
                 yield return Shoot(rt, id + "-0-before");
                 effects.OnActiveList(new[] { row });
+                if (id == "explode")
+                {
+                    yield return Hold(cam, eye, look, 0.05f);
+                    yield return Shoot(rt, id + "-1-flash");
+                    yield return Hold(cam, eye, look, 0.8f);
+                    yield return Shoot(rt, id + "-2-fireball");
+                    yield return Hold(cam, eye, look, 2.5f);
+                    yield return Shoot(rt, id + "-3-smoke");
+                    effects.OnActiveList(new ActiveEffect[0]);
+                    yield return Hold(cam, eye, look, 1f);
+                    continue;
+                }
                 yield return Hold(cam, eye, look, 1f);
                 yield return Shoot(rt, id + "-1-during");
                 yield return Hold(cam, eye, look, 3f);

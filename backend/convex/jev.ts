@@ -9,8 +9,9 @@ import {
   SKY_EFFECTS,
   THEMES,
   VEHICLES,
+  WORLD_EFFECTS,
 } from "./operatorCatalogue";
-import type { Answers, ChoiceAnswer, View } from "./operatorRules";
+import { STAND_INS, type Answers, type ChoiceAnswer, type View } from "./operatorRules";
 
 export const JEV_URL = "https://ai-gateway.vercel.sh/v1/decisions";
 export const JEV_MODEL = "typesafe-ai/jev";
@@ -62,6 +63,8 @@ const VEHICLE_DESCRIPTIONS: Record<string, string> = {
   flying_car: "a flying car or hover car",
   cable_car: "a San Francisco cable car or trolley",
   lowrider: "a lowrider (candy-paint classic with hydraulics that hops)",
+  monster_truck: "a monster truck with giant wheels",
+  art_car: "a Burning Man art car or mutant vehicle (giant fish with LEDs and a flamethrower)",
   hatchback: "a hatchback or small everyday car",
   sedan: "a sedan or family car",
   taxi: "a taxi or yellow cab",
@@ -206,6 +209,25 @@ export function buildQuestions(view: View): Question[] {
         { value: "not_a_request", description: "chit-chat, a question or noise; a bare effect name like rush hour is a request" },
       ],
     },
+    {
+      type: "choice",
+      name: "nearest",
+      instructions:
+        "If the game could not do this request exactly, which built change is the closest, most fun stand-in? Match the spirit: a tank or a monster truck is change_vehicle, summoning Godzilla or a monster is earthquake or the Waymo attack, turning into a dragon or a bird is change_vehicle (a flying car), raining frogs or cats is rain. Always pick one.",
+      choices: STAND_INS.map((value) => ({ value, description: (PLAYER_EFFECTS[value] ?? WORLD_EFFECTS[value]).description })),
+    },
+    {
+      type: "choice",
+      name: "nearest_vehicle",
+      instructions: "Which of these rides is closest to the vehicle or creature the player wants to be or ride (a tank: the Cybertruck; a dragon, plane or rocket: the flying car)? Always pick one.",
+      choices: VEHICLES.map((value) => ({ value, description: VEHICLE_DESCRIPTIONS[value] })),
+    },
+    {
+      type: "predicate",
+      name: "stretch",
+      instructions:
+        "Does the player ask for something the game's closest change only roughly matches, with an extra or different thing the game lacks (frogs falling as rain, a tank rather than a truck, a dragon rather than a flying car)? A plain request like make it rain or give me a bus is not a stretch.",
+    },
   ];
 }
 
@@ -242,7 +264,7 @@ type RawAnswer =
   | { type: "predicate"; name: string; probability: number }
   | { type: "refusal"; name: string };
 
-const PREDICATES = ["described", "self_ref", "other_player"] as const;
+const PREDICATES = ["described", "self_ref", "other_player", "stretch"] as const;
 
 export function parseAnswers(raw: RawAnswer[]): Answers {
   const byName = new Map(raw.map((answer) => [answer.name, answer]));
@@ -260,7 +282,7 @@ export function parseAnswers(raw: RawAnswer[]): Answers {
   const answers = Object.fromEntries(
     [
       "scope", "player_effect", "world_group", "sky_effect", "physics_effect", "population_effect", "object_effect",
-      "class", "target", "strength", "color", "theme", "vehicle", "reject_reason",
+      "class", "target", "strength", "color", "theme", "vehicle", "reject_reason", "nearest", "nearest_vehicle",
     ].map((name) => [name, choice(name)]),
   ) as Omit<Answers, (typeof PREDICATES)[number]>;
   return { ...answers, ...Object.fromEntries(PREDICATES.map((name) => [name, predicate(name)])) } as Answers;

@@ -64,6 +64,8 @@ const CASES: Case[] = [
   ["give me a flying car", { effect: "change_vehicle", vehicle: "flying_car" }, "players"],
   ["give me a cable car", { effect: "change_vehicle", vehicle: "cable_car" }, "players"],
   ["give me a lowrider", { effect: "change_vehicle", vehicle: "lowrider" }, "players"],
+  ["give me a monster truck", { effect: "change_vehicle", vehicle: "monster_truck" }, "players"],
+  ["give me a Burning Man art car", { effect: "change_vehicle", vehicle: "art_car" }, "players"],
   ["give me a duck boat", { effect: "change_vehicle", vehicle: "duck_boat" }, "players"],
   ["give me a fire truck", { effect: "change_vehicle", vehicle: "fire_truck" }, "players"],
   ["send the Waymos after them", { effect: "waymo_swarm" }, "world"],
