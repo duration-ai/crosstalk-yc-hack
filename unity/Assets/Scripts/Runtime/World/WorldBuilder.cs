@@ -289,9 +289,9 @@ namespace Dogpatch.World
             string street = net.Roads[bestRoad].name;
 
             ctx.PlayerSpawn = new Pose2D { Position = MeshBuilder.At(start + right * (hw + 1.2f), 0.05f), Heading = heading, Street = street };
-            ctx.HeroCar = new Pose2D { Position = MeshBuilder.At(start + right * (hw - 1.4f) + dir * 9f, 0.05f), Heading = heading, Street = street };
+            ctx.HeroCar = new Pose2D { Position = MeshBuilder.At(start + right * (hw - 1.4f) + dir * 7f, 0.05f), Heading = heading, Street = street };
 
-            var taken = new List<Vector2> { start + right * (hw - 1.4f) + dir * 9f };
+            var taken = new List<Vector2> { start + right * (hw - 1.4f) + dir * 7f };
             var order = new List<int>();
             for (int r = 0; r < net.Roads.Length; r++) order.Add(r);
             for (int i = order.Count - 1; i > 0; i--)
