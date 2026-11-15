@@ -46,8 +46,11 @@ namespace Dogpatch.Slipstream
         bool readyVisible;
         bool callVisible;
 
-        // Off while Chris tests with 100 asks; on, races are hands-free only (phone pickups).
-        public static bool HidePhoneInRaces = false;
+        // On: from the lobby lock to the results, calls come only from driving through a spinning phone;
+        // the manual phone button (and the dev text field) return outside races for testing.
+        public static bool HidePhoneInRaces = true;
+
+        public static bool ManualCallsLocked => HidePhoneInRaces && RaceDirector.Instance is RaceDirector race && race.Gridded && !race.ResultsIn;
         int readyFinger = int.MinValue;
         int callFinger = int.MinValue;
         bool paused;
@@ -316,7 +319,7 @@ namespace Dogpatch.Slipstream
             if (racing && Race.CrossedFinish) FinishedBanner();
             if (Race.ResultsIn) Results();
             OperatorAndNews();
-            if (!(HidePhoneInRaces && Race.Gridded)) PhoneButton(lobby || Race.ResultsIn);
+            if (!ManualCallsLocked) PhoneButton(lobby || Race.ResultsIn);
             if (Race.Wrecking) WreckedBanner();
             if (Race.WreckFade > 0f) Panel(new Rect(0f, 0f, Screen.width, Screen.height), new Color(Ink.r, Ink.g, Ink.b, Race.WreckFade), 0f);
         }
