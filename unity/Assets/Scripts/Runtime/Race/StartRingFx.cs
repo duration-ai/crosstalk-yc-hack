@@ -43,6 +43,17 @@ namespace Dogpatch.Race
         const float CountdownMs = 10000f;
         const float FlagsUp = 2.6f;
 
+        // Motion tunables. Idle is calm: only the chevron ring turns slowly and the pillar breathes.
+        // The band, halos, motes, meter and floor stay still until the countdown builds energy (0 to 1)
+        // toward GO. Spins are degrees per second, beats are hertz, amplitudes are fractions.
+        const float IdleChevronSpin = 12f, NearChevronSpin = 6f, CountdownChevronSpin = 500f;
+        const float CountdownBandSpin = 200f;
+        const float IdleBeatHz = 0.4f, CountdownBeatHz = 2.4f;
+        const float IdlePulse = 0.02f, CountdownPulse = 0.08f;
+        const float IdleFloorFlicker = 0.05f, CountdownFloorFlicker = 0.25f;
+        const float CountdownHaloClimb = 1.6f;
+        const float CountdownMotesPerSecond = 40f;
+
         float radius;
         Renderer pillar, haze, core, floor, chevrons, band;
         readonly Renderer[] halos = new Renderer[3];
@@ -268,7 +279,7 @@ namespace Dogpatch.Race
                 lit = -1;
             }
             lastLit = lit;
-            Meter(lit < 0 ? 1 << ((int)(t * 4f) % Segments) : (1 << lit) - 1);
+            Meter(lit < 0 ? 0 : (1 << lit) - 1);
 
             bool started = race != null && race.Started;
             if (started && !wasStarted) Go(race);
@@ -285,8 +296,8 @@ namespace Dogpatch.Race
                 hum.Pitch = 1f + energy * 0.5f;
             }
 
-            beatPhase = Mathf.Repeat(beatPhase + dt * (0.8f + energy * 2.4f) * Mathf.PI * 2f, Mathf.PI * 2f);
-            float pulse = 1f + Mathf.Sin(beatPhase) * (0.05f + energy * 0.06f);
+            beatPhase = Mathf.Repeat(beatPhase + dt * Mathf.Lerp(IdleBeatHz, CountdownBeatHz, energy) * Mathf.PI * 2f, Mathf.PI * 2f);
+            float pulse = 1f + Mathf.Sin(beatPhase) * Mathf.Lerp(IdlePulse, CountdownPulse, energy);
             pillar.transform.localScale = new Vector3(pulse, 1f, pulse);
             float swollen = pulse * (1f + energy * 0.6f);
             core.transform.localScale = new Vector3(swollen, 1f + energy * 0.4f, swollen);
@@ -296,29 +307,30 @@ namespace Dogpatch.Race
             SetAlpha(haze, fade);
             SetAlpha(core, fade);
 
-            climb += dt * (0.25f + near * 0.25f + energy * 1.6f);
+            climb += dt * energy * CountdownHaloClimb;
             for (int i = 0; i < halos.Length; i++)
             {
                 float u = Mathf.Repeat(climb + i / (float)halos.Length, 1f);
                 halos[i].transform.localPosition = Vector3.up * (u * u * 24f + 0.1f);
                 float s = 1f + u * 0.4f;
                 halos[i].transform.localScale = new Vector3(s, 1f, s);
-                SetAlpha(halos[i], (1f - u) * (0.6f + energy * 0.4f));
+                SetAlpha(halos[i], (1f - u) * Mathf.Clamp01(energy * 3f));
             }
 
-            spin += dt * (25f + near * 40f + energy * energy * 500f);
-            bandSpin -= dt * (15f + near * 20f + energy * 200f);
+            spin += dt * (IdleChevronSpin + near * NearChevronSpin + energy * energy * CountdownChevronSpin);
+            bandSpin -= dt * energy * CountdownBandSpin;
             chevrons.transform.localRotation = Quaternion.Euler(0f, spin, 0f);
             band.transform.localRotation = Quaternion.Euler(0f, bandSpin, 0f);
-            float swell = 1f + near * 0.04f + Mathf.Sin(t * Mathf.PI * 1.6f) * 0.015f + punch * punch * 0.25f;
+            float swell = 1f + punch * punch * 0.25f;
             band.transform.localScale = new Vector3(swell, 1f, swell);
-            float beat = Mathf.Min(1f, 0.75f + 0.25f * Mathf.Sin(beatPhase) + punch * 0.5f);
+            float flicker = Mathf.Lerp(IdleFloorFlicker, CountdownFloorFlicker, energy);
+            float beat = Mathf.Min(1f, 1f - flicker + flicker * Mathf.Sin(beatPhase) + punch * 0.5f);
             SetAlpha(floor, beat);
             SetAlpha(chevrons, 0.85f + near * 0.15f);
             SetAlpha(band, beat);
 
             if (distance > MotesWithin) return;
-            moteDebt += dt * (4f + near * 10f + energy * 40f);
+            moteDebt += dt * energy * CountdownMotesPerSecond;
             for (; moteDebt >= 1f; moteDebt -= 1f)
             {
                 float a = Random.value * Mathf.PI * 2f;
