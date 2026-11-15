@@ -8,6 +8,7 @@
     "types": ["vite/client", "node"],
     "skipLibCheck": true,
     "isolatedModules": true,
+    "resolveJsonModule": true,
     "noEmit": true
   },
   "include": ["convex/**/*.test.ts", "vitest.config.ts"]
