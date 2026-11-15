@@ -70,7 +70,7 @@ namespace Dogpatch.Operator
     {
         public static readonly string[] Catalogue =
         {
-            "run_faster", "run_slower", "jump_higher", "slow_fall", "bigger", "smaller", "chunky", "skinny", "flight", "vehicle_faster", "vehicle_slower", "nitro", "grip_up", "grip_down", "tougher", "vehicle_hop", "change_vehicle",
+            "run_faster", "run_slower", "jump_higher", "slow_fall", "bigger", "smaller", "chunky", "skinny", "flight", "vehicle_faster", "vehicle_slower", "nitro", "grip_up", "grip_down", "tougher", "vehicle_hop", "change_vehicle", "waymo_swarm",
             "night", "day", "sunset", "fast_day_cycle", "rain", "snow", "fog", "storm", "sandstorm", "heatwave", "blackout", "clear_weather", "lights_on",
             "gravity_lower", "gravity_higher", "slippery_ground", "sticky_ground", "thick_air", "slow_motion", "fast_forward", "flood", "floor_is_lava", "earthquake", "cars_fly", "cars_on_water", "floaty_crashes", "gravity_normal", "normal_speed", "drain",
             "more_traffic", "less_traffic", "aggressive_traffic", "green_lights", "more_pedestrians", "fewer_pedestrians", "angry_npcs", "calm_npcs", "panic", "ped_theme", "big_heads",
@@ -125,6 +125,7 @@ namespace Dogpatch.Operator
             registry.Register("stop", () => new StopEffect());
             registry.Register("big_heads", () => new BigHeadsEffect());
             registry.Register("change_vehicle", () => new ChangeVehicleEffect());
+            registry.Register("waymo_swarm", () => new WaymoSwarmEffect());
             MoreEffects.Register(registry);
             WorldEffectsA.Register(registry);
             WorldEffectsB.Register(registry);
