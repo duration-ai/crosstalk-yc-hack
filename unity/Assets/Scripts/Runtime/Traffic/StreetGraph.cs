@@ -80,6 +80,7 @@ namespace Dogpatch.Traffic
     public sealed class StreetGraph
     {
         public static bool AllGreen;
+        public static int SignalsDead;
 
         public sealed class Node
         {
@@ -98,7 +99,7 @@ namespace Dogpatch.Traffic
             // 0 green, 1 yellow, 2 red for traffic arriving with heading dir.
             public int SignalState(Vector2 dir, float time)
             {
-                if (AllGreen) return 0;
+                if (AllGreen || SignalsDead > 0) return 0;
                 const float green = 14f, yellow = 3f, clear = 1.5f, half = green + yellow + clear;
                 float t = Mathf.Repeat(time + SignalOffset, half * 2f);
                 bool axisA = Mathf.Abs(Vector2.Dot(dir, SignalAxis)) > 0.7071f;
