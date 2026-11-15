@@ -310,6 +310,11 @@ namespace Dogpatch.Operator
         async void OnConfirm(ActiveEffect row, bool yes)
         {
             if (!yes || Convex == null) return;
+            if (!RaceOnline && !race.Calls.HasAsks)
+            {
+                Hud.Toast(CallController.NoAsksLine);
+                return;
+            }
             try
             {
                 Effects.Optimistic(await Convex.ConfirmAsync(PlayerId, row.id));
