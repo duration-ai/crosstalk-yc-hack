@@ -91,6 +91,12 @@ namespace Dogpatch.Map
         Vector2 fullCenter;
         float fullZoom;
         int tapFinger = -1;
+        bool travelChosen;
+        Rect travelRect;
+        float travelStart = -1f;
+        bool travelDone;
+        const float FadeOut = 0.22f;
+        const float FadeIn = 0.45f;
         Vector2 tapStart;
         float tapTime;
         bool tapValid;
@@ -155,6 +161,16 @@ namespace Dogpatch.Map
             }
 
             if (Game == null || !Game.IsReady) return;
+            if (travelStart >= 0f)
+            {
+                float t = Time.unscaledTime - travelStart;
+                if (!travelDone && t >= FadeOut)
+                {
+                    travelDone = true;
+                    Travel();
+                }
+                if (t >= FadeOut + FadeIn) travelStart = -1f;
+            }
             Layout();
             HookInput();
             if (FullOpen) FullGestures();
@@ -256,6 +272,7 @@ namespace Dogpatch.Map
             tapFinger = -1;
             tapValid = false;
             gestureKey = -1;
+            travelChosen = false;
             if (!open) return;
             Game.Drag?.Cancel();
             var focus = Game.Focus;
@@ -318,7 +335,7 @@ namespace Dogpatch.Map
                     {
                         if (t.fingerId == tapFinger && t.phase == TouchPhase.Ended && tapValid && IsTap(t.position))
                         {
-                            SetFull(false);
+                            FullTap(t.position);
                             return;
                         }
                         continue;
@@ -362,7 +379,7 @@ namespace Dogpatch.Map
                 tapFinger = -1;
                 if (IsTap(mouse))
                 {
-                    SetFull(false);
+                    FullTap(mouse);
                     return;
                 }
             }
@@ -390,9 +407,98 @@ namespace Dogpatch.Map
             return (p - center).sqrMagnitude < (clip - margin) * (clip - margin);
         }
 
+        // Fast travel to a mission: allowed in the open world only, never in a race, on the grid
+        // or in a mission lobby (offline, the local lobby before its countdown is open world).
+        static bool CanTravel(RaceDirector race) =>
+            race != null && race.Setup && !race.Gridded && !race.Started && (race.Room == null || (!race.Online && race.Room.status == RoomStatus.Lobby));
+
+        Vector2 FullPoint(Vector3 world) => ScreenMid + (new Vector2(world.x, world.z) - fullCenter) * fullZoom;
+
+        // A tap on the full map: on the TRAVEL chip it travels; on a mission marker (the race ring)
+        // it offers TRAVEL; elsewhere it drops the offer, or closes the map when there is none.
+        void FullTap(Vector2 p)
+        {
+            var race = RaceDirector.Instance;
+            bool can = CanTravel(race);
+            if (can && travelChosen && travelRect.Contains(p))
+            {
+                StartTravel();
+                return;
+            }
+            if (can && (FullPoint(race.Course.RingCenter) - p).magnitude < race.Course.RingRadius * fullZoom + 26f * s)
+            {
+                travelChosen = true;
+                return;
+            }
+            if (travelChosen)
+            {
+                travelChosen = false;
+                return;
+            }
+            SetFull(false);
+        }
+
+        // Closes the map, fades to ink, jumps, and fades back; presence carries the jump to the
+        // other players on its next tick (every 125 ms).
+        public void StartTravel()
+        {
+            SetFull(false);
+            travelStart = Time.unscaledTime;
+            travelDone = false;
+        }
+
+        // The mission's spawn spot from #83: 32 to 40 m from the ring, facing it, staggered by
+        // player id. In a car the car goes there with you.
+        void Travel()
+        {
+            var race = RaceDirector.Instance;
+            if (!CanTravel(race)) return;
+            var spot = race.SpawnSpot(out float facing);
+            var car = Game.CurrentCar;
+            if (car != null)
+            {
+                car.Place(spot + Vector3.up * 0.3f, facing);
+                Game.Follow.Snap(car.transform, true);
+            }
+            else
+            {
+                Game.Player.Teleport(spot, facing);
+                Game.Follow.Snap(Game.Player.transform, false);
+            }
+            Debug.Log($"[Minimap] fast travel to the race ring {(car != null ? "by car" : "on foot")}, {Vector3.Distance(spot, race.Course.RingCenter):F0} m out");
+        }
+
         void OnGUI()
         {
-            GUI.depth = FullOpen ? -20 : 0;
+            GUI.depth = FullOpen || travelStart >= 0f ? -20 : 0;
+            if (Event.current.type != EventType.Repaint) return;
+            DrawAll();
+            DrawFade();
+        }
+
+        // Ink fade with a few sunshine whoosh streaks sweeping across.
+        void DrawFade()
+        {
+            if (travelStart < 0f || marks == null) return;
+            float t = Time.unscaledTime - travelStart;
+            float a = Mathf.Clamp01(t < FadeOut ? t / FadeOut : 1f - (t - FadeOut) / FadeIn);
+            float w = Screen.width, h = Screen.height, u = Mathf.Min(w, h) / 360f;
+            Gl(() =>
+            {
+                Quad(Vector2.zero, new Vector2(0f, h), new Vector2(w, h), new Vector2(w, 0f), new Color(Ink.r, Ink.g, Ink.b, a));
+                float sweep = t / (FadeOut + FadeIn);
+                for (int i = 0; i < 5; i++)
+                {
+                    float y = h * (0.22f + 0.14f * i);
+                    float len = (60f + 25f * (i % 3)) * u;
+                    float x = Mathf.Lerp(-len, w + len, Mathf.Repeat(sweep * 1.4f + i * 0.17f, 1f));
+                    Parallelogram(new Vector2(x, y), len, 2.2f * u, 6f * u, new Color(Sunshine.r, Sunshine.g, Sunshine.b, a * 0.9f));
+                }
+            });
+        }
+
+        void DrawAll()
+        {
             if (Event.current.type != EventType.Repaint || geometry == null || Game == null || !Game.IsReady || (!Shown && !FullOpen)) return;
             var focus = Game.Focus;
             var cam = Game.View;
@@ -649,6 +755,8 @@ namespace Dogpatch.Map
             {
                 var ring = ToMap(race.Course.RingCenter);
                 if (Inside(ring, 4f * s)) Chip(ring + new Vector2(0f, Mathf.Max(race.Course.RingRadius * pxPerMeter, 4.5f * s) + 11f * s), "RACE START", 9.5f, Sunshine, Ink);
+                if (travelChosen && CanTravel(race) && Inside(ring, 4f * s))
+                    travelRect = Chip(ring - new Vector2(0f, Mathf.Max(race.Course.RingRadius * pxPerMeter, 4.5f * s) + 18f * s), "TRAVEL", 15f, Sunshine, Ink);
             }
             if (raceUp && race.Last?.racers != null)
                 foreach (var r in race.Last.racers)
@@ -685,7 +793,8 @@ namespace Dogpatch.Map
         }
 
         // A forward-leaning panel with text centred on p (GL pixels, origin bottom left).
-        void Chip(Vector2 p, string text, float fontSize, Color fill, Color ink)
+        // Returns the chip's touch area (GL pixels, padded).
+        Rect Chip(Vector2 p, string text, float fontSize, Color fill, Color ink)
         {
             EnsureStyle();
             style.fontSize = Mathf.RoundToInt(fontSize * s);
@@ -698,6 +807,7 @@ namespace Dogpatch.Map
             });
             style.normal.textColor = TextColor(ink);
             GUI.Label(new Rect(p.x - size.x * 0.5f, Screen.height - p.y - size.y * 0.5f, size.x, size.y), text, style);
+            return new Rect(p.x - w - 8f * s, p.y - h - 8f * s, 2f * w + 16f * s, 2f * h + 16f * s);
         }
 
         void Gl(Action draw)

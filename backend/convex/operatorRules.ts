@@ -27,6 +27,7 @@ export type Answers = {
   strength: ChoiceAnswer;
   color: ChoiceAnswer;
   theme: ChoiceAnswer;
+  vehicle: ChoiceAnswer;
   reject_reason: ChoiceAnswer;
 };
 
@@ -76,6 +77,7 @@ export type EffectCommand = {
   strength: Strength | "";
   color: string;
   theme: string;
+  vehicle: string;
   confirm: boolean;
 };
 
@@ -177,6 +179,11 @@ function effectCommand(
     if (a.theme.choice === NONE) return refuse("vague");
     theme = a.theme.choice;
   }
+  let vehicle = "";
+  if (effect === "change_vehicle") {
+    if (a.vehicle.choice === NONE) return refuse("vague");
+    vehicle = a.vehicle.choice;
+  }
   return {
     kind: "effect",
     scope,
@@ -186,6 +193,7 @@ function effectCommand(
     strength: info.duration ? strengthOf(a) : "",
     color,
     theme,
+    vehicle,
     confirm: fields.confirm ?? false,
   };
 }
@@ -211,7 +219,19 @@ function allows(effect: string, cls: string) {
 
 const namedClass = (a: Answers) => a.class.choice !== NONE && a.class.choice !== EVERYTHING;
 
+/** A ride change for the caller wins over a spawning or transformation reading of the same words. */
+function asksForRide(a: Answers) {
+  return (
+    a.player_effect.choice === "change_vehicle" &&
+    a.player_effect.confidence >= 0.8 &&
+    a.vehicle.choice !== NONE &&
+    a.other_player < 0.5 &&
+    !["deferred", "undo", "cheat", "not_a_request"].includes(a.reject_reason.choice)
+  );
+}
+
 export function decide(a: Answers, view: View, active: ActiveSummary[]): Command {
+  if (asksForRide(a)) return effectCommand(a, "players", "change_vehicle");
   let scope = route(a);
   if (!scope) return refuse("vague");
 

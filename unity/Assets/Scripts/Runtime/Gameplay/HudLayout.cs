@@ -67,7 +67,7 @@ namespace Dogpatch.Gameplay
         public static Vector2 StickScreen => new Vector2(Safe.xMax - StickMargin - StickRadius, Safe.yMin + StickMargin + StickRadius);
 
         // A touch that starts this close to the stick's centre grabs it.
-        public static bool InStick(Vector2 screen) => (screen - StickScreen).magnitude < StickRadius * 1.6f;
+        public static bool InStick(Vector2 screen) => !DragInput.DragAnywhere && (screen - StickScreen).magnitude < StickRadius * 1.6f;
 
         static float StickTopGui => Screen.height - StickScreen.y - StickRadius;
         static float StickRightGui => StickScreen.x + StickRadius;

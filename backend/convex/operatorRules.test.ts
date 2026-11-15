@@ -22,6 +22,7 @@ type Spec = {
   strength?: string;
   color?: string;
   theme?: string;
+  vehicle?: string;
   reject_reason?: string;
   confidence?: Record<string, number>;
 };
@@ -51,6 +52,7 @@ function answers(spec: Spec): Answers {
     strength: c("strength", "medium"),
     color: c("color", "none"),
     theme: c("theme", "none"),
+    vehicle: c("vehicle", "none"),
     reject_reason: c("reject_reason", "none"),
   };
 }
@@ -108,6 +110,7 @@ describe("rule 1: routing", () => {
       strength: "medium",
       color: "",
       theme: "",
+      vehicle: "",
       confirm: false,
     });
   });
@@ -245,6 +248,18 @@ describe("rule 8: world", () => {
     expect(decide(answers({ scope: "world", world_group: "population", population_effect: "ped_theme" }), onFoot, [])).toEqual(
       refused("vague"),
     );
+  });
+
+  it("puts the caller in the asked-for vehicle, even when the scope reads it as spawning", () => {
+    const ride = { player_effect: "change_vehicle", vehicle: "sports_car", self_ref: 0.9 };
+    expect(decide(answers({ scope: "players", ...ride }), driving, [])).toEqual(
+      effect({ scope: "players", effect: "change_vehicle", vehicle: "sports_car", strength: "" }),
+    );
+    expect(decide(answers({ scope: "reject", reject_reason: "spawning", ...ride }), driving, [])).toEqual(
+      effect({ effect: "change_vehicle", vehicle: "sports_car" }),
+    );
+    expect(decide(answers({ scope: "reject", reject_reason: "deferred", ...ride }), driving, [])).toEqual(refused("deferred"));
+    expect(decide(answers({ scope: "players", player_effect: "change_vehicle" }), driving, [])).toEqual(refused("vague"));
   });
 });
 

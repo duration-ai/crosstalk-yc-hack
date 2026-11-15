@@ -13,7 +13,7 @@ const T0 = Date.UTC(2026, 10, 15, 20, 0, 0);
 
 const CHOICES = [
   "scope", "player_effect", "world_group", "sky_effect", "physics_effect", "population_effect", "object_effect",
-  "class", "target", "strength", "color", "theme", "reject_reason",
+  "class", "target", "strength", "color", "theme", "vehicle", "reject_reason",
 ];
 const DEFAULTS: Record<string, string> = { scope: "reject", strength: "medium" };
 
@@ -103,7 +103,7 @@ describe("operator.call", () => {
     expect(requests[0].body.input).toContain("protected landmark");
     expect(requests[0].body.questions.map((q: { name: string }) => q.name)).toEqual([
       "scope", "player_effect", "world_group", "sky_effect", "physics_effect", "population_effect", "object_effect",
-      "class", "target", "described", "self_ref", "other_player", "strength", "color", "theme", "reject_reason",
+      "class", "target", "described", "self_ref", "other_player", "strength", "color", "theme", "vehicle", "reject_reason",
     ]);
     expect(await effects()).toEqual([result.effect]);
 
@@ -241,7 +241,7 @@ describe("operator.call", () => {
         view: view(),
         input: "",
         answers: null,
-        command: { kind: "effect", scope: "world", effect: "rain", target: "", targetClass: "", strength: "medium", color: "", theme: "", confirm: false },
+        command: { kind: "effect", scope: "world", effect: "rain", target: "", targetClass: "", strength: "medium", color: "", theme: "", vehicle: "", confirm: false },
         timings: { jevMs: 0, attempts: 1, startedAt: Date.now() },
       }),
     ).rejects.toThrow(/not in room|left/);

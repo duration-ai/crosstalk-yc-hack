@@ -102,7 +102,8 @@ namespace Dogpatch.Operator
                 var row = new ActiveEffect
                 {
                     id = "capture-" + id, effect = id, scope = Array.IndexOf(Players, id) >= 0 ? "players" : "world", strength = strength,
-                    status = "active", instant = false, startsAt = effects.ServerNow(), endsAt = effects.ServerNow() + 120000, durationS = 120, label = id, requestedBy = "capture",
+                    status = "active", instant = false, startsAt = effects.ServerNow(), endsAt = effects.ServerNow() + 120000, durationS = 120, label = id, requestedBy = id == "change_vehicle" ? EntityTagger.MyPlayerId : "capture",
+                    vehicle = id == "change_vehicle" ? "sports_car" : null,
                 };
                 effects.Optimistic(row);
                 if (id == "cars_on_water") yield return ToWater();

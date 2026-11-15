@@ -36,6 +36,12 @@ export const COLORS = [
 
 export const THEMES = ["beach_party", "tech_bros", "elvis", "delivery_riders"] as const;
 
+/** Rides change_vehicle can put the caller in; the Unity client maps each to a roster type. */
+export const VEHICLES = [
+  "sports_car", "race_car", "hatchback", "sedan", "taxi", "cybertruck", "waymo", "van", "zoox", "bus", "bike", "scooter",
+  "delivery_bike", "shopping_cart",
+] as const;
+
 type Effect = { label: string; description: string; duration?: Range };
 
 export const PLAYER_EFFECTS: Record<string, Effect> = {
@@ -55,6 +61,10 @@ export const PLAYER_EFFECTS: Record<string, Effect> = {
   grip_down: { label: "Slidey tyres", description: "players' vehicles lose grip and slide", duration: [15, 23] },
   tougher: { label: "Armour", description: "players and their vehicles become tougher", duration: [18, 34] },
   vehicle_hop: { label: "Car hop", description: "players' vehicles can hop or jump", duration: [15, 27] },
+  change_vehicle: {
+    label: "New ride",
+    description: "swap the vehicle the player is riding for a different kind (give me a sports car, put me in a bus, I want a bike)",
+  },
 };
 
 const WEATHER: Range = [23, 45];

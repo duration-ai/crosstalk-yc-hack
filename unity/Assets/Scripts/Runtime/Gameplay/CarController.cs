@@ -93,7 +93,12 @@ namespace Dogpatch.Gameplay
         // Swaps the body (model, colliders, wheels) in place; position, speed and driver are kept.
         public void Rebuild(string modelId, GameObject visual, Bounds bounds)
         {
-            if (this.visual != null) Destroy(this.visual);
+            if (this.visual != null)
+            {
+                this.visual.SetActive(false);
+                this.visual.transform.SetParent(null, false);
+                Destroy(this.visual);
+            }
             this.visual = visual;
             visual.transform.SetParent(transform, false);
 

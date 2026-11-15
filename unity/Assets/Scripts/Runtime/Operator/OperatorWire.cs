@@ -16,6 +16,7 @@ namespace Dogpatch.Operator
         public string strength;
         public string color;
         public string theme;
+        public string vehicle;
         public bool instant;
         public string status;
         public double startsAt;
