@@ -3,8 +3,8 @@ using UnityEngine;
 namespace Dogpatch.Look
 {
     // One global intensity for every particle-style effect: wheel smoke, tire marks, dust, sparks,
-    // wind streaks, spray, speed lines and smear, and the smash debris, smoke and hydrant spout.
-    // 1 (MED) is the default, already toned down so effects read as accents; LOW is 0.4 and HIGH 1.6.
+    // wind streaks, spray, speed lines, and the smash debris, smoke and hydrant spout. 1 (MED) is the
+    // default, tuned in MotionTuning (Resources/Look/motion.json); LOW is 0.4 and HIGH 1.6.
     // Counts and rates scale with Intensity, sizes and opacity with its square root, and nothing ever
     // drops to zero. The choice persists on the device.
     public static class EffectsSettings
