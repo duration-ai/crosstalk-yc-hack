@@ -122,6 +122,7 @@ namespace Dogpatch.Feel
             GameEvents.Impact += OnImpact;
             GameEvents.Boost += OnBoost;
             GameEvents.Wreck += OnWreck;
+            GameEvents.PlaceChanged += OnPlace;
         }
 
         void OnDisable()
@@ -132,6 +133,7 @@ namespace Dogpatch.Feel
             GameEvents.Impact -= OnImpact;
             GameEvents.Boost -= OnBoost;
             GameEvents.Wreck -= OnWreck;
+            GameEvents.PlaceChanged -= OnPlace;
             if (race != null) race.EventArrived -= OnRaceEvent;
         }
 
@@ -149,6 +151,7 @@ namespace Dogpatch.Feel
         {
             if (string.IsNullOrEmpty(e.news)) return;
             whooshAt = Now;
+            Punch(0.18f);
             whooshColor = e.color == "purple" ? Hex("#A35BFF") : e.color == "orange" ? Hex("#FF8A1E") : e.color == "green" ? Hex("#2EC27E") : e.color == "blue" ? Hex("#2D8CFF") : Pink;
         }
 
@@ -206,11 +209,25 @@ namespace Dogpatch.Feel
                 });
             }
             if (place == 1) goAt = Now;
+            Punch(place == 1 ? 0.4f : 0.2f);
+        }
+
+        // Screen punch for the big moments: a short burst of camera trauma on top of FeelDirector's.
+        static void Punch(float amount)
+        {
+            if (CameraFeel.Instance != null) CameraFeel.Instance.AddTrauma(amount);
+        }
+
+        void OnPlace(int place, int previous)
+        {
+            if (previous > 0 && place < previous) Punch(0.12f);
         }
 
         void OnCountdown(int left)
         {
-            if (left == 0) goAt = Now;
+            if (left != 0) return;
+            goAt = Now;
+            Punch(0.2f);
         }
 
         void OnImpact(ImpactInfo hit)
