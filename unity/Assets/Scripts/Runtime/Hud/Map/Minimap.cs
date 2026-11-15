@@ -128,16 +128,20 @@ namespace Dogpatch.Map
             mapMaterial = new Material(Resources.Load<Shader>("Shaders/MapTexture")) { name = "MinimapMap" };
             font = Resources.Load<Font>("Fonts/Exo2-BlackItalic");
             hud = GetComponent<Hud>();
-            var palette = new MapGeometry.Palette
-            {
-                Land = Hex32("#E6DDCB"),
-                Park = Hex32("#48C26A"),
-                Path = Hex32("#EEE7DA"),
-                Casing = Hex32("#8E929B"),
-                Street = Hex32("#A9ADB4"),
-                Building = Hex32("#FF9C86"),
-            };
+            StartBuild();
+        }
+
+        readonly MapGeometry[] built = new MapGeometry[MapLook.All.Length];
+        int buildLook;
+        Material dots;
+        Mesh dotQuad;
+
+        // Builds the current look's map off the main thread; the previous look shows meanwhile.
+        void StartBuild()
+        {
             var data = Game.Data;
+            buildLook = MapLook.Index;
+            var palette = MapLook.All[buildLook].Palette;
             buildStarted = Time.realtimeSinceStartup;
             build = Task.Run(() => MapGeometry.Build(data, palette));
         }
@@ -155,13 +159,15 @@ namespace Dogpatch.Map
                 if (build.IsFaulted) Debug.LogError("[Minimap] map build failed: " + build.Exception?.GetBaseException());
                 else
                 {
-                    geometry = build.Result;
-                    geometry.Upload();
+                    built[buildLook] = build.Result;
+                    build.Result.Upload();
                     routePlaces = false;
-                    Debug.Log($"[Minimap] built {geometry.TriangleCount} map triangles, {geometry.Streets.Count} street labels, {geometry.Places.Count} places in {(Time.realtimeSinceStartup - buildStarted) * 1000f:F0} ms");
+                    Debug.Log($"[Minimap] built the {MapLook.All[buildLook].Name} map: {build.Result.TriangleCount} triangles, {build.Result.Streets.Count} street labels, {build.Result.Places.Count} places in {(Time.realtimeSinceStartup - buildStarted) * 1000f:F0} ms");
                 }
                 build = null;
             }
+            if (built[MapLook.Index] != null) geometry = built[MapLook.Index];
+            else if (build == null) StartBuild();
 
             if (Game == null || !Game.IsReady) return;
             var director = RaceDirector.Instance;
@@ -488,21 +494,50 @@ namespace Dogpatch.Map
                 commands = new CommandBuffer { name = "Minimap" };
                 unitQuad = new Mesh { name = "MapBay" };
                 unitQuad.SetVertices(new[] { Vector3.zero, Vector3.up, new Vector3(1f, 1f, 0f), Vector3.right });
-                var bay = (Color32)Bay;
-                unitQuad.SetColors(new[] { bay, bay, bay, bay });
                 unitQuad.SetTriangles(new[] { 0, 1, 2, 0, 2, 3 }, 0);
             }
+            var look = MapLook.Current;
+            var bay = (Color32)look.Bay;
+            unitQuad.SetColors(new[] { bay, bay, bay, bay });
             var previous = RenderTexture.active;
             commands.Clear();
             commands.SetRenderTarget(target);
             commands.SetViewProjectionMatrices(Matrix4x4.identity, Matrix4x4.Ortho(0f, w, 0f, h, -1f, 1f));
             commands.DrawMesh(unitQuad, Matrix4x4.Scale(new Vector3(w, h, 1f)), marks, 0, 0);
             geometry.Draw(commands, marks, worldToPixel, view);
+            if (look.Halftone) Halftone(w, h, look.Dots);
             Graphics.ExecuteCommandBuffer(commands);
             RenderTexture.active = previous;
         }
 
         // The rendered map as a fan over the view's outline, tilted with the view.
+        // A riso-style dot screen over the whole map, a tiled 8 px dot drawn as one quad.
+        void Halftone(int w, int h, Color color)
+        {
+            if (dots == null)
+            {
+                var tex = new Texture2D(8, 8, TextureFormat.RGBA32, false, true) { name = "MapDots", wrapMode = TextureWrapMode.Repeat, filterMode = FilterMode.Bilinear };
+                var px = new Color32[64];
+                for (int y = 0; y < 8; y++)
+                    for (int x = 0; x < 8; x++)
+                    {
+                        float d = Vector2.Distance(new Vector2(x + 0.5f, y + 0.5f), new Vector2(4f, 4f));
+                        px[y * 8 + x] = new Color32(255, 255, 255, (byte)(Mathf.Clamp01(2.4f - d) * 255f));
+                    }
+                tex.SetPixels32(px);
+                tex.Apply(false, true);
+                dots = new Material(Resources.Load<Shader>("Shaders/MapTexture")) { name = "MapDots", mainTexture = tex };
+                dotQuad = new Mesh { name = "MapDots" };
+                dotQuad.SetVertices(new[] { Vector3.zero, Vector3.up, new Vector3(1f, 1f, 0f), Vector3.right });
+                dotQuad.SetTriangles(new[] { 0, 1, 2, 0, 2, 3 }, 0);
+            }
+            float cell = Mathf.Max(3f * s, 4f);
+            dotQuad.SetUVs(0, new[] { Vector2.zero, new Vector2(0f, h / cell), new Vector2(w / cell, h / cell), new Vector2(w / cell, 0f) });
+            var c = (Color32)color;
+            dotQuad.SetColors(new[] { c, c, c, c });
+            commands.DrawMesh(dotQuad, Matrix4x4.Scale(new Vector3(w, h, 1f)), dots, 0, 0);
+        }
+
         void DrawMap()
         {
             mapMaterial.SetPass(0);
@@ -652,7 +687,7 @@ namespace Dogpatch.Map
             for (int pass = 0; pass < 2; pass++)
             {
                 float width = (pass == 0 ? 2.5f : 1.4f) * s;
-                var color = pass == 0 ? Ink : Sunshine;
+                var color = pass == 0 ? MapLook.Current.RouteUnder : MapLook.Current.Route;
                 for (int i = 0; i < points.Count - 1; i++)
                 {
                     var a = ToMap(points[i]);

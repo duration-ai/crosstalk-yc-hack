@@ -57,6 +57,22 @@ namespace Dogpatch.Nav
                 Minimap.MapStyle = i;
                 yield return FullMap("full-map-" + Minimap.StyleNames[i].ToLowerInvariant());
             }
+            Minimap.MapStyle = 1;
+            var map = FindAnyObjectByType<Minimap>();
+            for (int i = 0; i < MapLook.All.Length; i++)
+            {
+                MapLook.Index = i;
+                yield return Seconds(1.2f);
+                map.SetFull(true);
+                map.Preview(1f, false);
+                yield return Seconds(0.3f);
+                yield return Shot("map-look-" + MapLook.All[i].Name.ToLowerInvariant());
+                map.Preview(2.6f, false);
+                yield return Seconds(0.3f);
+                yield return Shot("map-look-" + MapLook.All[i].Name.ToLowerInvariant() + "-zoom");
+                map.SetFull(false);
+            }
+            MapLook.Index = 0;
             Minimap.MapStyle = 0;
             FindAnyObjectByType<Minimap>().StartTravel();
             yield return Seconds(1f);
