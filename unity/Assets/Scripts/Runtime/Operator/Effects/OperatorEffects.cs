@@ -22,6 +22,7 @@ namespace Dogpatch.Operator
             public OperatorEffect Effect;
             public float AppliedAt;
             public bool Listed;
+            public Action Look;
         }
 
         public EffectRegistry Registry;
@@ -101,17 +102,21 @@ namespace Dogpatch.Operator
             }
             if (row.endsAt > 0 && row.endsAt < ServerNow() - 1000) return;
             var effect = Registry.Create(row.effect, Context, row);
-            running[row.id] = new Running { Row = row, Effect = effect, AppliedAt = Time.time, Listed = listed };
-            Run(effect, row);
+            var started = new Running { Row = row, Effect = effect, AppliedAt = Time.time, Listed = listed };
+            running[row.id] = started;
+            var target = Run(effect, row);
+            try { started.Look = VehicleLooks.Attach(Context, row, target); }
+            catch (Exception e) { Debug.LogError($"[Operator] {row.effect} look failed: {e}"); }
         }
 
-        void Run(OperatorEffect effect, ActiveEffect row)
+        EffectTarget Run(OperatorEffect effect, ActiveEffect row)
         {
             var target = Resolve(row);
             Debug.Log($"[Operator] apply {row.effect} {row.id} {row.scope}:{row.target}{row.targetClass} on {target.Entities.Count} entities, {row.strength} {row.color}{row.theme}{(row.instant ? " (instant)" : $" for {SecondsLeft(row):F0}s")}");
             try { effect.Apply(row.strength, target); }
             catch (Exception e) { Debug.LogError($"[Operator] {row.effect} apply failed: {e}"); }
             Started?.Invoke(row);
+            return target;
         }
 
         void End(Running r, string why)
@@ -120,6 +125,8 @@ namespace Dogpatch.Operator
             Debug.Log($"[Operator] revert {r.Row.effect} {r.Row.id} ({why})");
             try { r.Effect.Revert(); }
             catch (Exception e) { Debug.LogError($"[Operator] {r.Row.effect} revert failed: {e}"); }
+            try { r.Look?.Invoke(); }
+            catch (Exception e) { Debug.LogError($"[Operator] {r.Row.effect} look removal failed: {e}"); }
         }
 
         public EffectTarget Resolve(ActiveEffect row)
