@@ -155,13 +155,16 @@ namespace Dogpatch.Race
                     remote.WorldSeenAt = Time.time;
                     remote.Left = false;
                 }
-                if (Vehicles.VehicleCatalog.Has(player.vehicleType) && player.vehicleType != remote.SwapType && player.vehicleType != Vehicles.VehicleRoster.TypeOf(remote.Car))
+                if (player.vehicleType != remote.SwapType)
                 {
                     remote.SwapType = player.vehicleType;
-                    Vehicles.VehicleRoster.SwapInto(remote.Car, player.vehicleType);
-                    SeatRider(remote);
-                    foreach (var c in remote.Car.GetComponents<Collider>()) c.isTrigger = true;
-                    remote.PaintedHex = null;
+                    if (Vehicles.VehicleCatalog.Has(player.vehicleType) && player.vehicleType != Vehicles.VehicleRoster.TypeOf(remote.Car))
+                    {
+                        Vehicles.VehicleRoster.SwapInto(remote.Car, player.vehicleType);
+                        SeatRider(remote);
+                        foreach (var c in remote.Car.GetComponents<Collider>()) c.isTrigger = true;
+                        remote.PaintedHex = null;
+                    }
                 }
                 if (!remote.InRace) AddSample(remote, player.updatedAt, player.position, player.heading, serverTime);
             }
