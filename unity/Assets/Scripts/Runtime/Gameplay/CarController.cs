@@ -47,6 +47,7 @@ namespace Dogpatch.Gameplay
         readonly List<Transform> steering = new List<Transform>();
         float wheelSpin;
         float stunnedUntil;
+        Vector3 groundNormal = Vector3.up;
 
         public static CarController Create(string vehicleId, GlbAsset model, Material material, Vector3 position, float heading) =>
             Create(vehicleId, model.Id, model.Instantiate(material), model.ComputeBounds(), position, heading);
@@ -154,7 +155,15 @@ namespace Dogpatch.Gameplay
             float dt = Time.fixedDeltaTime;
             var forward = transform.forward;
             var right = transform.right;
-            forwardSpeed = Vector3.Dot(body.linearVelocity, forward);
+
+            // Ground-follow on freeway decks and ramps only (the Drivable layer): drive along the
+            // smoothed surface so ramps climb and descend instead of stair-stepping. Streets, curbs and
+            // steep faces never match, and then today's flat behaviour runs unchanged.
+            bool onDeck = Physics.Raycast(body.position + Vector3.up * 0.5f, Vector3.down, out var ground, 1.2f, World.Freeway.DrivableMask, QueryTriggerInteraction.Ignore)
+                && Vector3.Angle(ground.normal, Vector3.up) < 20f;
+            groundNormal = onDeck ? Vector3.Slerp(groundNormal, ground.normal, 1f - Mathf.Exp(-12f * dt)).normalized : Vector3.up;
+            var along = onDeck ? Vector3.ProjectOnPlane(forward, groundNormal).normalized : forward;
+            forwardSpeed = Vector3.Dot(body.linearVelocity, along);
 
             float target = 0f;
             float steerAngle = 0f;
@@ -191,7 +200,9 @@ namespace Dogpatch.Gameplay
             float yaw = steer * handling.TurnRate * Mathf.Clamp01(Mathf.Abs(forwardSpeed) / 3f) * dt;
             body.MoveRotation(body.rotation * Quaternion.Euler(0f, yaw, 0f));
             var slide = grip >= 1f ? Vector3.zero : right * (Vector3.Dot(body.linearVelocity, right) * Mathf.Pow(1f - grip, dt * 10f));
-            body.linearVelocity = forward * forwardSpeed + slide + Vector3.up * Mathf.Min(body.linearVelocity.y, 0f);
+            body.linearVelocity = onDeck
+                ? along * forwardSpeed + slide - groundNormal * (Mathf.Max(ground.distance - 0.5f, 0f) * 10f)
+                : forward * forwardSpeed + slide + Vector3.up * Mathf.Min(body.linearVelocity.y, 0f);
 
             if (!Driven && Mathf.Abs(forwardSpeed) < 0.05f) body.isKinematic = true;
         }
@@ -201,6 +212,11 @@ namespace Dogpatch.Gameplay
             wheelSpin += forwardSpeed / 0.33f * Mathf.Rad2Deg * Time.deltaTime;
             foreach (var w in wheels) w.localRotation = Quaternion.Euler(wheelSpin, 0f, 0f);
             foreach (var s in steering) s.localRotation = Quaternion.Euler(0f, steer * 28f * (reversing ? -1f : 1f), 0f);
+            if (visual != null)
+            {
+                var tilt = Quaternion.FromToRotation(Vector3.up, transform.InverseTransformDirection(groundNormal));
+                visual.transform.localRotation = Quaternion.Slerp(visual.transform.localRotation, tilt, 1f - Mathf.Exp(-10f * Time.deltaTime));
+            }
         }
     }
 }

@@ -214,29 +214,56 @@ namespace Dogpatch.World
 
         // ------------------------------------------------------------------ viaduct
 
-        // Elevated freeway: deckHeights are the top-surface heights at each centreline vertex.
-        public static void Viaduct(MeshBuilder mb, Vector2[] centerline, float[] deckHeights, float width)
+        // One drivable freeway way: the deck at Heights over Centerline, Lanes lanes in Width. Parapet says
+        // where an edge gets its barrier (gores, where two decks meet, and the street ends of ramps stay
+        // open). Columns are bent positions as arc lengths; low ramp stretches get a solid retaining wall
+        // instead. Barrier* closes an end where the deck leaves the map.
+        public sealed class DeckSpec
         {
-            if (centerline == null || centerline.Length < 2) return;
+            public Vector2[] Centerline;
+            public float[] Heights;
+            public float Width;
+            public int Lanes;
+            public System.Func<Vector2, float, bool> Parapet;
+            public IList<float> Columns;
+            public bool BarrierStart;
+            public bool BarrierEnd;
+        }
+
+        public const float ParapetHeight = 1.1f;
+        public const float SolidBelow = 6f;
+
+        // Draws the deck into mb and, when given, its colliders: surface (the drivable top) and solid
+        // (parapets, sides, soffit, retaining walls, columns, end barriers).
+        public static void Viaduct(MeshBuilder mb, MeshBuilder surface, MeshBuilder solid, DeckSpec spec)
+        {
+            if (spec.Centerline == null || spec.Centerline.Length < 2) return;
             const float thick = 1.8f;
             const float parapetW = 0.5f;
-            const float parapetH = 1.1f;
+            const float parapetH = ParapetHeight;
             const float slabEdge = 0.7f;
             const float chamfer = 1.5f;
+            float width = spec.Width;
             float hw = width * 0.5f;
-            var secs = BuildSections(centerline, deckHeights, hw, 8f);
+            var secs = BuildSections(spec.Centerline, spec.Heights, hw, 8f);
             if (secs.Count < 2) return;
+            surface ??= new MeshBuilder();
+            solid ??= new MeshBuilder();
 
-            var profile = new (float l0, float v0, float l1, float v1, Color color, float nl, float nv)[]
+            var parapet = new (float l0, float v0, float l1, float v1, Color color, float nl, float nv)[]
             {
                 (hw - parapetW, 0f, hw - parapetW, parapetH, Sidewalk, -1f, 0f),
                 (hw - parapetW, parapetH, hw, parapetH, Cream, 0f, 1f),
                 (hw, parapetH, hw, 0f, Sidewalk, 1f, 0f),
+            };
+            var slab = new (float l0, float v0, float l1, float v1, Color color, float nl, float nv)[]
+            {
                 (hw, 0f, hw, -slabEdge, ConcreteMid, 1f, 0f),
                 (hw, -slabEdge, hw - chamfer, -thick, Shade, 1.1f, -1.5f),
             };
             float deckF = (hw - parapetW) / hw;
             float soffitF = (hw - chamfer) / hw;
+            var walled = new List<(int i, float side)>();
 
             for (int i = 0; i + 1 < secs.Count; i++)
             {
@@ -244,13 +271,33 @@ namespace Dogpatch.World
                 var b = secs[i + 1];
                 var left = Dir3(LeftOf(SegDir(secs, i)));
                 mb.Quad(Pt(a, -deckF, 0f), Pt(b, -deckF, 0f), Pt(b, deckF, 0f), Pt(a, deckF, 0f), Asphalt, Vector3.up);
-                mb.Quad(Pt(a, -soffitF, -thick), Pt(b, -soffitF, -thick), Pt(b, soffitF, -thick), Pt(a, soffitF, -thick), ConcreteDark, Vector3.down);
+                surface.Quad(Pt(a, -1f, 0f), Pt(b, -1f, 0f), Pt(b, 1f, 0f), Pt(a, 1f, 0f), Asphalt, Vector3.up);
+                bool high = Mathf.Min(a.h, b.h) > thick;
+                if (high)
+                {
+                    mb.Quad(Pt(a, -soffitF, -thick), Pt(b, -soffitF, -thick), Pt(b, soffitF, -thick), Pt(a, soffitF, -thick), ConcreteDark, Vector3.down);
+                    solid.Quad(Pt(a, -soffitF, -thick), Pt(b, -soffitF, -thick), Pt(b, soffitF, -thick), Pt(a, soffitF, -thick), ConcreteDark, Vector3.down);
+                }
                 foreach (float side in new[] { 1f, -1f })
                 {
-                    foreach (var e in profile)
+                    var edge = (a.p + a.left * side + b.p + b.left * side) * 0.5f;
+                    if (spec.Parapet == null || spec.Parapet(edge, (a.h + b.h) * 0.5f))
                     {
-                        mb.Quad(Pt(a, side * e.l0 / hw, e.v0), Pt(b, side * e.l0 / hw, e.v0), Pt(b, side * e.l1 / hw, e.v1), Pt(a, side * e.l1 / hw, e.v1),
-                            e.color, left * (side * e.nl) + Vector3.up * e.nv);
+                        walled.Add((i, side));
+                        foreach (var e in parapet)
+                        {
+                            mb.Quad(Pt(a, side * e.l0 / hw, e.v0), Pt(b, side * e.l0 / hw, e.v0), Pt(b, side * e.l1 / hw, e.v1), Pt(a, side * e.l1 / hw, e.v1), e.color, left * (side * e.nl) + Vector3.up * e.nv);
+                            solid.Quad(Pt(a, side * e.l0 / hw, e.v0), Pt(b, side * e.l0 / hw, e.v0), Pt(b, side * e.l1 / hw, e.v1), Pt(a, side * e.l1 / hw, e.v1), e.color, left * (side * e.nl) + Vector3.up * e.nv);
+                        }
+                    }
+                    else mb.Quad(Pt(a, side * deckF, 0f), Pt(b, side * deckF, 0f), Pt(b, side, 0f), Pt(a, side, 0f), Asphalt, Vector3.up);
+                    foreach (var e in slab)
+                        mb.Quad(Pt(a, side * e.l0 / hw, e.v0), Pt(b, side * e.l0 / hw, e.v0), Pt(b, side * e.l1 / hw, e.v1), Pt(a, side * e.l1 / hw, e.v1), e.color, left * (side * e.nl) + Vector3.up * e.nv);
+                    solid.Quad(Pt(a, side, 0f), Pt(b, side, 0f), Pt(b, side, high ? -thick : -b.h), Pt(a, side, high ? -thick : -a.h), ConcreteMid, left * side);
+                    if (Mathf.Min(a.h, b.h) < SolidBelow && Mathf.Max(a.h, b.h) > slabEdge)
+                    {
+                        mb.Quad(Pt(a, side, -Mathf.Min(slabEdge, a.h)), Pt(b, side, -Mathf.Min(slabEdge, b.h)), Pt(b, side, -b.h), Pt(a, side, -a.h), ConcreteMid, left * side);
+                        solid.Quad(Pt(a, side, 0f), Pt(b, side, 0f), Pt(b, side, -b.h), Pt(a, side, -a.h), ConcreteMid, left * side);
                     }
                 }
             }
@@ -259,80 +306,83 @@ namespace Dogpatch.World
             {
                 var s = end == 0 ? secs[0] : secs[secs.Count - 1];
                 var facing = Dir3(end == 0 ? -SegDir(secs, 0) : SegDir(secs, secs.Count - 2));
+                float bottom = s.h > thick ? -thick : -s.h;
                 Fan(mb, new[]
                 {
-                    Pt(s, 1f, 0f), Pt(s, 1f, -slabEdge), Pt(s, soffitF, -thick),
-                    Pt(s, -soffitF, -thick), Pt(s, -1f, -slabEdge), Pt(s, -1f, 0f),
+                    Pt(s, 1f, 0f), Pt(s, 1f, Mathf.Max(-slabEdge, bottom)), Pt(s, soffitF, bottom),
+                    Pt(s, -soffitF, bottom), Pt(s, -1f, Mathf.Max(-slabEdge, bottom)), Pt(s, -1f, 0f),
                 }, ConcreteMid, facing);
-                foreach (float side in new[] { 1f, -1f })
-                    mb.Quad(Pt(s, side * deckF, 0f), Pt(s, side * deckF, parapetH), Pt(s, side, parapetH), Pt(s, side, 0f), Sidewalk, facing);
+                if (!(end == 0 ? spec.BarrierStart : spec.BarrierEnd)) continue;
+                var along = end == 0 ? SegDir(secs, 0) : SegDir(secs, secs.Count - 2);
+                var inward = s.p - along * (end == 0 ? -0.6f : 0.6f);
+                int blocks = Mathf.Max(2, Mathf.RoundToInt(width / 1.2f));
+                for (int k = 0; k < blocks; k++)
+                {
+                    float f = Mathf.Lerp(-deckF, deckF, (k + 0.5f) / blocks);
+                    var c = V3(inward + s.left * f, s.h + parapetH * 0.5f);
+                    mb.Box(c, new Vector3(width * deckF / blocks, parapetH, 0.8f), Yaw(Heading(along)), k % 2 == 0 ? Sunshine : Ink);
+                }
+                solid.Box(V3(inward, s.h + parapetH * 0.5f), new Vector3(width, parapetH, 0.8f), Yaw(Heading(along)), Sunshine);
             }
 
-            float edgeLine = hw - parapetW - 0.6f;
+            float edgeLine = spec.Lanes * LaneWidthHalf + 0.25f;
             Stripe(mb, secs, hw, edgeLine, 0.28f, Sunshine);
             Stripe(mb, secs, hw, -edgeLine, 0.28f, Cloud);
-            if (width >= 16f)
-            {
-                Stripe(mb, secs, hw, 0.2f, 0.14f, Sunshine);
-                Stripe(mb, secs, hw, -0.2f, 0.14f, Sunshine);
-                int lanes = Mathf.Max(1, Mathf.RoundToInt((edgeLine - 0.3f) / 3.6f));
-                for (int k = 1; k < lanes; k++)
-                {
-                    float lat = 0.3f + k * (edgeLine - 0.3f) / lanes;
-                    Stripe(mb, secs, hw, lat, 0.2f, Cream, 3f, 9f);
-                    Stripe(mb, secs, hw, -lat, 0.2f, Cream, 3f, 9f);
-                }
-            }
-            else
-            {
-                int lanes = Mathf.Max(1, Mathf.RoundToInt(edgeLine * 2f / 3.6f));
-                for (int k = 1; k < lanes; k++)
-                    Stripe(mb, secs, hw, -edgeLine + k * edgeLine * 2f / lanes, 0.2f, Cream, 3f, 9f);
-            }
+            for (int k = 1; k < spec.Lanes; k++)
+                Stripe(mb, secs, hw, (spec.Lanes * 0.5f - k) * LaneWidthHalf * 2f, 0.2f, Cloud, 3f, 9f);
 
             float total = secs[secs.Count - 1].s;
 
-            for (float st = 2.5f; st < total; st += 5f)
-            {
-                var m = SampleAt(secs, st, out var d);
-                foreach (float side in new[] { 1f, -1f })
+            foreach (var (i, side) in walled)
+                for (float st = Mathf.Ceil((secs[i].s - 2.5f) / 5f) * 5f + 2.5f; st < secs[i + 1].s; st += 5f)
                 {
+                    var m = SampleAt(secs, st, out var d);
                     var c = m.p + m.left * (side * (hw - 0.25f) / hw);
                     mb.Box(V3(c, m.h + 0.55f), new Vector3(0.8f, parapetH + 0.6f, 0.7f), Yaw(Heading(d)), ConcreteMid);
                 }
-            }
 
             int spans = Mathf.Max(1, Mathf.RoundToInt(total / 32f));
-            float spacing = total / spans;
             for (int k = 0; k < spans; k++)
             {
-                var m = SampleAt(secs, (k + 0.5f) * spacing, out var d);
-                var lat = LeftOf(d);
+                var m = SampleAt(secs, (k + 0.5f) * total / spans, out var d);
+                var across = LeftOf(d) * (hw - parapetW);
                 float jointY = m.h + 0.05f;
-                var across = lat * (hw - parapetW);
                 mb.Quad(V3(m.p - across - d * 0.15f, jointY), V3(m.p + across - d * 0.15f, jointY), V3(m.p + across + d * 0.15f, jointY), V3(m.p - across + d * 0.15f, jointY), ConcreteDark, Vector3.up);
-                if (m.h <= 3f) continue;
+            }
 
+            if (spec.Columns == null) return;
+            foreach (float at in spec.Columns)
+            {
+                var m = SampleAt(secs, at, out var d);
+                if (m.h <= SolidBelow) continue;
+                var lat = LeftOf(d);
                 float capV = Mathf.Min(1.6f, m.h - thick - 0.5f);
                 float capTop = m.h - thick + 0.05f;
                 float capHalf = hw - 1.6f;
                 bool twin = width >= 18f;
                 float colX = twin ? hw * 0.42f : 0f;
-                const float colR = 1.05f;
+                const float colR = ColumnRadius;
                 float bottomHalf = Mathf.Min(twin ? colX + colR + 0.5f : colR + 1.3f, capHalf - 0.5f);
                 Prism(mb, m.p, capTop, lat, d, 2.8f, new[]
                 {
                     new Vector2(-bottomHalf, -capV), new Vector2(bottomHalf, -capV), new Vector2(capHalf, -capV * 0.45f),
                     new Vector2(capHalf, 0f), new Vector2(-capHalf, 0f), new Vector2(-capHalf, -capV * 0.45f),
                 }, Sidewalk);
+                solid.Box(V3(m.p, capTop - capV * 0.5f), new Vector3(capHalf * 2f, capV, 2.8f), Yaw(Heading(d)), Sidewalk);
                 for (int c = 0; c < (twin ? 2 : 1); c++)
                 {
                     var cp = m.p + lat * (twin ? (c == 0 ? -colX : colX) : 0f);
                     Frustum(mb, cp, 0f, capTop - capV + 0.1f, colR + 0.1f, colR, 8, ConcreteMid, ConcreteMid, false);
+                    solid.Box(V3(cp, (capTop - capV) * 0.5f), new Vector3(colR * 2f, capTop - capV, colR * 2f), Yaw(Heading(d)), ConcreteMid);
                 }
             }
         }
 
+        public const float ColumnRadius = 1.05f;
+        const float LaneWidthHalf = 1.8f;
+
+        // Lateral positions of a deck's twin columns, or just the centre: the footprints to keep off streets.
+        public static float[] ColumnOffsets(float width) => width >= 18f ? new[] { -width * 0.21f, width * 0.21f } : new[] { 0f };
         // ------------------------------------------------------------------ smokestack
 
         // Tapered 12-sided chimney with concrete lifts, brick bands near the top and an ink rim.

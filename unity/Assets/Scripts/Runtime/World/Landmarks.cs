@@ -80,7 +80,7 @@ namespace Dogpatch.World
                     Count("platform:" + platform.kind);
                 }
 
-            if (data.viaducts != null) Viaducts(data.viaducts);
+            if (ctx.Roads.Freeway != null) FreewayBillboards(ctx.Roads.Freeway);
             ThirdStreetBillboards(data);
         }
 
@@ -100,65 +100,30 @@ namespace Dogpatch.World
             statics.PlaceAtOrigin(StaticModels.Layer.Landmarks, "p-crane-top", p, Matrix4x4.TRS(MeshBuilder.At(p, top + mastHeight), rot, Vector3.one));
         }
 
-        // I-280: deck heights from layer, tapering to the ground at free ends (ramps).
-        void Viaducts(Viaduct[] viaducts)
+        // I-280 billboards beside the drivable deck (Freeway builds the deck itself), one about every
+        // 170 m along the main line, standing clear of streets and every deck and ramp.
+        void FreewayBillboards(FreewayGraph freeway)
         {
-            var ends = new List<Vector2>();
-            foreach (var v in viaducts)
+            foreach (var way in freeway.Ways)
             {
-                var pts = Geometry.ToPoints(v.pts);
-                if (pts.Length < 2) continue;
-                ends.Add(pts[0]);
-                ends.Add(pts[pts.Length - 1]);
-            }
-            foreach (var v in viaducts)
-            {
-                var pts = Geometry.ToPoints(v.pts);
-                if (pts.Length < 2) continue;
-                float deck = 13f + 5f * Mathf.Max(v.layer - 1, 0);
-                var along = new float[pts.Length];
-                for (int i = 1; i < pts.Length; i++) along[i] = along[i - 1] + Vector2.Distance(pts[i - 1], pts[i]);
-                float total = along[pts.Length - 1];
-                bool freeStart = Free(pts[0], ends), freeEnd = Free(pts[pts.Length - 1], ends);
-                float ramp = Mathf.Min(160f, total * 0.8f);
-                var heights = new float[pts.Length];
-                for (int i = 0; i < pts.Length; i++)
-                {
-                    float k = 1f;
-                    if (freeStart) k = Mathf.Min(k, along[i] / ramp);
-                    if (freeEnd) k = Mathf.Min(k, (total - along[i]) / ramp);
-                    heights[i] = deck * Mathf.Clamp01(k);
-                }
-                float width = v.width > 3f ? v.width : Mathf.Max(v.lanes, 2) * 3.6f + 2f;
-                LandmarkMeshes.Viaduct(statics.Generated(StaticModels.Layer.Landmarks, pts[pts.Length / 2]), pts, heights, width);
-                Count("viaduct way");
-
-                for (float s = 80f; s < total - 40f; s += 170f)
+                if (way.Ramp) continue;
+                var pts = way.Points;
+                for (float s = 80f; s < way.Length - 40f; s += 170f)
                 {
                     int i = 1;
-                    while (i < pts.Length - 1 && along[i] < s) i++;
-                    float t = Mathf.InverseLerp(along[i - 1], along[i], s);
-                    float h = Mathf.Lerp(heights[i - 1], heights[i], t);
-                    if (h < deck * 0.9f) continue;
-                    var c = Vector2.Lerp(pts[i - 1], pts[i], t);
-                    var d = (pts[i] - pts[i - 1]).normalized;
+                    while (i < pts.Length - 1 && way.Along[i] < s) i++;
+                    float t = Mathf.InverseLerp(way.Along[i - 1], way.Along[i], s);
+                    float h = Mathf.Lerp(pts[i - 1].y, pts[i].y, t);
+                    var c = Vector2.Lerp(new Vector2(pts[i - 1].x, pts[i - 1].z), new Vector2(pts[i].x, pts[i].z), t);
+                    var d = new Vector2(pts[i].x - pts[i - 1].x, pts[i].z - pts[i - 1].z).normalized;
                     var side = (billboard % 2 == 0 ? 1f : -1f) * new Vector2(-d.y, d.x);
-                    var at = c + side * (width * 0.5f + 6f);
-                    if (ctx.Buildings.Blocked(at, 4f) || ctx.Roads.Nearest(at, 3f, out _)) continue;
+                    var at = c + side * (way.HalfWidth + 6f);
+                    if (ctx.Buildings.Blocked(at, 4f) || ctx.Roads.Nearest(at, 3f, out _) || freeway.SurfaceAt(at, 0f, 1f, 100f, out _, out _, -1, 6f)) continue;
                     float facing = Mathf.Atan2(-d.x, -d.y) * Mathf.Rad2Deg + (billboard % 2 == 0 ? 20f : -20f);
                     Billboard(at, facing, 0f, h + 1.5f);
                     Count("billboard (I-280)");
                 }
             }
-        }
-
-        bool Free(Vector2 end, List<Vector2> ends)
-        {
-            var b = ctx.Bounds;
-            if (end.x - b.xMin < 5f || b.xMax - end.x < 5f || end.y - b.yMin < 5f || b.yMax - end.y < 5f) return false;
-            int near = 0;
-            foreach (var e in ends) if (Vector2.Distance(e, end) < 2f) near++;
-            return near <= 1;
         }
 
         // Rooftop billboards on the buildings that line Third Street, one about every 220 m.
