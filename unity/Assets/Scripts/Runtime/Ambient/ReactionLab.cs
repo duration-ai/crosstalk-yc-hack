@@ -13,7 +13,8 @@ namespace Dogpatch.Ambient
     // at a time in the lane and drives a car through them, first as plain hits at rising speeds
     // (the car reports no speed, so nobody dives), then at speed with warning so they dive. It
     // writes PPM frames, a labels.txt of frame ranges and a stats.csv, then quits. -labSlow films
-    // at 60 steps per second so a 30 fps encode plays at half speed.
+    // at 60 steps per second so a 30 fps encode plays at half speed. The player is parked behind the
+    // camera each take, so the parked-car streamer keeps the filmed car (and its threats) live.
     [DefaultExecutionOrder(100)]
     public sealed class ReactionLab : MonoBehaviour
     {
@@ -123,6 +124,12 @@ namespace Dogpatch.Ambient
                 cam.transform.position = new Vector3(eye.x, 5f, eye.y);
                 var look = spot + road * 3.5f;
                 cam.transform.rotation = Quaternion.LookRotation(new Vector3(look.x, 0.6f, look.y) - cam.transform.position, Vector3.up);
+                var player = FindAnyObjectByType<GameController>()?.Player;
+                if (player != null && player.isActiveAndEnabled)
+                {
+                    var behind = eye - (spot - eye).normalized * 4f;
+                    player.Teleport(new Vector3(behind.x, 0.3f, behind.y), heading);
+                }
 
                 string label = dive ? $"dive, car at {speed:F0} m/s" : $"hit at {speed:F0} m/s ({speed * 3.6f:F0} km/h)";
                 int first = frame;
