@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Dogpatch.Ambient;
 using Dogpatch.Backend;
 using Dogpatch.Data;
 using Dogpatch.Glb;
@@ -89,6 +90,7 @@ namespace Dogpatch.Gameplay
             PerfReadout.WorldBuildSeconds = Time.realtimeSinceStartup - t0;
             gameObject.AddComponent<PerfReadout>().Game = this;
             Debug.Log($"[Dogpatch] world built in {Time.realtimeSinceStartup - t0:F1}s: {data.roads.Length} roads, {data.buildings.Length} buildings, {world.ParkedCars.Count + 1} cars");
+            PedestrianSystem.Create(world, data);
 
             input = gameObject.AddComponent<DragInput>();
             input.Tapped += OnTap;
@@ -210,7 +212,9 @@ namespace Dogpatch.Gameplay
         {
             if (!ready) return;
 
-            follow.Hold = input.Dragging && current == null;
+            input.Split = current == null;
+            var look = input.TakeLook();
+            if (current == null) follow.Orbit(look);
             var dir2 = input.Direction;
             var dir = dir2 == Vector2.zero ? Vector3.zero : Quaternion.Euler(0f, follow.Yaw, 0f) * new Vector3(dir2.x, 0f, dir2.y);
             if (ExternalInput) { }

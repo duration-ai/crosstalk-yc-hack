@@ -20,6 +20,7 @@ namespace Dogpatch.World
         public readonly Dictionary<string, Tally> Tallies = new Dictionary<string, Tally>();
         public readonly Dictionary<string, int> TreeVariants = new Dictionary<string, int>();
         public readonly List<float> TreeHeights = new List<float>();
+        public readonly List<(string kind, Vector2 position, float heading)> Seating = new List<(string, Vector2, float)>();
 
         readonly WorldContext ctx;
         readonly StaticModels statics;
@@ -155,6 +156,7 @@ namespace Dogpatch.World
                 return;
             }
             tally.Placed++;
+            if (prop.kind == "bench" || prop.kind == "bus_stop") Seating.Add((prop.kind, q, heading));
         }
 
         // A sign on the carriageway (OSM puts stop nodes on the road) goes to the curb on the right of

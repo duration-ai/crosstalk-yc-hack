@@ -1,15 +1,35 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Dogpatch.Gameplay
 {
-    // The game's only control: touch anywhere and drag. The drag vector from the touch-down
-    // point gives direction (screen up = away from the camera) and strength (longer = faster).
-    // A short touch that barely moves is a tap. The mouse stands in for touch in the editor.
+    // Touch input. In the car the whole screen is one drag stick: the drag vector from the
+    // touch-down point gives direction (screen up = away from the camera) and strength (longer =
+    // faster). On foot (Split) the screen is split like most mobile third-person games: a drag
+    // that starts on the left half is the move stick, whose anchor trails the thumb once it passes
+    // full reach, and a drag that starts on the right half pans the camera, so both thumbs work at
+    // once. A short touch that barely moves is a tap anywhere. On foot a quick tap by any other
+    // finger (on the look side, or a second finger on the move side) is a tap too, so you can jump
+    // while running; the camera only turns once a look drag passes that tap's movement limit. The
+    // mouse stands in for touch in the editor.
     public sealed class DragInput : MonoBehaviour
     {
         const float TapSeconds = 0.35f;
+        const int MouseId = 1000;
+        const float QuickTapSeconds = 0.2f;
+        const float QuickTapPixels = 15f;
 
+        struct Finger
+        {
+            public int Id;
+            public Vector2 Start;
+            public Vector2 Last;
+            public float DownTime;
+            public float MaxTravel;
+        }
+
+        public bool Split;
         public bool Dragging { get; private set; }
         public Vector2 Anchor { get; private set; }
         public Vector2 Current { get; private set; }
@@ -20,9 +40,10 @@ namespace Dogpatch.Gameplay
         // paused) are left to the HUD and never start a drag or a tap.
         public Func<Vector2, bool> IgnoreAt;
 
-        int fingerId = -1;
-        float downTime;
-        float maxTravel;
+        Finger move = new Finger { Id = -1 };
+        Finger look = new Finger { Id = -1 };
+        readonly List<Finger> extra = new List<Finger>();
+        Vector2 lookDelta;
 
         public float TapSlop => Mathf.Min(Screen.width, Screen.height) * 0.035f;
         public float Reach => Mathf.Min(Screen.width, Screen.height) * 0.25f;
@@ -46,6 +67,25 @@ namespace Dogpatch.Gameplay
             }
         }
 
+        // Camera pan in screen pixels since the last call.
+        public Vector2 TakeLook()
+        {
+            var d = lookDelta;
+            lookDelta = Vector2.zero;
+            return d;
+        }
+
+        // Drops the gestures in progress without a tap, so a finger already down when the game
+        // pauses neither keeps steering nor taps on release.
+        public void Cancel()
+        {
+            move.Id = -1;
+            look.Id = -1;
+            extra.Clear();
+            Dragging = false;
+            lookDelta = Vector2.zero;
+        }
+
         void Update()
         {
             if (Input.touchCount > 0)
@@ -53,52 +93,98 @@ namespace Dogpatch.Gameplay
                 for (int i = 0; i < Input.touchCount; i++)
                 {
                     var t = Input.GetTouch(i);
-                    if (fingerId < 0 && t.phase == TouchPhase.Began) Begin(t.fingerId, t.position);
-                    if (t.fingerId != fingerId) continue;
-                    if (t.phase == TouchPhase.Moved || t.phase == TouchPhase.Stationary) Move(t.position);
-                    if (t.phase == TouchPhase.Ended || t.phase == TouchPhase.Canceled) End(t.position);
+                    if (t.phase == TouchPhase.Began) Begin(t.fingerId, t.position);
+                    else if (t.phase == TouchPhase.Moved || t.phase == TouchPhase.Stationary) Move(t.fingerId, t.position);
+                    else End(t.fingerId, t.position);
                 }
                 return;
             }
-            if (fingerId >= 0 && fingerId != 1000) End(Current);
+            extra.Clear();
+            if (move.Id >= 0 && move.Id != MouseId) End(move.Id, Current);
+            if (look.Id >= 0 && look.Id != MouseId) End(look.Id, look.Last);
 
-            if (fingerId < 0 && (Input.GetMouseButtonDown(0) || Input.GetMouseButton(0))) Begin(1000, Input.mousePosition);
-            if (fingerId != 1000) return;
-            if (Input.GetMouseButton(0) && !Input.GetMouseButtonUp(0)) Move(Input.mousePosition);
-            else End(Input.mousePosition);
-        }
-
-        // Drops the gesture in progress without a tap, so a finger already down when the game
-        // pauses neither keeps steering nor taps on release.
-        public void Cancel()
-        {
-            Dragging = false;
-            fingerId = -1;
+            bool held = Input.GetMouseButton(0) && !Input.GetMouseButtonUp(0);
+            bool tracked = move.Id == MouseId || look.Id == MouseId;
+            Vector2 mouse = Input.mousePosition;
+            if (held && !tracked) Begin(MouseId, mouse);
+            else if (held) Move(MouseId, mouse);
+            else if (tracked) End(MouseId, mouse);
         }
 
         void Begin(int id, Vector2 position)
         {
             if ((IgnoreAt != null && IgnoreAt(position)) || (IgnoreTouch != null && IgnoreTouch(position))) return;
-            fingerId = id;
-            Anchor = Current = position;
-            downTime = Time.unscaledTime;
-            maxTravel = 0f;
+            var finger = new Finger { Id = id, Start = position, Last = position, DownTime = Time.unscaledTime };
+            bool lookSide = position.x > Screen.width * 0.5f;
+            if (Split && lookSide && look.Id < 0)
+            {
+                look = finger;
+                return;
+            }
+            if (Split && (lookSide || move.Id >= 0))
+            {
+                extra.Add(finger);
+                return;
+            }
+            if (move.Id >= 0) return;
+            move = finger;
             Dragging = true;
+            Anchor = Current = position;
         }
 
-        void Move(Vector2 position)
+        void Move(int id, Vector2 position)
         {
+            if (id == look.Id)
+            {
+                look.MaxTravel = Mathf.Max(look.MaxTravel, (position - look.Start).magnitude);
+                if (look.MaxTravel >= QuickTapPixels) lookDelta += position - look.Last;
+                look.Last = position;
+                return;
+            }
+            int e = ExtraIndex(id);
+            if (e >= 0)
+            {
+                var f = extra[e];
+                f.MaxTravel = Mathf.Max(f.MaxTravel, (position - f.Start).magnitude);
+                extra[e] = f;
+                return;
+            }
+            if (id != move.Id) return;
             Current = position;
-            maxTravel = Mathf.Max(maxTravel, (position - Anchor).magnitude);
+            var offset = position - Anchor;
+            move.MaxTravel = Mathf.Max(move.MaxTravel, (position - move.Start).magnitude);
+            if (Split && offset.magnitude > Reach) Anchor = position - offset.normalized * Reach;
         }
 
-        void End(Vector2 position)
+        void End(int id, Vector2 position)
         {
-            Move(position);
-            bool tap = maxTravel < TapSlop && Time.unscaledTime - downTime < TapSeconds;
-            Dragging = false;
-            fingerId = -1;
+            int e = ExtraIndex(id);
+            if (e >= 0)
+            {
+                Move(id, position);
+                var f = extra[e];
+                extra.RemoveAt(e);
+                if (QuickTap(f) && (IgnoreAt == null || !IgnoreAt(position))) Tapped?.Invoke(position);
+                return;
+            }
+            if (id != move.Id && id != look.Id) return;
+            Move(id, position);
+            ref var finger = ref id == move.Id ? ref move : ref look;
+            bool tap = id == move.Id
+                ? finger.MaxTravel < TapSlop && Time.unscaledTime - finger.DownTime < TapSeconds
+                : QuickTap(finger);
+            if (id == move.Id) Dragging = false;
+            finger.Id = -1;
             if (tap && (IgnoreAt == null || !IgnoreAt(position))) Tapped?.Invoke(position);
         }
+
+        int ExtraIndex(int id)
+        {
+            for (int i = 0; i < extra.Count; i++)
+                if (extra[i].Id == id) return i;
+            return -1;
+        }
+
+        static bool QuickTap(Finger f) => f.MaxTravel < QuickTapPixels && Time.unscaledTime - f.DownTime < QuickTapSeconds;
     }
 }
