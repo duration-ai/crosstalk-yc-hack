@@ -23,7 +23,7 @@ namespace Dogpatch.Gameplay
         public float BargeStrength = 0.3f;
         public bool PassengerOnly;
 
-        public static readonly HandlingProfile Default = new HandlingProfile();
+        public static readonly HandlingProfile Default = Vehicles.Pace.Apply(new HandlingProfile());
 
         public HandlingProfile Clone() => (HandlingProfile)MemberwiseClone();
     }

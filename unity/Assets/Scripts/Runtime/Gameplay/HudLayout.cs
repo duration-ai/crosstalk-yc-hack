@@ -7,11 +7,12 @@ namespace Dogpatch.Gameplay
 
     // Every HUD position in one place, for portrait and landscape, so the pieces drawn by different
     // files (Hud, SlipstreamHud, OperatorHud, Minimap, AvatarCapture, PerfReadout, DragInput) can
-    // never overlap. Three layouts, C by default; the others for Tim's pick (-hud-layout A|B|C):
+    // never overlap. Tim picked B; A and C stay behind -hud-layout A|C:
     //   A  Corners: minimap bottom left, fixed stick bottom right, Call above the stick, place top
     //      left, meters top right.
-    //   B  Map up top: minimap top right under pause, place and meters stacked top left, Call
-    //      bottom left for the left thumb, the stick alone bottom right.
+    //   B  Map up top: minimap in the top-right corner (no pause button; a two-finger tap pauses),
+    //      place and meters stacked top left, the phone bottom left for the left thumb, the stick
+    //      alone bottom right.
     //   C  Bottom rail: the minimap, Call and the stick in one row along the bottom (Call within
     //      reach of either thumb), the top exactly as the style guide has it.
     // Rects are GUI space (origin top left) unless the name says Screen (origin bottom left, the
@@ -31,8 +32,8 @@ namespace Dogpatch.Gameplay
         {
             var args = Environment.GetCommandLineArgs();
             int at = Array.IndexOf(args, "-hud-layout");
-            string v = at >= 0 && at + 1 < args.Length ? args[at + 1].ToUpperInvariant() : "C";
-            return v == "A" ? HudOption.A : v == "B" ? HudOption.B : HudOption.C;
+            string v = at >= 0 && at + 1 < args.Length ? args[at + 1].ToUpperInvariant() : "B";
+            return v == "A" ? HudOption.A : v == "C" ? HudOption.C : HudOption.B;
         }
 
         public static bool Portrait => Screen.height > Screen.width;
@@ -73,8 +74,19 @@ namespace Dogpatch.Gameplay
 
         // ---- the minimap (screen space) ----
 
-        // About 1.4x the old 50 U circle (Sudhir), 1.3x in the compact option; a tap opens the full map.
-        public static float MinimapRadius => (Option == HudOption.C ? 65f : 70f) * U;
+        // CROS-30's dial unit: the safe-area fit, or about 11 mm per 70 units from the dpi on a phone.
+        public static float MinimapUnit
+        {
+            get
+            {
+                var safe = Safe;
+                float fit = Mathf.Min(safe.height / 402f, safe.width / 560f);
+                return Application.isMobilePlatform && Screen.dpi > 0f ? Mathf.Min(Screen.dpi / 160f, fit * 1.07f) : fit;
+            }
+        }
+
+        // 1.4x the old 50-unit circle (Sudhir); a tap opens the full map.
+        public static float MinimapRadius => 70f * MinimapUnit;
 
         // Touches that start on the minimap are its own (a tap opens the full map): never a pan,
         // a jump or a stick grab.
@@ -86,7 +98,7 @@ namespace Dogpatch.Gameplay
             {
                 float r = MinimapRadius;
                 if (Option == HudOption.B)
-                    return new Vector2(Safe.xMax - 22f * U - r, Screen.height - PauseBottomGui - 18f * U - r);
+                    return new Vector2(Safe.xMax - 22f * U - r, Safe.yMax - 14f * U - 7f * MinimapUnit - r);
                 return new Vector2(Safe.xMin + 22f * U + r, Mathf.Max(Safe.yMin + 18f * U + r, StickScreen.y));
             }
         }
@@ -97,20 +109,6 @@ namespace Dogpatch.Gameplay
         static float MinimapBottomGui => Screen.height - MinimapScreen.y + MinimapRadius;
         static float MinimapTopGui => Screen.height - MinimapScreen.y - MinimapRadius - 16f * U;
         static float MinimapRightGui => MinimapScreen.x + MinimapRadius + 8f * U;
-
-        // ---- pause (Hud.cs scale) ----
-
-        public static Rect PauseScreen
-        {
-            get
-            {
-                float s = Short / 720f;
-                float w = 74f * s, h = 50f * s, m = 22f * s;
-                return new Rect(Safe.xMax - m - w, Safe.yMax - m - h, w, h);
-            }
-        }
-
-        static float PauseBottomGui => Screen.height - PauseScreen.y;
 
         // ---- the top band: news and the Operator's line share one row, the arrow sits under it ----
 
@@ -143,7 +141,7 @@ namespace Dogpatch.Gameplay
 
         public static Vector2 Meters => Stacked ? new Vector2(Left + 205f * U, Top + 72f * U) : new Vector2(Right - 64f * U, Top);
 
-        public static float ResultsTop => Option == HudOption.B ? MinimapBottomGui + 30f * U : PauseBottomGui + 12f * U;
+        public static float ResultsTop => Option == HudOption.B ? MinimapBottomGui + 30f * U : Top + 2f * U;
 
         // The mission lobby panel (CROS-31: mission plate, name tabs, waiting or countdown) while
         // you stand in the ring: top left, under nothing (place and meters only show mid-race).

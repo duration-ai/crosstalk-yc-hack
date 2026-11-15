@@ -40,6 +40,7 @@ namespace Dogpatch.Smash
         CarController lastAttacker;
         float lastAttackTime = -99f;
         float nextSmoke;
+        string specModel;
         bool tumbling;
         bool frontPopped, rearPopped;
         readonly Dictionary<int, float> pairCooldown = new Dictionary<int, float>();
@@ -64,10 +65,19 @@ namespace Dogpatch.Smash
             Body = GetComponent<Rigidbody>();
         }
 
-        void Start()
+        void Start() => ApplySpec();
+
+        // Mass and crash budget from the vehicle's profile, read again after an in-place swap, and a
+        // centre of mass low in the body so a car that does tip lands on its wheels.
+        void ApplySpec()
         {
+            if (specModel != null) ForgetBody();
+            specModel = Car.ModelId;
             Spec = VehicleSpecs.For(Car);
             Body.mass = Spec.Mass;
+            Body.maxDepenetrationVelocity = DamageTuning.Current.maxDepenetration;
+            var box = GetComponent<BoxCollider>();
+            if (box != null) Body.centerOfMass = new Vector3(box.center.x, box.center.y - box.size.y * 0.25f, box.center.z);
         }
 
         void OnEnable() => All.Add(this);
@@ -78,6 +88,8 @@ namespace Dogpatch.Smash
         {
             lastVelocity = Body.isKinematic ? Vector3.zero : Body.linearVelocity;
             lastAngular = Body.isKinematic ? Vector3.zero : Body.angularVelocity;
+            if (Car.ModelId != specModel) ApplySpec();
+            if (!Body.isKinematic) Settle();
 
             if (!Car.Driven && !Body.isKinematic && Car.Stunned)
                 Body.linearDamping = 0.9f;
@@ -87,6 +99,27 @@ namespace Dogpatch.Smash
             if (tumbling) Recover();
             else if (Car.Driven && !Car.Stunned && !Body.isKinematic)
                 Body.angularVelocity *= 0.7f;
+        }
+
+        // Nothing flies: upward speed and roll/pitch spin are capped whatever pushed the car (a hit,
+        // a launch, several contacts in one step, depenetration), and an undriven or stunned car
+        // off the ground falls faster so it lands within a second.
+        void Settle()
+        {
+            var tuning = DamageTuning.Current;
+            var v = Body.linearVelocity;
+            if (v.y > tuning.maxRiseSpeed) Body.linearVelocity = new Vector3(v.x, tuning.maxRiseSpeed, v.z);
+            var w = Body.angularVelocity;
+            var tip = new Vector2(w.x, w.z);
+            if (tip.sqrMagnitude > tuning.maxTumbleSpin * tuning.maxTumbleSpin)
+            {
+                tip = tip.normalized * tuning.maxTumbleSpin;
+                Body.angularVelocity = new Vector3(tip.x, w.y, tip.y);
+            }
+            if (Car.Driven && !Car.Stunned) return;
+            var p = Body.position;
+            if (p.y - World.RoadSurface.GroundY(new Vector2(p.x, p.z)) > 0.3f)
+                Body.AddForce(Physics.gravity * (tuning.airborneGravity - 1f), ForceMode.Acceleration);
         }
 
         // A parked car near a moving one stops being kinematic for a moment.
@@ -235,10 +268,11 @@ namespace Dogpatch.Smash
             tumbling = true;
             Car.Stun(2.4f);
             Body.constraints = RigidbodyConstraints.None;
-            float lift = Mathf.Min(2.5f + closing * 0.22f * Mathf.Min(ratio, 3f), 8f);
-            Body.linearVelocity += Vector3.up * lift;
+            var tuning = DamageTuning.Current;
+            float lift = Mathf.Min(1.2f + closing * 0.08f * Mathf.Min(ratio, 3f), tuning.maxRiseSpeed);
+            Body.linearVelocity = new Vector3(Body.linearVelocity.x, Mathf.Max(Body.linearVelocity.y, 0f) * 0.5f + lift, Body.linearVelocity.z);
             var axis = Vector3.Cross(Vector3.up, dir).normalized;
-            Body.angularVelocity = axis * Mathf.Min(1.2f + closing * 0.12f, 4.5f) + Vector3.up * UnityEngine.Random.Range(-1.5f, 1.5f);
+            Body.angularVelocity = axis * Mathf.Min(1.2f + closing * 0.08f, tuning.maxTumbleSpin) + Vector3.up * UnityEngine.Random.Range(-1.5f, 1.5f);
         }
 
         // Who gets the points for what this car does: the car that launched it, if that was recent.
@@ -268,6 +302,7 @@ namespace Dogpatch.Smash
         // Body meshes are shared between cars, so each car copies its own the first time it is hit.
         void EnsurePanels()
         {
+            if (panels != null && panels.Exists(p => p.Filter == null)) ForgetBody();
             if (panels != null) return;
             panels = new List<Panel>();
             foreach (var mf in GetComponentsInChildren<MeshFilter>())
@@ -435,16 +470,29 @@ namespace Dogpatch.Smash
             Wrecked?.Invoke(Car);
         }
 
+        // After an in-place swap the old visual is gone: drop the dented copies and popped parts that
+        // belonged to it, keeping the damage total.
+        void ForgetBody()
+        {
+            if (panels != null)
+                foreach (var p in panels)
+                    if (p.Mesh != null) Destroy(p.Mesh);
+            panels = null;
+            hiddenParts.Clear();
+            frontPopped = rearPopped = false;
+        }
+
         public void Repair()
         {
             if (panels != null)
                 foreach (var p in panels)
                 {
-                    p.Filter.sharedMesh = p.Original;
+                    if (p.Filter != null) p.Filter.sharedMesh = p.Original;
                     Destroy(p.Mesh);
                 }
             panels = null;
-            foreach (var (part, wasActive) in hiddenParts) part.gameObject.SetActive(wasActive);
+            foreach (var (part, wasActive) in hiddenParts)
+                if (part != null) part.gameObject.SetActive(wasActive);
             hiddenParts.Clear();
             foreach (var r in GetComponentsInChildren<Renderer>()) r.SetPropertyBlock(null);
             frontPopped = rearPopped = false;

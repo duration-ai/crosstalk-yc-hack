@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Dogpatch.Gameplay;
@@ -6,27 +7,39 @@ using Dogpatch.Nav;
 using Dogpatch.Race;
 using Dogpatch.Slipstream;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace Dogpatch.Map
 {
     // GTA-style minimap in the bottom-left corner, the one corner the Slipstream HUD leaves free
     // (place and the lobby roster top left, meters and pause top right, Call and Ready bottom right).
-    // A circle with an ink rim, heading-up with the camera, zooming out with speed. The map is a
-    // texture baked once at startup (MapBaker) and drawn as a textured fan under the rim, so there is
-    // no second camera. On top: the route (sunshine), the start ring, ask pickups, the finish flag, your parked race car, the other racers as their colour blocks, and
-    // you. Racers and the objective outside the circle are pinned to its rim as small chevrons
-    // pointing their way. It draws only, so touches fall through to the drag control.
+    // A circle with an ink rim, heading-up with the camera, zooming out with speed, sized in
+    // physical units from Screen.dpi (capped by the safe area) so it reads the same on every phone.
+    // The map is vector meshes (MapGeometry, built off the main thread) rendered each frame into a
+    // 4x MSAA target exactly the circle's size in screen pixels, so it is 1:1 and antialiased at any
+    // zoom, then drawn as a textured fan under the rim; there is no second camera. On top: the route
+    // (sunshine), the start ring, ask pickups, the finish flag, your parked race car, the other
+    // racers as their colour blocks, and you. Racers and the objective outside the circle are
+    // pinned to its rim as small chevrons pointing their way.
+    //
+    // A tap on the circle opens the full map: north-up over the whole screen with pinch zoom and
+    // pan, street names on the major streets, the landmarks, and the same marks with names on the
+    // players. A tap (or the X) closes it. Drags that start on the circle still reach the drag
+    // control; only the tap is taken. While the full map is open it takes every touch, but the
+    // world (and any online race) keeps running underneath.
     public sealed class Minimap : MonoBehaviour
     {
         const string PrefKey = "dogpatch.minimap";
-        const int FanSegments = 64;
-        const float NearMeters = 70f;
-        const float FarMeters = 170f;
+        const int FanSegments = 96;
+        const float NearMeters = 90f;
+        const float FarMeters = 210f;
+        const float TapSeconds = 0.35f;
 
         static readonly Color Ink = SpeedDial.Hex("#1C2347");
         static readonly Color Sunshine = SpeedDial.Hex("#FFCB1F");
         static readonly Color Pink = SpeedDial.Hex("#FF3E8E");
         static readonly Color White = Color.white;
+        static readonly Color Bay = SpeedDial.Hex("#17B2D0");
 
         static bool? shown;
 
@@ -42,26 +55,49 @@ namespace Dogpatch.Map
             }
         }
 
+        // True while the full-screen map is up; the HUD stops taking touches meanwhile.
+        public static bool FullOpen { get; private set; }
+
         public GameController Game;
 
         Material marks;
         Material mapMaterial;
-        Texture2D map;
-        Rect bounds;
-        Task<MapBaker.Result> bake;
-        float bakeStarted;
+        MapGeometry geometry;
+        Task<MapGeometry> build;
+        float buildStarted;
+        RenderTexture target;
+        CommandBuffer commands;
+        Mesh unitQuad;
+        Hud hud;
         Font font;
         GUIStyle style;
         float radiusMeters = NearMeters;
+        Func<Vector2, bool> dragIgnore;
+        Func<Vector2, bool> shoveIgnore;
 
         float s;
+        Vector2 dialCenter;
+        float dialRadius;
+
         float radius;
         float clip;
         Vector2 center;
+        Vector2 half;
         Vector2 me;
         Vector2 right;
         Vector2 forward;
         float pxPerMeter;
+
+        Vector2 fullCenter;
+        float fullZoom;
+        int tapFinger = -1;
+        Vector2 tapStart;
+        float tapTime;
+        bool tapValid;
+        long gestureKey = -1;
+        Vector2 gestureMid;
+        float gestureSpan;
+        Vector2 lastMouse;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Boot()
@@ -83,45 +119,254 @@ namespace Dogpatch.Map
             marks = new Material(Resources.Load<Shader>("Shaders/HudColor")) { name = "MinimapMarks" };
             mapMaterial = new Material(Resources.Load<Shader>("Shaders/MapTexture")) { name = "MinimapMap" };
             font = Resources.Load<Font>("Fonts/Exo2-BlackItalic");
-            var palette = new MapBaker.Palette
+            hud = GetComponent<Hud>();
+            var palette = new MapGeometry.Palette
             {
-                Bay = Hex32("#17B2D0"),
                 Land = Hex32("#E6DDCB"),
                 Park = Hex32("#48C26A"),
                 Path = Hex32("#EEE7DA"),
+                Casing = Hex32("#8E929B"),
                 Street = Hex32("#A9ADB4"),
                 Building = Hex32("#FF9C86"),
             };
             var data = Game.Data;
-            bakeStarted = Time.realtimeSinceStartup;
-            bake = Task.Run(() => MapBaker.Bake(data, palette));
+            buildStarted = Time.realtimeSinceStartup;
+            build = Task.Run(() => MapGeometry.Build(data, palette));
+        }
+
+        void OnDestroy()
+        {
+            FullOpen = false;
+            if (target != null) target.Release();
         }
 
         void Update()
         {
-            if (bake != null && bake.IsCompleted)
+            if (build != null && build.IsCompleted)
             {
-                if (bake.IsFaulted) Debug.LogError("[Minimap] bake failed: " + bake.Exception?.GetBaseException());
+                if (build.IsFaulted) Debug.LogError("[Minimap] map build failed: " + build.Exception?.GetBaseException());
                 else
                 {
-                    var r = bake.Result;
-                    map = new Texture2D(r.Width, r.Height, TextureFormat.RGBA32, false, true)
-                    {
-                        name = "Minimap", wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear,
-                    };
-                    map.SetPixels32(r.Pixels);
-                    map.Apply(false, true);
-                    bounds = r.Bounds;
-                    mapMaterial.mainTexture = map;
-                    Debug.Log($"[Minimap] baked {r.Width}x{r.Height} map in {(Time.realtimeSinceStartup - bakeStarted) * 1000f:F0} ms");
+                    geometry = build.Result;
+                    geometry.Upload();
+                    Debug.Log($"[Minimap] built {geometry.TriangleCount} map triangles, {geometry.Streets.Count} street labels, {geometry.Places.Count} places in {(Time.realtimeSinceStartup - buildStarted) * 1000f:F0} ms");
                 }
-                bake = null;
+                build = null;
             }
 
             if (Game == null || !Game.IsReady) return;
+            Layout();
+            HookInput();
+            if (FullOpen) FullGestures();
+            else WatchDialTap();
+
             float speed = Mathf.Abs(Game.CurrentCar != null ? Game.CurrentCar.Speed : Game.Player != null ? Game.Player.Speed : 0f);
             float target = Mathf.Lerp(NearMeters, FarMeters, Mathf.Clamp01((speed - 4f) / 24f));
             radiusMeters = Mathf.Lerp(radiusMeters, target, 1f - Mathf.Exp(-Time.unscaledDeltaTime * 1.6f));
+        }
+
+        // Sized in points from the screen's dpi on a phone (about 11 mm across the radius at 460
+        // ppi), never more than 7% over what the safe area gives it; placed by HudLayout.
+        void Layout()
+        {
+            s = HudLayout.MinimapUnit;
+            dialRadius = HudLayout.MinimapRadius;
+            dialCenter = HudLayout.MinimapScreen;
+        }
+
+        bool OnDial(Vector2 p)
+        {
+            float r = dialRadius + 6f * s;
+            return Shown && geometry != null && dialRadius > 0f && (p - dialCenter).sqrMagnitude <= r * r;
+        }
+
+        // Keeps the full map's touch block chained in front of whatever the race and the operator
+        // set on the drag and shove controls (they assign theirs when a race sets up). A tap on the
+        // dial must not jump either, so the drag control drops taps there.
+        void HookInput()
+        {
+            var drag = Game.Drag;
+            if (drag != null)
+            {
+                drag.IgnoreTap = OnDial;
+                if (drag.IgnoreTouch != dragIgnore)
+                {
+                    var previous = drag.IgnoreTouch;
+                    dragIgnore = p => FullOpen || (previous != null && previous(p));
+                    drag.IgnoreTouch = dragIgnore;
+                }
+            }
+            var shove = RaceDirector.Instance != null ? RaceDirector.Instance.Shove : null;
+            if (shove != null && shove.IgnoreTouch != shoveIgnore)
+            {
+                var previous = shove.IgnoreTouch;
+                shoveIgnore = p => FullOpen || OnDial(p) || (previous != null && previous(p));
+                shove.IgnoreTouch = shoveIgnore;
+            }
+        }
+
+        bool IsTap(Vector2 p) => (p - tapStart).magnitude < Mathf.Min(Screen.width, Screen.height) * 0.035f && Time.unscaledTime - tapTime < TapSeconds;
+
+        void WatchDialTap()
+        {
+            if (Input.GetKeyDown(KeyCode.M) && Shown && geometry != null) SetFull(true);
+            if (!Shown || geometry == null || (hud != null && hud.Paused))
+            {
+                tapFinger = -1;
+                return;
+            }
+            if (Input.touchCount > 0)
+            {
+                for (int i = 0; i < Input.touchCount; i++)
+                {
+                    var t = Input.GetTouch(i);
+                    if (t.phase == TouchPhase.Began && tapFinger < 0 && OnDial(t.position))
+                    {
+                        tapFinger = t.fingerId;
+                        tapStart = t.position;
+                        tapTime = Time.unscaledTime;
+                    }
+                    else if (t.fingerId == tapFinger && (t.phase == TouchPhase.Ended || t.phase == TouchPhase.Canceled))
+                    {
+                        tapFinger = -1;
+                        if (t.phase == TouchPhase.Ended && IsTap(t.position)) SetFull(true);
+                    }
+                }
+                return;
+            }
+            Vector2 mouse = Input.mousePosition;
+            if (Input.GetMouseButtonDown(0) && OnDial(mouse))
+            {
+                tapFinger = 1000;
+                tapStart = mouse;
+                tapTime = Time.unscaledTime;
+            }
+            if (tapFinger == 1000 && Input.GetMouseButtonUp(0))
+            {
+                tapFinger = -1;
+                if (IsTap(mouse)) SetFull(true);
+            }
+        }
+
+        // Opens the full map centred on you, about 700 m across the short side of a phone.
+        public void SetFull(bool open)
+        {
+            if (open == FullOpen) return;
+            FullOpen = open;
+            tapFinger = -1;
+            tapValid = false;
+            gestureKey = -1;
+            if (!open) return;
+            Game.Drag?.Cancel();
+            var focus = Game.Focus;
+            fullCenter = focus != null ? new Vector2(focus.position.x, focus.position.z) : geometry.Bounds.center;
+            fullZoom = Mathf.Clamp(0.6f * s, MinZoom, MaxZoom);
+            ClampView();
+        }
+
+        Rect MapArea => new Rect(geometry.Bounds.xMin - 60f, geometry.Bounds.yMin - 60f, geometry.Bounds.width + 120f, geometry.Bounds.height + 120f);
+        float MinZoom => Mathf.Min(Screen.width / MapArea.width, Screen.height / MapArea.height);
+        float MaxZoom => 5f * s;
+        Vector2 ScreenMid => new Vector2(Screen.width, Screen.height) * 0.5f;
+
+        void ClampView()
+        {
+            var area = MapArea;
+            var halfView = ScreenMid / fullZoom;
+            fullCenter.x = halfView.x * 2f >= area.width ? area.center.x : Mathf.Clamp(fullCenter.x, area.xMin + halfView.x, area.xMax - halfView.x);
+            fullCenter.y = halfView.y * 2f >= area.height ? area.center.y : Mathf.Clamp(fullCenter.y, area.yMin + halfView.y, area.yMax - halfView.y);
+        }
+
+        void Pan(Vector2 screenDelta)
+        {
+            fullCenter -= screenDelta / fullZoom;
+            ClampView();
+        }
+
+        void ZoomAbout(Vector2 screen, float factor)
+        {
+            var world = fullCenter + (screen - ScreenMid) / fullZoom;
+            fullZoom = Mathf.Clamp(fullZoom * factor, MinZoom, MaxZoom);
+            fullCenter = world - (screen - ScreenMid) / fullZoom;
+            ClampView();
+        }
+
+        // One finger pans, two pinch-zoom about their midpoint (and pan with it). A single short
+        // touch that barely moves closes the map, wherever it lands (the X included).
+        void FullGestures()
+        {
+            if (Input.GetKeyDown(KeyCode.M) || Input.GetKeyDown(KeyCode.Escape))
+            {
+                SetFull(false);
+                return;
+            }
+            if (Input.touchCount > 0)
+            {
+                Touch a = default, b = default;
+                int live = 0;
+                for (int i = 0; i < Input.touchCount; i++)
+                {
+                    var t = Input.GetTouch(i);
+                    if (t.phase == TouchPhase.Began)
+                    {
+                        tapValid = Input.touchCount == 1;
+                        tapFinger = t.fingerId;
+                        tapStart = t.position;
+                        tapTime = Time.unscaledTime;
+                    }
+                    if (t.phase == TouchPhase.Ended || t.phase == TouchPhase.Canceled)
+                    {
+                        if (t.fingerId == tapFinger && t.phase == TouchPhase.Ended && tapValid && IsTap(t.position))
+                        {
+                            SetFull(false);
+                            return;
+                        }
+                        continue;
+                    }
+                    if (live == 0) a = t;
+                    else if (live == 1) b = t;
+                    live++;
+                }
+                if (live > 1 || (live == 1 && (a.position - tapStart).magnitude >= Mathf.Min(Screen.width, Screen.height) * 0.035f)) tapValid = false;
+                if (live == 0)
+                {
+                    gestureKey = -1;
+                    return;
+                }
+                long key = live == 1 ? a.fingerId : 1000L * (a.fingerId + 1) + b.fingerId;
+                var mid = live == 1 ? a.position : (a.position + b.position) * 0.5f;
+                float span = live == 1 ? 0f : (a.position - b.position).magnitude;
+                if (key == gestureKey)
+                {
+                    if (live > 1 && gestureSpan > 1f) ZoomAbout(gestureMid, span / gestureSpan);
+                    Pan(mid - gestureMid);
+                }
+                gestureKey = key;
+                gestureMid = mid;
+                gestureSpan = span;
+                return;
+            }
+            gestureKey = -1;
+            Vector2 mouse = Input.mousePosition;
+            if (Input.mouseScrollDelta.y != 0f) ZoomAbout(mouse, Mathf.Pow(1.15f, Input.mouseScrollDelta.y));
+            if (Input.GetMouseButtonDown(0))
+            {
+                tapFinger = 1000;
+                tapValid = true;
+                tapStart = mouse;
+                tapTime = Time.unscaledTime;
+            }
+            else if (tapFinger == 1000 && Input.GetMouseButton(0)) Pan(mouse - lastMouse);
+            if (tapFinger == 1000 && Input.GetMouseButtonUp(0))
+            {
+                tapFinger = -1;
+                if (IsTap(mouse))
+                {
+                    SetFull(false);
+                    return;
+                }
+            }
+            lastMouse = mouse;
         }
 
         Vector2 ToMap(Vector2 world)
@@ -139,51 +384,130 @@ namespace Dogpatch.Map
             return new Vector2(Vector2.Dot(d, right), Vector2.Dot(d, forward));
         }
 
-        bool Inside(Vector2 p, float margin) => (p - center).sqrMagnitude < (clip - margin) * (clip - margin);
+        bool Inside(Vector2 p, float margin)
+        {
+            if (FullOpen) return Mathf.Abs(p.x - center.x) < half.x - margin && Mathf.Abs(p.y - center.y) < half.y - margin;
+            return (p - center).sqrMagnitude < (clip - margin) * (clip - margin);
+        }
 
         void OnGUI()
         {
-            if (Event.current.type != EventType.Repaint || !Shown || map == null || Game == null || !Game.IsReady) return;
+            GUI.depth = FullOpen ? -20 : 0;
+            if (Event.current.type != EventType.Repaint || geometry == null || Game == null || !Game.IsReady || (!Shown && !FullOpen)) return;
             var focus = Game.Focus;
             var cam = Game.View;
             if (focus == null || cam == null) return;
+            var player = new Vector2(focus.position.x, focus.position.z);
 
-            s = Gameplay.HudLayout.U;
-            radius = Gameplay.HudLayout.MinimapRadius;
-            clip = radius - 0.5f * s;
-            center = Gameplay.HudLayout.MinimapScreen;
-            me = new Vector2(focus.position.x, focus.position.z);
-            float yaw = cam.transform.eulerAngles.y * Mathf.Deg2Rad;
-            forward = new Vector2(Mathf.Sin(yaw), Mathf.Cos(yaw));
-            right = new Vector2(Mathf.Cos(yaw), -Mathf.Sin(yaw));
-            pxPerMeter = radius / radiusMeters;
+            if (FullOpen)
+            {
+                center = ScreenMid;
+                half = ScreenMid;
+                me = fullCenter;
+                forward = Vector2.up;
+                right = Vector2.right;
+                pxPerMeter = fullZoom;
+            }
+            else
+            {
+                center = dialCenter;
+                radius = dialRadius;
+                clip = radius - 0.5f * s;
+                half = new Vector2(radius, radius);
+                me = player;
+                float yaw = cam.transform.eulerAngles.y * Mathf.Deg2Rad;
+                forward = new Vector2(Mathf.Sin(yaw), Mathf.Cos(yaw));
+                right = new Vector2(Mathf.Cos(yaw), -Mathf.Sin(yaw));
+                pxPerMeter = radius / radiusMeters;
+            }
+            RenderMap();
 
             GL.PushMatrix();
             GL.LoadPixelMatrix();
             DrawMap();
+            GL.PopMatrix();
+            if (FullOpen) DrawStreetNames();
+            GL.PushMatrix();
+            GL.LoadPixelMatrix();
             marks.SetPass(0);
             GL.Begin(GL.TRIANGLES);
-            DrawMarks(focus);
+            DrawMarks(focus, player);
             GL.End();
             GL.PopMatrix();
-            DrawDistance();
+            if (FullOpen) DrawFullLabels(player);
+            else DrawDistance();
+        }
+
+        // Renders the vector map into a 4x MSAA target the size of what it fills on screen (the
+        // dial's square, or the whole screen), so every map pixel is one screen pixel.
+        void RenderMap()
+        {
+            int w = Mathf.CeilToInt(half.x * 2f), h = Mathf.CeilToInt(half.y * 2f);
+            if (target == null || target.width != w || target.height != h)
+            {
+                if (target != null)
+                {
+                    target.Release();
+                    Destroy(target);
+                }
+                target = new RenderTexture(w, h, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear)
+                {
+                    name = "MinimapMap", antiAliasing = 4, memorylessMode = RenderTextureMemoryless.MSAA,
+                    filterMode = FilterMode.Bilinear, wrapMode = TextureWrapMode.Clamp,
+                };
+                target.Create();
+                mapMaterial.mainTexture = target;
+            }
+            var worldToPixel = Matrix4x4.identity;
+            worldToPixel.m00 = right.x * pxPerMeter;
+            worldToPixel.m01 = right.y * pxPerMeter;
+            worldToPixel.m03 = w * 0.5f - Vector2.Dot(right, me) * pxPerMeter;
+            worldToPixel.m10 = forward.x * pxPerMeter;
+            worldToPixel.m11 = forward.y * pxPerMeter;
+            worldToPixel.m13 = h * 0.5f - Vector2.Dot(forward, me) * pxPerMeter;
+            var reach = new Vector2(w, h) * (FullOpen ? 0.5f : 0.75f) / pxPerMeter;
+            var view = new Rect(me - reach, reach * 2f);
+
+            if (commands == null)
+            {
+                commands = new CommandBuffer { name = "Minimap" };
+                unitQuad = new Mesh { name = "MapBay" };
+                unitQuad.SetVertices(new[] { Vector3.zero, Vector3.up, new Vector3(1f, 1f, 0f), Vector3.right });
+                var bay = (Color32)Bay;
+                unitQuad.SetColors(new[] { bay, bay, bay, bay });
+                unitQuad.SetTriangles(new[] { 0, 1, 2, 0, 2, 3 }, 0);
+            }
+            var previous = RenderTexture.active;
+            commands.Clear();
+            commands.SetRenderTarget(target);
+            commands.SetViewProjectionMatrices(Matrix4x4.identity, Matrix4x4.Ortho(0f, w, 0f, h, -1f, 1f));
+            commands.DrawMesh(unitQuad, Matrix4x4.Scale(new Vector3(w, h, 1f)), marks, 0, 0);
+            geometry.Draw(commands, marks, worldToPixel, view);
+            Graphics.ExecuteCommandBuffer(commands);
+            RenderTexture.active = previous;
         }
 
         void DrawMap()
         {
             mapMaterial.SetPass(0);
             GL.Begin(GL.TRIANGLES);
-            var fill = new Color(1f, 1f, 1f, 0.88f);
-            Vector2 Uv(Vector2 offset)
+            if (FullOpen)
             {
-                var w = me + (right * offset.x + forward * offset.y) / pxPerMeter;
-                return new Vector2((w.x - bounds.xMin) / bounds.width, (w.y - bounds.yMin) / bounds.height);
+                GL.Color(White);
+                GL.TexCoord2(0f, 0f); GL.Vertex3(0f, 0f, 0f);
+                GL.TexCoord2(0f, 1f); GL.Vertex3(0f, Screen.height, 0f);
+                GL.TexCoord2(1f, 1f); GL.Vertex3(Screen.width, Screen.height, 0f);
+                GL.TexCoord2(0f, 0f); GL.Vertex3(0f, 0f, 0f);
+                GL.TexCoord2(1f, 1f); GL.Vertex3(Screen.width, Screen.height, 0f);
+                GL.TexCoord2(1f, 0f); GL.Vertex3(Screen.width, 0f, 0f);
+                GL.End();
+                return;
             }
+            var fill = new Color(1f, 1f, 1f, 0.92f);
             void V(Vector2 offset)
             {
                 GL.Color(fill);
-                var uv = Uv(offset);
-                GL.TexCoord2(uv.x, uv.y);
+                GL.TexCoord2(0.5f + offset.x / (2f * radius), 0.5f + offset.y / (2f * radius));
                 GL.Vertex3(center.x + offset.x, center.y + offset.y, 0f);
             }
             for (int i = 0; i < FanSegments; i++)
@@ -196,18 +520,21 @@ namespace Dogpatch.Map
             GL.End();
         }
 
-        void DrawMarks(Transform focus)
+        void DrawMarks(Transform focus, Vector2 player)
         {
             var race = RaceDirector.Instance;
             bool raceUp = race != null && race.Setup;
             var nav = NavService.Instance;
 
-            Ring(center, radius + 3.4f * s, 3.9f * s, Ink);
-            var north = MapDirection(0f);
-            var northRight = new Vector2(north.y, -north.x);
-            var tip = center + north * (radius + 6.4f * s);
-            var baseCenter = center + north * (radius + 0.6f * s);
-            Tri(tip, baseCenter + northRight * 3.6f * s, baseCenter - northRight * 3.6f * s, Sunshine);
+            if (!FullOpen)
+            {
+                Ring(center, radius + 3.4f * s, 3.9f * s, Ink);
+                var north = MapDirection(0f);
+                var northRight = new Vector2(north.y, -north.x);
+                var tip = center + north * (radius + 6.4f * s);
+                var baseCenter = center + north * (radius + 0.6f * s);
+                Tri(tip, baseCenter + northRight * 3.6f * s, baseCenter - northRight * 3.6f * s, Sunshine);
+            }
 
             if (nav != null && nav.HasObjective && nav.Path.Count >= 2) Route(nav.Path);
             else if (raceUp && race.Gridded && !race.ResultsIn) Route(race.Course.Route.Points);
@@ -264,8 +591,129 @@ namespace Dogpatch.Map
                 }
 
             var heading = MapDirection(focus.eulerAngles.y);
-            if (Game.CurrentCar != null) Car(center, heading, 1f, mySlotColor);
-            Arrow(center, heading, (Game.CurrentCar != null ? 5.6f : 6.6f) * s, Sunshine);
+            var mine = ToMap(player);
+            if (!Inside(mine, 4f * s)) Pin(mine, 4.4f * s, Sunshine);
+            else
+            {
+                if (Game.CurrentCar != null) Car(mine, heading, 1f, mySlotColor);
+                Arrow(mine, heading, (Game.CurrentCar != null ? 5.6f : 6.6f) * s, Sunshine);
+            }
+        }
+
+        // Major street names along their streets, upright, ink on a land-coloured halo; a name is
+        // skipped where it would crowd one already drawn.
+        void DrawStreetNames()
+        {
+            EnsureStyle();
+            style.fontSize = Mathf.RoundToInt(8.5f * s);
+            var drawn = new List<(Vector2 at, float reach)>();
+            var halo = SpeedDial.Hex("#E6DDCB");
+            foreach (var label in geometry.Streets)
+            {
+                var p = ToMap(label.Position);
+                if (!Inside(p, 10f * s)) continue;
+                var size = style.CalcSize(new GUIContent(label.Text));
+                float reach = size.x * 0.5f + 6f * s;
+                bool crowded = false;
+                foreach (var (at, r) in drawn)
+                    if ((at - p).magnitude < reach + r) { crowded = true; break; }
+                if (crowded) continue;
+                drawn.Add((p, reach));
+                var d = label.Direction;
+                if (d.x < 0f) d = -d;
+                var gui = new Vector2(p.x, Screen.height - p.y);
+                var saved = GUI.matrix;
+                GUIUtility.RotateAroundPivot(Mathf.Atan2(-d.y, d.x) * Mathf.Rad2Deg, gui);
+                Outlined(new Rect(gui.x - size.x * 0.5f, gui.y - size.y * 0.5f, size.x, size.y), label.Text, 1.1f * s, Ink, halo);
+                GUI.matrix = saved;
+            }
+        }
+
+        // Landmarks, the race start and the players' names as forward-leaning chips, then the X.
+        void DrawFullLabels(Vector2 player)
+        {
+            var race = RaceDirector.Instance;
+            bool raceUp = race != null && race.Setup;
+            foreach (var place in geometry.Places)
+            {
+                var p = ToMap(place.Position);
+                if (!Inside(p, 4f * s)) continue;
+                Gl(() =>
+                {
+                    Disc(p, 4.2f * s, Ink, 16);
+                    Disc(p, 2.8f * s, White, 16);
+                });
+                Chip(p + new Vector2(0f, 13f * s), place.Text, 9.5f, Ink, White);
+            }
+            if (raceUp && !race.Gridded)
+            {
+                var ring = ToMap(race.Course.RingCenter);
+                if (Inside(ring, 4f * s)) Chip(ring + new Vector2(0f, Mathf.Max(race.Course.RingRadius * pxPerMeter, 4.5f * s) + 11f * s), "RACE START", 9.5f, Sunshine, Ink);
+            }
+            if (raceUp && race.Last?.racers != null)
+                foreach (var r in race.Last.racers)
+                {
+                    if (r.left || r.playerId == race.MyId || string.IsNullOrEmpty(r.displayName)) continue;
+                    var body = race.BodyOf(r.playerId);
+                    var p = ToMap(body != null ? body.position : new Vector3(r.position.x, r.position.y, r.position.z));
+                    if (Inside(p, 5f * s)) Chip(p + new Vector2(0f, 14f * s), r.displayName.ToUpperInvariant(), 9f, SlipstreamHud.SlotColor(r.color), White);
+                }
+            var mine = ToMap(player);
+            if (Inside(mine, 4f * s)) Chip(mine + new Vector2(0f, 15f * s), "YOU", 9f, Sunshine, Ink);
+            DrawClose();
+        }
+
+        // The close X in the top-left of the safe area, an ink parallelogram, with the title.
+        void DrawClose()
+        {
+            var safe = Screen.safeArea;
+            float size = 17f * s;
+            var c = new Vector2(safe.xMin + 16f * s + size, safe.yMax - 14f * s - size);
+            Gl(() =>
+            {
+                Parallelogram(c, size, size, 3f * s, Ink);
+                float arm = size * 0.5f, thick = 1.9f * s;
+                var d1 = new Vector2(1f, 1f).normalized;
+                var d2 = new Vector2(1f, -1f).normalized;
+                Quad(c - d1 * arm + d2 * thick, c + d1 * arm + d2 * thick, c + d1 * arm - d2 * thick, c - d1 * arm - d2 * thick, Sunshine);
+                Quad(c - d2 * arm - d1 * thick, c + d2 * arm - d1 * thick, c + d2 * arm + d1 * thick, c - d2 * arm + d1 * thick, Sunshine);
+            });
+            EnsureStyle();
+            style.fontSize = Mathf.RoundToInt(15f * s);
+            var title = style.CalcSize(new GUIContent("DOGPATCH"));
+            Chip(new Vector2(c.x + size + 10f * s + title.x * 0.5f + 8f * s, c.y), "DOGPATCH", 15f, Ink, White);
+        }
+
+        // A forward-leaning panel with text centred on p (GL pixels, origin bottom left).
+        void Chip(Vector2 p, string text, float fontSize, Color fill, Color ink)
+        {
+            EnsureStyle();
+            style.fontSize = Mathf.RoundToInt(fontSize * s);
+            var size = style.CalcSize(new GUIContent(text));
+            float w = size.x * 0.5f + 5f * s, h = size.y * 0.5f + 0.5f * s;
+            Gl(() =>
+            {
+                Parallelogram(p, w + 1.2f * s, h + 1.2f * s, h * 0.35f, Ink);
+                Parallelogram(p, w, h, h * 0.35f, fill);
+            });
+            style.normal.textColor = TextColor(ink);
+            GUI.Label(new Rect(p.x - size.x * 0.5f, Screen.height - p.y - size.y * 0.5f, size.x, size.y), text, style);
+        }
+
+        void Gl(Action draw)
+        {
+            GL.PushMatrix();
+            GL.LoadPixelMatrix();
+            marks.SetPass(0);
+            GL.Begin(GL.TRIANGLES);
+            draw();
+            GL.End();
+            GL.PopMatrix();
+        }
+
+        void EnsureStyle()
+        {
+            if (style == null) style = new GUIStyle(GUI.skin.label) { font = font, wordWrap = false, clipping = TextClipping.Overflow, padding = new RectOffset(), alignment = TextAnchor.LowerLeft };
         }
 
         // Ink underlay then a sunshine line, clipped to the circle, with round joints.
@@ -273,19 +721,19 @@ namespace Dogpatch.Map
         {
             for (int pass = 0; pass < 2; pass++)
             {
-                float half = (pass == 0 ? 2.5f : 1.4f) * s;
+                float width = (pass == 0 ? 2.5f : 1.4f) * s;
                 var color = pass == 0 ? Ink : Sunshine;
                 for (int i = 0; i < points.Count - 1; i++)
                 {
                     var a = ToMap(points[i]);
                     var b = ToMap(points[i + 1]);
-                    if (!ClipToCircle(ref a, ref b, center, clip - half)) continue;
+                    if (!FullOpen && !ClipToCircle(ref a, ref b, center, clip - width)) continue;
                     var d = b - a;
                     if (d.sqrMagnitude < 1e-4f) continue;
-                    var n = new Vector2(-d.y, d.x).normalized * half;
+                    var n = new Vector2(-d.y, d.x).normalized * width;
                     Quad(a + n, b + n, b - n, a - n, color);
-                    Disc(b, half, color, 8);
-                    if (i == 0) Disc(a, half, color, 8);
+                    Disc(b, width, color, 8);
+                    if (i == 0) Disc(a, width, color, 8);
                 }
             }
         }
@@ -310,12 +758,20 @@ namespace Dogpatch.Map
             return true;
         }
 
-        // A small chevron on the rim pointing toward something outside the circle.
+        // A small chevron on the rim (or the screen edge, on the full map) pointing toward
+        // something outside it.
         void Pin(Vector2 p, float size, Color color)
         {
-            var dir = (p - center).normalized;
-            var at = center + dir * (clip - size * 0.9f);
-            Arrow(at, dir, size, color);
+            var offset = p - center;
+            var dir = offset.normalized;
+            if (!FullOpen)
+            {
+                Arrow(center + dir * (clip - size * 0.9f), dir, size, color);
+                return;
+            }
+            float edge = size * 1.6f;
+            float t = Mathf.Min((half.x - edge) / Mathf.Max(Mathf.Abs(offset.x), 1e-3f), (half.y - edge) / Mathf.Max(Mathf.Abs(offset.y), 1e-3f));
+            Arrow(center + offset * Mathf.Min(t, 1f), dir, size, color);
         }
 
         // Forward-pointing arrowhead in local axes (forward = dir), ink outline first.
@@ -377,7 +833,7 @@ namespace Dogpatch.Map
             if (nav == null || !nav.HasObjective || nav.Arrived || nav.Kind == NavKind.Race) return;
             int meters = Mathf.RoundToInt(nav.Remaining);
             meters = meters < 100 ? Mathf.Max(5, Mathf.RoundToInt(meters / 5f) * 5) : Mathf.RoundToInt(meters / 10f) * 10;
-            if (style == null) style = new GUIStyle(GUI.skin.label) { font = font, wordWrap = false, clipping = TextClipping.Overflow, padding = new RectOffset(), alignment = TextAnchor.LowerLeft };
+            EnsureStyle();
             var num = meters.ToString();
             style.fontSize = Mathf.RoundToInt(20f * s);
             var numSize = style.CalcSize(new GUIContent(num));
@@ -393,15 +849,17 @@ namespace Dogpatch.Map
         // colours go in gamma-corrected (as in SlipstreamHud).
         static Color TextColor(Color c) => QualitySettings.activeColorSpace == ColorSpace.Linear ? c.gamma : c;
 
-        void Outlined(Rect r, string text, float outline)
+        void Outlined(Rect r, string text, float outline) => Outlined(r, text, outline, White, Ink);
+
+        void Outlined(Rect r, string text, float outline, Color fill, Color edge)
         {
-            style.normal.textColor = TextColor(Ink);
+            style.normal.textColor = TextColor(edge);
             for (int i = 0; i < 12; i++)
             {
                 float a = i * Mathf.PI * 2f / 12f;
                 GUI.Label(new Rect(r.x + Mathf.Cos(a) * outline, r.y + Mathf.Sin(a) * outline, r.width, r.height), text, style);
             }
-            style.normal.textColor = TextColor(White);
+            style.normal.textColor = TextColor(fill);
             GUI.Label(r, text, style);
         }
 

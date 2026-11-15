@@ -154,7 +154,7 @@ namespace Dogpatch.Traffic
         static int Rank(string kind) =>
             kind == "primary" || kind == "primary_link" || kind == "trunk" ? 3 : kind == "secondary" || kind == "tertiary" ? 2 : 1;
 
-        static float DefaultSpeed(TrafficRoad r) => r.MaxSpeed > 0f ? r.MaxSpeed : Rank(r.kind) >= 2 ? 12.5f : 11f;
+        static float DefaultSpeed(TrafficRoad r) => (r.MaxSpeed > 0f ? r.MaxSpeed : Rank(r.kind) >= 2 ? 12.5f : 11f) * Vehicles.Pace.Current.trafficSpeedScale;
 
         static Vector2[] ToPoints(float[] flat)
         {

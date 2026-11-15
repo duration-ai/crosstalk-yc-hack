@@ -27,8 +27,10 @@ namespace Dogpatch.Gameplay
         GUIStyle title;
 
         public bool Paused { get; private set; }
-        bool pressing;
-        int pressFinger = -1;
+        float gestureStart = -1f;
+        int gesturePeak;
+        float gestureTravel;
+        bool gestureStick;
 
         Vector2 traceAnchor;
         Vector2 traceTip;
@@ -47,23 +49,10 @@ namespace Dogpatch.Gameplay
 
         void Start()
         {
-            if (Input != null) Input.IgnoreAt = p => Paused || PauseRect().Contains(p);
-        }
-
-        void OnEnable() => ScreenShape.Changed += CancelPress;
-
-        void OnDisable() => ScreenShape.Changed -= CancelPress;
-
-        void CancelPress()
-        {
-            pressing = false;
-            pressFinger = -1;
+            if (Input != null) Input.IgnoreAt = p => Paused;
         }
 
         float Scale => Mathf.Min(Screen.width, Screen.height) / 720f;
-
-        // Pause button rect in screen pixels with the origin bottom-left, inside the safe area.
-        static Rect PauseRect() => HudLayout.PauseScreen;
 
         void Update()
         {
@@ -84,38 +73,32 @@ namespace Dogpatch.Gameplay
 
         }
 
+        // There is no pause button: a quick two-finger tap anywhere off the stick pauses and resumes
+        // (both fingers up within 0.4 s, barely moving, never a third finger, which is the perf
+        // readout's gesture). Escape does the same on desktop.
         void HandlePause()
         {
-            var rect = PauseRect();
-            bool down = false, up = false, inside = false;
-            if (UnityEngine.Input.touchCount > 0)
+            if (UnityEngine.Input.GetKeyDown(KeyCode.Escape)) SetPaused(!Paused);
+            int n = UnityEngine.Input.touchCount;
+            if (n == 0)
             {
-                for (int i = 0; i < UnityEngine.Input.touchCount; i++)
-                {
-                    var t = UnityEngine.Input.GetTouch(i);
-                    if (t.phase == TouchPhase.Began && pressFinger < 0 && rect.Contains(t.position))
-                    {
-                        pressFinger = t.fingerId;
-                        down = true;
-                    }
-                    if (t.fingerId != pressFinger) continue;
-                    inside = rect.Contains(t.position);
-                    if (t.phase == TouchPhase.Ended || t.phase == TouchPhase.Canceled) up = true;
-                }
+                bool tap = gestureStart >= 0f && gesturePeak == 2 && !gestureStick && Time.unscaledTime - gestureStart < 0.4f
+                    && gestureTravel < Mathf.Min(Screen.width, Screen.height) * 0.04f;
+                if (tap) SetPaused(!Paused);
+                gestureStart = -1f;
+                gesturePeak = 0;
+                gestureTravel = 0f;
+                gestureStick = false;
+                return;
             }
-            else
+            if (gestureStart < 0f) gestureStart = Time.unscaledTime;
+            gesturePeak = Mathf.Max(gesturePeak, n);
+            for (int i = 0; i < n; i++)
             {
-                Vector2 mouse = UnityEngine.Input.mousePosition;
-                inside = rect.Contains(mouse);
-                if (UnityEngine.Input.GetMouseButtonDown(0) && inside) { pressFinger = 1000; down = true; }
-                if (pressFinger == 1000 && UnityEngine.Input.GetMouseButtonUp(0)) up = true;
+                var t = UnityEngine.Input.GetTouch(i);
+                if (t.phase == TouchPhase.Began && HudLayout.InStick(t.position)) gestureStick = true;
+                gestureTravel = Mathf.Max(gestureTravel, (t.position - t.rawPosition).magnitude);
             }
-            if (down) pressing = true;
-            if (pressFinger >= 0 && !up) pressing = inside;
-            if (!up) return;
-            if (pressing) SetPaused(!Paused);
-            pressing = false;
-            pressFinger = -1;
         }
 
         void SetPaused(bool paused)
@@ -138,7 +121,6 @@ namespace Dogpatch.Gameplay
             GL.Begin(GL.TRIANGLES);
             DrawCarMarker(s);
             if (!Paused && Game != null && Game.IsReady) DrawStick(s);
-            DrawPause(s);
             GL.End();
             GL.PopMatrix();
             if (Paused) DrawPausedText(s);
@@ -196,27 +178,6 @@ namespace Dogpatch.Gameplay
             }
             Disc(tip, reach * 0.36f + 1.4f * s, new Color(Ink.r, Ink.g, Ink.b, 0.6f * traceAlpha), 32);
             Disc(tip, reach * 0.36f, new Color(1f, 1f, 1f, 0.85f * traceAlpha), 32);
-        }
-
-        // Pause at rest: white forward-leaning plate, ink outline, ink bars. Pressed: inverted to
-        // sunshine, shifted down and right and shrunk slightly. Flat, no bevel, no gloss.
-        void DrawPause(float s)
-        {
-            var r = PauseRect();
-            var center = r.center;
-            float k = 1f;
-            if (pressing)
-            {
-                k = 0.9f;
-                center += new Vector2(3f, -3f) * s;
-            }
-            float w = r.width * 0.5f * k, h = r.height * 0.5f * k, lean = 9f * s * k;
-            Parallelogram(center, w, h, lean, Ink);
-            float b = 3f * s * k;
-            Parallelogram(center, w - b, h - b, lean, pressing ? Sunshine : White);
-            float bar = 5.5f * s * k, bh = h * 0.5f, gap = 6.5f * s * k, blean = lean * 0.55f;
-            Parallelogram(center + new Vector2(-gap, 0f), bar * 0.5f, bh, blean, Ink);
-            Parallelogram(center + new Vector2(gap, 0f), bar * 0.5f, bh, blean, Ink);
         }
 
         void DrawPausedText(float s)

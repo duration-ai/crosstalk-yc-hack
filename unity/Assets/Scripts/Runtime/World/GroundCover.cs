@@ -69,8 +69,10 @@ namespace Dogpatch.World
             return m;
         }
 
-        public static void Build(Transform parent, Vector2[][] land, Material ground)
+        // Returns every surface it laid, by kind, for the clutter that goes on top.
+        public static List<(string kind, Vector2[] poly)> Build(Transform parent, Vector2[][] land, Material ground)
         {
+            var laid = new List<(string, Vector2[])>();
             var layers = new SortedDictionary<int, MeshBuilder>();
             MeshBuilder At(int layer) => layers.TryGetValue(layer, out var mb) ? mb : layers[layer] = new MeshBuilder();
 
@@ -89,12 +91,14 @@ namespace Dogpatch.World
                     if (Geometry.SignedArea(poly) < 0f) Array.Reverse(poly);
                     Cells(At(style.Layer), poly, style, i * 7919 + 13);
                     if (g.kind == "parking") stalls += Stalls(At(PaintLayer), poly);
+                    laid.Add((g.kind, poly));
                     count++;
                 }
             }
             foreach (var (layer, mb) in layers)
                 WorldBuilder.Emit(parent, layer == 0 ? "Land" : "Ground cover " + layer, mb.ToMesh("ground " + layer), Layer(ground, layer), false);
             Debug.Log($"[GroundCover] {count} surfaces, {stalls} parking stall lines");
+            return laid;
         }
 
         static float Hash(int x, int y, int seed)

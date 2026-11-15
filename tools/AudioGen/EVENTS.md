@@ -56,16 +56,17 @@ Every gameplay signal is mapped to the sound it plays and the feel it adds (shak
 
 ## Music (`MusicDirector`)
 
-Three synced 140 BPM stems: `music_roam` (pads, soft bass, light percussion), `music_drive` (drums, octave bass, arps) and `music_lead` (hook, stabs, crashes).
+Three looping tracks, crossfaded by mood; a track starts from its top when it fades in. `music_roam` is a 110 BPM funk loop (free roam, lobby, results bed), `music_race` a 145 BPM synthwave race loop, and `music_final` the same tune's 160 BPM climax for the final stretch. Sources are in `CREDITS.md`.
 
-| Mood | roam / drive / lead |
+| Mood | roam / race / final |
 | --- | --- |
-| FreeRoam | 1 / 0 to 0.4 (rises from 8 to 20 m/s when driving) / 0 |
-| Lobby | 1 / 0.45 / 0 |
-| Countdown | 0.7 / 0.85 / 0 |
-| Racing | 0.35 / 1 / 0.85 |
-| FinalStretch | 0.6 / 1 / 1 |
-| Results | 0.5 / 0 / 0, plus `results_sting` |
+| FreeRoam | 0.8 to 1 (rises from 8 to 20 m/s when driving) / 0 / 0 |
+| Lobby | 0.8 / 0 / 0 |
+| Countdown | 0 / 0.7 / 0 |
+| Racing | 0 / 1 / 0 |
+| FinalStretch | 0 / 0 / 1 |
+| Results | 0.6 / 0 / 0, plus `results_sting` |
+| Paused | whatever is playing, at 0.45 and low-passed to 900 Hz |
 
 ## World ambience (`Ambience`, from listener position, hour and weather)
 

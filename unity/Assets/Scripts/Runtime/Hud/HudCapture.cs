@@ -105,13 +105,11 @@ namespace Dogpatch.Slipstream
             float sr = HudLayout.StickRadius;
             var map = HudLayout.MinimapScreen;
             float mr = HudLayout.MinimapRadius;
-            var pause = HudLayout.PauseScreen;
             sb.Append($"  \"option\": \"{HudLayout.Option}\", \"screen\": [{Screen.width}, {Screen.height}], \"u\": {u:F3},\n");
             R("safe", new Rect(HudLayout.Safe.x, Screen.height - HudLayout.Safe.yMax, HudLayout.Safe.width, HudLayout.Safe.height));
             R("stick", new Rect(stick.x - sr, Screen.height - stick.y - sr, sr * 2f, sr * 2f));
             R("stickGrab", new Rect(stick.x - sr * 1.6f, Screen.height - stick.y - sr * 1.6f, sr * 3.2f, sr * 3.2f));
             R("minimap", new Rect(map.x - mr, Screen.height - map.y - mr, mr * 2f, mr * 2f));
-            R("pause", new Rect(pause.x, Screen.height - pause.yMax, pause.width, pause.height));
             R("band", new Rect(HudLayout.Left, HudLayout.Band, HudLayout.Right - HudLayout.Left, 38f * u));
             R("arrowBand", HudLayout.ArrowBand);
             R("call", HudLayout.Call(72f * u, 72f * u));

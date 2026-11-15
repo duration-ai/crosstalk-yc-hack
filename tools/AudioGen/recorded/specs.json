@@ -1,0 +1,1435 @@
+[
+ {
+  "out": "Engines/race_low",
+  "src": [
+   {
+    "path": "Citroen C3 R5 WRC2 - t3 - ONBRD - STEADY RPMS",
+    "start": 159.8,
+    "dur": 2.25
+   }
+  ],
+  "loop": true,
+  "xfade": 0.25
+ },
+ {
+  "out": "Engines/race_high",
+  "src": [
+   {
+    "path": "Citroen C3 R5 WRC2 - t3 - ONBRD - STEADY RPMS",
+    "start": 91.6,
+    "dur": 2.25
+   }
+  ],
+  "loop": true,
+  "xfade": 0.25
+ },
+ {
+  "out": "Engines/sedan_low",
+  "src": [
+   {
+    "path": "Audi Q2 ONBOARD Driving Sequence With Revs",
+    "start": 39.6,
+    "dur": 2.25
+   }
+  ],
+  "loop": true,
+  "xfade": 0.25
+ },
+ {
+  "out": "Engines/sedan_high",
+  "src": [
+   {
+    "path": "Audi Q2 ONBOARD Driving Sequence With Revs",
+    "start": 64.6,
+    "dur": 2.25
+   }
+  ],
+  "loop": true,
+  "xfade": 0.25
+ },
+ {
+  "out": "Engines/hatchback_low",
+  "src": [
+   {
+    "path": "Renault R4 GTL Drive Various Speed",
+    "start": 140.4,
+    "dur": 2.25
+   }
+  ],
+  "loop": true,
+  "xfade": 0.25
+ },
+ {
+  "out": "Engines/hatchback_high",
+  "src": [
+   {
+    "path": "Renault R4 GTL Drive Various Speed",
+    "start": 40.6,
+    "dur": 2.25
+   }
+  ],
+  "loop": true,
+  "xfade": 0.25
+ },
+ {
+  "out": "Engines/cab_low",
+  "src": [
+   {
+    "path": "Range Rover SDV8 - t10",
+    "start": 123.8,
+    "dur": 2.25
+   }
+  ],
+  "loop": true,
+  "xfade": 0.25
+ },
+ {
+  "out": "Engines/cab_high",
+  "src": [
+   {
+    "path": "Range Rover SDV8 - t12",
+    "start": 69.6,
+    "dur": 2.25
+   }
+  ],
+  "loop": true,
+  "xfade": 0.25
+ },
+ {
+  "out": "Engines/bus_low",
+  "src": [
+   {
+    "path": "Magnum 7250 ONBOARD Driving Sequence Idle",
+    "start": 0.2,
+    "dur": 2.25
+   }
+  ],
+  "loop": true,
+  "xfade": 0.25
+ },
+ {
+  "out": "Engines/bus_high",
+  "src": [
+   {
+    "path": "Magnum 7250 ONBOARD Driving Sequence Idle",
+    "start": 14.8,
+    "dur": 2.25
+   }
+  ],
+  "loop": true,
+  "xfade": 0.25
+ },
+ {
+  "out": "Engines/tire_roll",
+  "src": [
+   {
+    "path": "Renault R4 GTL Drive and Roll Fast",
+    "start": 5,
+    "dur": 3.4
+   }
+  ],
+  "loop": true,
+  "xfade": 0.4
+ },
+ {
+  "out": "Engines/tire_skid",
+  "src": [
+   {
+    "path": "sf-out/tire_skid.wav"
+   }
+  ],
+  "loop": true,
+  "xfade": 0.3
+ },
+ {
+  "out": "Vehicles/door_open",
+  "src": [
+   {
+    "path": "Citroen C5 - t9 - VAR SFX - Door Open and Close",
+    "event": 0,
+    "len": 0.7
+   }
+  ]
+ },
+ {
+  "out": "Vehicles/door_close",
+  "src": [
+   {
+    "path": "Citroen C5 - t9 - VAR SFX - Door Open and Close",
+    "event": 1,
+    "len": 0.7
+   }
+  ]
+ },
+ {
+  "out": "Vehicles/horn_sedan",
+  "src": [
+   {
+    "path": "Audi Q7 EXTERIOR Horn Short And Long",
+    "event": 0,
+    "len": 0.5
+   }
+  ]
+ },
+ {
+  "out": "Vehicles/horn_truck",
+  "src": [
+   {
+    "path": "Audi Q7 EXTERIOR Horn Short And Long",
+    "event": 1,
+    "len": 0.9,
+    "pitch": 0.85
+   }
+  ]
+ },
+ {
+  "out": "Vehicles/horn_hatchback",
+  "src": [
+   {
+    "path": "Renault R4 GTL Horn Signal",
+    "event": 0,
+    "len": 0.5
+   }
+  ]
+ },
+ {
+  "out": "Vehicles/horn_scooter",
+  "src": [
+   {
+    "path": "Renault R4 GTL Horn Signal",
+    "event": 0,
+    "len": 0.3,
+    "pitch": 1.6
+   }
+  ]
+ },
+ {
+  "out": "Vehicles/horn_race",
+  "src": [
+   {
+    "path": "Ferrari 458 Straight Pipes - t11 - VAR SFX - Horn",
+    "event": 0,
+    "len": 0.4
+   }
+  ]
+ },
+ {
+  "out": "Vehicles/horn_cab",
+  "src": [
+   {
+    "path": "McLaren 720S - t14 - VAR SFX - Horn",
+    "event": 0,
+    "len": 0.6
+   }
+  ]
+ },
+ {
+  "out": "Vehicles/horn_bus",
+  "src": [
+   {
+    "path": "Man Lions Coach - VAR SFX - Horn",
+    "event": 0,
+    "len": 1.2
+   }
+  ]
+ },
+ {
+  "out": "Vehicles/bike_bell",
+  "src": [
+   {
+    "path": "BELLHand_Metallic Bell_ 22",
+    "event": 0,
+    "len": 1
+   }
+  ]
+ },
+ {
+  "out": "Vehicles/tram_bell",
+  "src": [
+   {
+    "path": "sf-out/tram_bell.wav"
+   }
+  ]
+ },
+ {
+  "out": "Vehicles/bus_air_brake",
+  "src": [
+   {
+    "path": "sf-out/bus_air_brake.wav"
+   }
+  ]
+ },
+ {
+  "out": "Vehicles/boost_whoosh",
+  "src": [
+   {
+    "path": "WHSH_Pure SciFi-Whoosh Fast 03",
+    "len": 1.2,
+    "event": 0
+   }
+  ]
+ },
+ {
+  "out": "Vehicles/crunch_heavy_1",
+  "src": [
+   {
+    "path": "sf-out/crunch_heavy_1.wav"
+   }
+  ]
+ },
+ {
+  "out": "Vehicles/crunch_heavy_2",
+  "src": [
+   {
+    "path": "sf-out/crunch_heavy_2.wav"
+   }
+  ]
+ },
+ {
+  "out": "Vehicles/crunch_heavy_3",
+  "src": [
+   {
+    "path": "sf-out/crunch_heavy_3.wav"
+   }
+  ]
+ },
+ {
+  "out": "Vehicles/crunch_light_1",
+  "src": [
+   {
+    "path": "sf-out/crunch_light_1.wav"
+   }
+  ]
+ },
+ {
+  "out": "Vehicles/crunch_light_2",
+  "src": [
+   {
+    "path": "sf-out/crunch_light_2.wav"
+   }
+  ]
+ },
+ {
+  "out": "Vehicles/crunch_light_3",
+  "src": [
+   {
+    "path": "impactPlate_heavy_000.ogg"
+   },
+   {
+    "path": "impactMetal_medium_001.ogg",
+    "gain": 0.7
+   }
+  ]
+ },
+ {
+  "out": "Vehicles/scrape_1",
+  "src": [
+   {
+    "path": "sf-out/scrape.wav"
+   }
+  ]
+ },
+ {
+  "out": "Vehicles/scrape_2",
+  "src": [
+   {
+    "path": "METLFric_Screeching Metal Rub-11",
+    "event": 0,
+    "len": 1
+   }
+  ]
+ },
+ {
+  "out": "Vehicles/scrape_3",
+  "src": [
+   {
+    "path": "METLFric_Large Metal Box, Drag",
+    "event": 0,
+    "len": 1
+   }
+  ]
+ },
+ {
+  "out": "Vehicles/wreck",
+  "src": [
+   {
+    "path": "sf-out/wreck.wav"
+   },
+   {
+    "path": "METLCrsh_Drop Fall Metal Rattle Scrap Debris_06",
+    "offset": 0.35,
+    "gain": 0.5,
+    "event": 0,
+    "len": 1.8
+   }
+  ]
+ },
+ {
+  "out": "Impacts/body_1",
+  "src": [
+   {
+    "path": "impactSoft_heavy_000.ogg"
+   }
+  ]
+ },
+ {
+  "out": "Impacts/glass_1",
+  "src": [
+   {
+    "path": "impactGlass_heavy_000.ogg"
+   }
+  ]
+ },
+ {
+  "out": "Impacts/metal_1",
+  "src": [
+   {
+    "path": "impactMetal_heavy_000.ogg"
+   }
+  ]
+ },
+ {
+  "out": "Impacts/plastic_1",
+  "src": [
+   {
+    "path": "impactPlate_light_000.ogg"
+   }
+  ]
+ },
+ {
+  "out": "Impacts/wood_1",
+  "src": [
+   {
+    "path": "impactWood_heavy_000.ogg"
+   }
+  ]
+ },
+ {
+  "out": "Impacts/foliage_1",
+  "src": [
+   {
+    "path": "SBvfe2_Dry Tree Branches Contact 024",
+    "event": 0,
+    "len": 0.7
+   }
+  ]
+ },
+ {
+  "out": "Impacts/body_2",
+  "src": [
+   {
+    "path": "impactSoft_heavy_001.ogg"
+   }
+  ]
+ },
+ {
+  "out": "Impacts/glass_2",
+  "src": [
+   {
+    "path": "impactGlass_heavy_001.ogg"
+   }
+  ]
+ },
+ {
+  "out": "Impacts/metal_2",
+  "src": [
+   {
+    "path": "impactMetal_heavy_001.ogg"
+   }
+  ]
+ },
+ {
+  "out": "Impacts/plastic_2",
+  "src": [
+   {
+    "path": "impactPlate_light_001.ogg"
+   }
+  ]
+ },
+ {
+  "out": "Impacts/wood_2",
+  "src": [
+   {
+    "path": "impactWood_heavy_001.ogg"
+   }
+  ]
+ },
+ {
+  "out": "Impacts/foliage_2",
+  "src": [
+   {
+    "path": "SBvfe2_Dry Tree Branches Contact 024",
+    "event": 1,
+    "len": 0.7
+   }
+  ]
+ },
+ {
+  "out": "Impacts/body_3",
+  "src": [
+   {
+    "path": "impactSoft_heavy_002.ogg"
+   }
+  ]
+ },
+ {
+  "out": "Impacts/glass_3",
+  "src": [
+   {
+    "path": "impactGlass_heavy_002.ogg"
+   }
+  ]
+ },
+ {
+  "out": "Impacts/metal_3",
+  "src": [
+   {
+    "path": "impactMetal_heavy_002.ogg"
+   }
+  ]
+ },
+ {
+  "out": "Impacts/plastic_3",
+  "src": [
+   {
+    "path": "impactPlate_light_002.ogg"
+   }
+  ]
+ },
+ {
+  "out": "Impacts/wood_3",
+  "src": [
+   {
+    "path": "impactWood_heavy_002.ogg"
+   }
+  ]
+ },
+ {
+  "out": "Impacts/foliage_3",
+  "src": [
+   {
+    "path": "SBvfe2_Dry Tree Branches Contact 024",
+    "event": 2,
+    "len": 0.7
+   }
+  ]
+ },
+ {
+  "out": "Impacts/concrete_1",
+  "src": [
+   {
+    "path": "Bluezone_BC0297_stone_impact_015",
+    "event": 0,
+    "len": 0.6
+   }
+  ]
+ },
+ {
+  "out": "Impacts/concrete_2",
+  "src": [
+   {
+    "path": "Bluezone_BC0297_stone_impact_041",
+    "event": 0,
+    "len": 0.6
+   }
+  ]
+ },
+ {
+  "out": "Impacts/concrete_3",
+  "src": [
+   {
+    "path": "Bluezone_BC0297_stone_impact_hammer_015",
+    "event": 0,
+    "len": 0.6
+   }
+  ]
+ },
+ {
+  "out": "Impacts/splash",
+  "src": [
+   {
+    "path": "WATRImpt_Impact20_InMotionAudio",
+    "event": 0,
+    "len": 1.2
+   }
+  ]
+ },
+ {
+  "out": "Breakables/barrier",
+  "src": [
+   {
+    "path": "impactPlate_heavy_001.ogg"
+   },
+   {
+    "path": "impactWood_medium_000.ogg",
+    "gain": 0.6
+   }
+  ]
+ },
+ {
+  "out": "Breakables/bench",
+  "src": [
+   {
+    "path": "impactWood_heavy_003.ogg"
+   },
+   {
+    "path": "impactMetal_medium_002.ogg",
+    "gain": 0.6
+   }
+  ]
+ },
+ {
+  "out": "Breakables/bike_dock",
+  "src": [
+   {
+    "path": "impactMetal_medium_003.ogg"
+   },
+   {
+    "path": "Toolbox - DROP",
+    "event": 0,
+    "len": 0.8,
+    "gain": 0.6,
+    "offset": 0.03
+   }
+  ]
+ },
+ {
+  "out": "Breakables/billboard",
+  "src": [
+   {
+    "path": "METLImpt_Metal Impact-03",
+    "event": 0,
+    "len": 1.2
+   },
+   {
+    "path": "WOODCrsh_Designed Wood Crash And Debris 13",
+    "event": 0,
+    "len": 1.2,
+    "gain": 0.7,
+    "offset": 0.05
+   }
+  ]
+ },
+ {
+  "out": "Breakables/bus_shelter",
+  "src": [
+   {
+    "path": "GLASBrk_Glass Break Hit_04",
+    "event": 0,
+    "len": 1.6
+   },
+   {
+    "path": "impactMetal_heavy_003.ogg",
+    "gain": 0.7
+   }
+  ]
+ },
+ {
+  "out": "Breakables/cone",
+  "src": [
+   {
+    "path": "impactSoft_medium_000.ogg"
+   },
+   {
+    "path": "impactPlate_light_004.ogg",
+    "gain": 0.6
+   }
+  ]
+ },
+ {
+  "out": "Breakables/crates",
+  "src": [
+   {
+    "path": "WOODCrsh_Designed Wood Crash And Debris 13",
+    "event": 0,
+    "len": 1
+   }
+  ]
+ },
+ {
+  "out": "Breakables/fence",
+  "src": [
+   {
+    "path": "WOODBrk_Snap09_InMotionAudio",
+    "event": 0,
+    "len": 0.8
+   },
+   {
+    "path": "impactWood_medium_001.ogg",
+    "gain": 0.7
+   }
+  ]
+ },
+ {
+  "out": "Breakables/fruit_stand",
+  "src": [
+   {
+    "path": "impactWood_heavy_004.ogg"
+   },
+   {
+    "path": "SBvfe2_Shaking Small Wooden Box 030",
+    "event": 0,
+    "len": 1,
+    "gain": 0.6,
+    "offset": 0.05
+   },
+   {
+    "path": "impactSoft_medium_002.ogg",
+    "gain": 0.7,
+    "offset": 0.1
+   }
+  ]
+ },
+ {
+  "out": "Breakables/generic",
+  "src": [
+   {
+    "path": "impactGeneric_light_003.ogg"
+   }
+  ]
+ },
+ {
+  "out": "Breakables/hydrant_break",
+  "src": [
+   {
+    "path": "Oil Barrel - HIT - Hammer - Take 2",
+    "event": 0,
+    "len": 0.9
+   },
+   {
+    "path": "WATRImpt_Impact20_InMotionAudio",
+    "event": 0,
+    "len": 0.9,
+    "gain": 0.6,
+    "offset": 0.05
+   }
+  ]
+ },
+ {
+  "out": "Breakables/hydrant_gush",
+  "src": [
+   {
+    "path": "sf-out/hydrant_gush.wav"
+   }
+  ],
+  "loop": true,
+  "xfade": 0.6
+ },
+ {
+  "out": "Breakables/mailbox",
+  "src": [
+   {
+    "path": "impactMetal_heavy_004.ogg"
+   },
+   {
+    "path": "Toolbox - DROP",
+    "event": 0,
+    "len": 0.8,
+    "gain": 0.5,
+    "offset": 0.04
+   }
+  ]
+ },
+ {
+  "out": "Breakables/newspaper_box",
+  "src": [
+   {
+    "path": "impactMetal_medium_004.ogg"
+   },
+   {
+    "path": "PAPRHndl_Paper Sheet Crumple_ 04",
+    "event": 0,
+    "len": 0.8,
+    "gain": 0.6,
+    "offset": 0.05
+   },
+   {
+    "path": "impactGlass_light_000.ogg",
+    "gain": 0.5
+   }
+  ]
+ },
+ {
+  "out": "Breakables/parking_meter",
+  "src": [
+   {
+    "path": "Iron - Thick - HIT - Hammer",
+    "event": 0,
+    "len": 1
+   },
+   {
+    "path": "impactBell_heavy_000.ogg",
+    "gain": 0.4,
+    "offset": 0.05
+   }
+  ]
+ },
+ {
+  "out": "Breakables/payphone",
+  "src": [
+   {
+    "path": "impactMetal_medium_000.ogg"
+   },
+   {
+    "path": "impactBell_heavy_001.ogg",
+    "gain": 0.7,
+    "offset": 0.03
+   }
+  ]
+ },
+ {
+  "out": "Breakables/planter",
+  "src": [
+   {
+    "path": "impactMining_000.ogg"
+   },
+   {
+    "path": "SBvfe2_Dry Tree Branches Contact 024",
+    "event": 3,
+    "len": 0.6,
+    "gain": 0.5,
+    "offset": 0.04
+   }
+  ]
+ },
+ {
+  "out": "Breakables/sign",
+  "src": [
+   {
+    "path": "Spade - HIT - Drumstick - Ring",
+    "event": 0,
+    "len": 1.2
+   },
+   {
+    "path": "impactMetal_light_000.ogg",
+    "gain": 0.7
+   }
+  ]
+ },
+ {
+  "out": "Breakables/storefront_glass",
+  "src": [
+   {
+    "path": "GLASBrk_Glass Break Hit_04",
+    "event": 0,
+    "len": 2
+   },
+   {
+    "path": "alien_tripod_debris_glass_falling_003",
+    "event": 0,
+    "len": 1.8,
+    "gain": 0.6,
+    "offset": 0.2
+   }
+  ]
+ },
+ {
+  "out": "Breakables/street_light",
+  "src": [
+   {
+    "path": "impactMetal_heavy_001.ogg"
+   },
+   {
+    "path": "impactGlass_medium_000.ogg",
+    "gain": 0.8,
+    "offset": 0.05
+   },
+   {
+    "path": "METLCrsh_Drop Fall Metal Rattle Scrap Debris_06",
+    "event": 0,
+    "len": 1.2,
+    "gain": 0.5,
+    "offset": 0.2
+   }
+  ]
+ },
+ {
+  "out": "Breakables/traffic_light",
+  "src": [
+   {
+    "path": "impactMetal_heavy_002.ogg"
+   },
+   {
+    "path": "impactGlass_light_001.ogg",
+    "gain": 0.8,
+    "offset": 0.03
+   },
+   {
+    "path": "Toolbox - DROP",
+    "event": 0,
+    "len": 0.8,
+    "gain": 0.5,
+    "offset": 0.15
+   }
+  ]
+ },
+ {
+  "out": "Breakables/trash_can",
+  "src": [
+   {
+    "path": "METLCrsh_Drop Fall Metal Rattle Scrap Debris_06",
+    "event": 0,
+    "len": 1.2
+   }
+  ]
+ },
+ {
+  "out": "Breakables/tree",
+  "src": [
+   {
+    "path": "WOODBrk_Tree Crack and Fall-13",
+    "event": 0,
+    "len": 1.4
+   }
+  ]
+ },
+ {
+  "out": "People/step_asphalt_1",
+  "src": [
+   {
+    "path": "footstep_concrete_000.ogg",
+    "pitch": 0.9
+   }
+  ]
+ },
+ {
+  "out": "People/step_concrete_1",
+  "src": [
+   {
+    "path": "footstep_concrete_002.ogg"
+   }
+  ]
+ },
+ {
+  "out": "People/step_grass_1",
+  "src": [
+   {
+    "path": "footstep_grass_000.ogg"
+   }
+  ]
+ },
+ {
+  "out": "People/step_wood_1",
+  "src": [
+   {
+    "path": "footstep_wood_000.ogg"
+   }
+  ]
+ },
+ {
+  "out": "People/step_metal_1",
+  "src": [
+   {
+    "path": "impactMetal_light_002.ogg",
+    "pitch": 1.15
+   }
+  ]
+ },
+ {
+  "out": "People/step_asphalt_2",
+  "src": [
+   {
+    "path": "footstep_concrete_001.ogg",
+    "pitch": 0.9
+   }
+  ]
+ },
+ {
+  "out": "People/step_concrete_2",
+  "src": [
+   {
+    "path": "footstep_concrete_003.ogg"
+   }
+  ]
+ },
+ {
+  "out": "People/step_grass_2",
+  "src": [
+   {
+    "path": "footstep_grass_001.ogg"
+   }
+  ]
+ },
+ {
+  "out": "People/step_wood_2",
+  "src": [
+   {
+    "path": "footstep_wood_001.ogg"
+   }
+  ]
+ },
+ {
+  "out": "People/step_metal_2",
+  "src": [
+   {
+    "path": "impactMetal_light_003.ogg",
+    "pitch": 1.15
+   }
+  ]
+ },
+ {
+  "out": "People/step_asphalt_3",
+  "src": [
+   {
+    "path": "footstep_concrete_002.ogg",
+    "pitch": 0.9
+   }
+  ]
+ },
+ {
+  "out": "People/step_concrete_3",
+  "src": [
+   {
+    "path": "footstep_concrete_004.ogg"
+   }
+  ]
+ },
+ {
+  "out": "People/step_grass_3",
+  "src": [
+   {
+    "path": "footstep_grass_002.ogg"
+   }
+  ]
+ },
+ {
+  "out": "People/step_wood_3",
+  "src": [
+   {
+    "path": "footstep_wood_002.ogg"
+   }
+  ]
+ },
+ {
+  "out": "People/step_metal_3",
+  "src": [
+   {
+    "path": "impactMetal_light_004.ogg",
+    "pitch": 1.15
+   }
+  ]
+ },
+ {
+  "out": "People/land",
+  "src": [
+   {
+    "path": "impactSoft_heavy_003.ogg"
+   }
+  ]
+ },
+ {
+  "out": "People/shove",
+  "src": [
+   {
+    "path": "impactPunch_medium_000.ogg"
+   }
+  ]
+ },
+ {
+  "out": "People/hey_1",
+  "src": [
+   {
+    "path": "sf-out/hey_1.wav"
+   }
+  ]
+ },
+ {
+  "out": "People/hey_2",
+  "src": [
+   {
+    "path": "sf-out/hey_2.wav"
+   }
+  ]
+ },
+ {
+  "out": "People/hey_3",
+  "src": [
+   {
+    "path": "sf-out/hey_3.wav"
+   }
+  ]
+ },
+ {
+  "out": "People/whoa_1",
+  "src": [
+   {
+    "path": "sf-out/whoa_1.wav"
+   }
+  ]
+ },
+ {
+  "out": "People/whoa_2",
+  "src": [
+   {
+    "path": "sf-out/whoa_2.wav"
+   }
+  ],
+  "maxlen": 0.9
+ },
+ {
+  "out": "People/woo_1",
+  "src": [
+   {
+    "path": "sf-out/woo_1.wav"
+   }
+  ]
+ },
+ {
+  "out": "People/yikes_1",
+  "src": [
+   {
+    "path": "sf-out/yikes_1.wav"
+   }
+  ]
+ },
+ {
+  "out": "People/oops_1",
+  "src": [
+   {
+    "path": "sf-out/oops_1.wav"
+   }
+  ]
+ },
+ {
+  "out": "People/jump_hup_1",
+  "src": [
+   {
+    "path": "sf-out/jump_hup_1.wav"
+   }
+  ]
+ },
+ {
+  "out": "People/jump_hup_2",
+  "src": [
+   {
+    "path": "sf-out/jump_hup_2.wav"
+   }
+  ]
+ },
+ {
+  "out": "Ambience/city_base",
+  "src": [
+   {
+    "path": "AMBUrbn_City, Buffalo, Residential, Traffic, General_UberDuo_HOOD",
+    "start": 30,
+    "dur": 21.5
+   }
+  ],
+  "loop": true,
+  "xfade": 1.5
+ },
+ {
+  "out": "Ambience/third_st_traffic",
+  "src": [
+   {
+    "path": "AMBUrbn_CityAmbience17_InMotionAudio",
+    "start": 20,
+    "dur": 21.5
+   }
+  ],
+  "loop": true,
+  "xfade": 1.5
+ },
+ {
+  "out": "Ambience/freeway_hum",
+  "src": [
+   {
+    "path": "AMBTraf_Day09_Traffic_NTG4",
+    "start": 10,
+    "dur": 21.5
+   }
+  ],
+  "loop": true,
+  "xfade": 1.5
+ },
+ {
+  "out": "Ambience/bay_water",
+  "src": [
+   {
+    "path": "WATRWave_Water Lapping against port",
+    "start": 5,
+    "dur": 21.5
+   }
+  ],
+  "loop": true,
+  "xfade": 1.5
+ },
+ {
+  "out": "Ambience/pier_wind",
+  "src": [
+   {
+    "path": "Wind - Cherry Tree - Strong - Bed",
+    "start": 20,
+    "dur": 21.5,
+    "gain": 0.7
+   },
+   {
+    "path": "AMBInd_Distant Port Atmos, Dover",
+    "start": 10,
+    "dur": 21.5,
+    "gain": 0.8
+   }
+  ],
+  "loop": true,
+  "xfade": 1.5
+ },
+ {
+  "out": "Ambience/rain",
+  "src": [
+   {
+    "path": "AMBUrbn_Nighttime-Urban Side Street Empty Rain Dops Hum",
+    "start": 90,
+    "dur": 21.5
+   }
+  ],
+  "loop": true,
+  "xfade": 1.5
+ },
+ {
+  "out": "Ambience/night_crickets",
+  "src": [
+   {
+    "path": "AMBSubn_Ambience, Forest Crickets, Birds, Connecticut 02",
+    "start": 30,
+    "dur": 21.5
+   }
+  ],
+  "loop": true,
+  "xfade": 1.5
+ },
+ {
+  "out": "Ambience/day_birds",
+  "src": [
+   {
+    "path": "AMBForst_Spring Afternoon Edge of Mixed Forest",
+    "start": 10,
+    "dur": 21.5
+   }
+  ],
+  "loop": true,
+  "xfade": 1.5
+ },
+ {
+  "out": "Ambience/gull_1",
+  "src": [
+   {
+    "path": "sf-out/gull_1.wav"
+   }
+  ]
+ },
+ {
+  "out": "Ambience/gull_2",
+  "src": [
+   {
+    "path": "sf-out/gull_2.wav"
+   }
+  ]
+ },
+ {
+  "out": "Ambience/gull_3",
+  "src": [
+   {
+    "path": "sf-out/gull_3.wav"
+   }
+  ]
+ },
+ {
+  "out": "Ambience/foghorn",
+  "src": [
+   {
+    "path": "sf-out/foghorn.wav"
+   }
+  ]
+ },
+ {
+  "out": "Ambience/caltrain_horn",
+  "src": [
+   {
+    "path": "sf-out/caltrain_horn.wav"
+   }
+  ]
+ },
+ {
+  "out": "Ambience/caltrain_pass",
+  "src": [
+   {
+    "path": "sf-out/caltrain_pass.wav"
+   }
+  ]
+ },
+ {
+  "out": "Ambience/distant_siren",
+  "src": [
+   {
+    "path": "sf-out/distant_siren.wav"
+   }
+  ]
+ },
+ {
+  "out": "Ui/ui_tap",
+  "src": [
+   {
+    "path": "click_002.ogg"
+   }
+  ],
+  "trim": false
+ },
+ {
+  "out": "Ui/ui_ready",
+  "src": [
+   {
+    "path": "confirmation_001.ogg"
+   }
+  ]
+ },
+ {
+  "out": "Ui/toast",
+  "src": [
+   {
+    "path": "pluck_001.ogg"
+   }
+  ]
+ },
+ {
+  "out": "Ui/pause_open",
+  "src": [
+   {
+    "path": "open_001.ogg"
+   }
+  ]
+ },
+ {
+  "out": "Ui/pause_close",
+  "src": [
+   {
+    "path": "close_001.ogg"
+   }
+  ]
+ },
+ {
+  "out": "Ui/place_up",
+  "src": [
+   {
+    "path": "UIAlert_Confirm Middle 12",
+    "event": 0,
+    "len": 0.6
+   }
+  ]
+ },
+ {
+  "out": "Ui/place_down",
+  "src": [
+   {
+    "path": "back_002.ogg"
+   }
+  ]
+ },
+ {
+  "out": "Ui/news_whoosh",
+  "src": [
+   {
+    "path": "WHSH_Airy-Whoosh Wind Gust 11",
+    "event": 0,
+    "len": 0.8
+   }
+  ]
+ },
+ {
+  "out": "Ui/operator_on",
+  "src": [
+   {
+    "path": "bong_001.ogg"
+   }
+  ]
+ },
+ {
+  "out": "Ui/payphone_pickup",
+  "src": [
+   {
+    "path": "Antique Telephone Pick Up & Drop Ear Piece",
+    "event": 0,
+    "len": 0.6
+   }
+  ]
+ },
+ {
+  "out": "Ui/call_hangup",
+  "src": [
+   {
+    "path": "Antique Telephone Pick Up & Drop Ear Piece",
+    "event": 1,
+    "len": 0.5
+   }
+  ]
+ },
+ {
+  "out": "Music/music_roam",
+  "src": [
+   {
+    "path": "music-out/music_roam.wav"
+   }
+  ],
+  "mono": false,
+  "rate": 32000,
+  "match": false,
+  "lufs": -16,
+  "hp": 0,
+  "trim": false,
+  "fout": 0,
+  "fin": 0
+ },
+ {
+  "out": "Music/music_race",
+  "src": [
+   {
+    "path": "music-out/music_race.wav",
+    "dur": 53.006
+   }
+  ],
+  "mono": false,
+  "rate": 32000,
+  "match": false,
+  "lufs": -16,
+  "hp": 0,
+  "trim": false,
+  "fout": 0,
+  "fin": 0,
+  "loop": true,
+  "xfade": 0.04
+ },
+ {
+  "out": "Music/music_final",
+  "src": [
+   {
+    "path": "music-out/music_final.wav",
+    "dur": 48.04
+   }
+  ],
+  "mono": false,
+  "rate": 32000,
+  "match": false,
+  "lufs": -16,
+  "hp": 0,
+  "trim": false,
+  "fout": 0,
+  "fin": 0,
+  "loop": true,
+  "xfade": 0.04
+ },
+ {
+  "out": "Music/results_sting",
+  "src": [
+   {
+    "path": "music-out/results_sting.wav"
+   }
+  ],
+  "mono": false,
+  "rate": 32000,
+  "match": false,
+  "lufs": -14,
+  "hp": 0,
+  "trim": true,
+  "fout": 0.35,
+  "fin": 0
+ }
+]

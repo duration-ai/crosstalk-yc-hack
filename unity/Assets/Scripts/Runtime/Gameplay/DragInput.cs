@@ -9,7 +9,8 @@ namespace Dogpatch.Gameplay
     // from the camera on foot, the car's nose at the wheel) and strength (further = faster), and
     // it never drifts, so you always know where it is. A drag that starts anywhere else pans the
     // camera, on foot and in a car. A quick touch anywhere off the stick is a tap (jump, get in or
-    // out), with any finger, so you can jump while running. Touches on the minimap are left to it.
+    // out), with any finger, so you can jump while running; two fingers off the stick together are
+    // the pause gesture, never a tap. Touches on the minimap are left to it.
     // The mouse stands in for touch.
     public sealed class DragInput : MonoBehaviour
     {
@@ -36,10 +37,15 @@ namespace Dogpatch.Gameplay
         // paused) are left to the HUD and never start a drag or a tap.
         public Func<Vector2, bool> IgnoreAt;
 
+        // Taps that end where this returns true (the minimap, which opens the full map) are not
+        // reported; drags that start there still steer.
+        public Func<Vector2, bool> IgnoreTap;
+
         Finger move = new Finger { Id = -1 };
         Finger look = new Finger { Id = -1 };
         readonly List<Finger> extra = new List<Finger>();
         Vector2 lookDelta;
+        bool twoFinger;
 
         public float Reach => HudLayout.StickRadius;
         float DeadZone => Reach * 0.15f;
@@ -94,6 +100,7 @@ namespace Dogpatch.Gameplay
             look.Id = -1;
             extra.Clear();
             Dragging = false;
+            twoFinger = false;
             lookDelta = Vector2.zero;
         }
 
@@ -140,7 +147,11 @@ namespace Dogpatch.Gameplay
                 return;
             }
             if (look.Id < 0) look = finger;
-            else extra.Add(finger);
+            else
+            {
+                extra.Add(finger);
+                twoFinger = true;
+            }
         }
 
         void Move(int id, Vector2 position)
@@ -186,9 +197,12 @@ namespace Dogpatch.Gameplay
                 look.Id = -1;
             }
             else return;
-            bool tap = finger.MaxTravel < TapPixels && Time.unscaledTime - finger.DownTime < TapSeconds;
-            if (tap && (IgnoreAt == null || !IgnoreAt(position))) Tapped?.Invoke(position);
+            bool tap = !twoFinger && finger.MaxTravel < TapPixels && Time.unscaledTime - finger.DownTime < TapSeconds;
+            if (look.Id < 0 && extra.Count == 0) twoFinger = false;
+            if (tap && TapAllowed(position)) Tapped?.Invoke(position);
         }
+
+        bool TapAllowed(Vector2 p) => (IgnoreAt == null || !IgnoreAt(p)) && (IgnoreTap == null || !IgnoreTap(p));
 
         int ExtraIndex(int id)
         {
