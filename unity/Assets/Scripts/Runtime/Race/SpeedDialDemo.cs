@@ -141,6 +141,12 @@ namespace Dogpatch.Race
                 yield return Seconds(0.9f);
             }
 
+            yield return Until(() => race.CrossedFinish || race.ResultsIn, 240f, "over the line");
+            if (!race.ResultsIn)
+            {
+                yield return Seconds(0.6f);
+                yield return Shot("11b-finished");
+            }
             yield return Until(() => race.ResultsIn, 240f, "results");
             yield return Seconds(1.3f);
             yield return Shot("12-results");
