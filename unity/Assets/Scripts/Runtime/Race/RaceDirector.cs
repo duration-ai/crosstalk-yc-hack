@@ -220,13 +220,13 @@ namespace Dogpatch.Race
         IEnumerator NewLocalRoom()
         {
             Switching = true;
+            Changes.ResetAll();
             yield return Wait(RemoveBotsAsync());
             RoomId = null;
             var created = Session.CreateRoomAsync(MyId, RouteWire(), Course.Data.finishRadius, 2, AskTuning.startAsks, PickupWire(), AskTuning.pickupRadius);
             yield return Wait(created);
             EnterRoom(created.Result, true);
             yield return Wait(AddBotsAsync());
-            Changes.ResetAll();
             Gridded = Started = ResultsIn = false;
             Game.ExternalInput = false;
             if (myPilot != null) myPilot.Active = false;
