@@ -154,6 +154,8 @@ namespace Dogpatch.Gameplay
             strength = 0f;
         }
 
+        public float InputStrength => strength;
+
         public void SetInput(Vector3 direction, float amount)
         {
             desired = direction;

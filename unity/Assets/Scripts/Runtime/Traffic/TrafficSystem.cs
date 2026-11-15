@@ -97,6 +97,7 @@ namespace Dogpatch.Traffic
 
         public StreetGraph Graph { get; private set; }
         public readonly List<TrafficAgent> Agents = new List<TrafficAgent>();
+        public CabRide Ride { get; private set; }
         public readonly List<Obstacle> Obstacles = new List<Obstacle>();
         public float FrameMs { get; private set; }
         public float AverageMs { get; private set; }
@@ -164,6 +165,8 @@ namespace Dogpatch.Traffic
             for (int i = 0; i < 600 && Deficit(out _) > 0; i++) TrySpawn(true);
             lastFocus = Focus;
 
+            Ride = gameObject.AddComponent<CabRide>();
+            Ride.System = this;
             GameController.VehicleEntered += OnEntered;
             GameController.VehicleExited += OnExited;
             VehicleRoster.Swapped += OnSwapped;
@@ -501,7 +504,8 @@ namespace Dogpatch.Traffic
         void OnEntered(CarController car)
         {
             var agent = car.GetComponent<TrafficAgent>();
-            if (agent != null && agent.enabled && !car.Handling.PassengerOnly)
+            bool riding = agent != null && agent.enabled && CabRide.IsCab(agent.Spec) && Ride.Begin(agent);
+            if (!riding && agent != null && agent.enabled && !car.Handling.PassengerOnly)
             {
                 Release(agent);
                 car.SetDriven(true);
