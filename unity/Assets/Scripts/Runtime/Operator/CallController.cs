@@ -87,7 +87,17 @@ namespace Dogpatch.Operator
             if (state == CallState.None) Voice?.Close();
         }
 
-        public void HangUp() => Set(CallState.None);
+        public void HangUp()
+        {
+            CancelCallBack();
+            Set(CallState.None);
+        }
+
+        void CancelCallBack()
+        {
+            retryAt = 0f;
+            pickupCall = false;
+        }
 
         public void Buzz()
         {
@@ -99,6 +109,7 @@ namespace Dogpatch.Operator
 
         public void BeginTalk()
         {
+            CancelCallBack();
             if (State == CallState.Talking && latched)
             {
                 latched = false;
@@ -227,7 +238,11 @@ namespace Dogpatch.Operator
         {
             if (Game == null || !Game.IsReady) return;
             if (State == CallState.Answered && Time.time - StateSince > AnswerShown) Set(CallState.None);
-            if (retryAt > 0f && Time.time >= retryAt && State != CallState.Talking && State != CallState.Waiting) Pickup();
+            if (retryAt > 0f && Time.time >= retryAt && State != CallState.Talking && State != CallState.Waiting)
+            {
+                Set(CallState.None);
+                Pickup();
+            }
             if (State == CallState.Talking && listenAt > 0f && Time.time >= listenAt)
             {
                 listenAt = 0f;
