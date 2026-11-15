@@ -28,6 +28,7 @@ namespace Dogpatch.Gameplay
         Transform visual;
 
         public float Speed => speed;
+        public float VerticalVelocity { get => verticalVelocity; set => verticalVelocity = value; }
         public Transform Visual => visual;
         public event Action Jumped;
         public event Action<float> Landed;
@@ -95,6 +96,9 @@ namespace Dogpatch.Gameplay
             speed = 0f;
             verticalVelocity = 0f;
         }
+
+        // Hands back control mid-stride, e.g. coming up running out of a bail-out roll.
+        public void CarryOn(float runSpeed) => speed = runSpeed;
 
         void Update()
         {
