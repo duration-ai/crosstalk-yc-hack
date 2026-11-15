@@ -75,6 +75,7 @@ namespace Dogpatch.World
             if (instance != null || Active().Count == 0) return;
             instance = new GameObject("City regions").AddComponent<CityRegions>();
             instance.StartCoroutine(instance.Stream(game.SharedMaterial, Outskirts.LandTop(game.World.Bounds)));
+            HitchLogger.StreamingChunks++;
         }
 
         [Serializable] class Shape { public float h; public float w; public string kind; public float[] pts; }
@@ -124,6 +125,7 @@ namespace Dogpatch.World
                 }
                 Debug.Log($"[City] {name}: {count.buildings} buildings, {count.roads} streets, {keys.Count} chunks, {tris} tris, streamed in {Time.realtimeSinceStartup - t0:F2}s");
             }
+            HitchLogger.StreamingChunks--;
             if (towers.IndexCount == 0) yield break;
             var hazy = new Material(material) { name = "City skyline" };
             hazy.SetFloat("_FogAmount", 0.35f);
