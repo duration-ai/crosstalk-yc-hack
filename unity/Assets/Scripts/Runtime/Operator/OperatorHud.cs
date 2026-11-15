@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Dogpatch.Map;
 using UnityEngine;
 
 namespace Dogpatch.Operator
@@ -110,7 +111,7 @@ namespace Dogpatch.Operator
             Chips(left, top + (right - left < 700f * s ? 124f : 92f) * s);
             Toasting();
             ConfirmSheet();
-            if (DebugInput) DebugField(left, bottom);
+            if (DebugInput) DebugField(BottomLeft.Left(left), Mathf.Min(bottom, Screen.height - safe.yMin - BottomLeft.Floor(BottomLeft.OperatorBar) + 38f * s));
         }
 
         void Hearing(float right, float bottom)

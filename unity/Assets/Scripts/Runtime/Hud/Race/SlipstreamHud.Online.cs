@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Dogpatch.Map;
 using Dogpatch.Race;
 using UnityEngine;
 
@@ -201,12 +202,14 @@ namespace Dogpatch.Slipstream
         {
             var code = Race.RoomCode ?? room.code ?? "";
             var size = Measure(code, 40f);
-            var panel = new Rect(left, bottom - 50f * s, size.x + 40f * s, 50f * s);
+            float x = BottomLeft.Left(left);
+            var panel = new Rect(x, bottom - 50f * s, size.x + 40f * s, 50f * s);
             Panel(panel, Ink);
             Text(new Rect(panel.x + 20f * s, panel.y, size.x, panel.height), code, 40f, Sun, TextAnchor.MiddleLeft, 0f);
 
             float y = panel.y - 36f * s;
-            var leave = new Rect(left + 6f * s, y, 78f * s, 28f * s);
+            var leave = new Rect(x + 6f * s, y, 78f * s, 28f * s);
+            BottomLeft.Claim(BottomLeft.RoomCorner, Screen.height - Screen.safeArea.yMin - y);
             bool locked = room.status == RoomStatus.Countdown && Race.MsToStart <= 3000f;
             if (!locked) Plate(leave, "LEAVE", Paper, Ink, Race.Leave, 13f);
             if (Race.IsHost && lobby && room.status == RoomStatus.Lobby && !Race.Busy)

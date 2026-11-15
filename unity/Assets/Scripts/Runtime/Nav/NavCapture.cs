@@ -9,9 +9,11 @@ using UnityEngine;
 namespace Dogpatch.Nav
 {
     // Headless check for the minimap and the direction arrow: run the player build with
-    //   -offline -nav-capture <folder>
-    // and it shoots free roam on foot toward a ringing payphone, free roam driving at speed, the race
-    // on autopilot, the race after leaving the course (the A* reroute), and the map toggled off.
+    //   -nav-capture <folder>
+    // and it shoots the bottom-left corner with everything that shares it (online it hosts a room
+    // with bots first, so the room code shows), free roam on foot toward a ringing payphone, free
+    // roam driving, the race on autopilot, the race after leaving the course (the A* reroute), and
+    // the map toggled off. Add -offline to race against local bots without the backend.
     public sealed class NavCapture : MonoBehaviour
     {
         string output;
@@ -35,10 +37,13 @@ namespace Dogpatch.Nav
             Directory.CreateDirectory(output);
             Time.captureDeltaTime = 1f / 30f;
             RaceDirector race;
-            while ((race = RaceDirector.Instance) == null || !race.Setup || race.Last == null || NavService.Instance == null) yield return null;
+            while ((race = RaceDirector.Instance) == null || !race.Setup || NavService.Instance == null) yield return null;
+            if (race.Online && race.Last == null) race.Host(true);
+            yield return Until(() => race.Last != null, 30f, race.Online ? "hosted an online room" : "offline room");
             var game = race.Game;
             var nav = NavService.Instance;
             yield return Seconds(1f);
+            yield return Shot("bottom-left");
 
             var phone = race.Calls.Phones[race.Calls.Phones.Count / 2];
             var phonePos = new Vector2(phone.transform.position.x, phone.transform.position.z);

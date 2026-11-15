@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Dogpatch.Backend;
 using Dogpatch.Glb;
+using Dogpatch.Map;
 using UnityEngine;
 using Avatar = Dogpatch.Backend.Avatar;
 
@@ -75,12 +76,18 @@ namespace Dogpatch.Gameplay
 
         static bool ForceTestPhoto => Flag("-dogpatch-avatar-test-photo", "DOGPATCH_AVATAR_TEST_PHOTO");
 
+        static AvatarCapture active;
+
+        // True while the camera, upload or retry screen fills the display (the minimap hides).
+        public static bool Covering => active != null && active.FullScreen;
+
         bool FullScreen => stage == Stage.Viewfinder || stage == Stage.Uploading || stage == Stage.Refused || stage == Stage.Failed;
 
         string PlayerId => game != null && game.Profile != null ? game.Profile.id : null;
 
         void Awake()
         {
+            active = this;
             useGUILayout = false;
             ui = new Material(Resources.Load<Shader>("Shaders/HudColor")) { name = "AvatarCapture" };
             font = Resources.Load<Font>("Fonts/Exo2-BlackItalic");
@@ -358,7 +365,9 @@ namespace Dogpatch.Gameplay
         {
             float s = Scale;
             var tag = TagRect("YOUR AVATAR");
-            tag.y = Screen.safeArea.yMin + 40f * s + 60f * s + 16f * s;
+            tag.x = BottomLeft.Left(tag.x);
+            tag.y = Screen.safeArea.yMin + Mathf.Max(40f * s, BottomLeft.Floor(BottomLeft.AvatarCard)) + 60f * s + 16f * s;
+            BottomLeft.Claim(BottomLeft.AvatarCard, tag.yMax - Screen.safeArea.yMin);
             return tag;
         }
 

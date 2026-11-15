@@ -11,6 +11,8 @@ namespace Dogpatch.Map
 {
     // GTA-style minimap in the bottom-left corner, the one corner the Slipstream HUD leaves free
     // (place and the lobby roster top left, meters and pause top right, Call and Ready bottom right).
+    // Other bottom-left pieces (the lobby room code, the avatar card, the Operator's text bar) stack
+    // to its right through BottomLeft. It hides while the avatar camera fills the screen.
     // A circle with an ink rim, heading-up with the camera, zooming out with speed. The map is a
     // texture baked once at startup (MapBaker) and drawn as a textured fan under the rim, so there is
     // no second camera. On top: the route (sunshine), the start ring, payphones (pink dots), ask
@@ -30,6 +32,7 @@ namespace Dogpatch.Map
         static readonly Color White = Color.white;
 
         static bool? shown;
+        static Minimap instance;
 
         // The pause menu's MAP chip; remembered across launches.
         public static bool Shown
@@ -77,6 +80,34 @@ namespace Dogpatch.Map
         }
 
         static Color32 Hex32(string hex) => SpeedDial.Hex(hex);
+
+        static bool Showing => Shown && !AvatarCapture.Covering && instance != null && instance.map != null && instance.Game != null && instance.Game.IsReady;
+
+        // Where the circle sits this frame, from Screen and the safe area (portrait or landscape):
+        // tucked into the bottom-left corner, in pixels with the origin bottom left.
+        static void Layout(out Vector2 center, out float radius, out float s)
+        {
+            s = Mathf.Min(Screen.height / 402f, Screen.width / 560f);
+            var safe = Screen.safeArea;
+            radius = 50f * s;
+            center = new Vector2(safe.xMin + 22f * s + radius, safe.yMin + 18f * s + radius);
+        }
+
+        // The x (pixels) where other bottom-left HUD pieces start so they sit beside the minimap
+        // instead of under it: just right of its rim while it shows, otherwise left unchanged.
+        public static float Beside(float left)
+        {
+            if (!Showing) return left;
+            Layout(out var c, out float r, out float s);
+            return Mathf.Max(left, c.x + r + 14f * s);
+        }
+
+        void Awake() => instance = this;
+
+        void OnDestroy()
+        {
+            if (instance == this) instance = null;
+        }
 
         void Start()
         {
@@ -144,16 +175,13 @@ namespace Dogpatch.Map
 
         void OnGUI()
         {
-            if (Event.current.type != EventType.Repaint || !Shown || map == null || Game == null || !Game.IsReady) return;
+            if (Event.current.type != EventType.Repaint || !Showing) return;
             var focus = Game.Focus;
             var cam = Game.View;
             if (focus == null || cam == null) return;
 
-            s = Mathf.Min(Screen.height / 402f, Screen.width / 560f);
-            var safe = Screen.safeArea;
-            radius = 50f * s;
+            Layout(out center, out radius, out s);
             clip = radius - 0.5f * s;
-            center = new Vector2(safe.xMin + 22f * s + radius, safe.yMin + 18f * s + radius);
             me = new Vector2(focus.position.x, focus.position.z);
             float yaw = cam.transform.eulerAngles.y * Mathf.Deg2Rad;
             forward = new Vector2(Mathf.Sin(yaw), Mathf.Cos(yaw));
