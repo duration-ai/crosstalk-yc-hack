@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { internalMutation, internalQuery, type QueryCtx } from "./_generated/server";
 import { fail, getPlayer, movementMode, vec3 } from "./model";
-import { COLORS, DEFAULT_FINISH_RADIUS, DEFAULT_ROUTE, MAX_PLAYERS, removeFromRoom, routeLength } from "./raceModel";
+import { COLORS, DEFAULT_FINISH_RADIUS, DEFAULT_ROUTE, MAX_PLAYERS, routeLength } from "./raceModel";
 import { addRacer, newRoomCode } from "./rooms";
 import type { MutationCtx } from "./_generated/server";
 
@@ -12,6 +12,7 @@ import type { MutationCtx } from "./_generated/server";
 export const SHARD_CAP = 16;
 export const PRESENCE_TIMEOUT_MS = 10_000;
 const MAX_VEHICLE_TYPE = 64;
+const SWEEP_PER_BEAT = 8;
 
 export const presenceArgs = {
   playerId: v.string(),
@@ -83,8 +84,10 @@ export const heartbeat = internalMutation({
     const row = await findPresence(ctx, player._id);
     if (row && isActive(row, args.now)) {
       await ctx.db.patch(row._id, fields);
+      await sweep(ctx, row.shard, args.now);
       return { shard: row.shard, slot: row.slot, worldRoomId: row.worldRoomId };
     }
+    if (row) await dropPresence(ctx, row);
 
     let shard = 0;
     let others: Doc<"worldPresence">[] = [];
@@ -96,12 +99,30 @@ export const heartbeat = internalMutation({
     const slot = used.indexOf(Math.min(...used));
     const room = await worldRoom(ctx, shard, args.now);
     await enterWorldRoom(ctx, room, player, slot, args.now);
-    const next = { ...fields, playerId: player._id, shard, slot, worldRoomId: room._id, joinedAt: args.now };
-    if (row) await ctx.db.replace(row._id, next);
-    else await ctx.db.insert("worldPresence", next);
+    await ctx.db.insert("worldPresence", { ...fields, playerId: player._id, shard, slot, worldRoomId: room._id, joinedAt: args.now });
+    await sweep(ctx, shard, args.now);
     return { shard, slot, worldRoomId: room._id };
   },
 });
+
+// Presence that has timed out leaves the shard: its row goes, and so does its membership in the
+// world room, so voice effects stop reaching a closed app. Each heartbeat clears a few.
+async function sweep(ctx: MutationCtx, shard: number, now: number) {
+  const stale = await ctx.db
+    .query("worldPresence")
+    .withIndex("by_shard_updated", (q) => q.eq("shard", shard).lte("updatedAt", now - PRESENCE_TIMEOUT_MS))
+    .take(SWEEP_PER_BEAT);
+  for (const row of stale) await dropPresence(ctx, row);
+}
+
+async function dropPresence(ctx: MutationCtx, row: Doc<"worldPresence">) {
+  const member = await ctx.db
+    .query("roomPlayers")
+    .withIndex("by_player", (q) => q.eq("playerId", row.playerId).eq("roomId", row.worldRoomId))
+    .unique();
+  if (member) await ctx.db.delete(member._id);
+  await ctx.db.delete(row._id);
+}
 
 // The shard's world room, made on first use.
 async function worldRoom(ctx: MutationCtx, shard: number, now: number) {
@@ -130,7 +151,8 @@ async function worldRoom(ctx: MutationCtx, shard: number, now: number) {
 }
 
 // Puts the player in this shard's world room (outside the 4-racer cap, which only races use)
-// and takes them out of any other shard's.
+// and takes them out of any other shard's. World-room rows are deleted rather than going through
+// removeFromRoom, so the world room's status never moves.
 async function enterWorldRoom(ctx: MutationCtx, room: Doc<"rooms">, player: Doc<"players">, slot: number, now: number) {
   const rows = await ctx.db
     .query("roomPlayers")
@@ -144,7 +166,7 @@ async function enterWorldRoom(ctx: MutationCtx, room: Doc<"rooms">, player: Doc<
       continue;
     }
     const other = (await ctx.db.get(row.roomId))!;
-    if (other.kind === "world" && !row.left) await removeFromRoom(ctx, other, row, now);
+    if (other.kind === "world") await ctx.db.delete(row._id);
   }
   if (!inRoom) await addRacer(ctx, room, player, slot, now);
 }
@@ -163,7 +185,7 @@ export const leave = internalMutation({
   handler: async (ctx, args) => {
     const player = await getPlayer(ctx, args.playerId);
     const row = await findPresence(ctx, player._id);
-    if (row) await ctx.db.delete(row._id);
+    if (row) await dropPresence(ctx, row);
     return { left: true };
   },
 });

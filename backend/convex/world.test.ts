@@ -72,6 +72,34 @@ describe("world presence", () => {
     expect(room).toMatchObject({ kind: "world", worldShard: 0, freeAsks: true, status: "lobby" });
   });
 
+  it("takes a timed-out player out of the world room and refuses race actions on it", async () => {
+    const t = convexTest(schema, modules);
+    const a = await t.mutation(api.players.create, { displayName: "Tim" });
+    const b = await t.mutation(api.players.create, { displayName: "Maya" });
+    const { worldRoomId } = await beat(t, a.id);
+    await beat(t, b.id);
+    const members = () => t.run(async (ctx) => (await ctx.db.query("roomPlayers").collect()).filter((r) => r.roomId === worldRoomId).map((r) => r.playerId));
+    expect(await members()).toHaveLength(2);
+    const code = (await t.run((ctx) => ctx.db.get(worldRoomId)))!.code;
+    await expect(t.mutation(api.rooms.join, { playerId: b.id, code })).rejects.toThrow(/not a race/);
+    await expect(t.mutation(api.rooms.setReady, { playerId: a.id, roomId: worldRoomId, ready: true })).rejects.toThrow(/not a race/);
+    await beat(t, b.id, T0 + PRESENCE_TIMEOUT_MS + 1);
+    expect(await members()).toEqual([b.id]);
+    expect(await t.run((ctx) => ctx.db.query("worldPresence").collect())).toHaveLength(1);
+    const back = await beat(t, a.id, T0 + PRESENCE_TIMEOUT_MS + 2);
+    expect(back.worldRoomId).toBe(worldRoomId);
+    expect((await members()).sort()).toEqual([a.id, b.id].sort());
+    expect(await t.run((ctx) => ctx.db.get(worldRoomId))).toMatchObject({ status: "lobby" });
+  });
+
+  it("leaving the world removes the world-room membership", async () => {
+    const t = convexTest(schema, modules);
+    const a = await t.mutation(api.players.create, { displayName: "Tim" });
+    await beat(t, a.id);
+    await t.mutation(internal.world.leave, { playerId: a.id });
+    expect(await t.run((ctx) => ctx.db.query("roomPlayers").collect())).toHaveLength(0);
+  });
+
   it("rejects non-finite positions", async () => {
     const t = convexTest(schema, modules);
     const a = await t.mutation(api.players.create, { displayName: "Tim" });
