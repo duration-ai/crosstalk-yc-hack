@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Dogpatch.Data;
 using Dogpatch.Glb;
+using Dogpatch.Smash;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -23,6 +24,7 @@ namespace Dogpatch.World
         public Pose2D HeroCar;
         public List<Pose2D> ParkedCars = new List<Pose2D>();
         public Rect Bounds;
+        public IBreakableIndex Breakables;
     }
 
     // Builds Dogpatch from the committed OSM/DataSF extract: land, water, parks, streets with
@@ -81,6 +83,7 @@ namespace Dogpatch.World
             props.PlaceRooftops(data, buildingPolys);
             ChooseSpawns(ctx, models, random);
             props.Emit(ctx.Root.transform, material);
+            ctx.Breakables = props.Batch;
             props.PlaceNpcs(ctx, material);
             return ctx;
         }

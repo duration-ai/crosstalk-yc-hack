@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using Dogpatch.Data;
 using Dogpatch.Glb;
+using Dogpatch.Smash;
 using UnityEngine;
-using UnityEngine.Rendering;
 
 namespace Dogpatch.World
 {
@@ -16,9 +16,9 @@ namespace Dogpatch.World
         readonly WorldContext ctx;
         readonly ModelLibrary models;
         readonly System.Random random;
-        readonly Dictionary<Vector2Int, List<CombineInstance>> chunks = new Dictionary<Vector2Int, List<CombineInstance>>();
         readonly Dictionary<Vector2Int, List<Vector2>> placed = new Dictionary<Vector2Int, List<Vector2>>();
-        readonly List<(Vector3 position, float radius, float height)> colliders = new List<(Vector3, float, float)>();
+
+        public PropBatch Batch { get; } = new PropBatch(ChunkSize);
 
         public PropPlacer(WorldContext ctx, ModelLibrary models, System.Random random)
         {
@@ -63,15 +63,12 @@ namespace Dogpatch.World
             var mesh = asset.BakeStatic();
             if (mesh.vertexCount == 0) return false;
 
-            var key = new Vector2Int(Mathf.FloorToInt(p.x / ChunkSize), Mathf.FloorToInt(p.y / ChunkSize));
-            if (!chunks.TryGetValue(key, out var list)) chunks[key] = list = new List<CombineInstance>();
             var position = new Vector3(p.x, y, p.y);
-            list.Add(new CombineInstance { mesh = mesh, transform = Matrix4x4.TRS(position, Quaternion.Euler(0f, yaw, 0f), Vector3.one * scale) });
+            Batch.Add(id, mesh, Matrix4x4.TRS(position, Quaternion.Euler(0f, yaw, 0f), Vector3.one * scale), colliderRadius, Mathf.Min(mesh.bounds.size.y * scale, 4f));
 
             var cell = new Vector2Int(Mathf.FloorToInt(p.x / PropCell), Mathf.FloorToInt(p.y / PropCell));
             if (!placed.TryGetValue(cell, out var pl)) placed[cell] = pl = new List<Vector2>();
             pl.Add(p);
-            if (colliderRadius > 0f) colliders.Add((position, colliderRadius, Mathf.Min(mesh.bounds.size.y * scale, 4f)));
             return true;
         }
 
@@ -189,34 +186,10 @@ namespace Dogpatch.World
         {
             var asset = models.Get(id);
             if (asset == null) return;
-            var key = new Vector2Int(Mathf.FloorToInt(p.x / ChunkSize), Mathf.FloorToInt(p.y / ChunkSize));
-            if (!chunks.TryGetValue(key, out var list)) chunks[key] = list = new List<CombineInstance>();
-            list.Add(new CombineInstance { mesh = asset.BakeStatic(), transform = Matrix4x4.TRS(new Vector3(p.x, height, p.y), Quaternion.Euler(0f, (float)random.NextDouble() * 360f, 0f), Vector3.one) });
+            Batch.Add(id, asset.BakeStatic(), Matrix4x4.TRS(new Vector3(p.x, height, p.y), Quaternion.Euler(0f, (float)random.NextDouble() * 360f, 0f), Vector3.one));
         }
 
-        public void Emit(Transform parent, Material material)
-        {
-            foreach (var pair in chunks)
-            {
-                var mesh = new Mesh { name = "props " + pair.Key, indexFormat = IndexFormat.UInt32 };
-                mesh.CombineMeshes(pair.Value.ToArray(), true, true);
-                mesh.RecalculateBounds();
-                WorldBuilder.Emit(parent, "Props " + pair.Key, mesh, material, true);
-            }
-
-            var root = new GameObject("PropColliders");
-            root.transform.SetParent(parent, false);
-            foreach (var (position, radius, height) in colliders)
-            {
-                var go = new GameObject("c");
-                go.transform.SetParent(root.transform, false);
-                go.transform.position = position;
-                var capsule = go.AddComponent<CapsuleCollider>();
-                capsule.radius = radius;
-                capsule.height = Mathf.Max(height, radius * 2f);
-                capsule.center = new Vector3(0f, capsule.height * 0.5f, 0f);
-            }
-        }
+        public void Emit(Transform parent, Material material) => Batch.Emit(parent, material);
 
         // A few animated locals standing around near the start and in the parks.
         public void PlaceNpcs(WorldContext world, Material material)
