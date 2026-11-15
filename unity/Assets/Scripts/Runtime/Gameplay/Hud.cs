@@ -261,6 +261,8 @@ namespace Dogpatch.Gameplay
             }
             if (Chip(new Rect(left, controls.y, 220f * s, h), "MAP STYLE: " + Minimap.StyleNames[Minimap.MapStyle], false, s))
                 Minimap.MapStyle = (Minimap.MapStyle + 1) % Minimap.StyleNames.Length;
+            if (Chip(new Rect(left, controls.y + h + gap, 220f * s, h), "MAP LOOK: " + Dogpatch.Map.MapLook.Current.Name, false, s))
+                Dogpatch.Map.MapLook.Index = (Dogpatch.Map.MapLook.Index + 1) % Dogpatch.Map.MapLook.All.Length;
             if (Chip(new Rect(controls.xMax + gap, controls.y, w, h), "SOCKET", Dogpatch.Race.ConvexRaceSession.SocketEnabled, s))
                 Dogpatch.Race.ConvexRaceSession.SocketEnabled = !Dogpatch.Race.ConvexRaceSession.SocketEnabled;
         }

@@ -15,6 +15,7 @@ static class CityPrep
     static readonly Dictionary<string, (double s, double n, double w, double e)> Regions = new()
     {
         ["missionbay"] = (37.7645, 37.7790, -122.4010, -122.3800),
+        ["southbeach"] = (37.7790, 37.7880, -122.4010, -122.3800),
     };
 
     static readonly Dictionary<string, float> Widths = new()

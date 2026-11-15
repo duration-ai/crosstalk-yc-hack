@@ -17,11 +17,12 @@ namespace Dogpatch.World
     {
         // The world-bounds setting: regions stream in, in this order, up to and including the one named
         // here; "dogpatch" switches the expansion off. The command line -world-bounds <name> overrides it.
-        public const string WorldBounds = "missionbay";
+        public const string WorldBounds = "southbeach";
 
         static readonly (string name, Rect rect)[] Regions =
         {
             ("missionbay", Rect.MinMaxRect(-1120.9f, 834f, 725.3f, 2446.3f)),
+            ("southbeach", Rect.MinMaxRect(-1120.9f, 2446.3f, 725.3f, 3447f)),
         };
 
         const float Chunk = 400f;
