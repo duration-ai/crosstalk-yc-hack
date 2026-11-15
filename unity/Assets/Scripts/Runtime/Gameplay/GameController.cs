@@ -203,7 +203,7 @@ namespace Dogpatch.Gameplay
 
             var focus = current != null ? current.transform : player.transform;
             NearestCar = current == null ? FindNearestCar(player.transform.position, 40f) : null;
-            StreetName = world.Roads.StreetNameAt(new Vector2(focus.position.x, focus.position.z));
+            StreetName = world.Roads.StreetNameAt(focus.position);
             float kmh = Mathf.Abs(current != null ? current.Speed : player.Speed) * 3.6f;
             StatusLine = (Riding ? "Riding" : current != null ? "Driving" : "On foot") + $" · {kmh:F0} km/h";
 
@@ -298,7 +298,7 @@ namespace Dogpatch.Gameplay
         {
             var result = await backend.EnterVehicleAsync(profile.id, car.VehicleId);
             TakeWheel(car, result);
-            Debug.Log($"[Dogpatch] entered car {car.VehicleId} ({car.ModelId}) on {world.Roads.StreetNameAt(new Vector2(car.transform.position.x, car.transform.position.z))}");
+            Debug.Log($"[Dogpatch] entered car {car.VehicleId} ({car.ModelId}) on {world.Roads.StreetNameAt(car.transform.position)}");
         }
 
         void TakeWheel(CarController car, VehicleResult result)
