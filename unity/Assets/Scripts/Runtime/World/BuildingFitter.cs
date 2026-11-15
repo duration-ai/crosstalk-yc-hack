@@ -34,6 +34,7 @@ namespace Dogpatch.World
         readonly StaticModels statics;
         readonly Dictionary<string, Landmark> landmarks = new Dictionary<string, Landmark>();
         readonly Dictionary<string, Color> farColours = new Dictionary<string, Color>();
+        readonly Dictionary<string, Color> roofColours = new Dictionary<string, Color>();
         readonly bool measure;
         public readonly List<Fit> Fits = new List<Fit>();
 
@@ -128,7 +129,7 @@ namespace Dogpatch.World
             float yaw = Mathf.Atan2(forward.x, forward.y) * Mathf.Rad2Deg;
             var rotation = Quaternion.Euler(0f, yaw, 0f);
             var scale = new Vector3(cw / pick.sizeX, height / pick.sizeY, cd / pick.sizeZ);
-            var roofColour = WorldBuilder.Palette("shadow");
+            var roofColour = RoofColour(pick.id);
             bool terrace = landmark == null && (role == "building:victorian-low" || role == "building:victorian");
             int placed = 0;
             for (int i = 0; i < nxCells; i++)
@@ -221,6 +222,33 @@ namespace Dogpatch.World
                 if (Mathf.Approximately(m.sizeX, pick.sizeX) && Mathf.Approximately(m.sizeY, pick.sizeY) && Mathf.Approximately(m.sizeZ, pick.sizeZ))
                     if (colour == null || m.id.Contains("-" + colour + "-") || m.id.EndsWith("-" + colour)) same.Add(m.id);
             return same.Count == 0 ? pick.id : same[(int)(hash % (uint)same.Count)];
+        }
+
+        // Interior cells continue the model's own roof: the colour covering the most upward-facing
+        // area in its top third.
+        Color RoofColour(string variant)
+        {
+            if (roofColours.TryGetValue(variant, out var cached)) return cached;
+            var mesh = statics.Mesh(variant);
+            var verts = mesh.vertices;
+            var cols = mesh.colors;
+            var tris = mesh.triangles;
+            float top = mesh.bounds.max.y - mesh.bounds.size.y / 3f;
+            var area = new Dictionary<Color, float>();
+            for (int i = 0; cols.Length > 0 && i < tris.Length; i += 3)
+            {
+                var a = verts[tris[i]];
+                var n = Vector3.Cross(verts[tris[i + 1]] - a, verts[tris[i + 2]] - a);
+                if (a.y < top || Mathf.Abs(n.normalized.y) < 0.9f) continue;
+                var c = cols[tris[i]];
+                area.TryGetValue(c, out float s);
+                area[c] = s + n.magnitude;
+            }
+            var best = WorldBuilder.Palette("shadow");
+            float most = 0f;
+            foreach (var pair in area)
+                if (pair.Value > most) { most = pair.Value; best = pair.Key; }
+            return roofColours[variant] = best;
         }
 
         void AddFar(Vector2[] poly, float h, Vector2 centroid, string variant)
