@@ -132,7 +132,7 @@ namespace Dogpatch.Race
             var hero = Game.Cars.Values.First();
             bool Occupied(Vector2 p)
             {
-                foreach (var hit in Physics.OverlapSphere(new Vector3(p.x, Dogpatch.World.RoadSurface.GroundY(p) + 1f, p.y), 2.6f, ~0, QueryTriggerInteraction.Ignore))
+                foreach (var hit in Physics.OverlapSphere(new Vector3(p.x, Dogpatch.World.RoadSurface.GroundY(p) + 1f, p.y), 1.5f, ~0, QueryTriggerInteraction.Ignore))
                 {
                     var car = hit.GetComponentInParent<CarController>();
                     if (car != null && car != hero) return true;

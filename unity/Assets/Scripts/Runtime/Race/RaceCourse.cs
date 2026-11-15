@@ -215,43 +215,47 @@ namespace Dogpatch.Race
             return Route.PointAt(d) + Route.RightAt(d) * GridLane(slot);
         }
 
-        bool GridClear(float front)
+        // How many things are in the way of a grid whose front slot is `front` metres along the route: a
+        // bend, kerbs, buildings, or a parked or standing vehicle on a slot or in its lane for the first 20 m.
+        int GridProblems(float front)
         {
+            int problems = 0;
             float back = front - 3f * GridStep;
-            if (Route.TurnAhead(back - 2f, front - back + 20f) > 12f) return false;
+            if (Route.TurnAhead(back - 2f, front - back + 20f) > 12f) problems++;
             for (int slot = 0; slot < 4; slot++)
             {
-                var p = GridPoint(front, slot);
-                if (world.Buildings.Blocked(p, 1.5f)) return false;
+                if (world.Buildings.Blocked(GridPoint(front, slot), 1.5f)) problems++;
                 for (float ahead = 0f; ahead <= 20f; ahead += 5f)
                 {
                     var q = GridPoint(front + ahead, slot);
-                    float clearance = ahead == 0f ? 4.5f : 3f;
-                    if (!world.Roads.OnCurbedCarriageway(q, -1.4f) || (occupied != null && occupied(q))) return false;
+                    if (!world.Roads.OnCurbedCarriageway(q, -1.2f)) problems++;
+                    if (occupied != null && occupied(q)) problems++;
                     foreach (var car in world.ParkedCars)
-                        if ((new Vector2(car.Position.x, car.Position.z) - q).sqrMagnitude < clearance * clearance) return false;
+                        if ((new Vector2(car.Position.x, car.Position.z) - q).sqrMagnitude < 2.3f * 2.3f) problems++;
                 }
             }
-            return true;
+            return problems;
         }
 
         void PlaceGrid()
         {
             float first = 3f * GridStep + 4f;
             float front = first;
-            bool clear = false;
-            for (float d = first; d < Mathf.Min(120f, Route.Length * 0.4f); d += 2f)
-                if (clear = GridClear(d))
-                {
-                    front = d;
-                    break;
-                }
+            int best = int.MaxValue;
+            for (float d = first; d < Mathf.Min(120f, Route.Length * 0.4f) && best > 0; d += 2f)
+            {
+                int problems = GridProblems(d);
+                if (problems >= best) continue;
+                best = problems;
+                front = d;
+            }
+            bool clear = best == 0;
             for (int slot = 0; slot < 4; slot++)
             {
                 float d = front - slot * GridStep;
                 Grid[slot] = new Spot { Position = Ground(GridPoint(front, slot)) + Vector3.up * 0.3f, Heading = RoutePath.Heading(Route.DirectionAt(d)), Progress = d };
             }
-            Debug.Log($"[SpeedDial] grid from {front - 3f * GridStep:F0} to {front:F0} m along the route{(clear ? "" : ", no fully clear stretch found")}");
+            Debug.Log($"[SpeedDial] grid from {front - 3f * GridStep:F0} to {front:F0} m along the route{(clear ? "" : $", {best} problems left")}");
         }
 
         void PlaceFinish()
