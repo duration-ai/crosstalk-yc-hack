@@ -23,6 +23,11 @@ namespace Dogpatch.World
         public Pose2D HeroCar;
         public List<Pose2D> ParkedCars = new List<Pose2D>();
         public Rect Bounds;
+        public StaticModels Statics;
+        public BuildingFitter Fitter;
+        public StreetFurniture Furniture;
+        public Landmarks Landmarks;
+        public StaticInstanceIndex Instances => Statics?.Index;
     }
 
     // Builds Dogpatch from the committed OSM/DataSF extract: land, water, parks, streets with
@@ -40,29 +45,33 @@ namespace Dogpatch.World
             return c.linear;
         }
 
-        static readonly Color Land = C("#cdc6b2");
-        static readonly Color Water = C("#4d86b0");
-        static readonly Color Park = C("#86b866");
-        static readonly Color Sidewalk = C("#c9c5bd");
-        static readonly Color Asphalt = C("#4b4e56");
-        static readonly Color ServiceAsphalt = C("#5d6068");
-        static readonly Color PathColor = C("#d8d1c1");
-        static readonly Color LaneYellow = C("#e9c440");
-        static readonly Color RailBed = C("#7c7468");
-        static readonly Color Rail = C("#a7a9ad");
-        static readonly Color WindowTint = C("#33465c");
+        static readonly Color Land = Look.SpeedDial.Land;
+        static readonly Color Water = Look.SpeedDial.Bay;
+        static readonly Color Park = Look.SpeedDial.Park;
+        static readonly Color Sidewalk = Look.SpeedDial.Sidewalk;
+        static readonly Color Asphalt = Look.SpeedDial.Asphalt;
+        static readonly Color ServiceAsphalt = Look.SpeedDial.Asphalt;
+        static readonly Color PathColor = Look.SpeedDial.Sidewalk;
+        static readonly Color LaneYellow = Look.SpeedDial.DoubleYellow;
+        static readonly Color LaneWhite = Look.SpeedDial.LaneWhite;
+        static readonly Color RailBed = Look.SpeedDial.RailBed;
+        static readonly Color Rail = Look.SpeedDial.Rail;
 
-        static readonly Color[] HousePalette =
+        // The Speed Dial palette (STYLE-GUIDE.md) by name, for generated landmark and roof geometry.
+        static readonly Dictionary<string, Color> SpeedDial = new Dictionary<string, Color>
         {
-            C("#e8d9bd"), C("#d8a97a"), C("#a9c0d4"), C("#c7b6d8"), C("#e6c98f"), C("#b9cf9d"), C("#f0e6d6"), C("#d99b8a"), C("#9fb8b0"),
+            ["sky"] = C("#1C9BF2"), ["bay"] = C("#17B2D0"), ["cloud"] = C("#FFFFFF"), ["asphalt"] = C("#A9ADB4"),
+            ["shadow"] = C("#6C758B"), ["shade"] = C("#A3AEC4"), ["brick"] = C("#E2603F"), ["brickDeep"] = C("#C94A32"),
+            ["sunshine"] = C("#FFCB1F"), ["crane"] = C("#FFC21A"), ["lemon"] = C("#FFE27A"), ["mint"] = C("#8CE3BF"),
+            ["coral"] = C("#FF9C86"), ["lilac"] = C("#BBA6F7"), ["powder"] = C("#9ED7FF"), ["cream"] = C("#FFF3DA"),
+            ["hotline"] = C("#FF3E8E"), ["ink"] = C("#1C2347"), ["navy"] = C("#2C4FA3"), ["sidewalk"] = C("#EEE7DA"),
+            ["tree"] = C("#48C26A"), ["treeDeep"] = C("#2FA35A"), ["bark"] = C("#8B5A3C"),
         };
 
-        static readonly Color[] IndustrialPalette =
-        {
-            C("#b4a58e"), C("#9a948c"), C("#a55c42"), C("#c8b79b"), C("#7f8b97"), C("#8c6f5a"), C("#bfbab0"),
-        };
+        public static Color Palette(string name) => SpeedDial.TryGetValue(name, out var c) ? c : Color.magenta;
 
-        public static WorldContext Build(WorldData data, ModelLibrary models, Material material)
+        // measure computes per-footprint IoU for the fit report; the game skips it.
+        public static WorldContext Build(WorldData data, ModelLibrary models, Material material, bool measure = false)
         {
             var random = new System.Random(1849);
             var ctx = new WorldContext
@@ -72,16 +81,21 @@ namespace Dogpatch.World
                 Buildings = new BuildingIndex(),
                 Bounds = Rect.MinMaxRect(data.minX, data.minZ, data.maxX, data.maxZ),
             };
+            ctx.Statics = new StaticModels(models);
 
             BuildGround(data, ctx, material);
             BuildStreets(data, ctx, material);
-            var buildingPolys = BuildBuildings(data, ctx, material, random);
-            var props = new PropPlacer(ctx, models, random);
-            props.PlaceStreetDressing(data);
-            props.PlaceRooftops(data, buildingPolys);
+            BuildBuildings(data, ctx, models, measure);
+            ctx.Furniture = new StreetFurniture(ctx, ctx.Statics);
+            ctx.Furniture.PlaceTrees(data.treeRecords);
+            ctx.Furniture.PlaceProps(data.props);
+            ctx.Landmarks = new Landmarks(ctx, ctx.Statics);
+            ctx.Landmarks.Build(data);
             ChooseSpawns(ctx, models, random);
-            props.Emit(ctx.Root.transform, material);
-            props.PlaceNpcs(ctx, material);
+
+            var lod = ctx.Root.AddComponent<DistanceLod>();
+            ctx.Statics.Emit(ctx.Root.transform, material, lod);
+            new PropPlacer(ctx, models, random).PlaceNpcs(ctx, material);
             return ctx;
         }
 
@@ -143,8 +157,16 @@ namespace Dogpatch.World
                 bool major = road.kind != "service" && road.kind != "track";
                 if (major) mb.Ribbon(pts, hw + SidewalkWidth, 0.025f, Sidewalk, true);
                 mb.Ribbon(pts, hw, 0.04f, major ? Asphalt : ServiceAsphalt, true);
-                if (road.kind == "primary" || road.kind == "secondary" || road.kind == "tertiary")
-                    CenterLine(mb, pts, net, 0.055f);
+                if (road.kind == "primary" || road.kind == "secondary" || road.kind == "tertiary" || (road.kind == "residential" && hw >= 4.5f))
+                {
+                    Stripe(mb, pts, net, 0.17f, 0.065f, LaneYellow, 0f, 0f);
+                    Stripe(mb, pts, net, -0.17f, 0.065f, LaneYellow, 0f, 0f);
+                }
+                if (hw >= 7f)
+                {
+                    Stripe(mb, pts, net, hw * 0.5f, 0.08f, LaneWhite, 3f, 6f);
+                    Stripe(mb, pts, net, -hw * 0.5f, 0.08f, LaneWhite, 3f, 6f);
+                }
             }
 
             foreach (var rail in data.rails)
@@ -161,22 +183,28 @@ namespace Dogpatch.World
                 Emit(ctx.Root.transform, "Streets " + key, builder.ToMesh("streets " + key), material, false);
         }
 
-        static void CenterLine(MeshBuilder mb, Vector2[] pts, RoadNetwork net, float y)
+        // A road marking along the polyline at a lateral offset: solid when dash is 0, else dashed.
+        // Markings stop short of intersections.
+        static void Stripe(MeshBuilder mb, Vector2[] pts, RoadNetwork net, float offset, float halfWidth, Color color, float dash, float gap)
         {
-            const float dash = 3f, gap = 4f;
-            for (int i = 0; i < pts.Length - 1; i++)
+            const float y = 0.055f;
+            const float step = 4f;
+            var line = Offset(pts, offset);
+            for (int i = 0; i < line.Length - 1; i++)
             {
-                var a = pts[i];
-                var b = pts[i + 1];
+                var a = line[i];
+                var b = line[i + 1];
                 float len = Vector2.Distance(a, b);
                 var dir = (b - a) / Mathf.Max(len, 1e-3f);
-                var n = new Vector2(-dir.y, dir.x) * 0.08f;
-                for (float t = 0f; t + dash < len; t += dash + gap)
+                var n = new Vector2(-dir.y, dir.x) * halfWidth;
+                float piece = dash > 0f ? dash : step;
+                float stride = dash > 0f ? dash + gap : step;
+                for (float t = 0f; t < len; t += stride)
                 {
                     var p0 = a + dir * t;
-                    var p1 = a + dir * (t + dash);
+                    var p1 = a + dir * Mathf.Min(t + piece, len);
                     if (net.DistanceToIntersection((p0 + p1) * 0.5f, 12f) < 11f) continue;
-                    mb.Quad(MeshBuilder.At(p0 + n, y), MeshBuilder.At(p1 + n, y), MeshBuilder.At(p1 - n, y), MeshBuilder.At(p0 - n, y), LaneYellow, Vector3.up);
+                    mb.Quad(MeshBuilder.At(p0 + n, y), MeshBuilder.At(p1 + n, y), MeshBuilder.At(p1 - n, y), MeshBuilder.At(p0 - n, y), color, Vector3.up);
                 }
             }
         }
@@ -193,79 +221,36 @@ namespace Dogpatch.World
             return result;
         }
 
-        static List<(Vector2[] poly, float height)> BuildBuildings(WorldData data, WorldContext ctx, Material material, System.Random random)
+        // Every footprint becomes Polyfork models fitted by BuildingFitter; the extruded footprint
+        // is kept as the collider so cars and the player hit the real outline.
+        static void BuildBuildings(WorldData data, WorldContext ctx, ModelLibrary models, bool measure)
         {
-            var visual = new ChunkedMeshBuilder(ChunkSize);
+            ctx.Fitter = new BuildingFitter(ctx, models, ctx.Statics, data.landmarks, measure);
             var colliders = new ChunkedMeshBuilder(ChunkSize);
-            var result = new List<(Vector2[], float)>();
             foreach (var building in data.buildings)
             {
                 var poly = Geometry.ToPoints(building.pts);
                 if (poly.Length < 3) continue;
                 if (Geometry.SignedArea(poly) < 0f) System.Array.Reverse(poly);
-                float area = Geometry.SignedArea(poly);
                 float h = Mathf.Clamp(building.height, 3f, 150f);
                 ctx.Buildings.Add(poly);
-                result.Add((poly, h));
+                ctx.Fitter.Add(building, poly, h);
 
-                var centroid = Geometry.Centroid(poly);
-                bool industrial = building.kind == "industrial" || building.kind == "warehouse" || (area > 1500f && h < 16f);
-                var palette = industrial ? IndustrialPalette : HousePalette;
-                var wall = palette[random.Next(palette.Length)];
-                var roof = industrial ? C("#8d8d8a") : Color.Lerp(wall, C("#5a5550"), 0.45f);
-                var window = Color.Lerp(wall, WindowTint, 0.7f);
-
-                var mb = visual.At(centroid);
-                int floors = Mathf.Max(1, Mathf.RoundToInt(h / 3.5f));
-                float floorH = h / floors;
-                for (int i = 0, j = poly.Length - 1; i < poly.Length; j = i++)
-                {
-                    var a = poly[j];
-                    var b = poly[i];
-                    var outward = new Vector3(b.y - a.y, 0f, a.x - b.x).normalized;
-                    float len = Vector2.Distance(a, b);
-                    if (len < 3f || floors > 40)
-                    {
-                        WallBand(mb, a, b, 0f, h, wall, outward);
-                        continue;
-                    }
-                    if (industrial)
-                    {
-                        WallBand(mb, a, b, 0f, h * 0.62f, wall, outward);
-                        WallBand(mb, a, b, h * 0.62f, h * 0.82f, window, outward);
-                        WallBand(mb, a, b, h * 0.82f, h, wall, outward);
-                        continue;
-                    }
-                    float y = 0f;
-                    for (int f = 0; f < floors; f++)
-                    {
-                        float w0 = f * floorH + floorH * 0.32f;
-                        float w1 = f * floorH + floorH * 0.8f;
-                        WallBand(mb, a, b, y, w0, wall, outward);
-                        WallBand(mb, a, b, w0, w1, window, outward);
-                        y = w1;
-                    }
-                    WallBand(mb, a, b, y, h, wall, outward);
-                }
-                mb.Polygon(poly, h, roof);
-
-                var cb = colliders.At(centroid);
+                var cb = colliders.At(Geometry.Centroid(poly));
                 for (int i = 0, j = poly.Length - 1; i < poly.Length; j = i++)
                 {
                     var outward = new Vector3(poly[i].y - poly[j].y, 0f, poly[j].x - poly[i].x).normalized;
-                    WallBand(cb, poly[j], poly[i], 0f, h, wall, outward);
+                    WallBand(cb, poly[j], poly[i], 0f, h, Color.white, outward);
                 }
+                cb.Polygon(poly, h, Color.white);
             }
 
-            foreach (var (key, builder) in visual.All())
-                Emit(ctx.Root.transform, "Buildings " + key, builder.ToMesh("buildings " + key), material, true);
             foreach (var (key, builder) in colliders.All())
             {
                 var go = new GameObject("BuildingCollider " + key);
                 go.transform.SetParent(ctx.Root.transform, false);
                 go.AddComponent<MeshCollider>().sharedMesh = builder.ToMesh("building collider " + key);
             }
-            return result;
         }
 
         static void WallBand(MeshBuilder mb, Vector2 a, Vector2 b, float y0, float y1, Color color, Vector3 outward)

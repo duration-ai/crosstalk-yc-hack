@@ -1,0 +1,1456 @@
+{
+ "palette": "speed-dial",
+ "note": "Speed Dial recolor of each Polyfork model through its own color knobs. from is the knob's default (its exact COLOR_0 value), to is the Speed Dial color. See STYLE-GUIDE.md. night lists the knob zones that glow after dark, with the intensity from Polyfork's night block.",
+ "models": [
+  {
+   "id": "compact-hatchback-386417",
+   "why": "Hero hatchback: player blue, as in reference 06",
+   "knobs": [
+    {
+     "knob": "body",
+     "from": "#B58941",
+     "to": "#2D8CFF"
+    },
+    {
+     "knob": "glass",
+     "from": "#2F3F52",
+     "to": "#2A3A7A"
+    },
+    {
+     "knob": "trim",
+     "from": "#5A544B",
+     "to": "#1C2347"
+    },
+    {
+     "knob": "liner",
+     "from": "#1B1B1E",
+     "to": "#1C2347"
+    },
+    {
+     "knob": "tyre",
+     "from": "#322D2C",
+     "to": "#1C2347"
+    },
+    {
+     "knob": "rim",
+     "from": "#9B9085",
+     "to": "#F7F8F9"
+    },
+    {
+     "knob": "headlight",
+     "from": "#EDEAE3",
+     "to": "#FFF3DA"
+    },
+    {
+     "knob": "indicator",
+     "from": "#C25A3D",
+     "to": "#FF8A1E"
+    },
+    {
+     "knob": "taillight",
+     "from": "#B83833",
+     "to": "#FF4B3E"
+    }
+   ],
+   "night": [
+    {
+     "zone": "headlight",
+     "intensity": 0.8
+    },
+    {
+     "zone": "taillight",
+     "intensity": 0.6
+    }
+   ]
+  },
+  {
+   "id": "yellow-cab-8df4a0",
+   "why": "Cab in sunshine with an ink checker",
+   "knobs": [
+    {
+     "knob": "body",
+     "from": "#E8A825",
+     "to": "#FFCB1F"
+    },
+    {
+     "knob": "checker",
+     "from": "#322D2C",
+     "to": "#1C2347"
+    },
+    {
+     "knob": "glass",
+     "from": "#45525F",
+     "to": "#2A3A7A"
+    },
+    {
+     "knob": "trim",
+     "from": "#9F9890",
+     "to": "#A3AEC4"
+    },
+    {
+     "knob": "dark",
+     "from": "#211F1D",
+     "to": "#1C2347"
+    },
+    {
+     "knob": "sign",
+     "from": "#E8E4DE",
+     "to": "#FFF3DA"
+    },
+    {
+     "knob": "tail",
+     "from": "#C7504D",
+     "to": "#FF4B3E"
+    },
+    {
+     "knob": "lens",
+     "from": "#C1B0A1",
+     "to": "#FFF3DA"
+    }
+   ],
+   "night": [
+    {
+     "zone": "lens",
+     "intensity": 1.0
+    },
+    {
+     "zone": "tail",
+     "intensity": 0.55
+    },
+    {
+     "zone": "sign",
+     "intensity": 0.8
+    }
+   ]
+  },
+  {
+   "id": "town-car-56eeb6",
+   "why": "Purple town car with a cream vinyl roof, as in reference 01",
+   "knobs": [
+    {
+     "knob": "body",
+     "from": "#322D2C",
+     "to": "#A35BFF"
+    },
+    {
+     "knob": "glass",
+     "from": "#7B8B8F",
+     "to": "#2A3A7A"
+    },
+    {
+     "knob": "chrome",
+     "from": "#E8E4DE",
+     "to": "#F7F8F9"
+    },
+    {
+     "knob": "grilleBar",
+     "from": "#736E69",
+     "to": "#A3AEC4"
+    },
+    {
+     "knob": "dark",
+     "from": "#211F1D",
+     "to": "#1C2347"
+    },
+    {
+     "knob": "lens",
+     "from": "#C1B0A1",
+     "to": "#FFF3DA"
+    },
+    {
+     "knob": "plate",
+     "from": "#62605C",
+     "to": "#FFF3DA"
+    },
+    {
+     "knob": "tail",
+     "from": "#C7504D",
+     "to": "#FF4B3E"
+    },
+    {
+     "knob": "amber",
+     "from": "#97614A",
+     "to": "#FF8A1E"
+    },
+    {
+     "knob": "vinyl",
+     "from": "#463B37",
+     "to": "#FFF3DA"
+    }
+   ],
+   "night": [
+    {
+     "zone": "lens",
+     "intensity": 1.0
+    },
+    {
+     "zone": "amber",
+     "intensity": 0.7
+    },
+    {
+     "zone": "tail",
+     "intensity": 0.55
+    }
+   ]
+  },
+  {
+   "id": "police-cruiser-a2d25e",
+   "why": "Ink and white cruiser",
+   "knobs": [
+    {
+     "knob": "body",
+     "from": "#45525F",
+     "to": "#1C2347"
+    },
+    {
+     "knob": "livery",
+     "from": "#E8E4DE",
+     "to": "#F7F8F9"
+    },
+    {
+     "knob": "glass",
+     "from": "#322D2C",
+     "to": "#2A3A7A"
+    },
+    {
+     "knob": "bumper",
+     "from": "#463B37",
+     "to": "#1C2347"
+    },
+    {
+     "knob": "trim",
+     "from": "#9F9890",
+     "to": "#A3AEC4"
+    },
+    {
+     "knob": "dark",
+     "from": "#211F1D",
+     "to": "#1C2347"
+    },
+    {
+     "knob": "lens",
+     "from": "#C1B0A1",
+     "to": "#FFF3DA"
+    },
+    {
+     "knob": "tail",
+     "from": "#C7504D",
+     "to": "#FF4B3E"
+    },
+    {
+     "knob": "lampRed",
+     "from": "#E8443A",
+     "to": "#FF4B3E"
+    },
+    {
+     "knob": "lampBlue",
+     "from": "#3D6EE0",
+     "to": "#2D8CFF"
+    }
+   ],
+   "night": [
+    {
+     "zone": "lens",
+     "intensity": 1.0
+    },
+    {
+     "zone": "tail",
+     "intensity": 0.55
+    },
+    {
+     "zone": "lampRed",
+     "intensity": 1.0
+    },
+    {
+     "zone": "lampBlue",
+     "intensity": 1.0
+    }
+   ]
+  },
+  {
+   "id": "family-crossover-suv-42027f",
+   "why": "Coral crossover, as in reference 03",
+   "knobs": [
+    {
+     "knob": "body",
+     "from": "#55636D",
+     "to": "#FF9C86"
+    },
+    {
+     "knob": "clad",
+     "from": "#D8DDDF",
+     "to": "#F7F8F9"
+    },
+    {
+     "knob": "glass",
+     "from": "#8FBFD9",
+     "to": "#2A3A7A"
+    },
+    {
+     "knob": "trim",
+     "from": "#3E4A52",
+     "to": "#1C2347"
+    },
+    {
+     "knob": "dark",
+     "from": "#141719",
+     "to": "#1C2347"
+    },
+    {
+     "knob": "rim",
+     "from": "#7B8A93",
+     "to": "#F7F8F9"
+    },
+    {
+     "knob": "lamp",
+     "from": "#E7EAEA",
+     "to": "#FFF3DA"
+    },
+    {
+     "knob": "plate",
+     "from": "#F2F1EE",
+     "to": "#FFF3DA"
+    },
+    {
+     "knob": "tail",
+     "from": "#B9553F",
+     "to": "#FF4B3E"
+    }
+   ],
+   "night": [
+    {
+     "zone": "lamp",
+     "intensity": 1.0
+    },
+    {
+     "zone": "tail",
+     "intensity": 0.55
+    }
+   ]
+  },
+  {
+   "id": "family-minivan-924de0",
+   "why": "Mint minivan, as in reference 03",
+   "knobs": [
+    {
+     "knob": "body",
+     "from": "#C7A87C",
+     "to": "#8CE3BF"
+    },
+    {
+     "knob": "trim",
+     "from": "#3E4A52",
+     "to": "#1C2347"
+    },
+    {
+     "knob": "glass",
+     "from": "#2E3338",
+     "to": "#2A3A7A"
+    },
+    {
+     "knob": "dark",
+     "from": "#141719",
+     "to": "#1C2347"
+    },
+    {
+     "knob": "hub",
+     "from": "#D8DDDF",
+     "to": "#F7F8F9"
+    },
+    {
+     "knob": "headlight",
+     "from": "#E7EAEA",
+     "to": "#FFF3DA"
+    },
+    {
+     "knob": "indicator",
+     "from": "#F0A03C",
+     "to": "#FF8A1E"
+    },
+    {
+     "knob": "taillight",
+     "from": "#B9553F",
+     "to": "#FF4B3E"
+    },
+    {
+     "knob": "interior",
+     "from": "#55636D",
+     "to": "#6C758B"
+    }
+   ],
+   "night": [
+    {
+     "zone": "headlight",
+     "intensity": 1.0
+    },
+    {
+     "zone": "taillight",
+     "intensity": 0.55
+    }
+   ]
+  },
+  {
+   "id": "pickup-truck-a34bf2",
+   "why": "Green pickup with white roof and chrome",
+   "knobs": [
+    {
+     "knob": "body",
+     "from": "#60ACB4",
+     "to": "#2EC27E"
+    },
+    {
+     "knob": "roof",
+     "from": "#F1ECF0",
+     "to": "#F7F8F9"
+    },
+    {
+     "knob": "chrome",
+     "from": "#E4E3E2",
+     "to": "#F7F8F9"
+    },
+    {
+     "knob": "grille",
+     "from": "#DCA062",
+     "to": "#FFCB1F"
+    },
+    {
+     "knob": "glass",
+     "from": "#343339",
+     "to": "#2A3A7A"
+    },
+    {
+     "knob": "rubber",
+     "from": "#201F22",
+     "to": "#1C2347"
+    },
+    {
+     "knob": "whitewall",
+     "from": "#DDDAD7",
+     "to": "#F7F8F9"
+    },
+    {
+     "knob": "headlamp",
+     "from": "#DCE4E8",
+     "to": "#FFF3DA"
+    },
+    {
+     "knob": "tail",
+     "from": "#5E3027",
+     "to": "#FF4B3E"
+    },
+    {
+     "knob": "chassis",
+     "from": "#4F4643",
+     "to": "#1C2347"
+    },
+    {
+     "knob": "bed",
+     "from": "#A1603A",
+     "to": "#9A5B3A"
+    },
+    {
+     "knob": "crate",
+     "from": "#CAAA82",
+     "to": "#FFE27A"
+    },
+    {
+     "knob": "fruit",
+     "from": "#BD6F3C",
+     "to": "#FF8A1E"
+    },
+    {
+     "knob": "caseA",
+     "from": "#A06F93",
+     "to": "#BBA6F7"
+    },
+    {
+     "knob": "caseB",
+     "from": "#705A50",
+     "to": "#6C758B"
+    },
+    {
+     "knob": "tarp",
+     "from": "#8F725E",
+     "to": "#A3AEC4"
+    },
+    {
+     "knob": "rope",
+     "from": "#AB988E",
+     "to": "#FFF3DA"
+    },
+    {
+     "knob": "seat",
+     "from": "#968173",
+     "to": "#6C758B"
+    }
+   ],
+   "night": [
+    {
+     "zone": "headlamp",
+     "intensity": 1.0
+    },
+    {
+     "zone": "tail",
+     "intensity": 0.6
+    }
+   ]
+  },
+  {
+   "id": "delivery-truck-a9537e",
+   "why": "White cab, cream box",
+   "knobs": [
+    {
+     "knob": "cab",
+     "from": "#F5F1E7",
+     "to": "#F7F8F9"
+    },
+    {
+     "knob": "box",
+     "from": "#B5AEA0",
+     "to": "#FFF3DA"
+    },
+    {
+     "knob": "door",
+     "from": "#B7B0A2",
+     "to": "#FFF3DA"
+    },
+    {
+     "knob": "hub",
+     "from": "#B1AA9C",
+     "to": "#A3AEC4"
+    },
+    {
+     "knob": "chassis",
+     "from": "#3F4247",
+     "to": "#1C2347"
+    },
+    {
+     "knob": "tyre",
+     "from": "#3B3E43",
+     "to": "#1C2347"
+    },
+    {
+     "knob": "glass",
+     "from": "#6F8FA0",
+     "to": "#2A3A7A"
+    },
+    {
+     "knob": "frontLamps",
+     "from": "#E8A825",
+     "to": "#FFF3DA"
+    },
+    {
+     "knob": "rearLamps",
+     "from": "#E6A623",
+     "to": "#FF8A1E"
+    },
+    {
+     "knob": "tailLamps",
+     "from": "#A34A38",
+     "to": "#FF4B3E"
+    }
+   ],
+   "night": [
+    {
+     "zone": "frontLamps",
+     "intensity": 1.0
+    },
+    {
+     "zone": "tailLamps",
+     "intensity": 0.55
+    },
+    {
+     "zone": "rearLamps",
+     "intensity": 0.5
+    }
+   ]
+  },
+  {
+   "id": "commuter-381e7f",
+   "why": "Player: blue jacket and cap, navy trousers, white shoes, as in reference 06",
+   "knobs": [
+    {
+     "knob": "shirt",
+     "from": "#43413E",
+     "to": "#2D8CFF"
+    },
+    {
+     "knob": "cuff",
+     "from": "#5E5D5B",
+     "to": "#2C4FA3"
+    },
+    {
+     "knob": "cuffFold",
+     "from": "#393837",
+     "to": "#1C2347"
+    },
+    {
+     "knob": "coat",
+     "from": "#525150",
+     "to": "#2D8CFF"
+    },
+    {
+     "knob": "coatTrim",
+     "from": "#474645",
+     "to": "#2C4FA3"
+    },
+    {
+     "knob": "ventShade",
+     "from": "#2C2B2A",
+     "to": "#2C4FA3"
+    },
+    {
+     "knob": "scarf",
+     "from": "#B6B4B1",
+     "to": "#FFCB1F"
+    },
+    {
+     "knob": "denim",
+     "from": "#443933",
+     "to": "#1C2347"
+    },
+    {
+     "knob": "waistband",
+     "from": "#2F2925",
+     "to": "#1C2347"
+    },
+    {
+     "knob": "boot",
+     "from": "#4A372A",
+     "to": "#F7F8F9"
+    },
+    {
+     "knob": "sole",
+     "from": "#2E211A",
+     "to": "#A3AEC4"
+    },
+    {
+     "knob": "skin",
+     "from": "#EED3B8",
+     "to": "#F2C9A4"
+    },
+    {
+     "knob": "hair",
+     "from": "#A68657",
+     "to": "#3B2A20"
+    },
+    {
+     "knob": "brow",
+     "from": "#4E3A22",
+     "to": "#3B2A20"
+    },
+    {
+     "knob": "eye",
+     "from": "#2A2320",
+     "to": "#1C2347"
+    },
+    {
+     "knob": "mouth",
+     "from": "#9E8D7A",
+     "to": "#C9876F"
+    },
+    {
+     "knob": "briefs",
+     "from": "#A59E89",
+     "to": "#FFF3DA"
+    },
+    {
+     "knob": "bra",
+     "from": "#A59E89",
+     "to": "#FFF3DA"
+    },
+    {
+     "knob": "crease",
+     "from": "#8E6A4E",
+     "to": "#D9A07A"
+    },
+    {
+     "knob": "case",
+     "from": "#323029",
+     "to": "#1C2347"
+    },
+    {
+     "knob": "cup",
+     "from": "#DDD6CF",
+     "to": "#F7F8F9"
+    },
+    {
+     "knob": "cupSleeve",
+     "from": "#D5AF8A",
+     "to": "#FFCB1F"
+    },
+    {
+     "knob": "cupLid",
+     "from": "#937A61",
+     "to": "#1C2347"
+    }
+   ],
+   "night": []
+  },
+  {
+   "id": "delivery-courier-327e30",
+   "why": "Courier: green jacket, navy trousers, sunshine pack (pink is the Operator's alone)",
+   "knobs": [
+    {
+     "knob": "coat",
+     "from": "#466A61",
+     "to": "#2EC27E"
+    },
+    {
+     "knob": "denim",
+     "from": "#262C38",
+     "to": "#1C2347"
+    },
+    {
+     "knob": "cap",
+     "from": "#2F3843",
+     "to": "#FF8A1E"
+    },
+    {
+     "knob": "boot",
+     "from": "#9A8268",
+     "to": "#F7F8F9"
+    },
+    {
+     "knob": "sole",
+     "from": "#6E5D4A",
+     "to": "#A3AEC4"
+    },
+    {
+     "knob": "pack",
+     "from": "#C2582A",
+     "to": "#FFCB1F"
+    },
+    {
+     "knob": "packHarness",
+     "from": "#262D35",
+     "to": "#1C2347"
+    },
+    {
+     "knob": "packLabel",
+     "from": "#7A6266",
+     "to": "#F7F8F9"
+    },
+    {
+     "knob": "packLabelFrame",
+     "from": "#34313A",
+     "to": "#1C2347"
+    },
+    {
+     "knob": "case",
+     "from": "#C4A582",
+     "to": "#FFF3DA"
+    },
+    {
+     "knob": "skin",
+     "from": "#C99D7D",
+     "to": "#C68A62"
+    },
+    {
+     "knob": "hair",
+     "from": "#24221E",
+     "to": "#1C2347"
+    }
+   ],
+   "night": []
+  },
+  {
+   "id": "construction-worker-c1ad8c",
+   "why": "Worker: orange hi-vis, sunshine hard hat",
+   "knobs": [
+    {
+     "knob": "shirt",
+     "from": "#30495C",
+     "to": "#2C4FA3"
+    },
+    {
+     "knob": "cuff",
+     "from": "#30495C",
+     "to": "#2C4FA3"
+    },
+    {
+     "knob": "coat",
+     "from": "#E0BC1E",
+     "to": "#FF8A1E"
+    },
+    {
+     "knob": "coatTrim",
+     "from": "#E0BC1E",
+     "to": "#FF8A1E"
+    },
+    {
+     "knob": "reflect",
+     "from": "#808080",
+     "to": "#F7F8F9"
+    },
+    {
+     "knob": "piping",
+     "from": "#C8701F",
+     "to": "#FFCB1F"
+    },
+    {
+     "knob": "cap",
+     "from": "#DBBB27",
+     "to": "#FFCB1F"
+    },
+    {
+     "knob": "capTrim",
+     "from": "#A8764F",
+     "to": "#FFC21A"
+    },
+    {
+     "knob": "helmet",
+     "from": "#DBBB27",
+     "to": "#FFCB1F"
+    },
+    {
+     "knob": "helmetRim",
+     "from": "#C7A621",
+     "to": "#FFC21A"
+    },
+    {
+     "knob": "hatBand",
+     "from": "#97614A",
+     "to": "#FF8A1E"
+    },
+    {
+     "knob": "denim",
+     "from": "#6D4C35",
+     "to": "#1C2347"
+    },
+    {
+     "knob": "waistband",
+     "from": "#5C3F2C",
+     "to": "#1C2347"
+    },
+    {
+     "knob": "boot",
+     "from": "#D9A32E",
+     "to": "#9A5B3A"
+    },
+    {
+     "knob": "sole",
+     "from": "#55392A",
+     "to": "#1C2347"
+    },
+    {
+     "knob": "belt",
+     "from": "#463B37",
+     "to": "#1C2347"
+    },
+    {
+     "knob": "buckleMetal",
+     "from": "#9F9890",
+     "to": "#A3AEC4"
+    },
+    {
+     "knob": "skin",
+     "from": "#D8AE8B",
+     "to": "#E0A97E"
+    },
+    {
+     "knob": "hair",
+     "from": "#533921",
+     "to": "#3B2A20"
+    },
+    {
+     "knob": "eye",
+     "from": "#211F1D",
+     "to": "#1C2347"
+    },
+    {
+     "knob": "mouth",
+     "from": "#BC8A74",
+     "to": "#C9876F"
+    },
+    {
+     "knob": "brow",
+     "from": "#291A0A",
+     "to": "#3B2A20"
+    },
+    {
+     "knob": "underCollar",
+     "from": "#D8AE8B",
+     "to": "#E0A97E"
+    },
+    {
+     "knob": "paper",
+     "from": "#5A87A0",
+     "to": "#9ED7FF"
+    },
+    {
+     "knob": "paperCore",
+     "from": "#3B6177",
+     "to": "#2C4FA3"
+    },
+    {
+     "knob": "ribbon",
+     "from": "#5A3A26",
+     "to": "#9A5B3A"
+    },
+    {
+     "knob": "briefs",
+     "from": "#A59E89",
+     "to": "#FFF3DA"
+    },
+    {
+     "knob": "bra",
+     "from": "#A59E89",
+     "to": "#FFF3DA"
+    },
+    {
+     "knob": "crease",
+     "from": "#8E6A4E",
+     "to": "#C98E66"
+    },
+    {
+     "knob": "check",
+     "from": "#8B3D26",
+     "to": "#C94A32"
+    }
+   ],
+   "night": []
+  },
+  {
+   "id": "broad-canopy-shade-tree-e7c4a2",
+   "why": "Tree greens",
+   "knobs": [
+    {
+     "knob": "foliage",
+     "from": "#4E8148",
+     "to": "#2FA35A"
+    },
+    {
+     "knob": "foliageHi",
+     "from": "#6FA45C",
+     "to": "#48C26A"
+    },
+    {
+     "knob": "bark",
+     "from": "#6E5238",
+     "to": "#9A5B3A"
+    }
+   ],
+   "night": []
+  },
+  {
+   "id": "ornamental-front-yard-tree-c6781a",
+   "why": "Tree greens, cream edging",
+   "knobs": [
+    {
+     "knob": "foliage",
+     "from": "#4E8148",
+     "to": "#2FA35A"
+    },
+    {
+     "knob": "foliageHi",
+     "from": "#6FA45C",
+     "to": "#48C26A"
+    },
+    {
+     "knob": "bark",
+     "from": "#9C7A4F",
+     "to": "#9A5B3A"
+    },
+    {
+     "knob": "edging",
+     "from": "#D9C9A8",
+     "to": "#FFF3DA"
+    },
+    {
+     "knob": "mulch",
+     "from": "#6E5238",
+     "to": "#7A4A2E"
+    }
+   ],
+   "night": []
+  },
+  {
+   "id": "street-tree-0d33f3",
+   "why": "Tree green, cream frame",
+   "knobs": [
+    {
+     "knob": "canopy",
+     "from": "#5F7C42",
+     "to": "#48C26A"
+    },
+    {
+     "knob": "bark",
+     "from": "#7D5642",
+     "to": "#9A5B3A"
+    },
+    {
+     "knob": "frame",
+     "from": "#C1B0A1",
+     "to": "#FFF3DA"
+    },
+    {
+     "knob": "bed",
+     "from": "#52613B",
+     "to": "#7A4A2E"
+    }
+   ],
+   "night": []
+  },
+  {
+   "id": "tree-in-pit-grate-ea8010",
+   "why": "Tree green, ink grate",
+   "knobs": [
+    {
+     "knob": "foliage",
+     "from": "#909A5C",
+     "to": "#48C26A"
+    },
+    {
+     "knob": "bark",
+     "from": "#936E4B",
+     "to": "#9A5B3A"
+    },
+    {
+     "knob": "barkOlive",
+     "from": "#7B8550",
+     "to": "#9A5B3A"
+    },
+    {
+     "knob": "barkCream",
+     "from": "#EAE2DC",
+     "to": "#FFF3DA"
+    },
+    {
+     "knob": "iron",
+     "from": "#404349",
+     "to": "#1C2347"
+    },
+    {
+     "knob": "gravel",
+     "from": "#8A8278",
+     "to": "#A3AEC4"
+    },
+    {
+     "knob": "paper",
+     "from": "#EFEAE3",
+     "to": "#F7F8F9"
+    },
+    {
+     "knob": "print",
+     "from": "#835C57",
+     "to": "#1C2347"
+    },
+    {
+     "knob": "tie",
+     "from": "#70757E",
+     "to": "#A3AEC4"
+    }
+   ],
+   "night": []
+  },
+  {
+   "id": "cobra-head-street-light-3e25b8",
+   "why": "Ink pole and head, cream lens, as in references 02 and 03",
+   "knobs": [
+    {
+     "knob": "pole",
+     "from": "#A9B4B9",
+     "to": "#1C2347"
+    },
+    {
+     "knob": "head",
+     "from": "#CFD6D6",
+     "to": "#1C2347"
+    },
+    {
+     "knob": "lens",
+     "from": "#6E5238",
+     "to": "#FFF3DA"
+    },
+    {
+     "knob": "ledPanel",
+     "from": "#2E3338",
+     "to": "#FFF3DA"
+    },
+    {
+     "knob": "base",
+     "from": "#E8E7E1",
+     "to": "#1C2347"
+    },
+    {
+     "knob": "door",
+     "from": "#55636D",
+     "to": "#6C758B"
+    }
+   ],
+   "night": [
+    {
+     "zone": "lens",
+     "intensity": 0.95
+    },
+    {
+     "zone": "ledPanel",
+     "intensity": 1.0
+    }
+   ]
+  },
+  {
+   "id": "traffic-light-b217a2",
+   "why": "Sunshine housing, ink hood",
+   "knobs": [
+    {
+     "knob": "paint",
+     "from": "#E8A825",
+     "to": "#FFCB1F"
+    },
+    {
+     "knob": "dark",
+     "from": "#211F1D",
+     "to": "#1C2347"
+    },
+    {
+     "knob": "stop",
+     "from": "#B63735",
+     "to": "#FF4B3E"
+    },
+    {
+     "knob": "amber",
+     "from": "#CF7A15",
+     "to": "#FF8A1E"
+    },
+    {
+     "knob": "go",
+     "from": "#2E8A5A",
+     "to": "#2EC27E"
+    },
+    {
+     "knob": "walk",
+     "from": "#ECE5D3",
+     "to": "#F7F8F9"
+    }
+   ],
+   "night": [
+    {
+     "zone": "stop",
+     "intensity": 0.8
+    },
+    {
+     "zone": "amber",
+     "intensity": 0.8
+    },
+    {
+     "zone": "go",
+     "intensity": 0.8
+    },
+    {
+     "zone": "walk",
+     "intensity": 0.85
+    }
+   ]
+  },
+  {
+   "id": "fire-hydrant-b68b17",
+   "why": "Brick hydrant with sunshine nut",
+   "knobs": [
+    {
+     "knob": "body",
+     "from": "#A34A38",
+     "to": "#E2603F"
+    },
+    {
+     "knob": "iron",
+     "from": "#3F4247",
+     "to": "#1C2347"
+    },
+    {
+     "knob": "reveal",
+     "from": "#B5AEA0",
+     "to": "#A3AEC4"
+    },
+    {
+     "knob": "capNut",
+     "from": "#F5F1E7",
+     "to": "#F7F8F9"
+    },
+    {
+     "knob": "crownNut",
+     "from": "#E8A825",
+     "to": "#FFCB1F"
+    }
+   ],
+   "night": []
+  },
+  {
+   "id": "metal-trash-can-f57043",
+   "why": "Green can",
+   "knobs": [
+    {
+     "knob": "steel",
+     "from": "#9B9085",
+     "to": "#A3AEC4"
+    },
+    {
+     "knob": "body",
+     "from": "#756B62",
+     "to": "#2FA35A"
+    },
+    {
+     "knob": "hardware",
+     "from": "#5A544B",
+     "to": "#1C2347"
+    },
+    {
+     "knob": "inside",
+     "from": "#4C4238",
+     "to": "#1C2347"
+    },
+    {
+     "knob": "bag",
+     "from": "#1B1B1E",
+     "to": "#1C2347"
+    }
+   ],
+   "night": []
+  },
+  {
+   "id": "newspaper-box-3f2c0e",
+   "why": "Blue box",
+   "knobs": [
+    {
+     "knob": "body",
+     "from": "#7D4530",
+     "to": "#2D8CFF"
+    },
+    {
+     "knob": "sign",
+     "from": "#CBBAAA",
+     "to": "#F7F8F9"
+    },
+    {
+     "knob": "stand",
+     "from": "#47261F",
+     "to": "#1C2347"
+    },
+    {
+     "knob": "frame",
+     "from": "#817D85",
+     "to": "#A3AEC4"
+    },
+    {
+     "knob": "hardware",
+     "from": "#9B9085",
+     "to": "#A3AEC4"
+    },
+    {
+     "knob": "glass",
+     "from": "#2F3F52",
+     "to": "#2A3A7A"
+    },
+    {
+     "knob": "paper",
+     "from": "#EDEAE3",
+     "to": "#F7F8F9"
+    },
+    {
+     "knob": "print",
+     "from": "#756B62",
+     "to": "#6C758B"
+    },
+    {
+     "knob": "interior",
+     "from": "#252B38",
+     "to": "#1C2347"
+    }
+   ],
+   "night": []
+  },
+  {
+   "id": "park-bench-dc8b62",
+   "why": "Ink iron, green slats",
+   "knobs": [
+    {
+     "knob": "iron",
+     "from": "#3F4247",
+     "to": "#1C2347"
+    },
+    {
+     "knob": "wood",
+     "from": "#3D6B52",
+     "to": "#2FA35A"
+    }
+   ],
+   "night": []
+  },
+  {
+   "id": "parking-meter-e9cf71",
+   "why": "Ink post, sunshine face",
+   "knobs": [
+    {
+     "knob": "post",
+     "from": "#45525F",
+     "to": "#1C2347"
+    },
+    {
+     "knob": "shell",
+     "from": "#9A8472",
+     "to": "#A3AEC4"
+    },
+    {
+     "knob": "face",
+     "from": "#B63735",
+     "to": "#FFCB1F"
+    },
+    {
+     "knob": "dial",
+     "from": "#E8E4DE",
+     "to": "#F7F8F9"
+    },
+    {
+     "knob": "ring",
+     "from": "#D3756E",
+     "to": "#FF8A1E"
+    },
+    {
+     "knob": "plate",
+     "from": "#9F9890",
+     "to": "#A3AEC4"
+    },
+    {
+     "knob": "hardware",
+     "from": "#463B37",
+     "to": "#1C2347"
+    }
+   ],
+   "night": [
+    {
+     "zone": "dial",
+     "intensity": 0.55
+    }
+   ]
+  },
+  {
+   "id": "bus-shelter-f786b4",
+   "why": "Ink frame, powder glass",
+   "knobs": [
+    {
+     "knob": "frame",
+     "from": "#3D6B52",
+     "to": "#1C2347"
+    },
+    {
+     "knob": "glass",
+     "from": "#6F8FA0",
+     "to": "#9ED7FF"
+    },
+    {
+     "knob": "bench",
+     "from": "#3F4247",
+     "to": "#1C2347"
+    },
+    {
+     "knob": "adCase",
+     "from": "#45525F",
+     "to": "#1C2347"
+    },
+    {
+     "knob": "diffuser",
+     "from": "#C1B0A1",
+     "to": "#F7F8F9"
+    },
+    {
+     "knob": "posterSky",
+     "from": "#E8E4DE",
+     "to": "#9ED7FF"
+    },
+    {
+     "knob": "posterLand",
+     "from": "#B63735",
+     "to": "#FF8A1E"
+    },
+    {
+     "knob": "posterMotif",
+     "from": "#97614A",
+     "to": "#FFCB1F"
+    }
+   ],
+   "night": [
+    {
+     "zone": "diffuser",
+     "intensity": 1.0
+    },
+    {
+     "zone": "posterSky",
+     "intensity": 0.9
+    },
+    {
+     "zone": "posterLand",
+     "intensity": 0.9
+    },
+    {
+     "zone": "posterMotif",
+     "intensity": 0.9
+    }
+   ]
+  },
+  {
+   "id": "rooftop-ac-unit-6ccb3c",
+   "why": "Shade casing",
+   "knobs": [
+    {
+     "knob": "casing",
+     "from": "#B5AEA0",
+     "to": "#A3AEC4"
+    },
+    {
+     "knob": "plate",
+     "from": "#F5F1E7",
+     "to": "#F7F8F9"
+    },
+    {
+     "knob": "recess",
+     "from": "#3F4247",
+     "to": "#6C758B"
+    },
+    {
+     "knob": "louver",
+     "from": "#6F8FA0",
+     "to": "#6C758B"
+    },
+    {
+     "knob": "placard",
+     "from": "#E8A825",
+     "to": "#FFCB1F"
+    }
+   ],
+   "night": []
+  },
+  {
+   "id": "rooftop-water-tower-b38362",
+   "why": "Orange staves, ink ironwork, as in reference 01",
+   "knobs": [
+    {
+     "knob": "wood",
+     "from": "#E5C3A4",
+     "to": "#FF8A1E"
+    },
+    {
+     "knob": "ironwork",
+     "from": "#625D58",
+     "to": "#1C2347"
+    },
+    {
+     "knob": "frame",
+     "from": "#6F8FA0",
+     "to": "#1C2347"
+    },
+    {
+     "knob": "fitting",
+     "from": "#B5AEA0",
+     "to": "#A3AEC4"
+    },
+    {
+     "knob": "lever",
+     "from": "#A34A38",
+     "to": "#E2603F"
+    }
+   ],
+   "night": []
+  }
+ ]
+}

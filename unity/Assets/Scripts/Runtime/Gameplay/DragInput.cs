@@ -14,6 +14,11 @@ namespace Dogpatch.Gameplay
         public Vector2 Anchor { get; private set; }
         public Vector2 Current { get; private set; }
         public event Action<Vector2> Tapped;
+        public Func<Vector2, bool> IgnoreTouch;
+
+        // Touches that begin where this returns true (the HUD's pause button, or anywhere while
+        // paused) are left to the HUD and never start a drag or a tap.
+        public Func<Vector2, bool> IgnoreAt;
 
         int fingerId = -1;
         float downTime;
@@ -63,8 +68,17 @@ namespace Dogpatch.Gameplay
             else End(Input.mousePosition);
         }
 
+        // Drops the gesture in progress without a tap, so a finger already down when the game
+        // pauses neither keeps steering nor taps on release.
+        public void Cancel()
+        {
+            Dragging = false;
+            fingerId = -1;
+        }
+
         void Begin(int id, Vector2 position)
         {
+            if ((IgnoreAt != null && IgnoreAt(position)) || (IgnoreTouch != null && IgnoreTouch(position))) return;
             fingerId = id;
             Anchor = Current = position;
             downTime = Time.unscaledTime;
@@ -84,7 +98,7 @@ namespace Dogpatch.Gameplay
             bool tap = maxTravel < TapSlop && Time.unscaledTime - downTime < TapSeconds;
             Dragging = false;
             fingerId = -1;
-            if (tap) Tapped?.Invoke(position);
+            if (tap && (IgnoreAt == null || !IgnoreAt(position))) Tapped?.Invoke(position);
         }
     }
 }

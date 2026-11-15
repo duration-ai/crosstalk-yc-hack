@@ -1,3 +1,4 @@
+using System;
 using Dogpatch.Glb;
 using UnityEngine;
 
@@ -23,6 +24,9 @@ namespace Dogpatch.Gameplay
         Transform visual;
 
         public float Speed => speed;
+        public Transform Visual => visual;
+        public event Action Jumped;
+        public event Action<float> Landed;
 
         public static PlayerController Create(GlbAsset model, Material material)
         {
@@ -53,7 +57,9 @@ namespace Dogpatch.Gameplay
 
         public void Jump()
         {
-            if (body.isGrounded) verticalVelocity = JumpVelocity;
+            if (!body.isGrounded) return;
+            verticalVelocity = JumpVelocity;
+            Jumped?.Invoke();
         }
 
         public void Teleport(Vector3 position, float heading)
@@ -78,8 +84,10 @@ namespace Dogpatch.Gameplay
 
             if (body.isGrounded && verticalVelocity < 0f) verticalVelocity = -2f;
             verticalVelocity += Gravity * dt;
+            float falling = verticalVelocity;
             var motion = transform.forward * speed + Vector3.up * verticalVelocity;
             body.Move(motion * dt);
+            if (body.isGrounded && airTime > 0.15f) Landed?.Invoke(-falling);
 
             bool airborne = !body.isGrounded && verticalVelocity > -6f && airTime > 0.08f;
             airTime = body.isGrounded ? 0f : airTime + dt;
