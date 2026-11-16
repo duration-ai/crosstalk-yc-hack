@@ -231,7 +231,7 @@ namespace Dogpatch.Slipstream
             return style;
         }
 
-        Vector2 Measure(string text, float size) => Style(size, TextAnchor.UpperLeft).CalcSize(new GUIContent(text));
+        Vector2 Measure(string text, float size) => Style(size, TextAnchor.UpperLeft).CalcSize(Dogpatch.Gameplay.HudLayout.Text(text));
 
         // IMGUI text is linearized once more than textures in a linear-space build, so text colors go
         // in gamma-corrected to land on the same palette as the panels.
