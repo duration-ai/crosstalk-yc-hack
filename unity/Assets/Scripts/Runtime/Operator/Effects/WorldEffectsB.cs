@@ -346,36 +346,33 @@ namespace Dogpatch.Operator
 
     public sealed class RoadRageMarks : MonoBehaviour
     {
-        readonly Dictionary<TrafficAgent, List<GameObject>> glows = new Dictionary<TrafficAgent, List<GameObject>>();
+        readonly HashSet<CarController> strobing = new HashSet<CarController>();
+        readonly List<CarController> near = new List<CarController>();
 
         void Update()
         {
-            if (TrafficAgent.Rage <= 0f || TrafficSystem.Instance == null)
-            {
-                foreach (var lights in glows.Values)
-                    foreach (var g in lights) if (g != null) g.SetActive(false);
-                glows.Clear();
-                return;
-            }
+            near.Clear();
             var cam = WorldEffectsB.Eye;
-            if (cam == null) return;
-            var sprites = EffectSprites.Get();
-            var eye = cam.transform.position;
-            bool strobe = Mathf.Repeat(Time.time * 5f, 1f) < 0.5f;
-            foreach (var a in TrafficSystem.Instance.Agents)
+            if (TrafficAgent.Rage > 0f && TrafficSystem.Instance != null && cam != null)
             {
-                if (a.OnRail || a.Car == null || (a.transform.position - eye).sqrMagnitude > 90f * 90f) continue;
-                float bob = Mathf.Abs(Mathf.Sin(Time.time * 6f + a.GetInstanceID()));
-                var top = a.transform.position + Vector3.up * (a.Car.HalfExtents.y * 2f + 0.9f + bob * 0.3f);
-                sprites.Mark(EffectSprites.Icon.Anger, top, 0.8f + 0.2f * TrafficAgent.Rage + bob * 0.15f);
-                if ((a.transform.position - eye).sqrMagnitude < 45f * 45f) a.Car.GetComponent<VehicleAudio>()?.Signal(UnityEngine.Random.Range(1.5f, 3.5f));
-                if (!glows.TryGetValue(a, out var lights))
+                var sprites = EffectSprites.Get();
+                var eye = cam.transform.position;
+                foreach (var a in TrafficSystem.Instance.Agents)
                 {
-                    lights = new List<GameObject>();
-                    foreach (var t in a.Car.GetComponentsInChildren<Transform>(true)) if (t.name == "brake-glow") lights.Add(t.gameObject);
-                    glows[a] = lights;
+                    if (a.OnRail || a.Car == null || (a.transform.position - eye).sqrMagnitude > 90f * 90f) continue;
+                    float bob = Mathf.Abs(Mathf.Sin(Time.time * 6f + a.GetInstanceID()));
+                    var top = a.transform.position + Vector3.up * (a.Car.HalfExtents.y * 2f + 0.9f + bob * 0.3f);
+                    sprites.Mark(EffectSprites.Icon.Anger, top, 0.8f + 0.2f * TrafficAgent.Rage + bob * 0.15f);
+                    if ((a.transform.position - eye).sqrMagnitude < 45f * 45f) a.Car.GetComponent<VehicleAudio>()?.Signal(UnityEngine.Random.Range(1.5f, 3.5f));
+                    near.Add(a.Car);
                 }
-                foreach (var g in lights) if (g != null) g.SetActive(strobe);
+            }
+            foreach (var car in strobing) if (car != null && !near.Contains(car)) car.BrakeStrobe = false;
+            strobing.Clear();
+            foreach (var car in near)
+            {
+                car.BrakeStrobe = true;
+                strobing.Add(car);
             }
         }
     }

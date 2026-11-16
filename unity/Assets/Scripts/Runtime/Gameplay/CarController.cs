@@ -22,6 +22,7 @@ namespace Dogpatch.Gameplay
         public static float SpeedScale = 1f;
         public static float AccelScale = 1f;
         public float SpeedMul = 1f;
+        public bool BrakeStrobe;
         public float Speed => forwardSpeed;
         public bool Reversing => reversing;
         public Vector3 HalfExtents { get; private set; }
@@ -325,9 +326,10 @@ namespace Dogpatch.Gameplay
             lastSpeed = forwardSpeed;
             bool stopped = Mathf.Abs(forwardSpeed) < 0.3f;
             bool braking = Driven && !Autopilot ? brakeHeld || (stopped && strength <= 0f) : Autopilot && (stopped || accelSmooth * Mathf.Sign(forwardSpeed) < -2.5f);
-            if (braking != brakeLit)
+            bool lit = BrakeStrobe ? Mathf.Repeat(Time.time * 5f, 1f) < 0.5f : braking;
+            if (lit != brakeLit)
             {
-                brakeLit = braking;
+                brakeLit = lit;
                 foreach (var light in brakeLights) if (light != null) light.SetActive(braking);
             }
 
