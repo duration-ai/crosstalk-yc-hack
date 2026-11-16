@@ -114,13 +114,8 @@ namespace Dogpatch.Operator
 
         void Hearing()
         {
-            if (PhoneCallCard.Showing) return;
-            string words = Calls.State == CallState.Talking ? Calls.Partial
-                : Calls.State == CallState.Waiting || Calls.State == CallState.Answered ? (string.IsNullOrEmpty(Calls.Heard) ? Calls.Partial : Calls.Heard)
-                : "";
-            if (Calls.State == CallState.Talking && Calls.Voice != null && Calls.Voice.MicBlocked) words = "MIC OFF IN SETTINGS";
-            else if (Calls.State == CallState.Talking && string.IsNullOrEmpty(words)) words = "LISTENING…";
-            else if (!string.IsNullOrEmpty(words)) words = "“" + words + "”";
+            string words = Calls.State == CallState.Waiting ? (string.IsNullOrEmpty(Calls.Heard) ? Calls.Partial : Calls.Heard) : "";
+            if (!string.IsNullOrEmpty(words)) words = "“" + words + "”";
             if (string.IsNullOrEmpty(words)) return;
             float w = Mathf.Min(Width(words, 15f) + 28f * s, Screen.width * 0.6f);
             var r = Gameplay.HudLayout.Hearing(w, 30f * s);
