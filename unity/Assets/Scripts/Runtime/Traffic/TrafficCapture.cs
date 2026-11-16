@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Text;
@@ -55,6 +56,7 @@ namespace Dogpatch.Traffic
             yield return null;
 
             if (scenario == "zone") StageZone();
+            if (scenario == "busturn") StageBusTurn();
             if (scenario == "stop") StageStop();
             else if (scenario == "tthird") StageTrain();
             if (scenario != "perf") cam.GetComponent<FollowCamera>().enabled = false;
@@ -62,7 +64,8 @@ namespace Dogpatch.Traffic
             for (int f = 0; f < frames; f++)
             {
                 yield return new WaitForEndOfFrame();
-                bool save = scenario != "perf" || f % 150 == 0;
+                bool save = scenario == "busturn" ? f % 3 == 0 : scenario != "perf" || f % 150 == 0;
+                if (scenario == "busturn" && f % 3 == 0) NoteTurn(f);
                 if (save)
                 {
                     var tex = new Texture2D(Screen.width, Screen.height, TextureFormat.RGB24, false);
@@ -160,6 +163,66 @@ namespace Dogpatch.Traffic
             cam.transform.LookAt(end3 - d3 * 14f + Vector3.up * 0.8f);
             cam.fieldOfView = 55f;
             log.AppendLine(string.Format(CultureInfo.InvariantCulture, "[Capture] stop scenario: lane {0} on {1}, junction at ({2:F1},{3:F1}), robotaxi starts 48 m back at 8.5 m/s", lane.Id, system.Graph.Roads[lane.Road].name, e.x, e.y));
+        }
+
+        // A Muni bus turning at the junction nearest the player, filmed from above, one frame and one
+        // heading sample every 0.1 s, to show how smoothly long vehicles take corners.
+        void StageBusTurn()
+        {
+            Time.captureFramerate = 30;
+            var system = TrafficSystem.Instance;
+            var spawn = game.Focus != null ? game.Focus.position : game.World.PlayerSpawn.Position;
+            float best = float.MaxValue;
+            StreetGraph.Link turn = null;
+            foreach (var l in system.Graph.Lanes)
+            {
+                if (l.Path.Length < 45f || l.Index != l.Count - 1 || l.To.Control == NodeControl.Signal) continue;
+                foreach (var link in l.Next)
+                {
+                    if (Mathf.Abs(link.Turn) < 60f || Mathf.Abs(link.Turn) > 120f) continue;
+                    float d = Vector2.Distance(l.Path.Points[l.Path.Points.Length - 1], new Vector2(spawn.x, spawn.z));
+                    if (d < best)
+                    {
+                        best = d;
+                        lane = l;
+                        turn = link;
+                    }
+                }
+            }
+            if (lane == null) throw new InvalidOperationException("no turning lane found");
+            var e = lane.Path.Points[lane.Path.Points.Length - 1];
+            foreach (var a in system.Agents.ToArray())
+                if (!a.OnRail && Vector2.Distance(new Vector2(a.transform.position.x, a.transform.position.z), e) < 90f) system.Despawn(a);
+            subject = system.Spawn(VehicleTypes.MuniBus, lane, lane.Path.Length - 30f, 7f);
+            subject.FollowRoute(new List<StreetGraph.Lane> { lane, turn.To }, 0, new List<RouteStop>());
+            lastYaw = subject.transform.eulerAngles.y;
+            var mid = turn.Path.Sample(turn.Path.Length * 0.5f, out _);
+            var mid3 = new Vector3(mid.x, 0f, mid.y);
+            lane.Path.Sample(lane.Path.Length, out var dir);
+            cam.transform.position = mid3 - new Vector3(dir.x, 0f, dir.y) * 16f + Vector3.up * 26f;
+            cam.transform.LookAt(mid3);
+            cam.fieldOfView = 55f;
+            log.AppendLine(string.Format(CultureInfo.InvariantCulture, "[Capture] busturn scenario: lane {0} on {1}, {2:F0} degree turn at ({3:F1},{4:F1}), {5:F0} m from the player, {6} control", lane.Id, system.Graph.Roads[lane.Road].name, turn.Turn, e.x, e.y, best, lane.To.Control));
+        }
+
+        float lastYaw;
+        float lastRate;
+        float maxRate;
+        float maxJerk;
+
+        void NoteTurn(int frame)
+        {
+            if (subject == null) return;
+            float yaw = subject.transform.eulerAngles.y;
+            float rate = Mathf.DeltaAngle(lastYaw, yaw) / 0.1f;
+            if (frame > 0)
+            {
+                maxRate = Mathf.Max(maxRate, Mathf.Abs(rate));
+                maxJerk = Mathf.Max(maxJerk, Mathf.Abs(rate - lastRate));
+            }
+            log.AppendLine(string.Format(CultureInfo.InvariantCulture, "[Turn] t={0:F1}s yaw={1:F1} rate={2:F1} deg/s speed={3:F2} state={4} max rate={5:F1} max rate change per 0.1 s={6:F1}", frame / 30f, yaw, rate, subject.Speed, subject.State, maxRate, maxJerk));
+            lastYaw = yaw;
+            lastRate = rate;
         }
 
         static bool HasSignData()

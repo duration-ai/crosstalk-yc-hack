@@ -41,7 +41,7 @@ namespace Dogpatch.Operator
             return result.token;
         }
 
-        public static string Refused(string message) => string.IsNullOrWhiteSpace(message) || message.Split(' ').Length > 4 ? "Try again, sugar." : message;
+        public static string Refused(string message) => string.IsNullOrWhiteSpace(message) || message.Split(' ').Length > 4 ? "Try again, man." : message;
 
         public async Task<OperatorResponse> CallAsync(OperatorCall call, CancellationToken cancel = default)
         {

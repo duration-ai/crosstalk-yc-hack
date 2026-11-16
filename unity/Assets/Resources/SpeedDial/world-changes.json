@@ -12,7 +12,7 @@
             "level": "low"
           },
           "news": "{name} LOWERED GRAVITY",
-          "line": "Floaty mode, sugar!",
+          "line": "Floaty mode, dude!",
           "roulette": true
         },
         {
@@ -125,7 +125,7 @@
             "level": "on"
           },
           "news": "{name} MADE IT SNOW",
-          "line": "Let it snow, sugar!",
+          "line": "Okay okay, let it snow!",
           "roulette": true
         },
         {
@@ -160,7 +160,7 @@
             "timeOfDay": "golden"
           },
           "news": "{name} CALLED GOLDEN HOUR",
-          "line": "Golden hour, darling!",
+          "line": "Golden hour, dude!",
           "roulette": true
         },
         {
@@ -343,7 +343,7 @@
             "size": "small"
           },
           "news": "{name} SHRANK ALL CARS",
-          "line": "Honey, I shrunk 'em!",
+          "line": "Dude, I shrunk 'em!",
           "roulette": true
         },
         {

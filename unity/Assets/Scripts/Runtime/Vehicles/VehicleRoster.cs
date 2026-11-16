@@ -42,7 +42,7 @@ namespace Dogpatch.Vehicles
             playerModel = player;
         }
 
-        static Material SharedMaterial
+        public static Material SharedMaterial
         {
             get
             {

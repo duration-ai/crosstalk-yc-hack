@@ -3,7 +3,6 @@ import { internalMutation } from "./_generated/server";
 import { getPlayer, vec3 } from "./model";
 import { COLORS, MAX_PLAYERS, isLocked, missionPatch, phase, roomPlayers } from "./raceModel";
 import { addRacer, insertRoom, joinedResponse, leaveOtherRooms } from "./rooms";
-import { findPresence } from "./world";
 
 const CANDIDATES = 30;
 
@@ -25,16 +24,22 @@ export const enter = internalMutation({
   handler: async (ctx, args) => {
     const player = await getPlayer(ctx, args.playerId);
     const now = Date.now();
+    // Shard and world colour come from the player's world-room membership, never from their
+    // presence row: presence rewrites that row ~15 times a second, and reading it here made this
+    // mutation conflict with every heartbeat until Convex gave up.
+    let shard = 0;
+    let color = 0;
     for (const row of await ctx.db.query("roomPlayers").withIndex("by_player", (q) => q.eq("playerId", player._id)).collect()) {
       if (row.left) continue;
       const room = (await ctx.db.get(row.roomId))!;
+      if (room.kind === "world") {
+        shard = room.worldShard ?? 0;
+        color = row.slot % COLORS.length;
+      }
       if (room.kind === "mission" && room.mission === args.mission && phase(room, now) !== "finished") {
         return joinedResponse(ctx, room._id, player._id, now);
       }
     }
-    const presence = await findPresence(ctx, player._id);
-    const shard = presence?.shard ?? 0;
-    const color = (presence?.slot ?? 0) % COLORS.length;
     const slotFor = (taken: Set<number>) => (taken.has(color) ? COLORS.findIndex((_, i) => !taken.has(i)) : color);
     const recent = await ctx.db
       .query("rooms")

@@ -20,6 +20,8 @@ namespace Dogpatch.Operator
                 case "lowrider": return VehicleTypes.Lowrider;
                 case "monster_truck": return VehicleTypes.MonsterTruck;
                 case "art_car": return VehicleTypes.ArtCar;
+                case "duck_boat": return VehicleTypes.DuckBoat;
+                case "fire_truck": return VehicleTypes.FireTruck;
                 case "hatchback": return VehicleTypes.Hatchback;
                 case "sedan": return VehicleTypes.Sedan;
                 case "taxi": return VehicleTypes.YellowCab;

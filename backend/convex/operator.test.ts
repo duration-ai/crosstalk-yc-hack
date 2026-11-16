@@ -159,12 +159,12 @@ describe("operator.call", () => {
     const { say, effects } = await room();
     expect(await say("clear skies", { scope: "world", world_group: "sky", sky_effect: "clear_weather" })).toMatchObject({
       outcome: "refused",
-      refusal: { reason: "no_op", message: "Nothing to change." },
+      refusal: { reason: "no_op", message: "Nothing to change, dude." },
     });
     await say("make it rain", RAIN);
     await say("low gravity", { scope: "world", world_group: "physics", physics_effect: "gravity_lower" });
     const undo = await say("undo that", { scope: "reject", reject_reason: "undo" });
-    expect(undo).toMatchObject({ outcome: "refused", effect: null, refusal: { reason: "undo" }, line: "No take-backs, sugar." });
+    expect(undo).toMatchObject({ outcome: "refused", effect: null, refusal: { reason: "undo" }, line: "No take-backs, dude." });
     expect((await effects()).map((e) => e.effect).sort()).toEqual(["gravity_lower", "rain"]);
   });
 
@@ -172,7 +172,7 @@ describe("operator.call", () => {
     const { say, effects } = await room();
     const godzilla = await say("summon Godzilla", { scope: "reject", reject_reason: "spawning", nearest: "earthquake", stretch: 0.9 });
     expect(godzilla).toMatchObject({ outcome: "applied", refusal: null, effect: { effect: "earthquake", scope: "world" } });
-    expect(godzilla.line).toMatch(/(sugar|hon).*Earthquake/);
+    expect(godzilla.line).toMatch(/(dude|man|okay).*Earthquake/i);
     const tank = await say("give me a tank", { scope: "players", player_effect: "change_vehicle", nearest: "change_vehicle", nearest_vehicle: "cybertruck", stretch: 0.9 });
     expect(tank).toMatchObject({ outcome: "applied", effect: { effect: "change_vehicle", vehicle: "cybertruck" } });
     expect(tank.line).toContain("a cybertruck");
@@ -194,7 +194,7 @@ describe("operator.call", () => {
     const result = await say("demolish the YC building", {
       scope: "object", object_effect: "demolish", class: "building", described: 0.95, target: "bld_yc",
     });
-    expect(result).toMatchObject({ outcome: "refused", effect: null, refusal: { reason: "protected" }, line: "That landmark's protected." });
+    expect(result).toMatchObject({ outcome: "refused", effect: null, refusal: { reason: "protected" }, line: "Can't touch that one." });
   });
 
   it("holds a promoted effect until the requester confirms within 10 s", async () => {
@@ -375,7 +375,7 @@ describe("operator.call", () => {
 
     replies.push(new Error("socket hang up"));
     const failed = await say("make it rain", new Error("boom"));
-    expect(failed).toMatchObject({ outcome: "refused", refusal: { reason: "unavailable", message: "Operator busy. Retry." } });
+    expect(failed).toMatchObject({ outcome: "refused", refusal: { reason: "unavailable", message: "Line's busy. Retry." } });
     const log = await t.run((ctx) => ctx.db.query("operatorCalls").collect());
     expect(log[1]).toMatchObject({ outcome: "refused", reason: "unavailable" });
     expect(log[1].error).toMatch(/socket hang up; Error: boom/);

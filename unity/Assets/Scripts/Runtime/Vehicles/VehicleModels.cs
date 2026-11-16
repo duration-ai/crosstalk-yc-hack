@@ -85,6 +85,8 @@ namespace Dogpatch.Vehicles
                     case VehicleTypes.WaymoOjai: return ProceduralModels.WaymoOjai(material);
                     case VehicleTypes.WaymoSuv: return ProceduralModels.WaymoIPace(material);
                     case VehicleTypes.ArtCar: return ProceduralModels.ArtCar(material);
+                    case VehicleTypes.DuckBoat: return ServiceVehicles.DuckBoat(material);
+                    case VehicleTypes.FireTruck: return ServiceVehicles.FireTruck(material);
                 }
             }
 

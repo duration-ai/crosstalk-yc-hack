@@ -229,6 +229,32 @@ namespace Dogpatch.Operator
         }
     }
 
+    // "Stop all cars": every vehicle halts for a moment. Traffic (cars, robotaxis, buses, rail) brakes to a
+    // stop, and this device's own car and bots are held still; every other phone holds its own player's
+    // car, so all racers stop together. Remote racers' copies follow their owners.
+    public sealed class StopAllEffect : OperatorEffect
+    {
+        readonly List<Frozen> frozen = new List<Frozen>();
+
+        public override void Apply(string strength, EffectTarget target)
+        {
+            Traffic.TrafficAgent.AllStop = true;
+            foreach (var car in Object.FindObjectsByType<CarController>(FindObjectsSortMode.None))
+            {
+                if (car.GetComponent<Traffic.TrafficAgent>() != null || car.GetComponent<Frozen>() != null) continue;
+                if (car.TryGetComponent<EntityTag>(out var tag) && tag.ControlledBy == "player") continue;
+                frozen.Add(car.gameObject.AddComponent<Frozen>());
+            }
+        }
+
+        public override void Revert()
+        {
+            Traffic.TrafficAgent.AllStop = false;
+            foreach (var f in frozen) if (f != null) Object.Destroy(f);
+            frozen.Clear();
+        }
+    }
+
     // Every person's head bone (locals, racers on foot, you) blown up to cartoon size.
     public sealed class BigHeadsEffect : OperatorEffect
     {
