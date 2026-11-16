@@ -4,12 +4,14 @@ using UnityEngine;
 namespace Dogpatch.World
 {
     // Distance culling per merged chunk mesh: detailed buildings swap to plain extrusions past
-    // BuildingDetail metres, trees and props disappear past their own ranges. Checked a few times a
+    // BuildingDetail metres and hide past BuildingFar (deep in the fog), trees and props disappear past
+    // their own ranges. Checked a few times a
     // second against the main camera. A building's detail and its extrusion share one chunk, and
     // both layers of a chunk take one decision from their combined bounds, so exactly one shows.
     public sealed class DistanceLod : MonoBehaviour
     {
         public float BuildingDetail = 240f;
+        public float BuildingFar = 1500f;
         public float Trees = 500f;
         public float Props = 150f;
 
@@ -38,7 +40,7 @@ namespace Dogpatch.World
                 renderer.enabled = layer switch
                 {
                     StaticModels.Layer.Buildings => detail,
-                    StaticModels.Layer.BuildingsFar => !detail,
+                    StaticModels.Layer.BuildingsFar => !detail && d < BuildingFar,
                     StaticModels.Layer.Trees => d < Trees,
                     StaticModels.Layer.Props => d < Props,
                     _ => true,

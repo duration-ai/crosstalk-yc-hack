@@ -14,7 +14,7 @@ using P = (double x, double z);
 // Bounds (kept from the first extract): 37.7495..37.7645 N, -122.3965..-122.3800 W. YC (580 20th St, OSM node 11657169276) is >=400 m from every edge
 // and the whole Pier 70 site up to the bay edge (coastline at lon -122.3816 at lat 37.7626) is inside, so the box was not expanded.
 const double South = 37.7495, DogpatchNorth = 37.7645, West = -122.3965, East = -122.3800;
-// --north <lat> --name <file>: the same extract with the north edge moved (a drivable expansion), written to
+// --north <lat> --name <file> (drivable world: --north 37.7880 --name dogpatch-drivable): the same extract with the north edge moved (a drivable expansion), written to
 // World/<file>.json in the same local frame (origin stays the Dogpatch box centre); stats, preview and
 // validation are left alone.
 int northArg = Array.IndexOf(args, "--north");
