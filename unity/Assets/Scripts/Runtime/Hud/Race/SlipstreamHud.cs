@@ -485,7 +485,8 @@ namespace Dogpatch.Slipstream
             int total = Race.Last.racers.Count(r => !r.left);
             float since = Time.time - placeChangedAt;
 
-            var digitSize = Measure("4", 64f);
+            float placeSize = 76f * HudV3.V3Draw.P / s;
+            var digitSize = Measure("4", placeSize);
             var digit = new Rect(left, top - 6f * s, digitSize.x, digitSize.y);
             if (since < 0.45f && previousPlace > 0)
             {
@@ -497,15 +498,15 @@ namespace Dogpatch.Slipstream
                 float p = EaseOut(since / 0.28f);
                 GUI.BeginGroup(new Rect(digit.x - 8f * s, digit.y + 6f * s, digit.width + 16f * s, digit.height - 8f * s));
                 var local = new Rect(8f * s, -6f * s, digit.width, digit.height);
-                Text(new Rect(local.x, local.y + p * digit.height, local.width, local.height), previousPlace.ToString(), 64f, Sun, TextAnchor.UpperLeft, 2.6f * s);
-                Text(new Rect(local.x, local.y - (1f - p) * digit.height, local.width, local.height), place.ToString(), 64f, Sun, TextAnchor.UpperLeft, 2.6f * s);
+                Text(new Rect(local.x, local.y + p * digit.height, local.width, local.height), previousPlace.ToString(), placeSize, Sun, TextAnchor.UpperLeft, 2.6f * s);
+                Text(new Rect(local.x, local.y - (1f - p) * digit.height, local.width, local.height), place.ToString(), placeSize, Sun, TextAnchor.UpperLeft, 2.6f * s);
                 GUI.EndGroup();
             }
             else
             {
                 float pop = previousPlace > place && since < 0.5f ? 1f + 0.28f * Mathf.Sin(Mathf.Clamp01((since - 0.28f) / 0.22f) * Mathf.PI) : 1f;
                 var popped = new Rect(digit.x - digit.width * (pop - 1f) * 0.3f, digit.y - digit.height * (pop - 1f) * 0.4f, digit.width * pop, digit.height * pop);
-                Text(popped, place.ToString(), 64f * pop, Sun, TextAnchor.UpperLeft, 2.6f * s * pop);
+                Text(popped, place.ToString(), placeSize * pop, Sun, TextAnchor.UpperLeft, 2.6f * s * pop);
             }
             int shown = since < 0.14f && previousPlace > 0 ? previousPlace : place;
             var suffix = Measure(Ordinal(shown), 22f);
@@ -519,11 +520,12 @@ namespace Dogpatch.Slipstream
             float mtop = meterAt.y;
             var mSize = Measure("M", 16f);
             var num = meters.ToString();
-            var nSize = Measure(num, 40f);
+            float meterSize = 44f * HudV3.V3Draw.P / s;
+            var nSize = Measure(num, meterSize);
             var mRect = new Rect(edge - mSize.x, mtop + 20f * s, mSize.x, mSize.y);
             Text(mRect, "M", 16f, White, TextAnchor.UpperLeft, 1.4f * s);
             var nRect = new Rect(mRect.x - nSize.x - 2f * s, mtop - 4f * s, nSize.x, nSize.y);
-            Text(nRect, num, 40f, White, TextAnchor.UpperLeft, 2.2f * s);
+            Text(nRect, num, meterSize, White, TextAnchor.UpperLeft, 2.2f * s);
             var flag = new Rect(nRect.x - 36f * s, mtop + 6f * s, 26f * s, 22f * s);
             Framed(flag, Sun, Ink, 1.6f * s);
             Icon(new Rect(flag.x + 4f * s, flag.y + 2f * s, 18f * s, 18f * s), "yc", Ink);

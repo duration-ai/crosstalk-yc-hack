@@ -108,12 +108,13 @@ namespace Dogpatch.Gameplay
             {
                 float r = MinimapRadius;
                 if (Option == HudOption.B)
-                    return new Vector2(Safe.xMax - 22f * U - r, Safe.yMax - 14f * U - 7f * MinimapUnit - r);
+                    return new Vector2(Safe.xMax - 22f * U - r, Safe.yMax - 44f * U - r);
                 return new Vector2(Safe.xMin + 22f * U + r, Mathf.Max(Safe.yMin + 18f * U + r, StickScreen.y));
             }
         }
 
-        // B puts the map under pause, so its distance readout goes under the rim instead of over it.
+        // B puts the map under the pause plate (HUD v3 board 1), so its distance readout goes under the
+        // rim instead of over it.
         public static bool MinimapReadoutBelow => Option == HudOption.B;
 
         static float MinimapBottomGui => Screen.height - MinimapScreen.y + MinimapRadius;
@@ -127,7 +128,7 @@ namespace Dogpatch.Gameplay
             get
             {
                 if (!Narrow) return Top + 4f * U;
-                return Option == HudOption.B ? Mathf.Max(Top + 132f * U, MinimapBottomGui + 30f * U) : Top + 76f * U;
+                return Option == HudOption.B ? Mathf.Max(Top + 132f * U, MinimapBottomGui + 86f * U) : Top + 76f * U;
             }
         }
 
@@ -149,7 +150,8 @@ namespace Dogpatch.Gameplay
         // Right edge and top of the meters-to-YC block.
         static bool Stacked => Option == HudOption.B;
 
-        public static Vector2 Meters => Stacked ? new Vector2(Left + 205f * U, Top + 72f * U) : new Vector2(Right - 64f * U, Top);
+        // B (HUD v3 board 5): under the map, right-aligned with it, where the ring distance sits in free roam.
+        public static Vector2 Meters => Stacked ? new Vector2(Right, MinimapBottomGui + 12f * U) : new Vector2(Right - 64f * U, Top);
 
         public static float ResultsTop => Option == HudOption.B ? MinimapBottomGui + 30f * U : Top + 2f * U;
 
@@ -158,8 +160,10 @@ namespace Dogpatch.Gameplay
         public static Vector2 LobbyPanel => new Vector2(Left, Top + 2f * U);
 
         // Effect countdown chips: under the top-left stack, or under the map in B.
+        // B: under the map and the race meters in portrait; in landscape, where that column runs into
+        // the stick, under the place in the top-left corner.
         public static Vector2 Chips => Option == HudOption.B
-            ? new Vector2(Right - 200f * U, MinimapBottomGui + 30f * U)
+            ? Portrait ? new Vector2(Right - 200f * U, MinimapBottomGui + 86f * U) : new Vector2(Left, Top + 96f * U)
             : new Vector2(Left, Top + (Stacked ? 140f : Narrow ? 124f : 92f) * U);
 
         // ---- Call (the Operator's hold-to-talk plate) and Ready ----
