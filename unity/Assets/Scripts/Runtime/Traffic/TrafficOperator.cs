@@ -69,8 +69,9 @@ namespace Dogpatch.Traffic
     public sealed partial class TrafficAgent
     {
         public static float Rage;
+        public static bool AllStop;
         public float Pace = 1f;
 
-        float Weave => Rage > 0f && !OnRail && Link == null && Lane != null ? Mathf.Sin(Time.time * 2.6f + GetInstanceID() * 0.37f) * Lane.Width * 0.2f * Rage : 0f;
+        float Weave => Rage > 0f && !OnRail && Link == null && Lane != null ? Mathf.Sin(Time.time * 2.6f + GetInstanceID() * 0.37f) * Lane.Width * 0.3f * Rage : 0f;
     }
 }

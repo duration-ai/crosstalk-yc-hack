@@ -5,7 +5,7 @@ namespace Dogpatch.World
 {
     // Hand-built low-poly landmark geometry appended to a MeshBuilder. Everything is flat shaded
     // and vertex coloured in the Speed Dial palette; ground level is y = 0 unless a base is passed.
-    public static class LandmarkMeshes
+    public static partial class LandmarkMeshes
     {
         public static Color Hex(string hex)
         {
@@ -730,8 +730,20 @@ namespace Dogpatch.World
 
             if (string.IsNullOrEmpty(text)) return;
             float margin = Mathf.Max(0.4f, Mathf.Min(width, height) * 0.08f);
-            var lines = FitLines(text.ToUpperInvariant(), width - margin * 2f, height - margin * 2f, out float pixel);
-            if (lines == null) return;
+            TextBlock(mb, panelC + fwd * 0.05f, viewerRight, fwd, width - margin * 2f, height - margin * 2f, text, ink);
+        }
+
+        // Pixel-font text baked as quads, centred on center in the plane spanned by right and up, split
+        // over up to three lines at the largest pixel size that fits usableW by usableH. Returns the
+        // pixel size used (0 when nothing was drawn).
+        public static float TextBlock(MeshBuilder mb, Vector3 center, Vector3 right, Vector3 normal, float usableW, float usableH, string text, Color ink, float maxPixel = float.MaxValue)
+        {
+            var lines = FitLines(text.ToUpperInvariant(), usableW, usableH, out float pixel);
+            if (lines == null) return 0f;
+            pixel = Mathf.Min(pixel, maxPixel);
+            var up = Vector3.Cross(normal, right).normalized;
+            if (Vector3.Dot(up, Vector3.up) < 0f) up = -up;
+            Vector3 Q(float u, float v) => center + right * u + up * v;
             var glyphs = Font();
             float blockH = (7 * lines.Length + 3 * (lines.Length - 1)) * pixel;
             for (int l = 0; l < lines.Length; l++)
@@ -756,11 +768,12 @@ namespace Dogpatch.World
                         float u1 = -lineW * 0.5f + col * pixel;
                         float v1 = top - row * pixel;
                         float v0 = v1 - pixel;
-                        mb.Quad(Q(u0, v0, 0.05f), Q(u1, v0, 0.05f), Q(u1, v1, 0.05f), Q(u0, v1, 0.05f), ink, fwd);
+                        mb.Quad(Q(u0, v0), Q(u1, v0), Q(u1, v1), Q(u0, v1), ink, normal);
                         runStart = -1;
                     }
                 }
             }
+            return pixel;
         }
 
         public static readonly string[] BillboardLines =

@@ -456,7 +456,36 @@ namespace Dogpatch.Map
             GL.End();
             GL.PopMatrix();
             if (FullOpen) DrawFullLabels(player);
-            else DrawDistance();
+            else
+            {
+                var named = new List<Vector2>();
+                foreach (var r in WorldPlayers(RaceDirector.Instance))
+                {
+                    var p = ToMap(r.Position);
+                    if (!Inside(p, 5f * s) || named.Exists(q => Mathf.Abs(q.x - p.x) < 44f * s && Mathf.Abs(q.y - p.y) < 12f * s)) continue;
+                    named.Add(p);
+                    NameTag(p + new Vector2(0f, 10f * s), r.Name, 9.5f);
+                }
+                DrawDistance();
+            }
+        }
+
+        // Everyone else in the shared world outside your race, from their presence, until they go
+        // 5 s unheard; on the grid and in the race only the racer markers show.
+        static IEnumerable<RemoteRacers.Remote> WorldPlayers(RaceDirector race)
+        {
+            if (race == null || !race.Setup || race.Gridded) yield break;
+            foreach (var r in race.Remotes.All)
+                if (!r.Left && Time.time - r.WorldSeenAt < 5f && !(r.InRace && race.Last != null)) yield return r;
+        }
+
+        void NameTag(Vector2 p, string name, float fontSize)
+        {
+            EnsureStyle();
+            style.fontSize = Mathf.RoundToInt(fontSize * s);
+            var text = (name ?? "").ToUpperInvariant();
+            var size = style.CalcSize(Dogpatch.Gameplay.HudLayout.Text(text));
+            Outlined(new Rect(p.x - size.x * 0.5f, Screen.height - p.y - size.y * 0.5f, size.x, size.y), text, 1.2f * s);
         }
 
         // Renders the vector map into a 4x MSAA target the size of what it fills on screen (the
@@ -622,22 +651,44 @@ namespace Dogpatch.Map
                 if (Inside(p, 5f * s)) Car(p, MapDirection(race.MyCar.transform.eulerAngles.y), 0.8f, mySlotColor);
             }
 
+            void RacerMark(Vector3 world, string slotColor)
+            {
+                var p = ToMap(world);
+                var color = SlipstreamHud.SlotColor(slotColor);
+                if (Inside(p, 5f * s))
+                {
+                    if (FullOpen) return;
+                    Parallelogram(p, 5.2f * s, 5.2f * s, 1.6f * s, Ink);
+                    Parallelogram(p, 3.8f * s, 3.8f * s, 1.6f * s, color);
+                }
+                else Pin(p, 3.6f * s, color);
+            }
+
             if (raceUp && race.Last?.racers != null)
                 foreach (var r in race.Last.racers)
                 {
                     if (r.left || r.playerId == race.MyId) continue;
                     var body = race.BodyOf(r.playerId);
-                    var world = body != null ? body.position : new Vector3(r.position.x, r.position.y, r.position.z);
-                    var p = ToMap(world);
-                    var color = SlipstreamHud.SlotColor(r.color);
-                    if (Inside(p, 5f * s))
-                    {
-                        if (FullOpen) continue;
-                        Parallelogram(p, 5.2f * s, 5.2f * s, 1.6f * s, Ink);
-                        Parallelogram(p, 3.8f * s, 3.8f * s, 1.6f * s, color);
-                    }
-                    else Pin(p, 3.6f * s, color);
+                    RacerMark(body != null ? body.position : new Vector3(r.position.x, r.position.y, r.position.z), r.color);
                 }
+
+            if (raceUp && race.Running != null)
+                foreach (var r in race.Running.racers)
+                {
+                    var body = race.Remotes.Get(r.playerId)?.Body;
+                    if (body != null) RacerMark(body.position, r.color);
+                }
+
+            foreach (var r in WorldPlayers(race))
+            {
+                var p = ToMap(r.Position);
+                var color = SlipstreamHud.SlotColor(r.WorldColor);
+                if (Inside(p, 5f * s))
+                {
+                    if (!FullOpen) Arrow(p, MapDirection(r.Heading), 4.4f * s, color);
+                }
+                else if (!FullOpen) Pin(p, 3.6f * s, color);
+            }
 
             var heading = MapDirection(focus.eulerAngles.y);
             var mine = ToMap(player);
@@ -655,7 +706,7 @@ namespace Dogpatch.Map
         {
             EnsureStyle();
             style.fontSize = Mathf.RoundToInt(fontSize * s);
-            var size = style.CalcSize(new GUIContent(text));
+            var size = style.CalcSize(Dogpatch.Gameplay.HudLayout.Text(text));
             float w = size.x * 0.5f + 5f * s, h = size.y * 0.5f + 0.5f * s;
             Gl(() =>
             {
@@ -842,12 +893,12 @@ namespace Dogpatch.Map
             EnsureStyle();
             var num = meters.ToString();
             style.fontSize = Mathf.RoundToInt(20f * s);
-            var numSize = style.CalcSize(new GUIContent(num));
+            var numSize = style.CalcSize(Dogpatch.Gameplay.HudLayout.Text(num));
             float x = center.x + radius * 0.18f;
             float baseline = HudLayout.MinimapReadoutBelow ? Screen.height - (center.y - radius - 9f * s) + numSize.y : Screen.height - (center.y + radius + 7f * s);
             Outlined(new Rect(x, baseline - numSize.y, numSize.x, numSize.y), num, 1.6f * s);
             style.fontSize = Mathf.RoundToInt(11f * s);
-            var mSize = style.CalcSize(new GUIContent("M"));
+            var mSize = style.CalcSize(Dogpatch.Gameplay.HudLayout.Text("M"));
             Outlined(new Rect(x + numSize.x + 2f * s, baseline - mSize.y - 2f * s, mSize.x, mSize.y), "M", 1.2f * s);
         }
 

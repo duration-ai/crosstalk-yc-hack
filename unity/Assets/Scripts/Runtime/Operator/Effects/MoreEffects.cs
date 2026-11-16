@@ -174,7 +174,7 @@ namespace Dogpatch.Operator
                 if (slipping != null && now > slipUntil) Recover();
                 if (mine) return;
                 var me = Context.Game.CurrentCar;
-                if (me == null || !Racers.Physical(me)) return;
+                if (me == null || !Racers.Physical(me) || !me.OnGround) return;
                 var p = me.transform.position;
                 foreach (var s in slicks)
                 {
@@ -205,6 +205,9 @@ namespace Dogpatch.Operator
                 mb.Box(Vector3.zero, new Vector3(2.4f, 0.02f, 1.6f), Quaternion.Euler(0f, 15f, 0f), oil);
                 mb.Box(new Vector3(0.7f, 0.005f, 0.5f), new Vector3(1.2f, 0.02f, 0.9f), Quaternion.Euler(0f, -30f, 0f), oil);
                 mb.Box(new Vector3(-0.3f, 0.01f, -0.2f), new Vector3(0.7f, 0.02f, 0.4f), Quaternion.Euler(0f, 40f, 0f), sheen);
+                var rainbow = new[] { PropMeshes.C("#7B3FE4"), PropMeshes.C("#1FC8B4"), PropMeshes.C("#FFD23F"), PropMeshes.C("#E040A0") };
+                for (int i = 0; i < rainbow.Length; i++)
+                    mb.Box(new Vector3(-0.5f + i * 0.28f, 0.015f, 0.15f - i * 0.12f), new Vector3(0.9f - i * 0.12f, 0.02f, 0.09f), Quaternion.Euler(0f, 20f + i * 8f, 0f), rainbow[i]);
                 blob = mb.ToMesh("oil slick");
             }
             var decal = PropMeshes.Attach(null, "Oil slick (operator)", blob, Context.Material, at, false);
@@ -339,7 +342,7 @@ namespace Dogpatch.Operator
 
         public override void Apply(string strength, EffectTarget target)
         {
-            float k = grow ? Scale(strength, 2f, 3f, 4.5f) : Scale(strength, 0.5f, 0.3f, 0.2f);
+            float k = grow ? Scale(strength, 2f, 3f, 4.5f) : Scale(strength, 0.32f, 0.28f, 0.22f);
             foreach (var tag in target.Entities)
             {
                 if (tag.Span != null) continue;
@@ -434,9 +437,18 @@ namespace Dogpatch.Operator
             r.Register("jump_higher", () => new KnobEffect((e, s) => { PlayerController.JumpScale = OperatorEffect.Scale(s, 2f, 3f, 4.5f); return () => PlayerController.JumpScale = 1f; }));
             r.Register("slow_fall", () => new KnobEffect((e, s) => { PlayerController.GravityScale = OperatorEffect.Scale(s, 0.35f, 0.2f, 0.1f); return () => PlayerController.GravityScale = 1f; }));
             r.Register("bigger", () => new SizeEffect(1.8f, 2.5f, 3.5f));
-            r.Register("smaller", () => new SizeEffect(0.5f, 0.35f, 0.25f));
+            r.Register("smaller", () => new SizeEffect(0.32f, 0.28f, 0.22f));
             r.Register("grip_down", () => new OilSlickEffect());
-            r.Register("slippery_ground", () => new KnobEffect((e, s) => { CarFx.Traction = OperatorEffect.Scale(s, 0.06f, 0.03f, 0.015f); return () => CarFx.Traction = 1f; }));
+            r.Register("slippery_ground", () => new KnobEffect((e, s) =>
+            {
+                CarFx.Traction = OperatorEffect.Scale(s, 0.06f, 0.03f, 0.015f);
+                WorldEnvironment.IceTarget = 1f;
+                return () =>
+                {
+                    CarFx.Traction = 1f;
+                    WorldEnvironment.IceTarget = 0f;
+                };
+            }));
             r.Register("gravity_higher", () => new KnobEffect((e, s) => Gravity(OperatorEffect.Scale(s, 2f, 3f, 4f))));
             r.Register("snow", () => new WeatherEffect(WeatherKind.Snow));
             r.Register("storm", () => new WeatherEffect(WeatherKind.Rain, 0.75f));

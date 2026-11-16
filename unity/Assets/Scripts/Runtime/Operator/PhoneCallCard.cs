@@ -27,6 +27,7 @@ namespace Dogpatch.Operator
         static readonly Color Sun = Hex("#FFCB1F");
         static readonly Color Pink = Hex("#FF3E8E");
         static readonly Color Paper = Hex("#F7F8F9");
+        static readonly Color Skin = Hex("#D9A27A");
         const float Lean = 0.12f;
 
         // True while the card is on screen, so the small hearing bar stands down.
@@ -216,10 +217,8 @@ namespace Dogpatch.Operator
             Panel(head, Pink);
             var avatar = new Rect(head.x + 10f * s, head.y + 3f * s, 24f * s, 24f * s);
             Panel(avatar, Paper);
-            GUI.color = Pink;
-            GUI.DrawTexture(new Rect(avatar.x + 3f * s, avatar.y + 3f * s, 18f * s, 18f * s), Slipstream.Pictograms.Get("call"), ScaleMode.ScaleToFit);
-            GUI.color = Color.white;
-            Text(new Rect(avatar.xMax + 8f * s, head.y, head.width - 50f * s, head.height), "OPERATOR", 15f, Color.white);
+            Jay(avatar);
+            Text(new Rect(avatar.xMax + 8f * s, head.y, head.width - 50f * s, head.height), "JAY", 15f, Color.white);
             float liveDot = 0.5f + 0.5f * Mathf.Sin(now * 6f);
             Panel(new Rect(head.xMax - 22f * s, head.center.y - 4f * s, 8f * s, 8f * s), A(Color.white, 0.5f + 0.5f * liveDot), 0f);
 
@@ -231,6 +230,21 @@ namespace Dogpatch.Operator
                 case Phase.Reply: Reply(body, since, false); break;
                 case Phase.Decline: Reply(body, since, true); break;
             }
+        }
+
+        // Jay, your buddy on the line: a flat low-poly face with a backwards cap and a headset mic.
+        void Jay(Rect r)
+        {
+            float u = r.width / 24f;
+            Rect At(float x, float y, float w, float h) => new Rect(r.x + x * u, r.y + y * u, w * u, h * u);
+            Panel(At(5f, 6f, 14f, 15f), Skin, 0f);
+            Panel(At(4f, 3f, 16f, 5f), Ink, 0f);
+            Panel(At(15f, 6f, 6f, 2f), Ink, 0f);
+            Panel(At(8f, 11f, 2f, 2f), Ink, 0f);
+            Panel(At(14f, 11f, 2f, 2f), Ink, 0f);
+            Panel(At(9f, 16f, 6f, 1.5f), Ink, 0f);
+            Panel(At(3f, 10f, 2f, 6f), Pink, 0f);
+            Panel(At(4f, 16f, 6f, 1.5f), Pink, 0f);
         }
 
         void EdgeTint(float now)
@@ -288,7 +302,7 @@ namespace Dogpatch.Operator
         void Thinking(Rect body, float now)
         {
             Text(new Rect(body.x, body.y, body.width, 26f * s), "THINKING", 24f, Color.white, TextAnchor.MiddleLeft, false, 1.6f * s);
-            float tw = style.CalcSize(new GUIContent("THINKING")).x;
+            float tw = style.CalcSize(Dogpatch.Gameplay.HudLayout.Text("THINKING")).x;
             for (int i = 0; i < 3; i++)
             {
                 float hop = Mathf.Max(0f, Mathf.Sin(now * 8f - i * 0.9f));
@@ -333,7 +347,7 @@ namespace Dogpatch.Operator
                 ("1-listening", Phase.Listening, "make it night", "", 1.6f),
                 ("2-thinking", Phase.Thinking, "make it night and make everyone tiny", "", 0.8f),
                 ("3-reply", Phase.Reply, "", "Lights out, Dogpatch. Good luck.", 0.18f),
-                ("4-decline", Phase.Decline, "", "Nice try. One wish per phone, sugar.", 0.5f),
+                ("4-decline", Phase.Decline, "", "Ha, nice try, man. One per phone.", 0.5f),
             };
             foreach (var shot in shots)
             {

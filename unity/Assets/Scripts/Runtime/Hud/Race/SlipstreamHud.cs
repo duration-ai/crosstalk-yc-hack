@@ -178,10 +178,13 @@ namespace Dogpatch.Slipstream
             }
         }
 
+        // READY in the lobby toggles you ready and back. On the results it's done: online that takes you
+        // back to free roam (a mission room is never rematched), offline it rematches the local room.
         public void PressReady()
         {
-            if (Race.ResultsIn) Race.SetReady(true);
-            else Race.SetReady(!(Race.Me?.ready ?? false));
+            if (!Race.ResultsIn) Race.SetReady(!(Race.Me?.ready ?? false));
+            else if (Race.Online) Race.Leave();
+            else Race.SetReady(true);
         }
 
         // ---- drawing primitives ----
@@ -231,7 +234,7 @@ namespace Dogpatch.Slipstream
             return style;
         }
 
-        Vector2 Measure(string text, float size) => Style(size, TextAnchor.UpperLeft).CalcSize(new GUIContent(text));
+        Vector2 Measure(string text, float size) => Style(size, TextAnchor.UpperLeft).CalcSize(Dogpatch.Gameplay.HudLayout.Text(text));
 
         // IMGUI text is linearized once more than textures in a linear-space build, so text colors go
         // in gamma-corrected to land on the same palette as the panels.
@@ -295,7 +298,7 @@ namespace Dogpatch.Slipstream
             {
                 WorldTags();
                 NetChip();
-                if (!Race.Gridded) RouteTags();
+                if (!Race.InRace) RouteTags();
             }
             if (Race.Last == null)
             {
@@ -383,7 +386,7 @@ namespace Dogpatch.Slipstream
                 }
             }
 
-            if (!Race.Online) ReadyButton(Race.Me != null && Race.Me.ready);
+            ReadyButton(Race.Me != null && Race.Me.ready);
         }
 
         void ReadyButton(bool pressed)

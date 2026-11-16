@@ -44,6 +44,10 @@ namespace Dogpatch.World
 
         static readonly HashSet<string> DrivableRegions = new HashSet<string> { "missionbay", "southbeach" };
 
+        // The north edge of the original Dogpatch map. Beyond it (the drivable expansion) only one parked
+        // car in three is kept, so the expansion doesn't double the parked fleet.
+        public const float DogpatchNorth = 834f;
+
         static readonly (string name, Rect rect)[] Regions =
         {
             ("missionbay", Rect.MinMaxRect(-1120.9f, 834f, 725.3f, 2446.3f)),

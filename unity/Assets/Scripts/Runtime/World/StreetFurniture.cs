@@ -249,7 +249,7 @@ namespace Dogpatch.World
         // The one placement check every piece of street furniture goes through: p stays if it is off the
         // asphalt, else moves to the nearest clear spot within 8 m (rings every half metre); false when
         // there is none, and the item is dropped.
-        bool ClearSpot(ref Vector2 p, float radius)
+        public bool ClearSpot(ref Vector2 p, float radius)
         {
             if (!OnCarriageway(p, radius)) return true;
             for (float r = 0.5f; r <= 8f; r += 0.5f)

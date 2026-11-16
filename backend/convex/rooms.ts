@@ -13,12 +13,13 @@ import {
   EVENTS_PER_POLL,
   MAX_PLAYERS,
   MAX_ROUTE_POINTS,
-  countdownPatch,
   getMembership,
   getRoom,
   isLocked,
+  lobbyPatch,
   phase,
   placeOrder,
+  raceEndsAt,
   removeFromRoom,
   results,
   roomPlayers,
@@ -67,13 +68,13 @@ export async function joinedResponse(ctx: MutationCtx, roomId: Id<"rooms">, play
   };
 }
 
-export async function addRacer(ctx: MutationCtx, room: Doc<"rooms">, player: Doc<"players">, slot: number, now: number) {
+export async function addRacer(ctx: MutationCtx, room: Doc<"rooms">, player: Doc<"players">, slot: number, now: number, ready = false) {
   await ctx.db.insert("roomPlayers", {
     roomId: room._id,
     playerId: player._id,
     displayName: player.displayName,
     slot,
-    ready: false,
+    ready,
     position: room.route[0],
     heading: 0,
     progress: 0,
@@ -176,7 +177,7 @@ export const join = mutation({
     const taken = new Set(rows.map((row) => row.slot));
     const slot = COLORS.findIndex((_, i) => !taken.has(i));
     await addRacer(ctx, room, player, slot, now);
-    await ctx.db.patch(room._id, countdownPatch(room, await roomPlayers(ctx, room._id), now));
+    await ctx.db.patch(room._id, lobbyPatch(room, await roomPlayers(ctx, room._id), now));
     return joinedResponse(ctx, room._id, player._id, now);
   },
 });
@@ -204,11 +205,12 @@ export const setReady = mutation({
   handler: async (ctx, args) => {
     const player = await getPlayer(ctx, args.playerId);
     const room = await getRoom(ctx, args.roomId);
-    if (room.kind) fail("CONFLICT", room.kind === "world" ? "The world room is not a race" : "Missions are joined at their location");
+    if (room.kind === "world") fail("CONFLICT", "The world room is not a race");
     const row = await getMembership(ctx, room, player._id);
     if (row.left) fail("CONFLICT", "Player left this room");
     const now = Date.now();
     const status = phase(room, now);
+    if (room.kind === "mission" && status === "finished") fail("CONFLICT", "Missions are joined at their location");
     const respond = async () =>
       ({ room: toRoom((await ctx.db.get(room._id))!, await roomPlayers(ctx, room._id), now) });
 
@@ -228,7 +230,7 @@ export const setReady = mutation({
       }
       const reset = { status: "lobby" as const, raceNumber: room.raceNumber + 1, startsAt: 0, closesAt: 0 };
       await ctx.db.patch(room._id, reset);
-      await ctx.db.patch(room._id, countdownPatch({ ...room, ...reset }, await roomPlayers(ctx, room._id), now));
+      await ctx.db.patch(room._id, lobbyPatch({ ...room, ...reset }, await roomPlayers(ctx, room._id), now));
       return respond();
     }
     if (row.ready === args.ready) return respond();
@@ -237,11 +239,34 @@ export const setReady = mutation({
 
     await ctx.db.patch(row._id, { ready: args.ready });
     if (status !== "finished") {
-      await ctx.db.patch(room._id, countdownPatch(room, await roomPlayers(ctx, room._id), now));
+      await ctx.db.patch(room._id, lobbyPatch(room, await roomPlayers(ctx, room._id), now));
     }
     return respond();
   },
 });
+
+/** For a mission lobby: the same mission's race already under way in its shard, whose racers roll into this
+ * lobby once it ends. Null when there is none. */
+async function runningRace(ctx: QueryCtx, room: Doc<"rooms">, now: number) {
+  if (room.kind !== "mission" || phase(room, now) !== "lobby") return null;
+  const recent = await ctx.db
+    .query("rooms")
+    .withIndex("by_world_shard", (q) => q.eq("worldShard", room.worldShard))
+    .order("desc")
+    .filter((q) => q.and(q.eq(q.field("kind"), "mission"), q.eq(q.field("mission"), room.mission)))
+    .take(10);
+  for (const other of recent) {
+    const status = phase(other, now);
+    if (other._id === room._id || (status !== "countdown" && status !== "racing")) continue;
+    const rows = placeOrder((await roomPlayers(ctx, other._id)).filter((row) => !row.left));
+    if (rows.length === 0) continue;
+    return {
+      racers: rows.map((row) => ({ playerId: row.playerId, displayName: row.displayName, ...COLORS[row.slot] })),
+      endsAt: raceEndsAt(other, rows, now),
+    };
+  }
+  return null;
+}
 
 /** Takes `now` from the caller because Convex caches query results and a query's own clock would go stale. */
 const pollArgs = { roomId: v.string(), after: v.optional(v.number()), now: v.number() };
@@ -291,6 +316,7 @@ export async function pollRoom(ctx: QueryCtx, args: ObjectType<typeof pollArgs>)
     events: events.map(toEvent),
     cursor,
     results: standings,
+    running: await runningRace(ctx, room, now),
   };
 }
 
