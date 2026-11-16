@@ -196,6 +196,8 @@ namespace Dogpatch.Race
                     if (Vehicles.VehicleCatalog.Has(player.vehicleType) && (repaint || player.vehicleType != Vehicles.VehicleRoster.TypeOf(remote.Car)))
                     {
                         Vehicles.VehicleRoster.SwapInto(remote.Car, player.vehicleType, remote.Paint);
+                        var stale = remote.Car.GetComponent<PaintJob>();
+                        if (stale != null) DestroyImmediate(stale);
                         SeatRider(remote);
                         foreach (var c in remote.Car.GetComponents<Collider>()) c.isTrigger = true;
                         remote.PaintedHex = null;
