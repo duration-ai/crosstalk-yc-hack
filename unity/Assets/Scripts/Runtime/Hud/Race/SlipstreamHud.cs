@@ -342,7 +342,7 @@ namespace Dogpatch.Slipstream
             }
             if (Race.ResultsIn) Results();
             OperatorAndNews();
-            if (lobby || Race.Gridded || Race.ResultsIn ? !HidePhoneInRaces : ManualCallsInFreeRoam) PhoneButton(lobby || Race.ResultsIn);
+            if ((lobby || Race.Gridded || Race.ResultsIn ? !HidePhoneInRaces : ManualCallsInFreeRoam) || (PreviewState ?? Race.Calls.State) != CallState.None) PhoneButton(lobby || Race.ResultsIn);
             if (Race.Wrecking) WreckedBanner();
             if (Race.WreckFade > 0f) Panel(new Rect(0f, 0f, Screen.width, Screen.height), new Color(Ink.r, Ink.g, Ink.b, Race.WreckFade), 0f);
         }
