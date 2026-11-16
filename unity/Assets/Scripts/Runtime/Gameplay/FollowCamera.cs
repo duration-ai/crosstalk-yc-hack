@@ -95,7 +95,7 @@ namespace Dogpatch.Gameplay
             distance = allowed < distance ? allowed : Mathf.Lerp(distance, allowed, 1f - Mathf.Exp(-2f * dt));
 
             transform.position = pivot + dir * distance;
-            transform.rotation = Quaternion.LookRotation(pivot + Vector3.up * (Driving ? 0.5f : 0.3f) - transform.position, Vector3.up);
+            transform.rotation = Quaternion.LookRotation(pivot + Vector3.up * ((Driving ? 0.5f : 0.3f) * grown) - transform.position, Vector3.up);
         }
     }
 }

@@ -23,7 +23,6 @@ namespace Dogpatch.Operator
             ["nitro"] = (car, box, k, m) => Boosters(box, k, m, true),
             ["vehicle_slower"] = (car, box, k, m) => Anchor(box, k, m),
             ["grip_down"] = (car, box, k, m) => Oil(box, k, m),
-            ["slippery_ground"] = (car, box, k, m) => Oil(box, k, m),
             ["bouncy"] = Springs,
             ["gravity_lower"] = HoverRings,
             ["gravity_higher"] = (car, box, k, m) => Anvil(box, k, m),

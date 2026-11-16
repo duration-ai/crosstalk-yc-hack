@@ -590,6 +590,7 @@ namespace Dogpatch.Map
                 var p = ToMap(target.position);
                 if (kind == MapMarkerKind.Race)
                 {
+                    if (raceUp && race.Joined && !race.IsCourseRing(target.position)) continue;
                     if (!Inside(p, 6f * s)) Pin(p, 4f * s, Pink);
                     else if (!raceUp || race.Gridded || (race.Course.RingCenter - target.position).sqrMagnitude > 1f) Ring(p, 5f * s, 1.6f * s, Pink);
                     continue;
@@ -654,7 +655,7 @@ namespace Dogpatch.Map
         {
             EnsureStyle();
             style.fontSize = Mathf.RoundToInt(fontSize * s);
-            var size = style.CalcSize(new GUIContent(text));
+            var size = style.CalcSize(Dogpatch.Gameplay.HudLayout.Text(text));
             float w = size.x * 0.5f + 5f * s, h = size.y * 0.5f + 0.5f * s;
             Gl(() =>
             {
@@ -841,12 +842,12 @@ namespace Dogpatch.Map
             EnsureStyle();
             var num = meters.ToString();
             style.fontSize = Mathf.RoundToInt(20f * s);
-            var numSize = style.CalcSize(new GUIContent(num));
+            var numSize = style.CalcSize(Dogpatch.Gameplay.HudLayout.Text(num));
             float x = center.x + radius * 0.18f;
             float baseline = HudLayout.MinimapReadoutBelow ? Screen.height - (center.y - radius - 9f * s) + numSize.y : Screen.height - (center.y + radius + 7f * s);
             Outlined(new Rect(x, baseline - numSize.y, numSize.x, numSize.y), num, 1.6f * s);
             style.fontSize = Mathf.RoundToInt(11f * s);
-            var mSize = style.CalcSize(new GUIContent("M"));
+            var mSize = style.CalcSize(Dogpatch.Gameplay.HudLayout.Text("M"));
             Outlined(new Rect(x + numSize.x + 2f * s, baseline - mSize.y - 2f * s, mSize.x, mSize.y), "M", 1.2f * s);
         }
 

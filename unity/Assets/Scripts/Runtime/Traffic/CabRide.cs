@@ -131,7 +131,7 @@ namespace Dogpatch.Traffic
                 style.normal.textColor = Color.white;
             }
             style.fontSize = Mathf.RoundToInt(Screen.height * 0.032f);
-            var size = style.CalcSize(new GUIContent(text)) + new Vector2(28f, 12f);
+            var size = style.CalcSize(Dogpatch.Gameplay.HudLayout.Text(text)) + new Vector2(28f, 12f);
             GUI.Box(new Rect((Screen.width - size.x) * 0.5f, Screen.height * 0.13f, size.x, size.y), text, style);
         }
     }

@@ -7,7 +7,8 @@ Shader "Dogpatch/FlatVertexColor"
     //
     // Environment globals (set by WorldEnvironment): _DogpatchNight glows vertices whose alpha is
     // below 1 (alpha = 1 - glow), _DogpatchWet darkens and blues grey upward faces and adds flat
-    // puddle patches tinted by the sky, _DogpatchSnow whitens upward faces.
+    // puddle patches tinted by the sky, _DogpatchSnow whitens upward faces, _DogpatchIce glazes grey
+    // upward faces pale blue with twinkling glints and frosts the low kerb sides.
     Properties
     {
         _Tint ("Tint", Color) = (1, 1, 1, 1)
@@ -31,6 +32,7 @@ Shader "Dogpatch/FlatVertexColor"
     float _DogpatchNight;
     float _DogpatchWet;
     float _DogpatchSnow;
+    float _DogpatchIce;
 
     float3 FaceNormal(float3 worldPos)
     {
@@ -55,8 +57,14 @@ Shader "Dogpatch/FlatVertexColor"
         float2 cell = floor(worldPos.xz / 3.0);
         float puddle = step(0.72, Hash(cell)) * step(0.35, Hash(floor(worldPos.xz / 1.5) + 7.3));
         float3 damp = albedo * 0.68 + float3(0.0, 0.012, 0.04);
-        float3 sheen = lerp(damp, _SkyHorizon.rgb * 0.75, 0.55);
+        float3 sheen = lerp(damp, _SkyHorizon.rgb * 0.85, 0.7);
         albedo = lerp(albedo, lerp(damp, sheen, puddle * saturate(_DogpatchWet * 1.6 - 0.4)), wet);
+        float ice = _DogpatchIce * grey;
+        float3 glaze = albedo * 0.3 + float3(0.5, 0.7, 0.9);
+        float glint = step(0.975, Hash(floor(worldPos.xz / 0.4) + floor(_Time.y * 3.0) * 0.37));
+        albedo = lerp(albedo, lerp(glaze, float3(1.2, 1.25, 1.3), glint), ice * up * 0.95);
+        float kerb = (1 - up) * saturate(1 - worldPos.y / 0.4) * saturate(n.y + 1.2);
+        albedo = lerp(albedo, float3(0.88, 0.95, 1.0), ice * kerb * 0.8);
         float snow = _DogpatchSnow * saturate((n.y - 0.55) * 3);
         return lerp(albedo, float3(0.9, 0.93, 0.98), snow);
     }

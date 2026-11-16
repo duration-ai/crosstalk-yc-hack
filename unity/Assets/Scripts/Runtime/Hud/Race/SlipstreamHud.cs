@@ -234,7 +234,7 @@ namespace Dogpatch.Slipstream
             return style;
         }
 
-        Vector2 Measure(string text, float size) => Style(size, TextAnchor.UpperLeft).CalcSize(new GUIContent(text));
+        Vector2 Measure(string text, float size) => Style(size, TextAnchor.UpperLeft).CalcSize(Dogpatch.Gameplay.HudLayout.Text(text));
 
         // IMGUI text is linearized once more than textures in a linear-space build, so text colors go
         // in gamma-corrected to land on the same palette as the panels.
@@ -476,6 +476,7 @@ namespace Dogpatch.Slipstream
             if (cam == null) return;
             foreach (var (name, at) in Race.RouteRingSpots())
             {
+                if (Race.Joined && !Race.IsCourseRing(at)) continue;
                 var sp = cam.WorldToScreenPoint(at + Vector3.up * 3.2f);
                 if (sp.z < 1f || sp.z > 140f) continue;
                 var size = Measure(name, 20f);

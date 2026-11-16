@@ -131,11 +131,13 @@ namespace Dogpatch.World
                 if (road.kind == "path")
                 {
                     Strip(pts, Miters(pts), -hw, hw, PathY, Sidewalk, r, float.NaN, false, null);
+                    if (road.bridge) asphaltColliders.At(pts[pts.Length / 2]).Ribbon(pts, hw, PathY, Sidewalk, true);
                     continue;
                 }
                 if (!RoadNetwork.IsCurbed(road))
                 {
                     Strip(pts, Miters(pts), -hw, hw, FlushY, Asphalt, -1, float.NaN, false, null);
+                    if (road.bridge) asphaltColliders.At(pts[pts.Length / 2]).Ribbon(pts, hw, FlushY, Asphalt, true);
                     continue;
                 }
                 var mid = pts[pts.Length / 2];
