@@ -13,16 +13,12 @@ namespace Dogpatch.Slipstream
     {
         const int TalkSegments = 12;
         const float TalkWindow = 8f;
-        const int VoiceBars = 7;
 
         // Headless stills (-call-v3-capture): forces a call state, the words heard and the asks left.
         public static CallState? PreviewState;
         public static string PreviewWords = "";
         public static int PreviewAsks = -1;
 
-        readonly float[] voice = new float[VoiceBars];
-        int voiceAt;
-        float voiceNext;
         float callShownAt = -10f;
         int callFrame = -10;
 
@@ -37,8 +33,8 @@ namespace Dogpatch.Slipstream
             int asks = PreviewAsks >= 0 ? PreviewAsks : Mathf.Max(0, calls.Asks?.Invoke() ?? 0);
             bool micOff = talking && PreviewState == null && calls.Voice != null && calls.Voice.MicBlocked;
 
-            float h = 54f * s;
-            float w = talking && !micOff ? 196f * s : thinking ? 136f * s : 86f * s;
+            float h = 64f * s;
+            float w = talking && !micOff ? 196f * s : thinking ? 140f * s : 96f * s;
             var slot = Gameplay.HudLayout.Call(w, h, readyShowing);
             if (Time.frameCount - callFrame > 2) callShownAt = now;
             callFrame = Time.frameCount;
@@ -55,7 +51,7 @@ namespace Dogpatch.Slipstream
             if (since < 0.4f) Stripes(r.x - 8f * s, r.y + 12f * s, 30f * s, 46f * s * (1f - since / 0.4f), Pink, false);
 
             bool fresh = calls.Calls == 0 && !talking && !thinking;
-            if (fresh || buzz < 1.2f)
+            if (fresh && buzz >= 1.2f)
             {
                 float pulse = 0.5f + 0.5f * Mathf.Sin(now * (buzz < 1.2f ? 18f : 4f));
                 DrawFrame(Inflate(new Rect(r.x - 7f * s, r.y + 6f * s, r.width, r.height), pulse * 3f * s), new Color(Pink.r, Pink.g, Pink.b, 0.35f + 0.5f * pulse), 2f * s);
@@ -63,12 +59,12 @@ namespace Dogpatch.Slipstream
 
             if (micOff)
             {
-                Framed(r, White, Pink, 3f * s);
-                Handset(r.center, 35f * s, Pink);
+                V3.HudPlates.Edged(r, White, Pink, 3f * s);
+                Handset(r.center, 0.65f * h, Pink);
                 var tagSize = Measure("MIC OFF", 13f);
                 var tag = new Rect(r.x + 8f * s, r.y - 30f * s, tagSize.x + 40f * s, 24f * s);
                 Panel(tag, Ink);
-                Panel(new Rect(tag.x + 8f * s, tag.y + 5f * s, 14f * s, 14f * s), Pink, 0f);
+                V3.HudIcons.Draw("talk", new Rect(tag.x + 6f * s, tag.y + 2f * s, 20f * s, 20f * s), Pink);
                 Text(new Rect(tag.x + 30f * s, tag.y, tag.width, tag.height), "MIC OFF", 13f, White);
                 return;
             }
@@ -81,19 +77,14 @@ namespace Dogpatch.Slipstream
 
             if (talking && PreviewState == null && now - calls.StateSince < 0.12f)
             {
-                var held = new Rect(r.x + 3f * s, r.y + 3f * s, 86f * s, h);
-                Framed(held, White, Pink, 3f * s);
-                Handset(held.center, 35f * s, Pink);
+                V3.HudPlates.Call(new Rect(r.x, r.y, 96f * s, h), V3.CallLook.Pressed, -1, s);
                 return;
             }
 
-            Panel(new Rect(r.x - 3f * s, r.y - 3f * s, r.width + 6f * s, r.height + 6f * s), Ink);
-            Panel(r, Pink);
-
             if (talking)
             {
-                Mic(new Vector2(r.x + 30f * s, r.center.y));
-                Voice(new Rect(r.x + 56f * s, r.y + 9f * s, r.width - 70f * s, r.height - 18f * s), now);
+                float level = PreviewState != null ? 0.85f : Mathf.Clamp01(0.35f + Mathf.Sqrt(MicCapture.Level) * 1.4f);
+                V3.HudPlates.Call(r, V3.CallLook.Live, -1, s, level);
                 float left = PreviewState != null ? 0.7f : Mathf.Clamp01(1f - (now - calls.StateSince) / TalkWindow);
                 float segW = (r.width - 6f * s) / TalkSegments;
                 for (int i = 0; i < TalkSegments; i++)
@@ -102,13 +93,20 @@ namespace Dogpatch.Slipstream
                 return;
             }
 
-            Handset(new Vector2(thinking ? r.x + 32f * s : r.center.x, r.center.y), 35f * s, White);
+            if (buzz < 1.2f && !thinking)
+            {
+                float p = Mathf.Repeat(buzz, 0.6f) / 0.6f;
+                V3.HudPlates.Frame(V3.HudPlates.Grow(r, p * 8f * s), new Color(Pink.r, Pink.g, Pink.b, 1f - p), 2.5f * s);
+            }
+            V3.HudPlates.Plate(new Rect(r.x + 4f * s, r.y + 4f * s, r.width, r.height), Ink);
+            V3.HudPlates.Plate(r, Pink);
+            Handset(new Vector2(thinking ? r.x + 34f * s : r.center.x, r.center.y), 0.65f * h, White);
             if (thinking)
             {
                 for (int i = 0; i < 3; i++)
                 {
                     float hop = Mathf.Max(0f, Mathf.Sin(now * 9f - i * 0.9f));
-                    Panel(new Rect(r.x + 64f * s + i * 18f * s, r.center.y - 2f * s - hop * 9f * s, 12f * s, 9f * s), White);
+                    Panel(new Rect(r.x + 70f * s + i * 18f * s, r.center.y - 2f * s - hop * 9f * s, 12f * s, 9f * s), White);
                 }
             }
             Pips(r, counts, asks);
@@ -129,9 +127,8 @@ namespace Dogpatch.Slipstream
         // nearest phone pickup still lit (relative to the camera) and its distance when one exists.
         void OutOfAsks(Rect r)
         {
-            var tile = new Rect(r.x, r.yMax - 42f * s, 46f * s, 42f * s);
-            Framed(tile, White, Pink, 3f * s);
-            Handset(tile.center, 27f * s, Pink);
+            var tile = new Rect(r.x, r.yMax - 52f * s, 64f * s, 52f * s);
+            V3.HudPlates.Call(tile, V3.CallLook.OutOfAsks, -1, s);
             var cam = Camera.main;
             var player = Race.Game != null && Race.Game.Player != null ? Race.Game.Player.transform : null;
             if (cam == null || player == null) return;
@@ -165,12 +162,11 @@ namespace Dogpatch.Slipstream
             Text(new Rect(c.x + 18f * s, tile.y, 120f * s, tile.height), dist, 26f, White, TextAnchor.MiddleLeft, 1.6f * s);
         }
 
-        // The handset glyph sized by its visible height: the "call" pictogram only fills about 58% of
-        // its texture, so the rect grows to put the handset at the asked height (65% of the plate).
+        // The HudIcons handset at a visible height (the glyph spans about 72% of its square).
         void Handset(Vector2 c, float height, Color color)
         {
-            float side = height / 0.58f;
-            Icon(new Rect(c.x - side * 0.5f, c.y - side * 0.5f, side, side), "call", color);
+            float side = height / 0.72f;
+            V3.HudIcons.Draw("call", new Rect(c.x - side * 0.5f, c.y - side * 0.5f, side, side), color);
         }
 
         void Pips(Rect r, bool counts, int asks)
@@ -184,33 +180,6 @@ namespace Dogpatch.Slipstream
                 var pip = new Rect(x0 + i * (pw + gap), r.y - ph - 6f * s, pw, ph);
                 Panel(new Rect(pip.x - 1.5f * s, pip.y - 1.5f * s, pip.width + 3f * s, pip.height + 3f * s), Ink);
                 Panel(pip, Sun);
-            }
-        }
-
-        void Mic(Vector2 c)
-        {
-            Panel(new Rect(c.x - 5f * s, c.y - 13f * s, 10f * s, 16f * s), White, 0f);
-            Panel(new Rect(c.x - 9f * s, c.y + 1f * s, 2.6f * s, 6f * s), White, 0f);
-            Panel(new Rect(c.x + 6.4f * s, c.y + 1f * s, 2.6f * s, 6f * s), White, 0f);
-            Panel(new Rect(c.x - 9f * s, c.y + 6f * s, 18f * s, 2.6f * s), White, 0f);
-            Panel(new Rect(c.x - 1.3f * s, c.y + 8f * s, 2.6f * s, 5f * s), White, 0f);
-        }
-
-        void Voice(Rect r, float now)
-        {
-            if (Time.unscaledTime >= voiceNext)
-            {
-                voiceNext = Time.unscaledTime + 0.06f;
-                float level = PreviewState != null ? Mathf.Abs(Mathf.Sin(now * 7f)) * (0.4f + 0.6f * Mathf.PerlinNoise(now * 3f, 0f)) : MicCapture.Level;
-                voice[voiceAt] = Mathf.Clamp01(Mathf.Sqrt(level) * 1.4f);
-                voiceAt = (voiceAt + 1) % VoiceBars;
-            }
-            float bw = r.width / VoiceBars;
-            for (int i = 0; i < VoiceBars; i++)
-            {
-                float v = Mathf.Max(voice[(voiceAt + i) % VoiceBars], 0.18f + 0.12f * Mathf.Sin(now * 6f + i));
-                float bh = Mathf.Max(5f * s, v * r.height);
-                Panel(new Rect(r.x + i * bw, r.center.y - bh * 0.5f, bw * 0.5f, bh), White, 0.12f);
             }
         }
 

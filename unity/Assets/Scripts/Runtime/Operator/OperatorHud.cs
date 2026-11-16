@@ -140,9 +140,7 @@ namespace Dogpatch.Operator
                 var bar = new Rect(block.xMax + 2f * s, y, w, 22f * s);
                 Panel(bar, Ink);
                 Panel(block, color);
-                GUI.color = color == Sun ? Ink : Color.white;
-                GUI.DrawTexture(new Rect(block.x + 5f * s, block.y + 1f * s, 20f * s, 20f * s), Slipstream.Pictograms.Get(Picto(row.effect)), ScaleMode.ScaleToFit);
-                GUI.color = Color.white;
+                Slipstream.V3.HudIcons.Draw(Picto(row.effect), new Rect(block.x + 5f * s, block.y + 1f * s, 20f * s, 20f * s), color == Sun ? Ink : Color.white);
                 Text(new Rect(bar.x + 9f * s, bar.y, bar.width, bar.height), label, 12f, Color.white);
                 Text(new Rect(bar.x, bar.y, bar.width - 8f * s, bar.height), time, 13f, color, TextAnchor.MiddleRight);
                 if (!row.instant && row.durationS > 0f)
@@ -161,16 +159,21 @@ namespace Dogpatch.Operator
         {
             switch (effect)
             {
-                case "night": case "sunset": case "day": return "time";
-                case "bigger": case "smaller": case "grow": case "shrink": case "big_heads": return "resize";
-                case "gravity_lower": case "gravity_higher": case "slow_fall": case "vehicle_hop": case "launch": return "gravity";
-                case "change_vehicle": case "waymo_swarm": return "swap";
+                case "night": return "night";
+                case "sunset": case "day": return "time";
+                case "smaller": case "shrink": return "tiny";
+                case "bigger": case "grow": case "big_heads": return "giant";
+                case "gravity_lower": case "gravity_higher": case "slow_fall": return "gravity";
+                case "vehicle_hop": case "launch": case "jump_higher": return "jump";
+                case "change_vehicle": case "waymo_swarm": return "swap-ride";
                 case "grip_down": case "slippery_ground": return "ice";
                 case "storm": case "rain": return "rain";
                 case "snow": return "snow";
                 case "fog": return "fog";
                 case "recolor": return "recolor";
-                case "vehicle_faster": case "nitro": case "run_faster": return "dash";
+                case "vehicle_faster": case "nitro": case "run_faster": return "boost";
+                case "explode": case "demolish": case "set_fire": return "explosion";
+                case "stop": case "stop_all": return "stop-all-cars";
                 default: return "call";
             }
         }
