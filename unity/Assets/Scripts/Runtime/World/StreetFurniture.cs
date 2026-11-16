@@ -48,7 +48,7 @@ namespace Dogpatch.World
                 var tally = T("tree:" + tree.source);
                 tally.Total++;
                 var p = new Vector2(tree.x, tree.z);
-                if (!ctx.Bounds.Contains(p)) { tally.Except("outside bounds"); continue; }
+                if (!ctx.Bounds.Contains(p) && !CityRegions.InEdge(p)) { tally.Except("outside bounds"); continue; }
                 string form = TreeForm(tree.species);
                 uint h = Hash(tree.id);
                 float height = TreeHeight(form, tree.dbhKnown ? tree.dbh : 0f);
@@ -125,7 +125,7 @@ namespace Dogpatch.World
                 var tally = T(prop.kind);
                 tally.Total++;
                 var p = new Vector2(prop.x, prop.z);
-                if (!ctx.Bounds.Contains(p)) { tally.Except("outside bounds"); continue; }
+                if (!ctx.Bounds.Contains(p) && !CityRegions.InEdge(p)) { tally.Except("outside bounds"); continue; }
                 if (prop.kind == "stop_sign" && prop.source == "osm" && System.Array.Exists(prop.tags ?? System.Array.Empty<string>(), t => t.StartsWith("dsNearby=")))
                 {
                     tally.Except("duplicate of a DataSF stop sign within 15 m (DataSF placed instead)");

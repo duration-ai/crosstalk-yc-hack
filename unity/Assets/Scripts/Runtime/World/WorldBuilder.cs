@@ -72,6 +72,7 @@ namespace Dogpatch.World
                 Buildings = new BuildingIndex(),
                 Bounds = Rect.MinMaxRect(data.minX, data.minZ, data.maxX, data.maxZ),
             };
+            CityRegions.Edge = data.edge != null && data.edge.Length >= 6 ? Geometry.ToPoints(data.edge) : null;
             ctx.Statics = new StaticModels(models);
 
             var ground = BuildGround(data, ctx, material);
@@ -137,6 +138,22 @@ namespace Dogpatch.World
                 var w = walls.AddComponent<BoxCollider>();
                 w.center = center;
                 w.size = size;
+            }
+            var edge = CityRegions.Edge;
+            if (edge != null)
+            {
+                for (int i = 0; i < edge.Length; i++)
+                {
+                    var a = edge[i];
+                    var d = edge[(i + 1) % edge.Length] - a;
+                    var outward = new Vector2(d.y, -d.x).normalized;
+                    var mid = a + d * 0.5f + outward;
+                    var segment = new GameObject("MapEdge " + i);
+                    segment.transform.SetParent(walls.transform, false);
+                    segment.transform.SetPositionAndRotation(new Vector3(mid.x, 10f, mid.y), Quaternion.LookRotation(new Vector3(d.x, 0f, d.y)));
+                    segment.AddComponent<BoxCollider>().size = new Vector3(2f, 40f, d.magnitude + 4f);
+                }
+                return cover;
             }
             Wall(new Vector3(b.xMin - 1f, 10f, b.center.y), new Vector3(2f, 40f, b.height + 4f));
             Wall(new Vector3(b.xMax + 1f, 10f, b.center.y), new Vector3(2f, 40f, b.height + 4f));

@@ -14,12 +14,18 @@ using P = (double x, double z);
 // Bounds (kept from the first extract): 37.7495..37.7645 N, -122.3965..-122.3800 W. YC (580 20th St, OSM node 11657169276) is >=400 m from every edge
 // and the whole Pier 70 site up to the bay edge (coastline at lon -122.3816 at lat 37.7626) is inside, so the box was not expanded.
 const double South = 37.7495, DogpatchNorth = 37.7645, West = -122.3965, East = -122.3800;
-// --north <lat> --name <file> (drivable world: --north 37.7880 --name dogpatch-drivable): the same extract with the north edge moved (a drivable expansion), written to
+// --north <lat> --name <file> (drivable world: --north 37.7880 --name dogpatch-drivable --soma): the same extract with the north edge moved (a drivable expansion), written to
 // World/<file>.json in the same local frame (origin stays the Dogpatch box centre); stats, preview and
 // validation are left alone.
 int northArg = Array.IndexOf(args, "--north");
 double North = northArg >= 0 ? double.Parse(args[northArg + 1], CultureInfo.InvariantCulture) : DogpatchNorth;
 string worldName = northArg >= 0 ? args[Array.IndexOf(args, "--name") + 1] : "dogpatch";
+// --soma: also SoMa south of Market, an annex west of the box bounded by Folsom, 7th and Townsend (each
+// ~20 m beyond the street so it stays drivable). The world's edge becomes that outline (WorldData.edge);
+// minX..maxZ stay the box, and the OSM/DataSF queries reach west to SomaWest.
+bool soma = args.Contains("--soma");
+const double SomaWest = -122.4110;
+double QWest = soma ? SomaWest : West;
 const string BoundsReason = "Unchanged from the first extract. Contains the whole Pier 70 site to the bay edge and the YC campus (580 20th St, 37.76078 -122.38664) with >= 413 m margin to the nearest edge; no clipping to the official Dogpatch outline.";
 const string Attribution = "Streets, props, landmarks (c) OpenStreetMap contributors (ODbL). DataSF (PDDL / CC0): Building Footprints ynuv-fyni, Parcels acdm-wktn, Land Use c5ge-t6pj, Assessor Secured Rolls wv5m-vpq2, Street Tree Inventory tkzw-k3nq, Traffic Signals ybh5-27n2, Muni Stops i28k-bkz6, Parking Meters 8vzz-qzz9, Bicycle Parking Racks hn4j-6fx5, Trash Can Locations 5buk-jp7b, Bay Area Bike Share Stations 7jbp-yzp3, Stop Signs 4542-gpa3, Rec & Park Assets e3jj-mbb3. Models: polyfork.dev.";
 
@@ -35,7 +41,22 @@ var warnings = new List<string>();
 Geo.OriginLat = (South + DogpatchNorth) / 2; Geo.OriginLon = (West + East) / 2;
 var sw = Geo.Proj(South, West); var ne = Geo.Proj(North, East);
 double minX = Math.Round(sw.x, 1), maxX = Math.Round(ne.x, 1), minZ = Math.Round(sw.z, 1), maxZ = Math.Round(ne.z, 1);
-Geo.MinX = minX; Geo.MaxX = maxX; Geo.MinZ = minZ; Geo.MaxZ = maxZ;
+double clipMinX = minX;
+if (soma)
+{
+    P folsom7 = Geo.Proj(37.7767525, -122.407854), folsom2 = Geo.Proj(37.7855651, -122.3967499);
+    P town7 = Geo.Proj(37.7718329, -122.4016818), town4 = Geo.Proj(37.7770727, -122.3950705);
+    const double Out = 20;
+    (P a, P b) Shift(P a, P b, P away) { double dx = b.x - a.x, dz = b.z - a.z, l = Math.Sqrt(dx * dx + dz * dz); P n = (dz / l, -dx / l); if ((away.x - a.x) * n.x + (away.z - a.z) * n.z > 0) n = (-n.x, -n.z); return ((a.x + n.x * Out, a.z + n.z * Out), (b.x + n.x * Out, b.z + n.z * Out)); }
+    P Meet((P a, P b) l, (P a, P b) m) { double d = (l.b.x - l.a.x) * (m.b.z - m.a.z) - (l.b.z - l.a.z) * (m.b.x - m.a.x); double t = ((m.a.x - l.a.x) * (m.b.z - m.a.z) - (m.a.z - l.a.z) * (m.b.x - m.a.x)) / d; return (l.a.x + t * (l.b.x - l.a.x), l.a.z + t * (l.b.z - l.a.z)); }
+    P mid = Geo.Proj(37.7760, -122.4010);
+    var f = Shift(folsom7, folsom2, mid); var s7 = Shift(folsom7, town7, mid); var t = Shift(town7, town4, mid);
+    var west = ((minX, 0.0), (minX, 1.0));
+    Geo.Edge = new List<P> { (minX, minZ), (maxX, minZ), (maxX, maxZ), (minX, maxZ), Meet(f, west), Meet(f, s7), Meet(s7, t), Meet(t, west) };
+    clipMinX = Math.Round(Geo.Edge.Min(p => p.x) - 1, 1);
+    Console.WriteLine("SoMa edge: " + string.Join(" ", Geo.Edge.Select(p => $"({p.x:F0},{p.z:F0})")));
+}
+Geo.MinX = clipMinX; Geo.MaxX = maxX; Geo.MinZ = minZ; Geo.MaxZ = maxZ;
 
 float[] Flat(IEnumerable<P> pts) => pts.SelectMany(p => new[] { (float)Math.Round(p.x, 1), (float)Math.Round(p.z, 1) }).ToArray();
 List<P> Pts(JsonNode way) => Geo.Dedupe(way["geometry"].AsArray().Where(g => g != null).Select(g => Geo.Proj((double)g["lat"], (double)g["lon"])));
@@ -47,7 +68,7 @@ string[] Kv(Dictionary<string, string> t, params string[] keys) => keys.Where(k 
 
 // ---- OpenStreetMap, query 1: roads, rails, buildings, parks, trees, coastline (unchanged from the first extract)
 const double Pad = 0.02;
-string bbox = string.Join(",", South, West, North, East);
+string bbox = string.Join(",", South, QWest, North, East);
 if (args.Contains("--freeway"))
 {
     await FreewayPrep.Run(fetch, Rel("unity", "Assets", "Resources", "World", "freeway.json"), bbox, minX, maxX, minZ, maxZ);
@@ -64,7 +85,7 @@ if (args.Contains("--ground"))
     await GroundPrep.Run(fetch, Rel("unity", "Assets", "Resources", "World", "ground.json"), bbox, minX, maxX, minZ, maxZ);
     return;
 }
-string pbbox = string.Join(",", South - Pad, West - Pad, North + Pad, East + Pad);
+string pbbox = string.Join(",", South - Pad, QWest - Pad, North + Pad, East + Pad);
 var query = $"""
 [out:json][timeout:240];
 (
@@ -179,7 +200,7 @@ foreach (var e in osm)
         }
         string cyc = Tag(e, "cycleway") ?? Tag(e, "cycleway:both") ?? Tag(e, "cycleway:right") ?? Tag(e, "cycleway:left");
         string sidewalk = Tag(e, "sidewalk") ?? Tag(e, "sidewalk:both");
-        foreach (var run in Geo.ClipLine(pts, minX, maxX, minZ, maxZ))
+        foreach (var run in Geo.ClipLine(pts, clipMinX, maxX, minZ, maxZ))
         {
             var dd = Geo.Dedupe(run);
             var mi = new List<int>(); var mk = new List<string>();
@@ -200,12 +221,12 @@ foreach (var e in osm)
         var t = PropBuilder.Tags(e);
         int lanes = ParseInt(Tag(e, "lanes")); if (lanes == 0) lanes = hw == "motorway" ? 2 : 1;
         float vw = float.TryParse(Tag(e, "width")?.Replace(" m", ""), out var vww) && vww > 0 ? vww : lanes * 3.6f;
-        foreach (var run in Geo.ClipLine(pts, minX, maxX, minZ, maxZ))
+        foreach (var run in Geo.ClipLine(pts, clipMinX, maxX, minZ, maxZ))
             viaducts.Add(new Viaduct { OsmId = wayId, Name = Tag(e, "name") ?? "", Kind = hw, Lanes = lanes, Width = vw, Layer = layer, Bridge = isBridge, Oneway = Tag(e, "oneway") is "yes" or "1" or "true", Maxspeed = Tag(e, "maxspeed") ?? "", Ref = Tag(e, "ref") ?? "", Pts = Flat(Geo.Dedupe(run)) });
     }
     else if (rw != null && railOk.Contains(rw))
     {
-        foreach (var run in Geo.ClipLine(pts, minX, maxX, minZ, maxZ))
+        foreach (var run in Geo.ClipLine(pts, clipMinX, maxX, minZ, maxZ))
         {
             var dd = Geo.Dedupe(run);
             rails.Add(new Polyline { Kind = rw, Pts = Flat(dd) });
@@ -223,18 +244,18 @@ foreach (var e in osm)
     else if ((Tag(e, "leisure") ?? Tag(e, "landuse")) is { } pk && pts.Count >= 4)
     {
         pts.RemoveAt(pts.Count - 1);
-        var clipped = Geo.ClipPolygon(pts, minX, maxX, minZ, maxZ);
-        if (clipped.Count >= 3 && Math.Abs(Geo.SignedArea(clipped)) >= 20) parks.Add(new Polygon { Kind = pk, Pts = Flat(Ccw(clipped)) });
+        var clipped = Geo.ClipPolygon(pts, clipMinX, maxX, minZ, maxZ);
+        if (clipped.Count >= 3 && Math.Abs(Geo.SignedArea(clipped)) >= 20 && Inside(Geo.Centroid(clipped))) parks.Add(new Polygon { Kind = pk, Pts = Flat(Ccw(clipped)) });
     }
 }
 
 // ---- DataSF parcels / land use / assessor, joined to footprints by centroid containment
-var parcels = await ParcelData.Load(fetch, North, West, South, East);
+var parcels = await ParcelData.Load(fetch, North, QWest, South, East);
 
 // ---- DataSF building footprints
 Console.WriteLine("Fetching DataSF footprints...");
 var sodaUrl = "https://data.sf.gov/resource/ynuv-fyni.json?$select=sf16_bldgid,hgt_median_m,gnd_min_m,shape&$where=" +
-    Uri.EscapeDataString($"within_box(shape, {North}, {West}, {South}, {East})") + "&$limit=50000";
+    Uri.EscapeDataString($"within_box(shape, {North}, {QWest}, {South}, {East})") + "&$limit=50000";
 var soda = (await fetch.Json(sodaUrl)).AsArray();
 var buildings = new List<Building>(); int noHeight = 0, tiny = 0, outside = 0;
 var fpIndex = new PolyIndex<Building>(); var fpRing = new Dictionary<Building, List<P>>();
@@ -352,7 +373,7 @@ foreach (var e in osm2)
 // ---- Street trees
 Console.WriteLine("Fetching DataSF street trees (tkzw-k3nq)...");
 var treeRows = await fetch.Soda("tkzw-k3nq", "treeid,species,mapdbh,plotsize,siteinfo,legalstatus,planttype,latitude,longitude,onstreet",
-    $"latitude > {South} AND latitude < {North} AND longitude > {West} AND longitude < {East}", "treeid");
+    $"latitude > {South} AND latitude < {North} AND longitude > {QWest} AND longitude < {East}", "treeid");
 var treeRecs = new List<TreeRecord>(); var treeDrops = new Dictionary<string, int>();
 void Drop(string why) => treeDrops[why] = treeDrops.GetValueOrDefault(why) + 1;
 foreach (var r in treeRows)
@@ -402,7 +423,7 @@ async Task Ds(string dataset, string select, string geo, string idCol, Func<Json
 {
     Console.WriteLine($"Fetching DataSF {dataset}...");
     JsonArray rows;
-    try { rows = await fetch.Soda(dataset, select, $"within_box({geo}, {North}, {West}, {South}, {East})", idCol); }
+    try { rows = await fetch.Soda(dataset, select, $"within_box({geo}, {North}, {QWest}, {South}, {East})", idCol); }
     catch (Exception ex) { Console.WriteLine("  failed: " + ex.Message); warnings.Add($"DataSF {dataset} failed: {ex.Message}"); return; }
     foreach (var r in rows)
     {
@@ -530,7 +551,8 @@ var world = new WorldData
     Name = "Dogpatch", OriginLat = Geo.OriginLat, OriginLon = Geo.OriginLon,
     MinX = (float)minX, MaxX = (float)maxX, MinZ = (float)minZ, MaxZ = (float)maxZ, South = South, North = North, West = West, East = East,
     Attribution = Attribution, Roads = roads.ToArray(), Rails = rails.ToArray(), Buildings = buildings.ToArray(),
-    Parks = parks.ToArray(), Land = land.Select(l => new Polygon { Kind = "land", Pts = Flat(l) }).ToArray(),
+    Parks = parks.ToArray(), Land = land.Select(l => new Polygon { Kind = "land", Pts = Flat(l) }).Concat(soma ? new[] { new Polygon { Kind = "land", Pts = Flat(Ccw(Geo.Edge.Skip(4).ToList())) } } : new Polygon[0]).ToArray(),
+    Edge = Geo.Edge == null ? new float[0] : Flat(Geo.Edge),
     Trees = treeRecs.SelectMany(t => new[] { t.X, t.Z }).ToArray(), TreeRecords = treeRecs.ToArray(), Props = propsOut.ToArray(), Landmarks = landmarks.ToArray(),
     Bridges = bridges.ToArray(), Viaducts = viaducts.ToArray(), Platforms = platforms.ToArray(), Water = water.ToArray(), Coastline = coastLines.ToArray(),
 };

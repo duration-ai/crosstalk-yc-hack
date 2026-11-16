@@ -31,6 +31,8 @@ namespace Dogpatch.World
         {
             var random = new System.Random(2240);
             var real = CityRegions.Active();
+            var annex = CityRegions.Annex(map);
+            if (annex.width > 0f) real.Add(("annex", annex));
             var landChunks = new ChunkedMeshBuilder(1000f);
             var blockChunks = new ChunkedMeshBuilder(1000f);
 
@@ -40,7 +42,7 @@ namespace Dogpatch.World
             float x0 = map.xMin - Reach, x1 = map.xMax + 300f, z0 = map.yMin - Reach, z1 = map.yMax + Reach;
             bool Land(Vector2 p)
             {
-                if (map.Contains(p)) return false;
+                if (map.Contains(p) || CityRegions.InEdge(p)) return false;
                 if (p.y > map.yMax) return p.x < coastNorthX + (p.y - map.yMax) * 0.3f;
                 if (p.x > map.xMax) return p.y < coastEastZ - (p.x - map.xMax) * 0.5f;
                 return true;

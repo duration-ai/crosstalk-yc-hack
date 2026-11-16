@@ -45,6 +45,27 @@ namespace Dogpatch.World
         // car in three is kept, so the expansion doesn't double the parked fleet.
         public const float DogpatchNorth = 834f;
 
+        // The playable world's outline when it isn't the box (the SoMa annex, DataPrep --soma), set by
+        // WorldBuilder from WorldData.edge.
+        public static Vector2[] Edge;
+
+        public static bool InEdge(Vector2 p) => Edge != null && Geometry.Contains(Edge, p);
+
+        // The part of the playable world west of the box (the SoMa annex), or an empty rect.
+        public static Rect Annex(Rect map)
+        {
+            if (Edge == null) return Rect.zero;
+            float x0 = map.xMin, z0 = float.MaxValue, z1 = float.MinValue;
+            foreach (var p in Edge)
+            {
+                if (p.x >= map.xMin - 0.5f) continue;
+                x0 = Mathf.Min(x0, p.x);
+                z0 = Mathf.Min(z0, p.y);
+                z1 = Mathf.Max(z1, p.y);
+            }
+            return x0 < map.xMin ? Rect.MinMaxRect(x0, z0, map.xMin, z1) : Rect.zero;
+        }
+
         static readonly (string name, Rect rect)[] Regions =
         {
             ("missionbay", Rect.MinMaxRect(-1120.9f, 834f, 725.3f, 2446.3f)),
