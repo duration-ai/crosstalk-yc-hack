@@ -32,8 +32,8 @@ namespace Dogpatch.Operator
         const float AnswerShown = 2.6f;
         const float LatchWindow = 5f;
         const float LatchSilence = 1f;
-        const float QuietSpan = 0.55f;
-        const float SpeechNeeded = 0.8f;
+        const float QuietSpan = 0.85f;
+        const float SpeechNeeded = 1.2f;
         const float RetryDelay = 1.5f;
 
         public GameController Game;
