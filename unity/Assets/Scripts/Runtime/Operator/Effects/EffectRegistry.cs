@@ -80,7 +80,7 @@ namespace Dogpatch.Operator
             "run_faster", "run_slower", "jump_higher", "slow_fall", "bigger", "smaller", "chunky", "skinny", "flight", "vehicle_faster", "vehicle_slower", "nitro", "grip_up", "grip_down", "tougher", "vehicle_hop", "change_vehicle", "waymo_swarm",
             "night", "day", "sunset", "fast_day_cycle", "rain", "snow", "fog", "storm", "sandstorm", "heatwave", "blackout", "clear_weather", "lights_on",
             "gravity_lower", "gravity_higher", "slippery_ground", "sticky_ground", "thick_air", "slow_motion", "fast_forward", "flood", "floor_is_lava", "earthquake", "cars_fly", "cars_on_water", "floaty_crashes", "gravity_normal", "normal_speed", "drain",
-            "more_traffic", "less_traffic", "aggressive_traffic", "green_lights", "stop_all", "more_pedestrians", "fewer_pedestrians", "angry_npcs", "calm_npcs", "panic", "ped_theme", "big_heads",
+            "more_traffic", "less_traffic", "aggressive_traffic", "green_lights", "stop_all", "hyper_city", "more_pedestrians", "fewer_pedestrians", "angry_npcs", "calm_npcs", "panic", "ped_theme", "big_heads",
             "set_fire", "extinguish", "demolish", "explode", "launch", "stop", "speed_up", "slow_down", "grow", "shrink", "recolor", "see_through", "bouncy", "icy", "rock_solid", "soft", "ghost",
         };
 

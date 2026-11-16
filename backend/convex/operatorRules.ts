@@ -302,6 +302,7 @@ export function decide(a: Answers, view: View, active: ActiveSummary[]): Command
       const effect = a.object_effect.choice;
       if (!OBJECT_EFFECTS[effect]) return refuse("vague");
       if (effect === "stop" && (cls === "vehicle" || cls === "car")) return effectCommand(a, "world", "stop_all");
+      if (effect === "speed_up" && cls === "vehicle") return effectCommand(a, "world", "hyper_city");
       if (!allows(effect, cls)) return refuse("incompatible");
       if (effect === "extinguish" && !active.some((e) => e.effect === "set_fire" && (isA(e.targetClass, cls) || isA(cls, e.targetClass)))) {
         return refuse("no_op");
