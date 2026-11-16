@@ -211,6 +211,12 @@ export function buildQuestions(view: View): Question[] {
       ],
     },
     {
+      type: "predicate",
+      name: "everyone",
+      instructions:
+        "Does the request explicitly cover every player, the caller included (make everyone tiny, all of us, all players, every racer, every car, the whole world)? Me, my car or an unspecified ask (make it tiny, go faster) is not everyone.",
+    },
+    {
       type: "choice",
       name: "nearest",
       instructions:
@@ -265,7 +271,7 @@ type RawAnswer =
   | { type: "predicate"; name: string; probability: number }
   | { type: "refusal"; name: string };
 
-const PREDICATES = ["described", "self_ref", "other_player", "stretch"] as const;
+const PREDICATES = ["described", "self_ref", "other_player", "stretch", "everyone"] as const;
 
 export function parseAnswers(raw: RawAnswer[]): Answers {
   const byName = new Map(raw.map((answer) => [answer.name, answer]));
