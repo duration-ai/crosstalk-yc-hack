@@ -141,7 +141,7 @@ export const OBJECT_EFFECTS: Record<string, ObjectEffect> = {
   stop: { label: "Stopped", description: "make it stop moving", classes: MOVERS, duration: [15, 23] },
   speed_up: { label: "Sped up", description: "make it move faster", classes: MOVERS, duration: [15, 23] },
   slow_down: { label: "Slowed", description: "make it move slower", classes: MOVERS, duration: [15, 23] },
-  grow: { label: "Grown", description: "make it bigger", classes: ANY, duration: [23, 45] },
+  grow: { label: "Supersize", description: "make it bigger, supersize it, make it huge (my car, that bus, a tree)", classes: ANY, duration: [23, 45] },
   shrink: { label: "Shrunk", description: "make it smaller", classes: ANY, duration: [23, 45] },
   recolor: {
     label: "Repainted",
