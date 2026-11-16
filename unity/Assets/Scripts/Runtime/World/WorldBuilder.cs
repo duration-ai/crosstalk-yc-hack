@@ -110,7 +110,7 @@ namespace Dogpatch.World
             var ground = RoadSurface.GroundMaterial(material);
             var land = new Vector2[data.land.Length][];
             for (int i = 0; i < land.Length; i++) land[i] = Geometry.ToPoints(data.land[i].pts);
-            var cover = GroundCover.Build(ctx.Root.transform, land, ground);
+            var cover = GroundCover.Build(ctx.Root.transform, land, ground, b);
 
             float coastNorthX = b.xMax, coastEastZ = b.yMin;
             foreach (var line in data.coastline)

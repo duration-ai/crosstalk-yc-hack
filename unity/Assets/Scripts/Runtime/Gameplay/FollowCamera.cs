@@ -27,6 +27,9 @@ namespace Dogpatch.Gameplay
 
         public float Yaw => yaw;
 
+        // Drag turn queued since the camera last ran; it builds up while the camera is switched off.
+        public float PendingOrbit => orbitYaw;
+
         public void Snap(Transform target, bool driving)
         {
             Target = target;

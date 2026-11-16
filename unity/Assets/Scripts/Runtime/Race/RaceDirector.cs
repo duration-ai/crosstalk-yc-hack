@@ -101,6 +101,7 @@ namespace Dogpatch.Race
         bool everInRing;
         float botCallsAfter;
         bool lobbyCam;
+        bool lobbyOrbit;
         bool lateJoin;
         bool runningShown;
         bool ghosted;
@@ -1178,7 +1179,9 @@ namespace Dogpatch.Race
                 view.rotation = Quaternion.Slerp(view.rotation, Quaternion.LookRotation(car.position + Vector3.up * 0.8f - view.position, Vector3.up), blend);
                 return;
             }
-            bool want = !Gridded && Game.CurrentCar == null && inRing && stillFor > 0.6f;
+            if (!inRing || Gridded) lobbyOrbit = false;
+            else if (lobbyCam && Mathf.Abs(Game.Follow.PendingOrbit) > 0.5f) lobbyOrbit = true;
+            bool want = !Gridded && Game.CurrentCar == null && inRing && stillFor > 0.6f && !lobbyOrbit;
             if (want && !lobbyCam)
             {
                 lobbyCam = true;

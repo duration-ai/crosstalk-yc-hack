@@ -196,6 +196,7 @@ namespace Dogpatch.Traffic
         {
             watch.Restart();
             tick++;
+            TrafficAgent.HyperClock += Time.fixedDeltaTime * (TrafficAgent.Hyper - 1f);
             GatherObstacles();
             var focus = Focus;
             float dt = Time.fixedDeltaTime;
