@@ -7,8 +7,8 @@ namespace Dogpatch.Gameplay
     // Debug performance readout: FPS, frame time, draw calls, triangles and world build time in a
     // corner, off by default. Launch with -perf (or --perf), set DOGPATCH_PERF in the launch
     // environment (devicectl passes environment variables but not arguments on a physical iPhone),
-    // or tap with three fingers to toggle. Player builds compile out the on-screen text and the
-    // gesture, so -perf there only logs.
+    // or tap with three fingers to toggle (editor and development builds only), or switch it on
+    // from the FOUNDER MODE developer panel in the pause menu.
     // While on, it logs a one-line summary every 5 s through Debug.Log, which reaches Xcode and
     // "devicectl device process launch --console" on a physical phone.
     public sealed class PerfReadout : MonoBehaviour
@@ -124,7 +124,6 @@ namespace Dogpatch.Gameplay
             return v >= 1_000_000 ? $"{v / 1_000_000f:F2}M" : v >= 1000 ? $"{v / 1000f:F0}k" : v.ToString();
         }
 
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
         void OnGUI()
         {
             if (!on) return;
@@ -136,6 +135,5 @@ namespace Dogpatch.Gameplay
             GUI.color = Color.white;
             GUI.Label(rect, text, style);
         }
-#endif
     }
 }
