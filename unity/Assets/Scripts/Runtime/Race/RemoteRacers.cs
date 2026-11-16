@@ -363,11 +363,18 @@ namespace Dogpatch.Race
             return true;
         }
 
+        readonly List<string> forgotten = new List<string>();
+
         void Update()
         {
             if (Race == null || remotes.Count == 0) return;
             if (!Race.Reconnecting)
-                foreach (var gone in remotes.Values.Where(r => Time.time - r.SeenAt > ForgetAfter).Select(r => r.Id).ToList()) Despawn(gone);
+            {
+                forgotten.Clear();
+                foreach (var r in remotes.Values)
+                    if (Time.time - r.SeenAt > ForgetAfter) forgotten.Add(r.Id);
+                foreach (var gone in forgotten) Despawn(gone);
+            }
             double now = Race.NowMs - lagMs;
             var mine = Race.Game.CurrentCar;
             foreach (var remote in remotes.Values)

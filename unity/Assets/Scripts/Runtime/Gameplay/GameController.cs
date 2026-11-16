@@ -69,6 +69,12 @@ namespace Dogpatch.Gameplay
 
         public Task EnterCar(CarController car) => RunAsync(() => EnterCarAsync(car));
 
+        // Drops a car someone else is about to destroy, such as a race bot's, so nothing finds it later.
+        public void Forget(CarController car)
+        {
+            if (cars.TryGetValue(car.VehicleId, out var known) && known == car) cars.Remove(car.VehicleId);
+        }
+
         public Task ExitCar() => current == null ? Task.CompletedTask : RunAsync(ExitCarAsync);
         public string StreetName { get; private set; } = "";
         public string StatusLine { get; private set; } = "Loading Dogpatch…";
@@ -80,7 +86,7 @@ namespace Dogpatch.Gameplay
             material = new Material(Resources.Load<Shader>("Shaders/FlatVertexColor")) { name = "FlatVertexColor" };
             SetupRendering();
 
-            var data = JsonUtility.FromJson<WorldData>(Resources.Load<TextAsset>("World/dogpatch").text);
+            var data = JsonUtility.FromJson<WorldData>(Resources.Load<TextAsset>(Dogpatch.World.CityRegions.WorldResource).text);
             Data = data;
             models = new ModelLibrary();
             float t0 = Time.realtimeSinceStartup;

@@ -37,10 +37,12 @@ describe("built-effects gate", () => {
 });
 
 describe("effect durations", () => {
-  it("keeps every lasting effect up for at least 15 s", () => {
+  it("keeps every lasting effect up for at least 15 s, except the brief all-stop", () => {
     const lasting = Object.entries(CATALOGUE).filter(([, e]) => e.duration);
     expect(lasting.length).toBeGreaterThan(40);
+    expect(CATALOGUE.stop_all.duration).toEqual([4, 6]);
     for (const [id, e] of lasting) {
+      if (id === "stop_all") continue;
       expect(e.duration![0], id).toBeGreaterThanOrEqual(15);
       expect(e.duration![1], id).toBeGreaterThanOrEqual(e.duration![0]);
     }

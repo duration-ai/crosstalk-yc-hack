@@ -873,7 +873,7 @@ namespace Dogpatch.Operator
                 }
                 foreach (var car in Racers.Cars(Context, target))
                 {
-                    if (!Racers.Physical(car)) continue;
+                    if (!Racers.Physical(car) || car.Hovers) continue;
                     var p = car.transform.position;
                     if (p.y > level + 0.5f || (nextHop.TryGetValue(car, out var at) && Time.time < at)) continue;
                     if (!Physics.Raycast(p + Vector3.up * 0.3f, Vector3.down, 0.7f, ~0, QueryTriggerInteraction.Ignore)) continue;
@@ -921,7 +921,7 @@ namespace Dogpatch.Operator
                     CameraFeel.Instance?.AddTrauma(0.22f * k);
                     Haptics.Impact(HapticStyle.Heavy, Mathf.Clamp01(0.6f * k));
                     foreach (var car in Racers.Cars(Context, target))
-                        if (Racers.Physical(car)) CarFx.On(car).Push(new Vector3((R() - 0.5f) * 4f * k, Mathf.Lerp(1.5f, 3f, R()) * k, (R() - 0.5f) * 4f * k));
+                        if (Racers.Physical(car) && car.OnGround) CarFx.On(car).Push(new Vector3((R() - 0.5f) * 4f * k, Mathf.Lerp(1.5f, 3f, R()) * k, (R() - 0.5f) * 4f * k));
                     var player = Context.Game.Player;
                     if (player != null && player.isActiveAndEnabled) player.Jump();
                 }

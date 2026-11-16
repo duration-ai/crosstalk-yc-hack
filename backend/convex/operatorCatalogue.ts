@@ -115,6 +115,7 @@ export const POPULATION_EFFECTS: Record<string, Effect> = {
     description: "a swarm of Waymo robotaxis hunts and rams the other racers (send the Waymos after them, Waymo attack, sic the robotaxis on everyone)",
     duration: [15, 20],
   },
+  stop_all: { label: "All stop", description: "every vehicle stops for a moment, traffic and racers alike: stop all cars, freeze traffic, everybody stop", duration: [4, 6] },
   green_lights: { label: "Green lights", description: "every traffic light turns green", duration: CROWD },
   more_pedestrians: { label: "Crowds", description: "more people on the streets", duration: CROWD },
   fewer_pedestrians: { label: "Ghost town", description: "fewer people on the streets", duration: CROWD },
@@ -140,7 +141,7 @@ export const OBJECT_EFFECTS: Record<string, ObjectEffect> = {
   stop: { label: "Stopped", description: "make it stop moving", classes: MOVERS, duration: [15, 23] },
   speed_up: { label: "Sped up", description: "make it move faster", classes: MOVERS, duration: [15, 23] },
   slow_down: { label: "Slowed", description: "make it move slower", classes: MOVERS, duration: [15, 23] },
-  grow: { label: "Grown", description: "make it bigger", classes: ANY, duration: [23, 45] },
+  grow: { label: "Supersize", description: "make it bigger, supersize it, make it huge (my car, that bus, a tree)", classes: ANY, duration: [23, 45] },
   shrink: { label: "Shrunk", description: "make it smaller", classes: ANY, duration: [23, 45] },
   recolor: {
     label: "Repainted",

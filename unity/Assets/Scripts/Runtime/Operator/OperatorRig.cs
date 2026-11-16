@@ -340,7 +340,7 @@ namespace Dogpatch.Operator
             catch (ConvexException e)
             {
                 Debug.LogWarning($"[Operator] confirm {row.id} failed {e.Code}: {e.Message}");
-                Hud.Toast(e.Message == CallController.NoAsksLine ? e.Message : "Too late, sugar.");
+                Hud.Toast(e.Message == CallController.NoAsksLine ? e.Message : "Too late, man.");
             }
         }
 

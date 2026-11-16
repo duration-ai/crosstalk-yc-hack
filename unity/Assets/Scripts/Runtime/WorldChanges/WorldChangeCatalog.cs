@@ -142,7 +142,7 @@ namespace Dogpatch.WorldChanges
                 .Replace("{color}", (command.@params?.color ?? "").ToUpperInvariant());
         }
 
-        public string Line(WorldChangeCommand command) => Option(command)?.line ?? "Done, sugar!";
+        public string Line(WorldChangeCommand command) => Option(command)?.line ?? "Done, dude!";
 
         public static WorldChangeCommand Command(string type, WorldChangeParams p) => new WorldChangeCommand { type = type, @params = Copy(p) };
 

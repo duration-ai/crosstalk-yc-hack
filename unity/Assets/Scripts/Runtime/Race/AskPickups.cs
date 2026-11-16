@@ -13,7 +13,8 @@ namespace Dogpatch.Race
     // IRaceSession.CollectAskAsync and opens the mic at once for one hands-free Operator call. Each racer can take each token once a
     // race, and a token you have taken disappears for you until the rematch. Other systems, like the
     // minimap, read Positions and Available and listen to Changed; each token the local player can
-    // still take is tracked on the minimap through MapMarkers.
+    // still take is tracked on the minimap through MapMarkers. Phones show only to a racer from GO to
+    // their finish, never in free roam or the lobby.
     public sealed class AskPickups : MonoBehaviour
     {
         public static AskPickups Instance { get; private set; }
@@ -34,7 +35,7 @@ namespace Dogpatch.Race
         readonly HashSet<(string, int)> asked = new HashSet<(string, int)>();
         int raceNumber;
         string roomId;
-        ulong mask = ulong.MaxValue;
+        ulong mask;
 
         void Awake() => Instance = this;
 
@@ -50,15 +51,15 @@ namespace Dogpatch.Race
             {
                 positions.Add(spot);
                 var token = CourseDressing.AskToken(parent, spot, material);
+                token.SetActive(false);
                 tokens.Add(token);
-                MapMarkers.Track(token.transform, MapMarkerKind.Ask);
             }
         }
 
         ulong MyMask()
         {
             var me = Race.Me;
-            if (me == null || Race.Room.status == RoomStatus.Finished) return 0UL;
+            if (me == null || me.finished || !Race.Started || Race.Room.status != RoomStatus.Racing) return 0UL;
             int served = Race.Room.pickups?.Count ?? 0;
             ulong m = 0UL;
             for (int i = 0; i < Mathf.Min(positions.Count, served); i++)

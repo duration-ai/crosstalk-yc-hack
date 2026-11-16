@@ -8,7 +8,7 @@ namespace Dogpatch.World
     // recoloured Polyfork tower crane), the Potrero stack, the I-280 viaduct, Pier 70's drydock,
     // rail and light-rail platforms, and AI billboards along the viaduct and Third Street. The YC
     // office, the machine shop and the cream stone buildings are footprints that BuildingFitter dresses.
-    public sealed class Landmarks
+    public sealed partial class Landmarks
     {
         public readonly Dictionary<string, int> Placed = new Dictionary<string, int>();
         public readonly List<string> Notes = new List<string>();
@@ -89,6 +89,7 @@ namespace Dogpatch.World
 
             if (ctx.Roads.Freeway != null) FreewayBillboards(ctx.Roads.Freeway);
             ThirdStreetBillboards(data);
+            AdUnipoles(data);
         }
 
         // OSM platforms sit in the Caltrain cut under the street bridges, but the map is flat, so a platform

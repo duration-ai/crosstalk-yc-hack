@@ -9,7 +9,7 @@ using UnityEngine;
 namespace Dogpatch.Race
 {
     // On-device implementation of IRaceSession that runs the race contract's rules: colors and
-    // slots by join order, ready and auto-start countdowns with the locked last 3 s, progress along
+    // slots by join order, an all-ready countdown with the locked last 3 s, progress along
     // the route, place ordering, finish and close-out, awards, world-change validation and news,
     // and rematch. It makes no network calls; players resolve through IGameBackend like the server
     // resolves them from its players table. The clock is injected so the race runs on game time.
@@ -17,7 +17,6 @@ namespace Dogpatch.Race
     {
         const int MaxPlayers = 4;
         const long AllReadyMs = 3000;
-        const long AutoStartMs = 10000;
         const long LockMs = 3000;
         const long CloseAfterFirstFinishMs = 30000;
         const int DefaultAsks = 100;
@@ -254,11 +253,6 @@ namespace Dogpatch.Race
             {
                 room.status = RoomStatus.Countdown;
                 room.startsAt = room.startsAt == 0 ? now + AllReadyMs : Math.Min(room.startsAt, now + AllReadyMs);
-            }
-            else if (ready >= Math.Max(2, room.minPlayers))
-            {
-                room.status = RoomStatus.Countdown;
-                if (room.startsAt == 0) room.startsAt = now + AutoStartMs;
             }
             else
             {
