@@ -458,11 +458,10 @@ namespace Dogpatch.Gameplay
                     break;
                 case Stage.Menu:
                     if (!PortraitVisible) break;
-                    var portraitRect = PortraitRect();
-                    list.Add(("menu", portraitRect));
-                    float mw = 250f * s, mh = 46f * s;
-                    list.Add(("open", new Rect(portraitRect.x, portraitRect.y - 14f * s - mh, mw, mh)));
-                    list.Add(("name", new Rect(portraitRect.x, portraitRect.y - 2f * (14f * s + mh), mw, mh)));
+                    list.Add(("menu", PortraitRect()));
+                    var card = RacerCardRect();
+                    list.Add(("name", new Rect(card.x + 150f * s, card.y + 24f * s, 76f * s, 60f * s)));
+                    list.Add(("open", new Rect(card.x + 244f * s, card.y + 24f * s, 76f * s, 60f * s)));
                     break;
                 case Stage.Name:
                     var field = NameField();
@@ -607,16 +606,6 @@ namespace Dogpatch.Gameplay
             else DrawBooth();
         }
 
-        void DrawMenu()
-        {
-            float s = Scale;
-            var chips = Buttons().Where(b => b.id != "menu").ToList();
-            BeginShapes();
-            foreach (var (id, rect) in chips) Para(rect, pressed == id ? White : Ink);
-            EndShapes();
-            foreach (var (id, rect) in chips)
-                Label(rect, id == "open" ? "RETAKE PHOTO" : "CHANGE NAME", pressed == id ? Ink : White, 20f * s);
-        }
 
         internal static bool CardOpen { get; private set; }
 
