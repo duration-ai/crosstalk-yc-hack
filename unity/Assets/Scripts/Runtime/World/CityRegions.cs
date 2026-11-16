@@ -81,7 +81,7 @@ namespace Dogpatch.World
         const float SkylineDistance = 2800f;
         const float GroundCell = 50f;
 
-        static readonly Color[] Walls = { L("#FFF3DA"), L("#DCD6CC"), L("#9ED7FF"), L("#FFE27A"), L("#8CE3BF"), L("#FF9C86"), L("#BBA6F7"), L("#C9C6C0") };
+        internal static readonly Color[] Walls = { L("#FFF3DA"), L("#DCD6CC"), L("#9ED7FF"), L("#FFE27A"), L("#8CE3BF"), L("#FF9C86"), L("#BBA6F7"), L("#C9C6C0") };
         static readonly Color[] TowerWalls = { L("#FFF3DA"), L("#9ED7FF"), L("#DCD6CC"), L("#C94A32") };
         static readonly Color Roof = L("#6C758B");
         static Color L(string hex) => SpeedDial.Hex(hex).linear;
@@ -251,7 +251,7 @@ namespace Dogpatch.World
             return (near, far, (region.buildings.Length, region.roads.Length));
         }
 
-        static void Extrude(MeshBuilder mesh, Vector2[] pts, float height, Color wall)
+        internal static void Extrude(MeshBuilder mesh, Vector2[] pts, float height, Color wall)
         {
             for (int i = 0; i < pts.Length; i++)
             {

@@ -78,7 +78,7 @@ namespace Dogpatch.World
             var ground = BuildGround(data, ctx, material);
             ctx.Surface = new RoadSurface(ctx, data);
             ctx.Surface.Build(material);
-            BuildBuildings(data, ctx, models, measure);
+            BuildBuildings(data, ctx, models, material, measure);
             ctx.Roads.AttachFreeway(Freeway.Build(data, ctx, material));
             ctx.Furniture = new StreetFurniture(ctx, ctx.Statics);
             ctx.Furniture.PlaceTrees(data.treeRecords);
@@ -164,10 +164,12 @@ namespace Dogpatch.World
 
         // Every footprint becomes Polyfork models fitted by BuildingFitter; the extruded footprint
         // is kept as the collider so cars and the player hit the real outline.
-        static void BuildBuildings(WorldData data, WorldContext ctx, ModelLibrary models, bool measure)
+        static void BuildBuildings(WorldData data, WorldContext ctx, ModelLibrary models, Material material, bool measure)
         {
             ctx.Fitter = new BuildingFitter(ctx, models, ctx.Statics, data.landmarks, measure);
             var colliders = new ChunkedMeshBuilder(ChunkSize);
+            var annex = new ChunkedMeshBuilder(ChunkSize);
+            var tones = new System.Random(415);
             foreach (var building in data.buildings)
             {
                 var poly = Geometry.ToPoints(building.pts);
@@ -175,7 +177,8 @@ namespace Dogpatch.World
                 if (Geometry.SignedArea(poly) < 0f) System.Array.Reverse(poly);
                 float h = Mathf.Clamp(building.height, 3f, 150f);
                 ctx.Buildings.Add(poly);
-                ctx.Fitter.Add(building, poly, h);
+                if (ctx.Bounds.Contains(Geometry.Centroid(poly))) ctx.Fitter.Add(building, poly, h);
+                else CityRegions.Extrude(annex.At(Geometry.Centroid(poly)), poly, h, CityRegions.Walls[tones.Next(CityRegions.Walls.Length)]);
 
                 var cb = colliders.At(Geometry.Centroid(poly));
                 for (int i = 0, j = poly.Length - 1; i < poly.Length; j = i++)
@@ -186,6 +189,8 @@ namespace Dogpatch.World
                 cb.Polygon(poly, h, Color.white);
             }
 
+            foreach (var (key, builder) in annex.All())
+                Emit(ctx.Root.transform, "Annex buildings " + key, builder.ToMesh("annex buildings " + key), material, false);
             foreach (var (key, builder) in colliders.All())
             {
                 var go = new GameObject("BuildingCollider " + key);
