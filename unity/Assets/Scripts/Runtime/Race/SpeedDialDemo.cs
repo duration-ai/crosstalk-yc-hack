@@ -72,6 +72,11 @@ namespace Dogpatch.Race
             yield return Seconds(12f);
             Log(race.Room.status == RoomStatus.Lobby ? $"lobby held while you're unready: {race.Room.readyCount} of {race.Room.playerCount} ready" : "FAILED: the lobby counted down while you were unready");
             yield return Shot("10-lobby");
+            bool fixedShot = !game.Follow.enabled;
+            game.Follow.Orbit(new Vector2(Screen.width * 0.3f, 0f));
+            yield return Seconds(0.4f);
+            Log($"start-pad drag: fixed ring shot before {fixedShot}, camera now {(game.Follow.enabled ? "orbiting your avatar" : "FAILED: still the fixed ring shot")}");
+            yield return Shot("10a-lobby-orbit");
 
             var jun = GameObject.Find("Racer Jun");
             if (jun != null)
