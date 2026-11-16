@@ -60,7 +60,7 @@ export const PLAYER_EFFECTS: Record<string, Effect> = {
   grip_up: { label: "Grippy tyres", description: "players' vehicles grip the road better", duration: [15, 23] },
   grip_down: { label: "Slidey tyres", description: "players' vehicles lose grip and slide", duration: [15, 23] },
   tougher: { label: "Armour", description: "players and their vehicles become tougher", duration: [18, 34] },
-  vehicle_hop: { label: "Car hop", description: "players' vehicles can hop or jump", duration: [15, 27] },
+  vehicle_hop: { label: "Car hop", description: "players' vehicles can hop or jump on command; not a bouncy rubber car, not a launch into the air", duration: [15, 27] },
   change_vehicle: {
     label: "New ride",
     description: "swap the vehicle the player is riding for a different kind (give me a sports car, put me in a bus, I want a bike)",
