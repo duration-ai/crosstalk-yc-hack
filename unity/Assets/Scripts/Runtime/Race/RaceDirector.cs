@@ -62,6 +62,11 @@ namespace Dogpatch.Race
         public bool ResultsIn { get; private set; }
         public float StartedAt { get; private set; }
         public float ResultsAt { get; private set; }
+        public float FinishedAt { get; private set; }
+
+        // Over the line while others still race: you stay in the race with the wheel taken away until
+        // the results come up for everyone together.
+        public bool WaitingForResults => Started && CrossedFinish && !ResultsIn;
         public bool Autopilot { get; private set; }
         public int MySlot { get; private set; }
 
@@ -96,6 +101,7 @@ namespace Dogpatch.Race
         bool everInRing;
         float botCallsAfter;
         bool lobbyCam;
+        bool lobbyOrbit;
         bool lateJoin;
         bool runningShown;
         bool ghosted;
@@ -632,17 +638,35 @@ namespace Dogpatch.Race
             Debug.Log("[SpeedDial] GO");
         }
 
-        // Over the line: your race is done, so the car rolls to a stop while the others finish or the
-        // room closes (30 s after the first finisher), and then the results come up.
+        // Over the line: your race is done but you stay in it. Whatever you're in brakes to a stop past
+        // the line with the camera on you (HoldAtFinish) while the standings fill in, and the results
+        // come up for everyone together once the last racer is in or the room closes (45 s after the
+        // first finisher).
         void CrossedLine()
         {
             CrossedFinish = true;
+            FinishedAt = Time.time;
             if (myPilot != null) myPilot.Active = false;
             Game.ExternalInput = true;
-            if (Game.CurrentCar != null) Game.CurrentCar.SetInput(Vector3.zero, 0f);
-            else Game.Player.SetInput(Vector3.zero, 0f);
+            HoldAtFinish();
             float closesIn = Room.closesAt > 0 ? (Room.closesAt - NowMs) / 1000f : 0f;
-            Debug.Log($"[SpeedDial] you finished {Me.place} in {Me.finishMs / 1000f:F1} s, results in {closesIn:F0} s at most");
+            Debug.Log($"[SpeedDial] you finished {Me.place} in {Me.finishMs / 1000f:F1} s, waiting in the race for the others, results in {closesIn:F0} s at most");
+        }
+
+        // Every frame past the line: no input, brakes on, and the chase camera on your actual body,
+        // which a wreck respawn or a change of car may have moved.
+        void HoldAtFinish()
+        {
+            var car = Game.CurrentCar;
+            if (car != null)
+            {
+                car.SetInput(Vector3.zero, 0f);
+                car.HoldBrake(0.2f);
+            }
+            else Game.Player.SetInput(Vector3.zero, 0f);
+            var body = BodyOf(MyId);
+            Game.Follow.enabled = true;
+            if (Game.Follow.Target != body) Game.Follow.Snap(body, Game.CurrentCar != null);
         }
 
         // For the first seconds after GO the racers pass through each other, so a bunched launch can't
@@ -767,7 +791,7 @@ namespace Dogpatch.Race
                     yield return Wait(Game.EnterCar(myCar));
                 }
                 MoveBody(MyId, spot, heading);
-                Game.Follow.Snap(myCar.transform, true);
+                Game.Follow.Snap(BodyOf(MyId), Game.CurrentCar != null);
             }
             Debug.Log($"[SpeedDial] {(bot != null ? bot.Name : "You")} wrecked, back on the route at {d:F0} m");
         }
@@ -850,7 +874,7 @@ namespace Dogpatch.Race
             myPilot.Route = Course.Route;
             myPilot.Lane = RaceCourse.GridLane(MySlot);
             myPilot.ResetProgress(Course.Route.Project(RoutePath.Flat(myCar.transform.position)));
-            if (Started && !ResultsIn)
+            if (Started && !ResultsIn && !CrossedFinish)
             {
                 Game.ExternalInput = true;
                 myPilot.Active = true;
@@ -860,7 +884,7 @@ namespace Dogpatch.Race
         // Lets go of the wheel without leaving autopilot, for the scripted play-through's detours.
         public void HoldAutopilot(bool hold)
         {
-            if (myPilot != null) myPilot.Active = !hold && Started && !ResultsIn;
+            if (myPilot != null) myPilot.Active = !hold && Started && !ResultsIn && !CrossedFinish;
         }
 
         public void SetReady(bool ready) => StartCoroutine(Wait(SetReadyAsync(ready)));
@@ -972,6 +996,7 @@ namespace Dogpatch.Race
         {
             if (!Setup) return;
             if (Locked) myCar.SetInput(Vector3.zero, 0f);
+            if (WaitingForResults && !Wrecking) HoldAtFinish();
             PickRouteByRing();
 
             foreach (var bot in bots)
@@ -1144,17 +1169,19 @@ namespace Dogpatch.Race
             if (ResultsIn && Gridded)
             {
                 Game.Follow.enabled = false;
-                var car = myCar.transform;
+                var car = BodyOf(MyId);
                 float orbit = (Time.time - ResultsAt) * 9f;
                 var offset = Quaternion.Euler(0f, car.eulerAngles.y + 150f + orbit, 0f) * Vector3.forward * 7.5f;
                 var target = car.position + offset + Vector3.up * 2.4f;
                 var view = Game.View.transform;
-                float blend = 1f - Mathf.Exp(-3f * Time.deltaTime);
+                float blend = Vector3.Distance(view.position, target) > 40f ? 1f : 1f - Mathf.Exp(-3f * Time.deltaTime);
                 view.position = Vector3.Lerp(view.position, target, blend);
                 view.rotation = Quaternion.Slerp(view.rotation, Quaternion.LookRotation(car.position + Vector3.up * 0.8f - view.position, Vector3.up), blend);
                 return;
             }
-            bool want = !Gridded && Game.CurrentCar == null && inRing && stillFor > 0.6f;
+            if (!inRing || Gridded) lobbyOrbit = false;
+            else if (lobbyCam && Mathf.Abs(Game.Follow.PendingOrbit) > 0.5f) lobbyOrbit = true;
+            bool want = !Gridded && Game.CurrentCar == null && inRing && stillFor > 0.6f && !lobbyOrbit;
             if (want && !lobbyCam)
             {
                 lobbyCam = true;

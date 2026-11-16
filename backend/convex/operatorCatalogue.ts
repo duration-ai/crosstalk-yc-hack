@@ -92,7 +92,7 @@ export const PHYSICS_EFFECTS: Record<string, Effect> = {
   sticky_ground: { label: "Sticky", description: "the ground turns sticky like glue", duration: [18, 34] },
   thick_air: { label: "Thick air", description: "the air turns thick like syrup", duration: [15, 23] },
   slow_motion: { label: "Slow-mo", description: "the whole world in slow motion", duration: [15, 23] },
-  fast_forward: { label: "Fast forward", description: "the whole world sped up", duration: [15, 23] },
+  fast_forward: { label: "Fast forward", description: "time itself sped up for everyone, players included: fast forward, speed up time", duration: [15, 23] },
   flood: { label: "Flood", description: "flood the streets with water", duration: [23, 45] },
   floor_is_lava: { label: "Floor is lava", description: "the floor is lava", duration: [15, 23] },
   earthquake: { label: "Earthquake", description: "the ground shakes", duration: [15, 18] },
@@ -100,7 +100,7 @@ export const PHYSICS_EFFECTS: Record<string, Effect> = {
   cars_on_water: { label: "Boat cars", description: "cars drive on water", duration: [23, 45] },
   floaty_crashes: { label: "Floaty crashes", description: "crashes send things floating", duration: [18, 34] },
   gravity_normal: { label: "Normal gravity", description: "put gravity back to normal" },
-  normal_speed: { label: "Normal speed", description: "put time back to normal speed" },
+  normal_speed: { label: "Normal speed", description: "put time and the city back to normal speed: slow the city down, calm the traffic" },
   drain: { label: "Drained", description: "drain the flood water" },
 };
 
@@ -116,6 +116,11 @@ export const POPULATION_EFFECTS: Record<string, Effect> = {
     duration: [15, 20],
   },
   stop_all: { label: "All stop", description: "every vehicle stops for a moment, traffic and racers alike: stop all cars, freeze traffic, everybody stop", duration: [4, 6] },
+  hyper_city: {
+    label: "Hyper city",
+    description: "the city and its NPCs (traffic, buses, trains, pedestrians) go fast while the players keep their own pace: make the city go fast, make npcs fast, everyone else fast, speed up traffic",
+    duration: CROWD,
+  },
   green_lights: { label: "Green lights", description: "every traffic light turns green", duration: CROWD },
   more_pedestrians: { label: "Crowds", description: "more people on the streets", duration: CROWD },
   fewer_pedestrians: { label: "Ghost town", description: "fewer people on the streets", duration: CROWD },
@@ -166,7 +171,7 @@ export const COUNTERS: Record<string, readonly string[]> = {
   clear_weather: ["rain", "snow", "fog", "storm", "sandstorm", "heatwave"],
   lights_on: ["blackout"],
   gravity_normal: ["gravity_lower", "gravity_higher"],
-  normal_speed: ["slow_motion", "fast_forward"],
+  normal_speed: ["slow_motion", "fast_forward", "hyper_city"],
   drain: ["flood"],
 };
 

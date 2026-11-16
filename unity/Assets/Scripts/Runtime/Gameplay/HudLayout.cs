@@ -193,21 +193,26 @@ namespace Dogpatch.Gameplay
 
         public static bool CallFromLeft => Option != HudOption.A;
 
-        // The mission briefing card and its race chip (CRO-68), at width up to 250 U and height h: a
+        // The mission briefing card and its race chip (CRO-68), at width up to 300 U and height h: a
         // bottom strip right of the screen centre and left of the stick's grab circle, so it clears
         // the centre, Ready and Call (bottom left) and the call card (left third). Where that strip is
-        // too narrow (portrait) it stacks above the stick instead, right-aligned.
+        // too narrow (portrait, 4:3) it stacks above the stick instead, right-aligned: under the map in
+        // B and above Ready and Call in A, which sit over the stick there.
         public static Rect Briefing(float h)
         {
             float from = Screen.width * 0.5f + 24f * U;
             float stickLeft = StickScreen.x - StickRadius * 1.6f - 10f * U;
             if (stickLeft - from >= 150f * U)
             {
-                float w = Mathf.Min(250f * U, stickLeft - from);
+                float w = Mathf.Min(300f * U, stickLeft - from);
                 return new Rect(stickLeft - w, Bottom - h, w, h);
             }
-            float wide = Mathf.Min(250f * U, Right - from);
-            return new Rect(Right - wide, StickTopGui - StickRadius * 0.6f - 12f * U - h, wide, h);
+            float wide = Mathf.Min(300f * U, Right - (Portrait ? Screen.width * 0.36f : from));
+            float bottom = StickTopGui - StickRadius * 0.6f - 12f * U;
+            if (Option == HudOption.A) bottom = Mathf.Min(bottom, Call(72f * U, 72f * U, true).y - 10f * U);
+            float y = bottom - h;
+            if (Option == HudOption.B) y = Mathf.Max(y, MinimapBottomGui + 24f * U);
+            return new Rect(Right - wide, y, wide, h);
         }
 
         // The transcript bar, attached to the top of the Call plate.

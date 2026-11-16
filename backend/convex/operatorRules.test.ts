@@ -493,6 +493,25 @@ describe("loose acceptance: err on the side of doing something", () => {
   });
 });
 
+describe("hyper city", () => {
+  it("speeds up the NPCs as a world effect", () => {
+    const fast = answers({ scope: "world", world_group: "population", population_effect: "hyper_city" });
+    expect(decide(fast, onFoot, [])).toEqual(effect({ scope: "world", effect: "hyper_city" }));
+    for (const cls of ["vehicle", "pedestrian"]) {
+      expect(decide(answers({ scope: "class", object_effect: "speed_up", class: cls }), onFoot, []), cls).toEqual(
+        effect({ scope: "world", effect: "hyper_city", target: "", targetClass: "", strength: "medium" }),
+      );
+    }
+  });
+
+  it("is countered by normal speed", () => {
+    const calm = answers({ scope: "world", world_group: "physics", physics_effect: "normal_speed" });
+    expect(decide(calm, onFoot, [])).toEqual(refused("no_op"));
+    const hyper: ActiveSummary = { effect: "hyper_city", target: "", targetClass: "", instant: false };
+    expect(decide(calm, onFoot, [hyper])).toEqual(effect({ effect: "normal_speed", strength: "" }));
+  });
+});
+
 describe("stop all cars", () => {
   it("stops every vehicle as a world effect", () => {
     for (const cls of ["car", "vehicle"]) {

@@ -21,6 +21,7 @@ namespace Dogpatch.Operator
             r.Register("more_traffic", () => new TrafficDensityEffect(true));
             r.Register("less_traffic", () => new TrafficDensityEffect(false));
             r.Register("aggressive_traffic", () => new RoadRageEffect());
+            r.Register("hyper_city", () => new HyperCityEffect());
             r.Register("green_lights", () => new GreenLightsEffect());
             r.Register("speed_up", () => new PaceEffect(true));
             r.Register("slow_down", () => new PaceEffect(false));
@@ -341,6 +342,27 @@ namespace Dogpatch.Operator
         {
             Rage.Remove(k);
             TrafficAgent.Rage = Rage.Max;
+        }
+    }
+
+    // Hyper city: every NPC (traffic, buses, rail, pedestrians) runs at about 2.5-3x while players keep
+    // their own pace. Factors multiply, so overlapping rows unwind in any order.
+    public sealed class HyperCityEffect : OperatorEffect
+    {
+        float k = 1f;
+
+        public override void Apply(string strength, EffectTarget target)
+        {
+            k = Scale(strength, 2.5f, 2.75f, 3f);
+            TrafficAgent.Hyper *= k;
+            Dogpatch.Ambient.PedestrianSystem.Hyper *= k;
+        }
+
+        public override void Revert()
+        {
+            TrafficAgent.Hyper /= k;
+            Dogpatch.Ambient.PedestrianSystem.Hyper /= k;
+            k = 1f;
         }
     }
 

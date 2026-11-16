@@ -47,6 +47,8 @@ namespace Dogpatch.Audio
         const int LoopVoices = 24;
 
         static readonly float[] DuckedGain = { 0.35f, 0.6f, 0.5f, 0.45f, 1f, 1f };
+        // A deep duck (a mission briefing) pulls every bus but voice and UI down to about a quarter.
+        static readonly float[] DeepDuckedGain = { 0.27f, 0.27f, 0.27f, 0.27f, 1f, 1f };
 
         sealed class Voice
         {
@@ -65,6 +67,7 @@ namespace Dogpatch.Audio
         readonly List<SoundLoop> loops = new List<SoundLoop>();
         readonly Stack<AudioSource> freeLoopSources = new Stack<AudioSource>();
         readonly HashSet<object> duckers = new HashSet<object>();
+        readonly HashSet<object> deepDuckers = new HashSet<object>();
         readonly float[] duck = { 1f, 1f, 1f, 1f, 1f, 1f };
         AnimationCurve rolloff;
         float nextScan;
@@ -186,6 +189,15 @@ namespace Dogpatch.Audio
             else Instance.duckers.Remove(key);
         }
 
+        // Ducks music, SFX, vehicles and ambience to about a quarter while any key holds it; they come
+        // back over about 0.6 s once it lets go.
+        public static void SetDeepDuck(object key, bool on)
+        {
+            if (Instance == null) return;
+            if (on) Instance.deepDuckers.Add(key);
+            else Instance.deepDuckers.Remove(key);
+        }
+
         public static AudioSource Play(string name, Vector3 position, Bus bus, float volume = 1f, float pitch = 1f, int priority = 128, float maxDistance = 60f)
             => Instance == null ? null : Instance.StartVoice(SoundBank.Get(name), true, position, bus, volume, pitch, priority, maxDistance);
 
@@ -284,7 +296,7 @@ namespace Dogpatch.Audio
             }
             for (int i = 0; i < duck.Length; i++)
             {
-                float target = voiceActive ? DuckedGain[i] : 1f;
+                float target = deepDuckers.Count > 0 ? DeepDuckedGain[i] : voiceActive ? DuckedGain[i] : 1f;
                 duck[i] = Mathf.MoveTowards(duck[i], target, (target < duck[i] ? 3f : 1.2f) * dt);
             }
 

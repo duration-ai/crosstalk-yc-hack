@@ -16,13 +16,16 @@ namespace Dogpatch.Gameplay
     // and a flip; the photo goes to IGameBackend.AnalyzeAvatarPhotoAsync under the game's own
     // player id, SUITING UP plays while the server answers and the GLB loads, and the avatar then
     // replaces the player model. RETAKE shows NO ONE IN SHOT, anything else TRY AGAIN, both with
-    // retake and skip.
+    // retake and skip. Tapping the portrait offers RETAKE PHOTO and CHANGE NAME. On first launch a
+    // YOUR NAME prompt asks for the name other racers see; skipping keeps the random "Racer NN".
     //   -dogpatch-no-avatar-prompt / DOGPATCH_NO_AVATAR_PROMPT, and batchmode: no portrait button.
     //   -dogpatch-avatar-test-photo / DOGPATCH_AVATAR_TEST_PHOTO: the bundled test photo stands in
     //   for the camera (also used automatically on a device with no camera, e.g. the simulator).
     public sealed class AvatarCapture : MonoBehaviour
     {
         const string AvatarKey = "dogpatch.avatar";
+        const string NameAskedKey = "dogpatch.nameAsked";
+        const int MaxName = 16;
         const int PortraitSize = 192;
         const int PortraitLayer = 31;
         const int MaxPhotoSide = 1024;
@@ -33,7 +36,7 @@ namespace Dogpatch.Gameplay
         static readonly Color White = Color.white;
         static readonly Color PortraitSky = new Color32(0x9E, 0xD7, 0xFF, 0xFF);
 
-        enum Stage { Closed, Viewfinder, Uploading, Refused, Failed }
+        enum Stage { Closed, Menu, Name, Viewfinder, Uploading, Refused, Failed }
 
         GameController game;
         Hud hud;
@@ -61,6 +64,9 @@ namespace Dogpatch.Gameplay
         Font font;
         GUIStyle label;
         string pressed;
+        string typed = "";
+        string placeholder = "";
+        TouchScreenKeyboard keyboard;
 
         public static AvatarCapture Install(GameObject host, PlayerController player, GlbAsset clipSource, Material material)
         {
@@ -78,7 +84,7 @@ namespace Dogpatch.Gameplay
 
         static bool ForceTestPhoto => Flag("-dogpatch-avatar-test-photo", "DOGPATCH_AVATAR_TEST_PHOTO");
 
-        bool FullScreen => stage == Stage.Viewfinder || stage == Stage.Uploading || stage == Stage.Refused || stage == Stage.Failed;
+        bool FullScreen => stage == Stage.Name || stage == Stage.Viewfinder || stage == Stage.Uploading || stage == Stage.Refused || stage == Stage.Failed;
 
         string PlayerId => game != null && game.Profile != null ? game.Profile.id : null;
 
@@ -174,6 +180,62 @@ namespace Dogpatch.Gameplay
             if (drag != null) drag.enabled = true;
             if (raceHud != null) raceHud.enabled = true;
         }
+
+        // The name prompt: the iOS keyboard where there is one, typed keys on a desktop.
+        internal void OpenName()
+        {
+            stage = Stage.Name;
+            typed = "";
+            var current = Race.RaceDirector.Instance?.MyName;
+            placeholder = string.IsNullOrWhiteSpace(current) ? "Racer " + UnityEngine.Random.Range(10, 100) : current;
+            if (drag != null) drag.enabled = false;
+            if (raceHud == null) raceHud = FindAnyObjectByType<Slipstream.SlipstreamHud>();
+            if (raceHud != null) raceHud.enabled = false;
+            ShowKeyboard();
+        }
+
+        void ShowKeyboard()
+        {
+            if (!TouchScreenKeyboard.isSupported) return;
+            TouchScreenKeyboard.hideInput = true;
+            keyboard = TouchScreenKeyboard.Open(typed, TouchScreenKeyboardType.Default, false, false, false, false, placeholder, MaxName);
+        }
+
+        // OK with an empty field, or the skip button, keeps the current name.
+        internal void CloseName(bool save)
+        {
+            string name = typed.Trim();
+            if (keyboard != null) keyboard.active = false;
+            keyboard = null;
+            PlayerPrefs.SetInt(NameAskedKey, 1);
+            PlayerPrefs.Save();
+            Close();
+            if (!save || name.Length == 0) return;
+            if (game != null) game.Rename(name);
+            Race.RaceDirector.Instance?.Rename(name);
+            Debug.Log("[Avatar] name set: " + name);
+        }
+
+        internal void Type(string text) => typed = text.Length > MaxName ? text.Substring(0, MaxName) : text;
+
+        void UpdateName()
+        {
+            if (keyboard != null)
+            {
+                Type(keyboard.text ?? "");
+                if (keyboard.status == TouchScreenKeyboard.Status.Done) CloseName(true);
+                return;
+            }
+            foreach (char c in Input.inputString)
+            {
+                if (c == '\b') { if (typed.Length > 0) typed = typed.Substring(0, typed.Length - 1); }
+                else if (c == '\n' || c == '\r') { CloseName(true); return; }
+                else if (!char.IsControl(c)) Type(typed + c);
+            }
+        }
+
+        bool NameAsked => PlayerPrefs.GetInt(NameAskedKey, 0) == 1 || ButtonSuppressed
+            || Environment.GetCommandLineArgs().Contains("-name");
 
         void Fail(string text)
         {
@@ -342,7 +404,7 @@ namespace Dogpatch.Gameplay
         bool PauseChipVisible => stage == Stage.Closed && hud != null && hud.Paused;
 
         // Free roam only: never in the mission lobby, on the grid, mid-race or on the results.
-        bool PortraitVisible => stage == Stage.Closed && portrait != null && !ButtonSuppressed && (hud == null || !hud.Paused)
+        bool PortraitVisible => (stage == Stage.Closed || stage == Stage.Menu) && portrait != null && !ButtonSuppressed && (hud == null || !hud.Paused)
             && !HudLayout.LobbyShowing && !(Race.RaceDirector.Instance is Race.RaceDirector race && (race.Gridded || race.Locked));
 
         // The portrait button in screen pixels, origin bottom-left.
@@ -385,7 +447,22 @@ namespace Dogpatch.Gameplay
             {
                 case Stage.Closed:
                     if (PauseChipVisible) list.Add(("open", PauseChipRect()));
-                    if (PortraitVisible) list.Add(("open", PortraitRect()));
+                    if (PortraitVisible) list.Add(("menu", PortraitRect()));
+                    break;
+                case Stage.Menu:
+                    if (!PortraitVisible) break;
+                    var portraitRect = PortraitRect();
+                    list.Add(("menu", portraitRect));
+                    float mw = 250f * s, mh = 46f * s;
+                    list.Add(("open", new Rect(portraitRect.x, portraitRect.y - 14f * s - mh, mw, mh)));
+                    list.Add(("name", new Rect(portraitRect.x, portraitRect.y - 2f * (14f * s + mh), mw, mh)));
+                    break;
+                case Stage.Name:
+                    var field = NameField();
+                    float gap = 16f * s;
+                    list.Add(("field", field));
+                    list.Add(("keep", new Rect(field.x - gap - 100f * s, field.y, 100f * s, field.height)));
+                    list.Add(("ok", new Rect(field.xMax + gap, field.y, 130f * s, field.height)));
                     break;
                 case Stage.Viewfinder:
                 case Stage.Refused:
@@ -398,6 +475,17 @@ namespace Dogpatch.Gameplay
                     break;
             }
             return list;
+        }
+
+        // One row under the title, X | field | OK, at the top of the screen so the keyboard never
+        // covers it; origin bottom-left.
+        Rect NameField()
+        {
+            float s = Scale;
+            var safe = HudLayout.Safe;
+            float row = Mathf.Min(safe.width - 72f * s, 900f * s), h = 88f * s;
+            float w = row - 100f * s - 130f * s - 32f * s;
+            return new Rect(safe.center.x - row / 2f + 100f * s + 16f * s, safe.yMax - 96f * s - h, w, h);
         }
 
         // Touches on the card and the chip never become a drag or a jump. The HUD owns
@@ -436,7 +524,12 @@ namespace Dogpatch.Gameplay
             }
 
             HookDrag();
+            if (stage == Stage.Closed && !NameAsked && game != null && game.IsReady && (hud == null || !hud.Paused) && FindAnyObjectByType<LoadingCard>() == null
+                && !(Race.RaceDirector.Instance is Race.RaceDirector race && (race.Gridded || race.Locked))) OpenName();
+            if (stage == Stage.Menu && !PortraitVisible) stage = Stage.Closed;
+            if (stage == Stage.Name) UpdateName();
             var buttons = Buttons();
+            if (down && stage == Stage.Menu && Hit(buttons, p) == null) stage = Stage.Closed;
             if (down) pressed = Hit(buttons, p);
             if (!up || pressed == null) return;
             string id = pressed;
@@ -447,7 +540,12 @@ namespace Dogpatch.Gameplay
         // What a tap on a button does; AvatarUiCapture drives the screens through it too.
         internal void Press(string id)
         {
-            if (id == "open") Open();
+            if (id == "menu") stage = stage == Stage.Menu ? Stage.Closed : Stage.Menu;
+            else if (id == "name") OpenName();
+            else if (id == "ok") CloseName(true);
+            else if (id == "keep") CloseName(false);
+            else if (id == "field") ShowKeyboard();
+            else if (id == "open") Open();
             else if (id == "shutter") Shoot();
             else if (id == "flip") Flip();
             else if (id == "skip") Close();
@@ -481,9 +579,15 @@ namespace Dogpatch.Gameplay
                 Label(new Rect(chip.x + 52f * s, chip.y, chip.width, chip.height), "AVATAR", down ? Ink : White, 18f * s);
                 return;
             }
-            if (stage == Stage.Closed)
+            if (stage == Stage.Closed || stage == Stage.Menu)
             {
                 if (PortraitVisible) DrawPortrait();
+                if (stage == Stage.Menu) DrawMenu();
+                return;
+            }
+            if (stage == Stage.Name)
+            {
+                DrawName();
                 return;
             }
 
@@ -513,7 +617,7 @@ namespace Dogpatch.Gameplay
         {
             float s = Scale;
             var rect = PortraitRect();
-            if (pressed == "open")
+            if (pressed == "menu")
             {
                 var c = rect.center + new Vector2(3f * s, -3f * s);
                 rect = new Rect(c.x - rect.width * 0.46f, c.y - rect.height * 0.46f, rect.width * 0.92f, rect.height * 0.92f);
@@ -522,6 +626,42 @@ namespace Dogpatch.Gameplay
             BeginShapes();
             Ring(rect.center, rect.width * 0.5f, 4f * s, PlayerColor);
             EndShapes();
+        }
+
+        void DrawMenu()
+        {
+            float s = Scale;
+            var chips = Buttons().Where(b => b.id != "menu").ToList();
+            BeginShapes();
+            foreach (var (id, rect) in chips) Para(rect, pressed == id ? White : Ink);
+            EndShapes();
+            foreach (var (id, rect) in chips)
+                Label(rect, id == "open" ? "RETAKE PHOTO" : "CHANGE NAME", pressed == id ? Ink : White, 20f * s);
+        }
+
+        // YOUR NAME: a big white field with the name (or the grey "Racer NN" it keeps), an OK tick
+        // and a skip.
+        void DrawName()
+        {
+            float s = Scale;
+            var title = TagRect("YOUR NAME");
+            var field = NameField();
+            BeginShapes();
+            Dim();
+            Para(title, Ink);
+            Para(new Rect(field.x - 4f * s, field.y - 4f * s, field.width + 8f * s, field.height + 8f * s), Ink);
+            Para(field, White);
+            foreach (var (id, rect) in Buttons())
+            {
+                bool down = pressed == id;
+                if (id == "ok") Plate(rect, Sunshine, Ink, down, r => TickPictogram(r.center, r.height * 0.26f, down ? Sunshine : Ink));
+                else if (id == "keep") Plate(rect, Ink, White, down, r => ClosePictogram(r.center, r.height * 0.22f, down ? Ink : White));
+            }
+            EndShapes();
+            Label(title, "YOUR NAME", Sunshine, 34f * s);
+            bool caret = typed.Length < MaxName && Mathf.Repeat(Time.unscaledTime, 1f) < 0.55f;
+            string shown = typed.Length > 0 ? typed + (caret ? "|" : "") : (caret ? "|" : "") + placeholder;
+            Label(field, shown, typed.Length > 0 ? Ink : new Color(Ink.r, Ink.g, Ink.b, 0.35f), 40f * s);
         }
 
         void LateUpdate()
@@ -740,6 +880,14 @@ namespace Dogpatch.Gameplay
             Line(c + new Vector2(k * 1.2f, k * 0.4f), c + new Vector2(k * 0.6f, k * 0.95f), t, stroke);
             Line(c + new Vector2(k * 1.3f, -k * 0.4f), c + new Vector2(-k * 1.2f, -k * 0.4f), t, stroke);
             Line(c + new Vector2(-k * 1.2f, -k * 0.4f), c + new Vector2(-k * 0.6f, -k * 0.95f), t, stroke);
+        }
+
+        static void TickPictogram(Vector2 c, float k, Color stroke)
+        {
+            float t = Mathf.Max(2f, k * 0.34f);
+            var knee = c + new Vector2(-k * 0.35f, -k * 0.75f);
+            Line(c + new Vector2(-k * 1.1f, 0f), knee, t, stroke);
+            Line(knee, c + new Vector2(k * 1.2f, k * 0.85f), t, stroke);
         }
 
         static void ClosePictogram(Vector2 c, float k, Color stroke)
