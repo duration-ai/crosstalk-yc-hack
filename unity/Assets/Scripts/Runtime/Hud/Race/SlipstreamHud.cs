@@ -360,51 +360,7 @@ namespace Dogpatch.Slipstream
         void Lobby(Room room)
         {
             Gameplay.HudLayout.LobbyShowing = true;
-            var racers = Race.Last.racers.OrderBy(r => r.slot).ToList();
-            var at = Gameplay.HudLayout.LobbyPanel;
-            float y = at.y;
-            for (int i = 0; i < racers.Count; i++)
-            {
-                var r = racers[i];
-                bool me = r.playerId == Race.MyId;
-                float slide = Mathf.Clamp01((Time.time - lobbyShownAt - i * 0.07f) / 0.26f);
-                float dx = (1f - Overshoot(slide)) * -(at.x + 220f * s);
-                var block = new Rect(at.x + dx, y, 30f * s, 24f * s);
-                var bar = new Rect(block.xMax + 3f * s, y, 150f * s, 24f * s);
-                if (slide < 1f) Stripes(block.x - 6f * s, y + 5f * s, 20f * s, 46f * s, SlotColor(r.color), false);
-                Panel(bar, me ? Ink : Paper);
-                Panel(block, SlotColor(r.color));
-                if (!Race.Online) Icon(new Rect(block.x + 6f * s, block.y + 2f * s, 20f * s, 20f * s), r.ready ? "ready" : "dash", White);
-                Text(new Rect(bar.x + 12f * s, bar.y, bar.width, bar.height), r.displayName.ToUpperInvariant(), 14f, me ? White : Ink);
-                y += 31f * s;
-            }
-
-            if (room.status == RoomStatus.Countdown)
-            {
-                float f = Race.MsToStart / 1000f;
-                int secs = Mathf.Clamp(Mathf.CeilToInt(f), 0, 99);
-                var label = secs.ToString("00");
-                var size = Measure(label, 44f);
-                var r = new Rect(Screen.width * 0.5f - size.x * 0.5f, top - 4f * s, size.x, size.y);
-                Text(r, label, 44f, Sun, TextAnchor.UpperLeft, 2.4f * s);
-                int count = 10;
-                float segW = 9f * s;
-                float gap = 3f * s;
-                float x0 = Screen.width * 0.5f - (count * (segW + gap) - gap) * 0.5f;
-                for (int i = 0; i < count; i++)
-                {
-                    var seg = new Rect(x0 + i * (segW + gap), r.yMax + 1f * s, segW, 5f * s);
-                    if (i < secs) Panel(seg, Sun);
-                    else if (i == secs)
-                    {
-                        float p = Mathf.Clamp01((secs + 1 - f) * 2.2f);
-                        if (p >= 1f) continue;
-                        seg.y += EaseOut(p) * 18f * s;
-                        Panel(seg, new Color(Sun.r, Sun.g, Sun.b, 1f - p));
-                    }
-                    else Panel(seg, new Color(Ink.r, Ink.g, Ink.b, 0.35f));
-                }
-            }
+            HudV3.ArrivalCard.Draw(Race, room, lobbyShownAt);
 
             ReadyButton(Race.Me != null && Race.Me.ready);
         }
