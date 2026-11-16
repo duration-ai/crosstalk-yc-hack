@@ -79,7 +79,7 @@ namespace Dogpatch.Look
                 while (Flat(target - car.transform.position).magnitude > 12f)
                 {
                     minY = Mathf.Min(minY, car.transform.position.y);
-                    if (car.transform.position.y < -2f)
+                    if (car.transform.position.y < -1f)
                     {
                         falls++;
                         Debug.LogError($"[SomaSmoke] fell through at {car.transform.position}");
