@@ -33,6 +33,7 @@ export type Answers = {
   nearest: ChoiceAnswer;
   nearest_vehicle: ChoiceAnswer;
   stretch: number;
+  everyone: number;
 };
 
 export type ViewEntity = {
@@ -84,6 +85,7 @@ export type EffectCommand = {
   vehicle: string;
   confirm: boolean;
   substitute?: boolean;
+  who?: "ME" | "EVERYONE";
 };
 
 export type Command = EffectCommand | { kind: "refuse"; reason: RefusalReason };
@@ -284,6 +286,7 @@ export function decide(a: Answers, view: View, active: ActiveSummary[]): Command
     case "players": {
       const effect = a.player_effect.choice;
       if (effect === NONE || !PLAYER_EFFECTS[effect]) return refuse("vague");
+      if (effect === "bigger" && view.mode === "driving" && a.other_player < 0.5 && !forEveryone(a)) return onCar(a, "grow", OWN_CAR, false);
       return effectCommand(a, "players", effect, { confirm: a.other_player >= 0.5 });
     }
     case "world": {
@@ -390,6 +393,9 @@ export function standInLine(transcript: string, label: string, vehicle: string) 
   for (const ch of transcript) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
   return STAND_IN_LINES[hash % STAND_IN_LINES.length](thing);
 }
+
+/** The ask explicitly covers every player (everyone, all of us, every car), not just the caller. */
+export const forEveryone = (a: Answers) => a.everyone >= 0.7;
 
 const OWN_CAR: ViewEntity = {
   id: "veh_me",

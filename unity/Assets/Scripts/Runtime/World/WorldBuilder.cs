@@ -233,6 +233,8 @@ namespace Dogpatch.World
             ctx.PlayerSpawn = new Pose2D { Position = MeshBuilder.At(start + right * (hw + 1.2f), (curbed ? RoadSurface.SidewalkY : 0f) + 0.05f), Heading = heading, Street = street };
             ctx.HeroCar = new Pose2D { Position = MeshBuilder.At(heroAt, (curbed ? RoadSurface.RoadY : 0f) + 0.05f), Heading = heading, Street = street };
             ctx.Surface.PlanParking(random, ctx.ParkedCars, new List<Vector2> { heroAt });
+            int beyond = 0;
+            ctx.ParkedCars.RemoveAll(car => car.Position.z > CityRegions.DogpatchNorth && beyond++ % 3 != 0);
         }
 
         public static GameObject Emit(Transform parent, string name, Mesh mesh, Material material, bool shadows)

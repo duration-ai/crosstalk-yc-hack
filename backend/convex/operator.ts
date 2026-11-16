@@ -5,7 +5,7 @@ import { action, internalMutation, internalQuery, mutation, query, type Mutation
 import { askJev, buildInput, buildQuestions, JevUnavailable } from "./jev";
 import { fail, getPlayer, movementMode } from "./model";
 import { COUNTERS, EXCLUSIVE, SELF_EFFECTS, effectInfo, isA, rollDuration } from "./operatorCatalogue";
-import { CAR_EFFECTS, decide, nextBest, REFUSAL_MESSAGES, standInLine, type Command, type EffectCommand, type RefusalReason, type View } from "./operatorRules";
+import { CAR_EFFECTS, decide, forEveryone, nextBest, REFUSAL_MESSAGES, standInLine, type Answers, type Command, type EffectCommand, type RefusalReason, type View } from "./operatorRules";
 import { getMembership, getRoom, phase } from "./raceModel";
 
 const MAX_TRANSCRIPT = 300;
@@ -116,8 +116,11 @@ const operatorSelfScope = () => process.env.OPERATOR_SELF_SCOPE !== "false";
  * SELF effects tag the caller ("self:<playerId>"); car effects aimed at a whole class of vehicles or
  * at another racer's car go on the caller's own car instead, with no confirm.
  */
-export function selfScoped(command: EffectCommand, playerId: string): EffectCommand {
+export function selfScoped(command: EffectCommand, playerId: string, everyone = false): EffectCommand {
   const own = `car:${playerId}`;
+  if (everyone && (SELF_EFFECTS.has(command.effect) || CAR_EFFECTS.has(command.effect))) {
+    return { ...command, scope: "players", target: "", targetClass: "", confirm: false, who: "EVERYONE" };
+  }
   if (SELF_EFFECTS.has(command.effect) && (command.scope === "players" || command.scope === "world")) {
     return { ...command, target: `self:${playerId}`, targetClass: "", confirm: false };
   }
@@ -270,7 +273,8 @@ export const call = action({
       command = { kind: "refuse", reason: "unavailable" };
     }
     if (command.kind === "effect" && command.target === "veh_me") command = { ...command, target: `car:${playerId}` };
-    if (command.kind === "effect" && operatorSelfScope()) command = selfScoped(command, playerId);
+    if (command.kind === "effect" && operatorSelfScope()) command = selfScoped(command, playerId, !!answers && forEveryone(answers as Answers));
+    if (command.kind === "effect" && !command.who && (command.target.startsWith("self:") || command.target === `car:${playerId}`)) command = { ...command, who: "ME" };
 
     const result: CallResult = await ctx.runMutation(internal.operator.apply, {
       roomId,
@@ -318,7 +322,7 @@ export const apply = internalMutation({
       result =
         row.status === "pending"
           ? { outcome: "pending", effect, refusal: null, line: "Confirm for everyone?" }
-          : { outcome: "applied", effect, refusal: null, line: command.substitute ? standInLine(args.transcript, effect.label, effect.vehicle) : `${effect.label}!` };
+          : { outcome: "applied", effect, refusal: null, line: (command.substitute ? standInLine(args.transcript, effect.label, effect.vehicle) : `${effect.label}!`) + (command.who ? ` · ${command.who}` : "") };
     }
     const timings = { jevMs: args.timings.jevMs, attempts: args.timings.attempts, totalMs: now - args.timings.startedAt };
     await ctx.db.insert("operatorCalls", {

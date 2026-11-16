@@ -1,15 +1,17 @@
 import { v } from "convex/values";
 import { internalMutation } from "./_generated/server";
 import { getPlayer, vec3 } from "./model";
-import { COLORS, MAX_PLAYERS, isLocked, missionPatch, phase, roomPlayers } from "./raceModel";
+import { COLORS, MAX_PLAYERS, missionPatch, phase, roomPlayers, takesLateJoin } from "./raceModel";
 import { addRacer, insertRoom, joinedResponse, leaveOtherRooms } from "./rooms";
 
 const CANDIDATES = 30;
 
 // Stepping into a mission's ring: the player joins the open race room for that mission in their
-// world shard, or opens one. The room counts down once it has minPlayers (default 2) and restarts
-// the countdown on every join, so the race launches through the ordinary race room. A racer takes
-// the slot of their world colour when it is free, so their colour doesn't change in the race.
+// world shard, or opens one. The room counts down once at least two racers are in it and all are
+// ready, so the race launches through the ordinary race room. A room in its locked last seconds or
+// under ten seconds into its race takes the player straight onto its grid, already ready; past that
+// they open the next lobby. A racer takes the slot of their world colour when it is free, so their
+// colour doesn't change in the race.
 export const enter = internalMutation({
   args: {
     playerId: v.string(),
@@ -50,13 +52,14 @@ export const enter = internalMutation({
 
     for (const room of recent) {
       const status = phase(room, now);
-      if (status !== "lobby" && status !== "countdown") continue;
+      const late = takesLateJoin(room, now);
+      if (!late && status !== "lobby" && status !== "countdown") continue;
       const rows = await roomPlayers(ctx, room._id);
-      if (isLocked(room, now) || rows.length >= MAX_PLAYERS) continue;
+      if (rows.length >= MAX_PLAYERS) continue;
       await leaveOtherRooms(ctx, player._id, room._id, now);
       const taken = new Set(rows.map((row) => row.slot));
-      await addRacer(ctx, room, player, slotFor(taken), now);
-      await ctx.db.patch(room._id, missionPatch(room, await roomPlayers(ctx, room._id), now));
+      await addRacer(ctx, room, player, slotFor(taken), now, late);
+      if (!late) await ctx.db.patch(room._id, missionPatch(room, await roomPlayers(ctx, room._id), now));
       return joinedResponse(ctx, room._id, player._id, now);
     }
 

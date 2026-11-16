@@ -46,12 +46,18 @@ namespace Dogpatch.Slipstream
             return true;
         }
 
-        // Top centre, under the countdown: the mission's name and how many more racers it needs.
+        // Top centre, under the countdown: the mission's name and how many more racers it needs or how long
+        // until it starts, or while
+        // the route's last race is still running, who's in it and roughly when it ends.
         void MissionPlate(Room room)
         {
-            if (room.status != RoomStatus.Lobby) return;
+            if (room.status != RoomStatus.Lobby && room.status != RoomStatus.Countdown) return;
             int unready = room.playerCount - room.readyCount;
-            var label = "RACE: " + Race.RouteName(Race.RouteId) + (room.playerCount < 2 ? "  ·  WAITING FOR RACERS" : unready > 0 ? "  ·  WAITING FOR " + unready + " TO READY" : "  ·  ALL READY");
+            var running = Race.Running;
+            long endsIn = running == null ? 0 : (running.endsAt - Race.NowMs + 999) / 1000;
+            var label = running != null
+                ? "RACE IN PROGRESS: " + string.Join(", ", running.racers.Select(r => r.displayName)) + " racing  ·  " + (endsIn > 0 ? "ends in ~" + endsIn + "s" : "ending now") + ". You're first in the next lobby"
+                : "RACE: " + Race.RouteName(Race.RouteId) + (room.status == RoomStatus.Countdown ? "  ·  STARTING IN " + Mathf.CeilToInt(Race.MsToStart / 1000f) + "s" : room.playerCount < 2 ? "  ·  WAITING FOR RACERS" : unready > 0 ? "  ·  WAITING FOR " + unready + " TO READY" : "  ·  ALL READY");
             var size = Measure(label, 16f);
             var r = new Rect(Screen.width * 0.5f - size.x * 0.5f - 18f * s, top + 2f * s, size.x + 36f * s, 32f * s);
             Panel(r, Ink);

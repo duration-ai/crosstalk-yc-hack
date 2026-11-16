@@ -69,6 +69,7 @@ Every failure returns this body with the status below:
 | --- | --- | --- |
 | Create player | `POST /api/players` | `players.create` |
 | Get player | `GET /api/players?id=…` | `players.get` |
+| Rename player | `POST /api/players/rename` | `players.rename` |
 | Load player state | `GET /api/player-state?playerId=…` | `playerState.load` |
 | Save player state | `PUT /api/player-state` | `playerState.save` |
 | List vehicles | `GET /api/vehicles` | `vehicles.list` |
@@ -95,6 +96,10 @@ Errors: `400`.
 ### Get player: `GET /api/players?id=<playerId>`
 
 Response `200`: `{ "player": Player }`. Errors: `404` (unknown id), `400` (missing `id`).
+
+### Rename player: `POST /api/players/rename`
+
+Request: `{ "playerId": "jd7…", "displayName": "Sudhir" }`. `displayName` is trimmed and must be 1 to 32 characters. The player keeps its id; rooms it has not left and its world presence show the new name at once. Response `200`: `{ "player": Player }`. Errors: `400`, `404`.
 
 ### Load player state: `GET /api/player-state?playerId=<playerId>`
 
@@ -448,9 +453,12 @@ The one call to make at 5–10 Hz, in the lobby and in the race. `after` is the 
   "racers": [ Racer, … ],   // in place order, place 1 first
   "events": [ Event, … ],   // seq > after, oldest first, at most 100
   "cursor": 7,              // pass back as after; unchanged when nothing is new
-  "results": [ Result, … ]  // empty until room.status is "finished"
+  "results": [ Result, … ], // empty until room.status is "finished"
+  "running": null           // mission lobby only: { racers: [{ playerId, displayName, color, colorHex }], endsAt }
 }
 ```
+
+`running` is set while this mission lobby's room is in `lobby` and the same mission's race is counting down or racing in the shard; `endsAt` is the server's estimate of when that race ends (its `closesAt` once someone has finished). Entering a mission's ring while its room is in the locked last 3 s of its countdown, or under 10 s into its race, joins that room already ready instead.
 
 If `events` has 100 entries, poll again straight away. A typical four-racer response is about 1.5 KB. Errors: `400` (`after` is not a non-negative integer), `404` (room).
 

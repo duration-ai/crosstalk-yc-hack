@@ -318,8 +318,9 @@ namespace Dogpatch.Operator
         }
     }
 
-    // Every AI driver floors it, tailgates, runs lights, leans on the horn and weaves in its lane,
-    // with a red anger mark bobbing over each nearby car.
+    // Every AI driver floors it (up to about 2x cruise), tailgates bumper to bumper and shunts whoever is
+    // ahead at the top strength, runs every light, swerves across its lane and leans on the horn, with
+    // a red anger mark bobbing over each nearby car and its brake lights strobing.
     public sealed class RoadRageEffect : OperatorEffect
     {
         static readonly Knob Rage = new Knob();
@@ -327,7 +328,7 @@ namespace Dogpatch.Operator
 
         public override void Apply(string strength, EffectTarget target)
         {
-            k = Scale(strength, 0.4f, 0.7f, 1f);
+            k = Scale(strength, 1f, 1.4f, 1.8f);
             Rage.Add(k);
             TrafficAgent.Rage = Rage.Max;
             if (Context.Host.GetComponent<RoadRageMarks>() == null) Context.Host.gameObject.AddComponent<RoadRageMarks>();
@@ -345,19 +346,33 @@ namespace Dogpatch.Operator
 
     public sealed class RoadRageMarks : MonoBehaviour
     {
+        readonly HashSet<CarController> strobing = new HashSet<CarController>();
+        readonly List<CarController> near = new List<CarController>();
+
         void Update()
         {
-            if (TrafficAgent.Rage <= 0f || TrafficSystem.Instance == null) return;
+            near.Clear();
             var cam = WorldEffectsB.Eye;
-            if (cam == null) return;
-            var sprites = EffectSprites.Get();
-            var eye = cam.transform.position;
-            foreach (var a in TrafficSystem.Instance.Agents)
+            if (TrafficAgent.Rage > 0f && TrafficSystem.Instance != null && cam != null)
             {
-                if (a.OnRail || a.Car == null || (a.transform.position - eye).sqrMagnitude > 90f * 90f) continue;
-                float bob = Mathf.Abs(Mathf.Sin(Time.time * 6f + a.GetInstanceID()));
-                var top = a.transform.position + Vector3.up * (a.Car.HalfExtents.y * 2f + 0.9f + bob * 0.3f);
-                sprites.Mark(EffectSprites.Icon.Anger, top, 0.55f + 0.15f * TrafficAgent.Rage + bob * 0.1f);
+                var sprites = EffectSprites.Get();
+                var eye = cam.transform.position;
+                foreach (var a in TrafficSystem.Instance.Agents)
+                {
+                    if (a.OnRail || a.Car == null || (a.transform.position - eye).sqrMagnitude > 90f * 90f) continue;
+                    float bob = Mathf.Abs(Mathf.Sin(Time.time * 6f + a.GetInstanceID()));
+                    var top = a.transform.position + Vector3.up * (a.Car.HalfExtents.y * 2f + 0.9f + bob * 0.3f);
+                    sprites.Mark(EffectSprites.Icon.Anger, top, 0.8f + 0.2f * TrafficAgent.Rage + bob * 0.15f);
+                    if ((a.transform.position - eye).sqrMagnitude < 45f * 45f) a.Car.GetComponent<VehicleAudio>()?.Signal(UnityEngine.Random.Range(1.5f, 3.5f));
+                    near.Add(a.Car);
+                }
+            }
+            foreach (var car in strobing) if (car != null && !near.Contains(car)) car.BrakeStrobe = false;
+            strobing.Clear();
+            foreach (var car in near)
+            {
+                car.BrakeStrobe = true;
+                strobing.Add(car);
             }
         }
     }
@@ -952,6 +967,11 @@ namespace Dogpatch.Operator
             var car = go.GetComponent<CarController>();
             var body = go.GetComponent<Rigidbody>();
             var colliders = go.GetComponentsInChildren<Collider>();
+            if (car != null && (kind == "ghost" || kind == "see_through"))
+            {
+                car.Phasing++;
+                undo.Add(() => { if (car != null) car.Phasing--; });
+            }
             void Swap(PhysicsMaterial with)
             {
                 foreach (var c in colliders)

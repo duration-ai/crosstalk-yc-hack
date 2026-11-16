@@ -371,7 +371,7 @@ namespace Dogpatch.Slipstream
                 Panel(bar, me ? Ink : Paper);
                 Panel(block, SlotColor(r.color));
                 if (!Race.Online) Icon(new Rect(block.x + 6f * s, block.y + 2f * s, 20f * s, 20f * s), r.ready ? "ready" : "dash", White);
-                Text(new Rect(bar.x + 12f * s, bar.y, bar.width, bar.height), me ? "YOU" : r.displayName.ToUpperInvariant(), 14f, me ? White : Ink);
+                Text(new Rect(bar.x + 12f * s, bar.y, bar.width, bar.height), r.displayName.ToUpperInvariant(), 14f, me ? White : Ink);
                 y += 31f * s;
             }
 

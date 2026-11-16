@@ -21,7 +21,7 @@ namespace Dogpatch.Race
     // -speeddial-mission (walk into the ring on launch), -speeddial-autopilot.
     public sealed partial class RaceDirector
     {
-        const string NameKey = "speeddial.name";
+        public const string NameKey = "speeddial.name";
         const int ConnectTimeoutSeconds = 6;
         const int RequestTimeoutSeconds = 3;
         const float WorldEvery = 1f / 15f;
@@ -108,6 +108,34 @@ namespace Dogpatch.Race
             {
                 Debug.LogWarning($"[SpeedDial] race backend unreachable at {url} ({e.GetBaseException().Message}); racing offline with bots");
             }
+        }
+
+        [Serializable] class RenameRequest { public string playerId; public string displayName; }
+
+        // The name the player typed: kept for the next launch and, online, set on the server under
+        // the same player id, which renames this racer in every lobby, tag and result.
+        public void Rename(string name)
+        {
+            MyName = name;
+            PlayerPrefs.SetString(NameKey, name);
+            PlayerPrefs.Save();
+            (Session as LocalRaceSession)?.Rename(MyId, name);
+            if (Online && !string.IsNullOrEmpty(MyId))
+                StartCoroutine(PostRename(convex.BaseUrl, JsonUtility.ToJson(new RenameRequest { playerId = MyId, displayName = name })));
+        }
+
+        IEnumerator PostRename(string url, string body)
+        {
+            using var request = new UnityEngine.Networking.UnityWebRequest(url + "/api/players/rename", "POST")
+            {
+                uploadHandler = new UnityEngine.Networking.UploadHandlerRaw(System.Text.Encoding.UTF8.GetBytes(body)),
+                downloadHandler = new UnityEngine.Networking.DownloadHandlerBuffer(),
+                timeout = ConnectTimeoutSeconds,
+            };
+            request.SetRequestHeader("Content-Type", "application/json");
+            yield return request.SendWebRequest();
+            if (request.result == UnityEngine.Networking.UnityWebRequest.Result.Success) Debug.Log($"[SpeedDial] renamed to {MyName}");
+            else Debug.LogWarning($"[SpeedDial] rename failed: {request.responseCode} {request.error} {request.downloadHandler.text}");
         }
 
         // Player ids from another deployment or a wiped dev database come back NOT_FOUND: make a new one.

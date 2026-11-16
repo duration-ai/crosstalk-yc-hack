@@ -27,6 +27,7 @@ type Spec = {
   nearest?: string;
   nearest_vehicle?: string;
   stretch?: number;
+  everyone?: number;
   confidence?: Record<string, number>;
 };
 
@@ -60,6 +61,7 @@ function answers(spec: Spec): Answers {
     nearest: c("nearest", "none"),
     nearest_vehicle: c("nearest_vehicle", "none"),
     stretch: spec.stretch ?? 0.05,
+    everyone: spec.everyone ?? 0.02,
   };
 }
 
@@ -506,5 +508,24 @@ describe("stop all cars", () => {
     expect(decide(answers({ scope: "class", object_effect: "stop", class: "bus" }), onFoot, [])).toEqual(
       effect({ scope: "class", effect: "stop", targetClass: "bus" }),
     );
+  });
+});
+
+describe("supersize", () => {
+  it("supersizes the car you drive, whether you say me or my car", () => {
+    const me = answers({ scope: "players", player_effect: "bigger", self_ref: 0.95 });
+    expect(decide(me, driving, [])).toEqual(effect({ scope: "object", effect: "grow", target: "veh_me", confirm: false }));
+    const myCar = answers({ scope: "object", object_effect: "grow", class: "car", target: "veh_me", self_ref: 0.95 });
+    expect(decide(myCar, driving, [])).toEqual(effect({ scope: "object", effect: "grow", target: "veh_me" }));
+    expect(OBJECT_EFFECTS.grow.label).toBe("Supersize");
+  });
+
+  it("supersizes everyone as Giants even while driving", () => {
+    const all = answers({ scope: "players", player_effect: "bigger", self_ref: 0.9, everyone: 0.95 });
+    expect(decide(all, driving, [])).toEqual(effect({ scope: "players", effect: "bigger" }));
+  });
+
+  it("keeps a supersized player on foot as Giants", () => {
+    expect(decide(answers({ scope: "players", player_effect: "bigger", self_ref: 0.95 }), onFoot, [])).toEqual(effect({ scope: "players", effect: "bigger" }));
   });
 });

@@ -67,7 +67,7 @@ namespace Dogpatch.Operator
 
             foreach (var id in ids)
             {
-                bool foot = OnFoot.Contains(id);
+                bool foot = OnFoot.Contains(id) || (id == "change_vehicle" && Environment.GetEnvironmentVariable("EFFECT_ON_FOOT") == "1");
                 heading = dir;
                 throttle = 0f;
                 walking = false;
@@ -99,13 +99,26 @@ namespace Dogpatch.Operator
                 yield return Frames(45);
                 yield return Shot(id + "-1-before");
 
-                var row = new ActiveEffect
+                var rows = new List<ActiveEffect>();
+                foreach (var part in id.Split('+'))
                 {
-                    id = "capture-" + id, effect = id, scope = Array.IndexOf(Players, id) >= 0 ? "players" : "world", strength = strength,
-                    status = "active", instant = false, startsAt = effects.ServerNow(), endsAt = effects.ServerNow() + 120000, durationS = 120, label = id, requestedBy = id == "change_vehicle" ? EntityTagger.MyPlayerId : "capture",
-                    vehicle = id == "change_vehicle" ? Environment.GetEnvironmentVariable("EFFECT_VEHICLE") ?? "sports_car" : null,
-                };
-                effects.Optimistic(row);
+                    var row = new ActiveEffect
+                    {
+                        id = "capture-" + part, effect = part, scope = Array.IndexOf(Players, part) >= 0 ? "players" : "world", strength = strength,
+                        status = "active", instant = false, startsAt = effects.ServerNow(), endsAt = effects.ServerNow() + 120000, durationS = 120, label = part, requestedBy = part == "change_vehicle" ? EntityTagger.MyPlayerId : "capture",
+                        vehicle = part == "change_vehicle" ? Environment.GetEnvironmentVariable("EFFECT_VEHICLE") ?? "sports_car" : null,
+                    };
+                    if ((part == "ghost" || part == "see_through") && car != null)
+                    {
+                        var tag = car.GetComponent<EntityTag>() ?? EntityTag.Add(car.gameObject, "car:capture", "car", "capture car", "", false, "me");
+                        row.scope = "object";
+                        row.target = tag.Id;
+                        row.targetClass = tag.Class;
+                    }
+                    effects.Optimistic(row);
+                    rows.Add(row);
+                }
+                effects.OnActiveList(rows.ToArray());
                 if (id == "cars_on_water") yield return ToWater();
                 if (id == "floaty_crashes") Obstacles();
                 yield return Frames(45);
@@ -116,8 +129,18 @@ namespace Dogpatch.Operator
                 }
                 var shape = game.Player.Visual != null ? game.Player.Visual.Find("Shape (operator)") : null;
                 Debug.Log($"[WorldEffectCapture] {id}: player at {game.Player.transform.position}, visual {game.Player.Visual?.name}, shape {(shape != null ? shape.localScale.ToString() : "none")}, car {(game.CurrentCar != null ? $"{game.CurrentCar.name} {game.CurrentCar.transform.position} speed {game.CurrentCar.Speed:F1} driven {game.CurrentCar.Driven} kinematic {game.CurrentCar.GetComponent<Rigidbody>().isKinematic} visual {Racers.CarVisual(game.CurrentCar)?.lossyScale}" : "none")}, camera {game.View.transform.position}");
+                Ground(id + " both on");
                 yield return Shot(id + "-2-during");
-                yield return Frames(75);
+                if (rows.Count > 1)
+                {
+                    effects.OnActiveList(rows.GetRange(1, rows.Count - 1).ToArray());
+                    Debug.Log($"[WorldEffectCapture] {id}: ended {rows[0].effect}, landing");
+                }
+                for (int i = 0; i < 5; i++)
+                {
+                    yield return Frames(15);
+                    Ground(id + $" +{(i + 1) * 15}f");
+                }
                 yield return Shot(id + "-3-during-late");
                 effects.ResetAll();
                 yield return Frames(100);
@@ -165,6 +188,16 @@ namespace Dogpatch.Operator
         {
             if (walking && game != null && game.Player != null && game.Player.isActiveAndEnabled) game.Player.SetInput(heading, 0.6f);
             if (!walking && car != null && throttle > 0f) car.SetInput(heading, throttle);
+        }
+
+        // Whether ground effects reach the car right now, and what they have done to it so far.
+        void Ground(string label)
+        {
+            var c = game.CurrentCar;
+            if (c == null) return;
+            var damage = c.GetComponent<Smash.VehicleDamage>();
+            var under = Physics.Raycast(c.transform.position + Vector3.up * 0.05f, Vector3.down, out var hit, 0.05f + CarController.GroundReach, ~0, QueryTriggerInteraction.Ignore) ? hit.collider.name : "nothing";
+            Debug.Log($"[WorldEffectCapture] {label}: car y {c.transform.position.y:F2}, onGround {c.OnGround} ({under}), speed {c.Speed:F1}, damage {(damage != null ? damage.Damage : 0f):F1}, traction {WorldChanges.CarFx.Traction:F3}");
         }
 
         IEnumerator Shot(string name)
