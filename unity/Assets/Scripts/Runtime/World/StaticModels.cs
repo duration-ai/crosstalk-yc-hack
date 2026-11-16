@@ -175,6 +175,7 @@ namespace Dogpatch.World
                 var mesh = new Mesh { name = name, indexFormat = IndexFormat.UInt32 };
                 mesh.CombineMeshes(combine.ToArray(), true, true);
                 mesh.RecalculateBounds();
+                Compact(mesh);
                 bool shadows = key.Item1 != Layer.BuildingsFar;
                 var go = WorldBuilder.Emit(parent, name, mesh, material, shadows);
                 lod.Add(key.Item1, key.Item2, go.GetComponent<MeshRenderer>());
@@ -221,6 +222,22 @@ namespace Dogpatch.World
                     if (collider != null) go.AddComponent<MeshCollider>().sharedMesh = collider;
                 }
             }
+        }
+
+        // Merged chunks are most of the world's mesh memory (tens of millions of vertices once South Beach
+        // is drivable). Packing normals into bytes and colours into halves takes a vertex from 40 bytes to
+        // 24, in the CPU copy and on the GPU, and the data converts in place. Positions stay full floats.
+        static readonly VertexAttributeDescriptor[] CompactLayout =
+        {
+            new VertexAttributeDescriptor(VertexAttribute.Position, VertexAttributeFormat.Float32, 3),
+            new VertexAttributeDescriptor(VertexAttribute.Normal, VertexAttributeFormat.SNorm8, 4),
+            new VertexAttributeDescriptor(VertexAttribute.Color, VertexAttributeFormat.Float16, 4),
+        };
+
+        static void Compact(Mesh mesh)
+        {
+            if (!mesh.HasVertexAttribute(VertexAttribute.Normal) || !mesh.HasVertexAttribute(VertexAttribute.Color) || mesh.HasVertexAttribute(VertexAttribute.TexCoord0)) return;
+            mesh.SetVertexBufferParams(mesh.vertexCount, CompactLayout);
         }
 
         static Bounds RangeBounds(Mesh mesh, Part part)
