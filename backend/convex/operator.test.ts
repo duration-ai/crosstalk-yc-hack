@@ -26,7 +26,7 @@ function jevReply(picks: Record<string, string | number>) {
         const choice = String(picks[name] ?? DEFAULTS[name] ?? "none");
         return { type: "choice", name, choice, confidence: 0.97, probabilities: [{ value: choice, probability: 0.97 }] };
       }),
-      ...["described", "self_ref", "other_player", "stretch"].map((name) => ({ type: "predicate", name, probability: picks[name] ?? 0.02 })),
+      ...["described", "self_ref", "other_player", "stretch", "everyone"].map((name) => ({ type: "predicate", name, probability: picks[name] ?? 0.02 })),
     ],
   };
 }
@@ -105,7 +105,7 @@ describe("operator.call", () => {
     expect(requests[0].body.questions.map((q: { name: string }) => q.name)).toEqual([
       "scope", "player_effect", "world_group", "sky_effect", "physics_effect", "population_effect", "object_effect",
       "class", "target", "described", "self_ref", "other_player", "strength", "color", "theme", "vehicle", "reject_reason",
-      "nearest", "nearest_vehicle", "stretch",
+      "everyone", "nearest", "nearest_vehicle", "stretch",
     ]);
     expect(await effects()).toEqual([result.effect]);
 
@@ -283,6 +283,25 @@ describe("operator.call", () => {
     expect(await asksOf(maya.id)).toBe(2);
     const log = await t.run((ctx) => ctx.db.query("operatorCalls").collect());
     expect(log[log.length - 1]).toMatchObject({ transcript: "roll in the fog", outcome: "refused", reason: "no_asks" });
+  });
+
+  it("tells me from everyone: self asks stay on the caller, everyone asks reach every player", async () => {
+    const { tim, say } = await room();
+    const meTiny = await say("make me tiny", { scope: "players", player_effect: "smaller", self_ref: 0.95 });
+    expect(meTiny.effect).toMatchObject({ effect: "smaller", scope: "players", target: `self:${tim.id}` });
+    expect(meTiny.line).toBe("Tiny! · ME");
+    const allTiny = await say("make everyone tiny", { scope: "players", player_effect: "smaller", self_ref: 0.9, everyone: 0.95 });
+    expect(allTiny.effect).toMatchObject({ effect: "smaller", scope: "players", target: "", status: "active" });
+    expect(allTiny.line).toBe("Tiny! · EVERYONE");
+    const heads = await say("give everyone big heads", { scope: "world", world_group: "population", population_effect: "big_heads", everyone: 0.95 });
+    expect(heads.effect).toMatchObject({ effect: "big_heads", scope: "world", target: "" });
+    const fast = await say("make me fast", { scope: "players", player_effect: "run_faster", self_ref: 0.95 });
+    expect(fast.effect).toMatchObject({ effect: "run_faster", target: `self:${tim.id}` });
+    const fastCar = await say("make me fast", { scope: "players", player_effect: "vehicle_faster", self_ref: 0.95 }, tim.id, "driving");
+    expect(fastCar.effect).toMatchObject({ effect: "vehicle_faster", target: `self:${tim.id}` });
+    const bouncy = await say("make all of us bouncy", { scope: "object", object_effect: "bouncy", class: "car", target: "veh_me", self_ref: 0.9, everyone: 0.95 }, tim.id, "driving");
+    expect(bouncy.effect).toMatchObject({ effect: "bouncy", scope: "players", target: "", targetClass: "" });
+    expect(bouncy.line).toBe("Bouncy! · EVERYONE");
   });
 
   it("charges nothing for a declined call and acts on the ask inside chatter", async () => {

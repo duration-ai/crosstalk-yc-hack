@@ -365,12 +365,14 @@ namespace Dogpatch.Operator
     }
 
     // Giants and Tiny: people only, never cars. Resizes the target's on-foot bodies (this device's avatar
-    // when the target includes me) and scales my walking and running speed with my size.
+    // when the target includes me) and scales my walking and running speed with my size. Factors stack
+    // and unwind multiplicatively.
     public sealed class SizeEffect : OperatorEffect
     {
         readonly float low, medium, high;
-        readonly List<(Transform t, Vector3 scale)> resized = new List<(Transform, Vector3)>();
-        GuardedKnob run;
+        readonly List<Transform> resized = new List<Transform>();
+        float k = 1f;
+        float run = 1f;
 
         public SizeEffect(float low, float medium, float high)
         {
@@ -381,28 +383,30 @@ namespace Dogpatch.Operator
 
         public override void Apply(string strength, EffectTarget target)
         {
-            float k = Scale(strength, low, medium, high);
+            k = Scale(strength, low, medium, high);
             var bodies = new HashSet<Transform>();
             foreach (var tag in target.Entities)
                 if (tag != null && tag.Span == null && !tag.TryGetComponent<CarController>(out _)) bodies.Add(tag.transform);
             if (target.IncludesMe && Context.Game.Player != null)
             {
                 bodies.Add(Context.Game.Player.transform);
-                run = GuardedKnob.Times(() => PlayerController.RunScale, v => PlayerController.RunScale = v, Mathf.Max(0.5f, k));
+                run = Mathf.Max(0.5f, k);
+                PlayerController.RunScale *= run;
             }
             foreach (var body in bodies)
             {
-                resized.Add((body, body.localScale));
+                resized.Add(body);
                 body.localScale *= k;
             }
         }
 
+        // Undoes only this row's factor, so a "me" and an "everyone" size that overlap unwind in any order.
         public override void Revert()
         {
-            foreach (var (t, scale) in resized) if (t != null) t.localScale = scale;
+            foreach (var t in resized) if (t != null) t.localScale /= k;
             resized.Clear();
-            run?.Undo();
-            run = null;
+            PlayerController.RunScale /= run;
+            run = 1f;
         }
     }
 
