@@ -64,11 +64,11 @@ namespace Dogpatch.Vehicles
 
         // Morphs car into another type without replacing it: same instance, position, heading and
         // forward speed, so whoever holds the reference (GameController, race bots) keeps it.
-        public static CarController SwapInto(CarController car, string type)
+        public static CarController SwapInto(CarController car, string type, int paint = -1)
         {
             if (car == null) throw new ArgumentNullException(nameof(car));
             var spec = VehicleCatalog.Get(type);
-            int paint = UnityEngine.Random.Range(0, 1000);
+            if (paint < 0) paint = UnityEngine.Random.Range(0, 1000);
             var (visual, bounds) = VehicleModels.Build(spec, paint, SharedMaterial);
             car.Rebuild(spec.Id, visual, bounds);
             Apply(car, spec, paint);

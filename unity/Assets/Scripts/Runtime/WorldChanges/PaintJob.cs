@@ -119,6 +119,8 @@ namespace Dogpatch.WorldChanges
             }
         }
 
+        public Color? Base => baseColor;
+
         public void SetBase(Color? linear)
         {
             baseColor = linear;
