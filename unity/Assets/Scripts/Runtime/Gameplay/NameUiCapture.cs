@@ -21,6 +21,7 @@ namespace Dogpatch.Gameplay
             int i = Array.IndexOf(args, "-nameUiCapture");
             if (i < 0 || i + 1 >= args.Length) return;
             PlayerPrefs.DeleteKey("dogpatch.nameAsked");
+            PlayerPrefs.DeleteKey("dogpatch.racerTicket");
             PlayerPrefs.DeleteKey(Race.RaceDirector.NameKey);
             PlayerPrefs.Save();
             Application.runInBackground = true;
@@ -64,6 +65,8 @@ namespace Dogpatch.Gameplay
             game.Player.Teleport(game.Player.transform.position + new Vector3(60f, 0f, 60f), 0f);
             until = Time.realtimeSinceStartup + 20f;
             while (!capture.Showing("menu") && Time.realtimeSinceStartup < until) yield return null;
+            yield return new WaitForSecondsRealtime(1f);
+            yield return Shot("03b-racer-ticket");
             capture.Press("menu");
             yield return new WaitForSecondsRealtime(0.5f);
             yield return Shot("04-portrait-menu");
