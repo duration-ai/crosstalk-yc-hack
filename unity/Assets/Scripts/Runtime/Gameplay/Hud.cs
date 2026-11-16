@@ -185,12 +185,12 @@ namespace Dogpatch.Gameplay
             var d = tip - a;
             bool down = traceAlpha >= 0.999f;
             bool pushed = d.magnitude > reach * 0.4f;
-            float heading = Mathf.Atan2(d.y, d.x) * Mathf.Rad2Deg;
+            float heading = Mathf.Round(Mathf.Atan2(d.y, d.x) * Mathf.Rad2Deg / 30f) * 30f;
             float outer = reach, inner = reach * 0.8f;
             for (int i = 0; i < 12; i++)
             {
                 float mid = i * 30f;
-                bool lit = pushed && Mathf.Abs(Mathf.DeltaAngle(mid, heading)) < 45f;
+                bool lit = pushed && Mathf.Abs(Mathf.DeltaAngle(mid, heading)) < 31f;
                 var color = lit ? Sunshine : new Color(1f, 1f, 1f, 0.5f * Mathf.Max(traceAlpha, 0.6f));
                 for (int k = 0; k < 3; k++)
                 {
