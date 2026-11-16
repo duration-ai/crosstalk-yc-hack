@@ -345,25 +345,116 @@ namespace Dogpatch.Operator
         }
     }
 
-    // Hyper city: every NPC (traffic, buses, rail, pedestrians) runs at about 2.5-3x while players keep
-    // their own pace. Factors multiply, so overlapping rows unwind in any order.
+    // Hyper city: traffic (cars, buses, rail) runs at about 4x and pedestrians at about 2.5-3x while
+    // players keep their own pace. Every light goes green (through a GreenLightsEffect of its own, so an
+    // overlapping green_lights row keeps its refcount), cars skip stop signs and close up the gaps, and
+    // nearby cars drag speed streaks. Factors multiply, so overlapping rows unwind in any order.
     public sealed class HyperCityEffect : OperatorEffect
     {
-        float k = 1f;
+        float traffic = 1f;
+        float crowd = 1f;
+        GreenLightsEffect lights;
 
         public override void Apply(string strength, EffectTarget target)
         {
-            k = Scale(strength, 2.5f, 2.75f, 3f);
-            TrafficAgent.Hyper *= k;
-            Dogpatch.Ambient.PedestrianSystem.Hyper *= k;
+            traffic = Scale(strength, 3.5f, 4f, 4.5f);
+            crowd = Scale(strength, 2.5f, 2.75f, 3f);
+            TrafficAgent.Hyper *= traffic;
+            Dogpatch.Ambient.PedestrianSystem.Hyper *= crowd;
+            lights = new GreenLightsEffect { Id = Id, Row = Row, Context = Context };
+            lights.Apply(strength, target);
+            if (Context?.Host != null && Context.Host.GetComponent<HyperTrails>() == null) Context.Host.gameObject.AddComponent<HyperTrails>();
+            Dogpatch.Audio.SoundSystem.Play2D("boost_whoosh", Dogpatch.Audio.Bus.Sfx, 1f, 0.7f, 230);
+            Dogpatch.Audio.SoundSystem.Play2D("news_whoosh", Dogpatch.Audio.Bus.Sfx, 0.8f, 0.85f, 225);
         }
 
         public override void Revert()
         {
-            TrafficAgent.Hyper /= k;
-            Dogpatch.Ambient.PedestrianSystem.Hyper /= k;
-            k = 1f;
+            TrafficAgent.Hyper /= traffic;
+            Dogpatch.Ambient.PedestrianSystem.Hyper /= crowd;
+            traffic = crowd = 1f;
+            lights?.Revert();
+            lights = null;
         }
+    }
+
+    // Speed streaks behind the nearest NPC cars while traffic is hyper: one unlit camera-facing trail
+    // per car, capped and pooled by agent, emptied and removed once every hyper row wears off.
+    public sealed class HyperTrails : MonoBehaviour
+    {
+        const int MaxTrails = 40;
+        const float Range = 110f;
+
+        readonly Dictionary<TrafficAgent, TrailRenderer> trails = new Dictionary<TrafficAgent, TrailRenderer>();
+        readonly Dictionary<TrafficAgent, Vector3> last = new Dictionary<TrafficAgent, Vector3>();
+        Material material;
+
+        void Update()
+        {
+            var cam = WorldEffectsB.Eye;
+            if (TrafficAgent.Hyper <= 1.01f || TrafficSystem.Instance == null || cam == null)
+            {
+                Clear();
+                return;
+            }
+            if (material == null) material = new Material(Resources.Load<Shader>("Shaders/FxUnlit")) { name = "Hyper trails" };
+            var eye = cam.transform.position;
+            int n = 0;
+            foreach (var a in TrafficSystem.Instance.Agents)
+            {
+                if (a == null || a.Car == null || a.Express) continue;
+                var pos = a.transform.position;
+                bool want = n < MaxTrails && (pos - eye).sqrMagnitude < Range * Range;
+                trails.TryGetValue(a, out var trail);
+                if (!want)
+                {
+                    if (trail != null) trail.emitting = false;
+                    continue;
+                }
+                n++;
+                if (trail == null) trail = trails[a] = Make(a);
+                if (last.TryGetValue(a, out var was) && (pos - was).sqrMagnitude > 20f * 20f) trail.Clear();
+                last[a] = pos;
+                trail.emitting = a.Speed > 3f;
+            }
+        }
+
+        TrailRenderer Make(TrafficAgent a)
+        {
+            var go = new GameObject("Hyper trail");
+            go.transform.SetParent(a.transform, false);
+            go.transform.localPosition = new Vector3(0f, a.Car.HalfExtents.y, 0f);
+            var trail = go.AddComponent<TrailRenderer>();
+            trail.sharedMaterial = material;
+            trail.time = 0.4f;
+            trail.minVertexDistance = 1.2f;
+            trail.numCapVertices = 0;
+            trail.numCornerVertices = 0;
+            trail.widthMultiplier = a.Car.HalfExtents.x * 2f;
+            trail.widthCurve = new AnimationCurve(new Keyframe(0f, 1f), new Keyframe(1f, 0.15f));
+            var g = new Gradient();
+            g.SetKeys(
+                new[] { new GradientColorKey(new Color(0.85f, 0.95f, 1f), 0f), new GradientColorKey(new Color(0.4f, 0.75f, 1f), 1f) },
+                new[] { new GradientAlphaKey(0.6f, 0f), new GradientAlphaKey(0f, 1f) });
+            trail.colorGradient = g;
+            trail.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            trail.receiveShadows = false;
+            trail.generateLightingData = false;
+            trail.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off;
+            trail.reflectionProbeUsage = UnityEngine.Rendering.ReflectionProbeUsage.Off;
+            trail.motionVectorGenerationMode = MotionVectorGenerationMode.ForceNoMotion;
+            return trail;
+        }
+
+        void Clear()
+        {
+            if (trails.Count == 0) return;
+            foreach (var trail in trails.Values) if (trail != null) Destroy(trail.gameObject);
+            trails.Clear();
+            last.Clear();
+        }
+
+        void OnDestroy() => Clear();
     }
 
     public sealed class RoadRageMarks : MonoBehaviour

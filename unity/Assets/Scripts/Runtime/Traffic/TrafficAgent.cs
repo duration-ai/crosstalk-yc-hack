@@ -270,6 +270,7 @@ namespace Dogpatch.Traffic
                 : Express ? Mathf.Max(Car.Handling.TopSpeed, 25f)
                 : Mathf.Min(Spec.CruiseSpeed, Lane.Speed * (Spec.Robotaxi ? 0.8f : 1f));
             float hyper = Express ? 1f : Hyper;
+            float squeeze = hyper > 1.5f ? 0.3f : 1f;
             float brake = this.brake * hyper * hyper;
             float target = cruise * Mathf.Clamp(Pace * (1f + Rage * 0.6f), 0.3f, 2.5f) * hyper;
             if (!OnRail && Link != null && Mathf.Abs(Link.Turn) > 30f) target = Mathf.Min(target, (Express ? 9f : Spec.Robotaxi ? 4.5f : 6f) * hyper);
@@ -305,7 +306,7 @@ namespace Dogpatch.Traffic
                         State = signal == 2 ? "red light" : "yellow light";
                     }
                 }
-                else if (Lane.StopAtEnd && !stopCleared)
+                else if (Lane.StopAtEnd && !stopCleared && squeeze == 1f)
                 {
                     Limit(ref target, stopDistance, brake);
                     State = "approaching stop sign";
@@ -405,7 +406,7 @@ namespace Dogpatch.Traffic
                     continue;
                 }
                 float lead = Mathf.Max(0f, Vector2.Dot(ob.Velocity, forward));
-                float allowed = gap - minGap * (1f - Rage * 0.6f) - headway * (1f - Rage * 0.7f) * Mathf.Max(0f, Speed - lead) * 0.5f + lead * lead / (2f * brake);
+                float allowed = gap - minGap * squeeze * (1f - Rage * 0.6f) - headway * squeeze * (1f - Rage * 0.7f) * Mathf.Max(0f, Speed - lead) * 0.5f + lead * lead / (2f * brake);
                 float before = target;
                 Limit(ref target, allowed, Mathf.Max(brake, 4f));
                 if (target >= before) continue;
@@ -435,7 +436,7 @@ namespace Dogpatch.Traffic
             if (blockedByAgent && Speed < 0.2f)
             {
                 blocked += dt;
-                if (blocked > 10f)
+                if (blocked > 10f * squeeze)
                 {
                     creepUntil = now + 2.5f;
                     blocked = 0f;
@@ -450,6 +451,7 @@ namespace Dogpatch.Traffic
                 State = "hit";
             }
 
+            if (Speed > cruise * 2.6f * hyper) rate = Mathf.Max(rate, Speed);
             Speed = Mathf.MoveTowards(Speed, target, (target > Speed ? (Express ? accel * 2.5f : accel) * hyper * hyper : Express ? rate * 2f : rate) * dt);
             Idle = Speed < 0.05f ? Idle + dt : 0f;
             if (!playerAhead) swerve = Mathf.MoveTowards(swerve, 0f, 0.6f * dt);
