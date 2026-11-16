@@ -298,7 +298,7 @@ namespace Dogpatch.Slipstream
             {
                 WorldTags();
                 NetChip();
-                if (!Race.Gridded) RouteTags();
+                if (!Race.InRace) RouteTags();
             }
             if (Race.Last == null)
             {

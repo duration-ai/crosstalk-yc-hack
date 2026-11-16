@@ -385,7 +385,7 @@ describe("rule 11: parameters", () => {
 });
 
 describe("next best thing", () => {
-  const play = (spec: Spec) => nextBest(answers(spec), decide(answers(spec), onFoot, []));
+  const play = (spec: Spec, said = "give me something") => nextBest(answers(spec), decide(answers(spec), onFoot, []), said, () => 0);
 
   it("swaps a tank for the closest ride", () => {
     const tank = { scope: "players", player_effect: "change_vehicle", nearest: "change_vehicle", nearest_vehicle: "cybertruck", stretch: 0.9 };
@@ -416,7 +416,9 @@ describe("next best thing", () => {
   it("keeps safety and scope refusals, and plain asks unmarked", () => {
     expect(play({ scope: "reject", reject_reason: "cheat", nearest: "flight" })).toEqual(refused("cheat"));
     expect(play({ scope: "reject", reject_reason: "undo", nearest: "rain" })).toEqual(refused("undo"));
-    expect(play({ scope: "reject", reject_reason: "not_a_request", nearest: "rain" })).toEqual(refused("not_a_request"));
+    expect(play({ scope: "reject", reject_reason: "not_a_request", nearest: "rain" }, "I'm fine")).toEqual(refused("not_a_request"));
+    expect(play({ scope: "reject", reject_reason: "not_a_request", nearest: "rain" }, "um, okay")).toEqual(refused("not_a_request"));
+    expect(play({ scope: "reject", reject_reason: "spawning" })).toEqual(refused("spawning"));
     const halfUndo = { scope: "reject", reject_reason: { vague: 0.41, undo: 0.38, none: 0.16, unsupported: 0.05 }, nearest: "slow_motion" };
     expect(play(halfUndo)).toEqual(refused("vague"));
     expect(play({ scope: "world", world_group: "sky", sky_effect: "rain" })).not.toHaveProperty("substitute");
@@ -429,5 +431,61 @@ describe("next best thing", () => {
       expect(line, line).toMatch(/sugar|hon/);
       expect(line).toContain(said.includes("tank") ? "a cybertruck" : "Earthquake");
     }
+  });
+});
+
+describe("loose acceptance: err on the side of doing something", () => {
+  const play = (said: string, spec: Spec, random = () => 0) => nextBest(answers(spec), decide(answers(spec), onFoot, []), said, random);
+
+  it("acts on a fragment that names an effect", () => {
+    const flying = play("Cars flying.", { scope: "reject", reject_reason: { not_a_request: 0.6, none: 0.4 }, nearest: "cars_fly" });
+    expect(flying).toEqual(effect({ scope: "world", effect: "cars_fly", substitute: true }));
+    expect(play("snowy", { scope: "reject", reject_reason: "vague", nearest: "snow" })).toEqual(effect({ effect: "snow" }));
+  });
+
+  it("acts on the request inside a mixed transcript", () => {
+    const mixed = play("No, I didn't call Fast Card. Car flies.", { scope: "reject", reject_reason: "not_a_request", nearest: "cars_fly" });
+    expect(mixed).toEqual(effect({ effect: "cars_fly", substitute: true }));
+  });
+
+  it("picks a fun effect for an open ask", () => {
+    const open = { scope: "reject", reject_reason: "vague", nearest: "rain", confidence: { nearest: 0.2 } };
+    expect(play("surprise me", open, () => 0)).toEqual(effect({ effect: "earthquake", substitute: true }));
+    expect(play("something crazy", open, () => 0.99)).toEqual(effect({ effect: "storm", substitute: true }));
+  });
+
+  it("turns every capability refusal from the dev data into an action", () => {
+    const cases: [string, string, string][] = [
+      ["vague", "do the thing", "snow"],
+      ["transformation", "turn the bus into a boat", "flood"],
+      ["player_target", "make Maya tiny", "smaller"],
+      ["not_visible", "blow up the red bus", "earthquake"],
+      ["unsupported", "make the sky green", "sunset"],
+      ["too_broad", "set everything on fire", "storm"],
+      ["deferred", "make it snow after the race", "snow"],
+      ["spawning", "spawn a UFO", "flight"],
+      ["teleport", "teleport me to the bridge", "flight"],
+    ];
+    for (const [reason, said, nearest] of cases) {
+      expect(decide(answers({ scope: "reject", reject_reason: reason }), onFoot, []), reason).toEqual(refused(reason));
+      expect(play(said, { scope: "reject", reject_reason: reason, nearest }), reason).toEqual(effect({ effect: nearest, substitute: true }));
+    }
+  });
+
+  it("does a deferred ask now", () => {
+    expect(play("make it snow in five minutes", { scope: "reject", reject_reason: "deferred", nearest: "snow" })).toEqual(
+      effect({ effect: "snow", substitute: true }),
+    );
+  });
+
+  it("still refuses chatter, cheats and undo", () => {
+    expect(play("Look at this.", { scope: "reject", reject_reason: "not_a_request", nearest: "rain", confidence: { nearest: 0.9 } })).toEqual(
+      effect({ effect: "rain" }),
+    );
+    expect(play("I'm fine.", { scope: "reject", reject_reason: "not_a_request", nearest: "rain" })).toEqual(refused("not_a_request"));
+    expect(play("let me win", { scope: "reject", reject_reason: "cheat", nearest: "flight" })).toEqual(refused("cheat"));
+    expect(play("take it back", { scope: "reject", reject_reason: "undo", nearest: "rain" })).toEqual(refused("undo"));
+    const yc = answers({ scope: "object", object_effect: "demolish", class: "building", described: 0.9, target: "bld_yc", nearest: "earthquake" });
+    expect(nextBest(yc, decide(yc, onFoot, []), "knock down the YC building")).toEqual(refused("protected"));
   });
 });

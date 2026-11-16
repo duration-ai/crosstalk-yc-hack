@@ -116,6 +116,7 @@ namespace Dogpatch.Audio
 #if UNITY_IOS && !UNITY_EDITOR
         [DllImport("__Internal")] static extern void DogpatchNativeLog(string message);
         [DllImport("__Internal")] static extern void DogpatchAudioSessionSpeaker();
+        [DllImport("__Internal")] static extern void DogpatchAudioSessionReassert();
 
         bool micWasRecording;
 
@@ -126,8 +127,8 @@ namespace Dogpatch.Audio
             bool recording = Microphone.IsRecording(null);
             if (recording == micWasRecording) return;
             micWasRecording = recording;
-            DogpatchAudioSessionSpeaker();
-            Debug.Log($"[Audio] microphone {(recording ? "opened" : "closed")}: speaker route restored");
+            DogpatchAudioSessionReassert();
+            Debug.Log($"[Audio] microphone {(recording ? "opened" : "closed")}: speaker route check queued");
         }
 #endif
 

@@ -261,7 +261,7 @@ export const call = action({
       if (!apiKey) throw new JevUnavailable("AI_GATEWAY_API_KEY is not set");
       const jev = await askJev(apiKey, input, buildQuestions(view));
       ({ answers, jevMs, attempts } = jev);
-      command = nextBest(jev.answers, decide(jev.answers, view, active));
+      command = nextBest(jev.answers, decide(jev.answers, view, active), transcript);
     } catch (caught) {
       if (!(caught instanceof JevUnavailable)) throw caught;
       error = caught.message;

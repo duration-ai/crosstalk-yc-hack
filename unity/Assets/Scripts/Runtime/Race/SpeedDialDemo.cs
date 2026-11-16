@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.IO;
+using System.Linq;
 using Dogpatch.Operator;
 using Dogpatch.WorldChanges;
 using UnityEngine;
@@ -19,6 +20,7 @@ namespace Dogpatch.Race
     public sealed class SpeedDialDemo : MonoBehaviour
     {
         string output;
+        bool tour;
         RaceDirector race;
         int shots;
 
@@ -34,6 +36,7 @@ namespace Dogpatch.Race
             var demo = new GameObject("SpeedDialDemo").AddComponent<SpeedDialDemo>();
             int at = Array.IndexOf(args, "-speeddial-out");
             demo.output = at >= 0 && at + 1 < args.Length ? args[at + 1] : Path.Combine(Application.persistentDataPath, "speeddial-demo");
+            demo.tour = Array.IndexOf(args, "-speeddial-tour") >= 0;
         }
 
         static void Log(string message) => Debug.Log("[SpeedDial demo] " + message);
@@ -41,8 +44,15 @@ namespace Dogpatch.Race
         IEnumerator Start()
         {
             Directory.CreateDirectory(output);
+            StartCoroutine(Watchdog(tour ? 1500f : 600f));
+            if (tour)
+            {
+                while ((race = RaceDirector.Instance) == null || !race.Setup || race.Last == null) yield return null;
+                yield return Tour();
+                Quit(0);
+                yield break;
+            }
             Time.captureDeltaTime = 1f / 30f;
-            StartCoroutine(Watchdog());
             while ((race = RaceDirector.Instance) == null || !race.Setup || race.Last == null) yield return null;
             var game = race.Game;
             Log($"room ready, output {output}");
@@ -214,9 +224,94 @@ namespace Dogpatch.Race
             while (!task.IsCompleted) yield return null;
         }
 
-        IEnumerator Watchdog()
+        // -speeddial-tour: a top-down still of every route's ring, then walks into each ring in turn
+        // and races it to its finish, logging lobby, GO, phones, the first finisher and the results.
+        IEnumerator Tour()
         {
-            yield return new WaitForSeconds(600f);
+            var game = race.Game;
+            yield return TopDown();
+            foreach (var id in RaceDirector.Routes)
+            {
+                var course = race.CourseOf(id);
+                string name = race.RouteName(id);
+                if (course == null)
+                {
+                    Log($"tour {name}: FAILED, course did not build");
+                    continue;
+                }
+                if (game.CurrentCar != null) yield return WaitTask(game.ExitCar());
+                yield return Seconds(0.5f);
+                var damage = race.MyCar.GetComponent<Dogpatch.Smash.VehicleDamage>();
+                damage.Burn(3f);
+                Log($"tour {name}: free-roam car burnt, wrecked {damage.IsWrecked}, health {damage.Health01:F2}");
+                game.Player.Teleport(course.RingCenter + Vector3.up * 0.1f, 0f);
+                game.Follow.Snap(game.Player.transform, false);
+                yield return Until(() => race.RouteId == id && !race.Switching && race.Room != null && race.Room.id == race.RoomId && race.Room.status != RoomStatus.Finished, 30f, name + " lobby", fatal: false);
+                var rings = FindObjectsByType<StartRingFx>(FindObjectsSortMode.None);
+                float nearest = rings.Length == 0 ? -1f : rings.Min(f => Vector2.Distance(RoutePath.Flat(f.transform.position), RoutePath.Flat(course.RingCenter)));
+                Log($"tour {name}: lobby {race.Room?.status} in room {race.RoomCode}, {rings.Length} beacon rings, nearest {nearest:F1} m from this ring, {race.Last?.racers.Count(r => !r.left)} racers, phones shown {Shown()}");
+                yield return Seconds(1f);
+                yield return Shot("tour-ring-" + (id.Length > 0 ? id : "classic"));
+                race.Hud.PressReady();
+                yield return Until(() => race.Started, 60f, name + " GO", fatal: false);
+                if (!race.Started) continue;
+                race.EnableAutopilot();
+                yield return Seconds(1f);
+                var car = race.MyCar;
+                Log($"tour {name}: rings showing in the race {FindObjectsByType<StartRingFx>(FindObjectsSortMode.None).Count(f => f.gameObject.activeInHierarchy)}");
+                Log($"tour {name}: GO, phones on the line {AskPickups.Positions.Count}, shown {Shown()}; car health {damage.Health01:F2}, wrecked {damage.IsWrecked}, stunned {car.Stunned}, enabled {car.enabled}, driven {car.Driven}, speed {car.GetComponent<Rigidbody>().linearVelocity.magnitude:F1} m/s");
+                yield return Until(() => race.Last.racers.Any(r => r.finished), 420f, name + " first finisher", fatal: false);
+                var first = race.Last.racers.FirstOrDefault(r => r.finished);
+                Log($"tour {name}: first finisher {(first != null ? race.NameOf(first.playerId) : "none")} at the {race.Course.Data.finishName} finish");
+                yield return Until(() => race.ResultsIn, 60f, name + " results", fatal: false);
+                yield return Seconds(0.5f);
+                Log($"tour {name}: results {race.ResultsIn}, phones shown after {Shown()}, rings showing after {FindObjectsByType<StartRingFx>(FindObjectsSortMode.None).Count(f => f.gameObject.activeInHierarchy)}");
+            }
+            Log("tour done");
+        }
+
+        static int Shown()
+        {
+            int n = 0;
+            for (int i = 0; i < AskPickups.Positions.Count; i++) if (AskPickups.Available(i)) n++;
+            return n;
+        }
+
+        static IEnumerator WaitTask(System.Threading.Tasks.Task task)
+        {
+            while (!task.IsCompleted) yield return null;
+        }
+
+        IEnumerator TopDown()
+        {
+            var spots = RaceDirector.Routes.Select(race.CourseOf).Where(c => c != null).Select(c => c.RingCenter).ToList();
+            float minX = spots.Min(p => p.x) - 120f, maxX = spots.Max(p => p.x) + 120f;
+            float minZ = spots.Min(p => p.z) - 120f, maxZ = spots.Max(p => p.z) + 120f;
+            float half = Mathf.Max(maxX - minX, maxZ - minZ) * 0.5f;
+            var cam = new GameObject("TourTopDown").AddComponent<Camera>();
+            cam.orthographic = true;
+            cam.orthographicSize = half;
+            cam.transform.SetPositionAndRotation(new Vector3((minX + maxX) * 0.5f, 600f, (minZ + maxZ) * 0.5f), Quaternion.Euler(90f, 0f, 0f));
+            cam.nearClipPlane = 1f;
+            cam.farClipPlane = 1200f;
+            var rt = new RenderTexture(1400, 1400, 24);
+            cam.targetTexture = rt;
+            yield return new WaitForEndOfFrame();
+            cam.Render();
+            RenderTexture.active = rt;
+            var tex = new Texture2D(1400, 1400, TextureFormat.RGB24, false);
+            tex.ReadPixels(new Rect(0, 0, 1400, 1400), 0, 0);
+            RenderTexture.active = null;
+            File.WriteAllBytes(Path.Combine(output, "tour-top-down.png"), tex.EncodeToPNG());
+            Destroy(tex);
+            Destroy(cam.gameObject);
+            rt.Release();
+            Log($"top-down still: centre ({(minX + maxX) * 0.5f:F0},{(minZ + maxZ) * 0.5f:F0}), half {half:F0} m, rings " + string.Join(" ", RaceDirector.Routes.Where(id => race.CourseOf(id) != null).Select(id => $"{race.RouteName(id)}@({race.CourseOf(id).RingCenter.x:F0},{race.CourseOf(id).RingCenter.z:F0})")));
+        }
+
+        IEnumerator Watchdog(float seconds)
+        {
+            yield return new WaitForSecondsRealtime(seconds);
             Log("timed out");
             Quit(1);
         }

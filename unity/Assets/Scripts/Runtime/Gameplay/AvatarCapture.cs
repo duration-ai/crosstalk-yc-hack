@@ -9,30 +9,31 @@ using Avatar = Dogpatch.Backend.Avatar;
 
 namespace Dogpatch.Gameplay
 {
-    // Selfie-to-avatar, never in the way: the player starts as the stock commuter. While there is
-    // no avatar yet, a small card in the bottom-left corner offers one for a few seconds (camera or
-    // skip; skip is remembered). The pause menu carries an AVATAR chip that opens the camera any
-    // time. The camera screen shows the live feed with a head-to-feet guide, a shutter, a skip
+    // Selfie-to-avatar, never in the way: the player starts as the stock commuter. In free roam a
+    // small round portrait of the player's current avatar sits top left (rendered once from the
+    // model, re-rendered after a change); tapping it opens the camera. The pause menu carries an
+    // AVATAR chip that opens the camera any time. The camera screen shows the live feed with a head-to-feet guide, a shutter, a skip
     // and a flip; the photo goes to IGameBackend.AnalyzeAvatarPhotoAsync under the game's own
     // player id, SUITING UP plays while the server answers and the GLB loads, and the avatar then
     // replaces the player model. RETAKE shows NO ONE IN SHOT, anything else TRY AGAIN, both with
     // retake and skip.
-    //   -dogpatch-no-avatar-prompt / DOGPATCH_NO_AVATAR_PROMPT, and batchmode: no card at all.
+    //   -dogpatch-no-avatar-prompt / DOGPATCH_NO_AVATAR_PROMPT, and batchmode: no portrait button.
     //   -dogpatch-avatar-test-photo / DOGPATCH_AVATAR_TEST_PHOTO: the bundled test photo stands in
     //   for the camera (also used automatically on a device with no camera, e.g. the simulator).
     public sealed class AvatarCapture : MonoBehaviour
     {
         const string AvatarKey = "dogpatch.avatar";
-        const string SkippedKey = "dogpatch.avatarPromptSkipped";
-        const float PromptSeconds = 20f;
+        const int PortraitSize = 192;
+        const int PortraitLayer = 31;
         const int MaxPhotoSide = 1024;
         const float Lean = 0.22f;
 
         static readonly Color Ink = new Color32(0x1C, 0x23, 0x47, 0xFF);
         static readonly Color Sunshine = new Color32(0xFF, 0xCB, 0x1F, 0xFF);
         static readonly Color White = Color.white;
+        static readonly Color PortraitSky = new Color32(0x9E, 0xD7, 0xFF, 0xFF);
 
-        enum Stage { Closed, Prompt, Viewfinder, Uploading, Refused, Failed }
+        enum Stage { Closed, Viewfinder, Uploading, Refused, Failed }
 
         GameController game;
         Hud hud;
@@ -44,7 +45,9 @@ namespace Dogpatch.Gameplay
         Func<Vector2, bool> ignore;
         Stage stage = Stage.Closed;
         string failure = "";
-        float promptUntil;
+        GlbAsset worn;
+        Texture2D portrait;
+        bool portraitDirty = true;
         int wearing;
 
         WebCamDevice[] devices = new WebCamDevice[0];
@@ -71,7 +74,7 @@ namespace Dogpatch.Gameplay
         static bool Flag(string arg, string env) =>
             Environment.GetCommandLineArgs().Contains(arg) || !string.IsNullOrEmpty(Environment.GetEnvironmentVariable(env));
 
-        static bool PromptSuppressed => Application.isBatchMode || Flag("-dogpatch-no-avatar-prompt", "DOGPATCH_NO_AVATAR_PROMPT");
+        static bool ButtonSuppressed => Application.isBatchMode || Flag("-dogpatch-no-avatar-prompt", "DOGPATCH_NO_AVATAR_PROMPT");
 
         static bool ForceTestPhoto => Flag("-dogpatch-avatar-test-photo", "DOGPATCH_AVATAR_TEST_PHOTO");
 
@@ -91,6 +94,7 @@ namespace Dogpatch.Gameplay
             game = GetComponent<GameController>();
             hud = GetComponent<Hud>();
             drag = GetComponent<DragInput>();
+            worn = clipSource;
 
             var saved = Parse(PlayerPrefs.GetString(AvatarKey, ""));
             if (saved != null) _ = WearAsync(saved);
@@ -111,14 +115,13 @@ namespace Dogpatch.Gameplay
                     Debug.LogWarning("[Avatar] load failed: " + (e is BackendException b ? b.Code + " " : "") + e.Message);
                 }
             }
-            if (saved != null || stage != Stage.Closed) return;
-            if (PromptSuppressed || PlayerPrefs.GetInt(SkippedKey, 0) == 1) return;
-            stage = Stage.Prompt;
-            promptUntil = Time.unscaledTime + PromptSeconds;
-            Debug.Log("[Avatar] offering the avatar card");
         }
 
-        void OnDestroy() => StopFeed();
+        void OnDestroy()
+        {
+            StopFeed();
+            if (portrait != null) Destroy(portrait);
+        }
 
         void OnEnable() => ScreenShape.Changed += CancelPress;
 
@@ -147,6 +150,8 @@ namespace Dogpatch.Gameplay
             catch (Exception e) { Debug.LogWarning("[Avatar] model load failed: " + e.Message); }
             if (glb == null || version != wearing || player == null) return false;
             player.SetVisual(glb, material);
+            worn = glb;
+            portraitDirty = true;
             Debug.Log($"[Avatar] wearing {avatar.@base} ({glb.Clips.Length} clips, {avatar.recolor?.Length ?? 0} recolours)");
             return true;
         }
@@ -162,13 +167,8 @@ namespace Dogpatch.Gameplay
             _ = StartFeedAsync();
         }
 
-        void Close(bool skipped)
+        void Close()
         {
-            if (skipped)
-            {
-                PlayerPrefs.SetInt(SkippedKey, 1);
-                PlayerPrefs.Save();
-            }
             stage = Stage.Closed;
             StopFeed();
             if (drag != null) drag.enabled = true;
@@ -300,7 +300,7 @@ namespace Dogpatch.Gameplay
                 Fail("TRY AGAIN");
                 return;
             }
-            Close(false);
+            Close();
         }
 
         // The frame upright and at most maxSide pixels on its long side: the camera's vertical
@@ -339,9 +339,21 @@ namespace Dogpatch.Gameplay
 
         float Scale => Mathf.Min(Screen.width, Screen.height) / 720f;
 
-        bool PauseChipVisible => (stage == Stage.Closed || stage == Stage.Prompt) && hud != null && hud.Paused;
+        bool PauseChipVisible => stage == Stage.Closed && hud != null && hud.Paused;
 
-        bool PromptVisible => stage == Stage.Prompt && (hud == null || !hud.Paused) && (game == null || !game.Driving) && !HudLayout.LobbyShowing;
+        // Free roam only: never in the mission lobby, on the grid, mid-race or on the results.
+        bool PortraitVisible => stage == Stage.Closed && portrait != null && !ButtonSuppressed && (hud == null || !hud.Paused)
+            && !HudLayout.LobbyShowing && !(Race.RaceDirector.Instance is Race.RaceDirector race && (race.Gridded || race.Locked));
+
+        // The portrait button in screen pixels, origin bottom-left.
+        static Rect PortraitRect()
+        {
+            var r = HudLayout.AvatarButton;
+            return new Rect(r.x, Screen.height - r.yMax, r.width, r.height);
+        }
+
+        static Color PlayerColor =>
+            Slipstream.SlipstreamHud.SlotColor(Race.RaceDirector.Instance?.Me?.color);
 
         // The label panel in the top-left corner, sized to its text; origin bottom-left.
         Rect TagRect(string text)
@@ -353,8 +365,6 @@ namespace Dogpatch.Gameplay
             return new Rect(safe.xMin + 22f * s, safe.yMax - 22f * s - h, w, h);
         }
 
-        // The corner card's label, top left above its two buttons; it gives way to the mission lobby.
-        Rect PromptRect() => TagRect("YOUR AVATAR");
 
         // Pause menu chip, a row under the HUD's time and weather chips.
         Rect PauseChipRect()
@@ -374,12 +384,8 @@ namespace Dogpatch.Gameplay
             switch (stage)
             {
                 case Stage.Closed:
-                case Stage.Prompt:
                     if (PauseChipVisible) list.Add(("open", PauseChipRect()));
-                    if (!PromptVisible) break;
-                    var tag = PromptRect();
-                    list.Add(("open", new Rect(tag.x + 10f * s, tag.y - 16f * s - 60f * s, 100f * s, 60f * s)));
-                    list.Add(("skip", new Rect(tag.x + 10f * s + 100f * s + 22f * s, tag.y - 16f * s - 55f * s, 74f * s, 50f * s)));
+                    if (PortraitVisible) list.Add(("open", PortraitRect()));
                     break;
                 case Stage.Viewfinder:
                 case Stage.Refused:
@@ -413,8 +419,6 @@ namespace Dogpatch.Gameplay
 
         void Update()
         {
-            if (stage == Stage.Prompt && PromptVisible && Time.unscaledTime > promptUntil) stage = Stage.Closed;
-
             Vector2 p;
             bool down, up;
             if (Input.touchCount > 0)
@@ -446,7 +450,7 @@ namespace Dogpatch.Gameplay
             if (id == "open") Open();
             else if (id == "shutter") Shoot();
             else if (id == "flip") Flip();
-            else if (id == "skip") Close(true);
+            else if (id == "skip") Close();
         }
 
         internal string StageName => stage.ToString();
@@ -477,22 +481,9 @@ namespace Dogpatch.Gameplay
                 Label(new Rect(chip.x + 52f * s, chip.y, chip.width, chip.height), "AVATAR", down ? Ink : White, 18f * s);
                 return;
             }
-            if (stage == Stage.Closed) return;
-
-            if (stage == Stage.Prompt)
+            if (stage == Stage.Closed)
             {
-                if (!PromptVisible) return;
-                var tag = PromptRect();
-                BeginShapes();
-                Para(tag, Ink);
-                foreach (var (id, rect) in Buttons())
-                {
-                    bool down = pressed == id;
-                    if (id == "open") Plate(rect, Sunshine, Ink, down, r => CameraPictogram(r.center, r.height * 0.3f, down ? Sunshine : Ink));
-                    else Plate(rect, Ink, White, down, r => ClosePictogram(r.center, r.height * 0.24f, down ? Ink : White));
-                }
-                EndShapes();
-                Label(tag, "YOUR AVATAR", Sunshine, 34f * s);
+                if (PortraitVisible) DrawPortrait();
                 return;
             }
 
@@ -514,6 +505,84 @@ namespace Dogpatch.Gameplay
             }
             EndShapes();
             Label(panel, text, refused ? Ink : Sunshine, 34f * s);
+        }
+
+        // The portrait button: the head of whatever the player wears, in a circle with a thin ring in
+        // the player's colour. Pressed shifts down-right and shrinks slightly, like every plate.
+        void DrawPortrait()
+        {
+            float s = Scale;
+            var rect = PortraitRect();
+            if (pressed == "open")
+            {
+                var c = rect.center + new Vector2(3f * s, -3f * s);
+                rect = new Rect(c.x - rect.width * 0.46f, c.y - rect.height * 0.46f, rect.width * 0.92f, rect.height * 0.92f);
+            }
+            GUI.DrawTexture(new Rect(rect.x, Screen.height - rect.yMax, rect.width, rect.height), portrait);
+            BeginShapes();
+            Ring(rect.center, rect.width * 0.5f, 4f * s, PlayerColor);
+            EndShapes();
+        }
+
+        void LateUpdate()
+        {
+            if (portraitDirty && worn != null) RenderPortrait();
+        }
+
+        // Renders the worn model's head once into a small cached texture with a round alpha mask,
+        // far above the city so nothing shadows it, on a layer only this camera draws.
+        void RenderPortrait()
+        {
+            portraitDirty = false;
+            var root = worn.Instantiate(material);
+            root.transform.SetPositionAndRotation(new Vector3(0f, 2000f, 0f), Quaternion.identity);
+            foreach (var t in root.GetComponentsInChildren<Transform>(true)) t.gameObject.layer = PortraitLayer;
+            var renderers = root.GetComponentsInChildren<Renderer>();
+            if (renderers.Length == 0)
+            {
+                Destroy(root);
+                return;
+            }
+            var bounds = renderers[0].bounds;
+            foreach (var r in renderers) bounds.Encapsulate(r.bounds);
+            float height = bounds.size.y;
+            var head = new Vector3(bounds.center.x, bounds.max.y - height * 0.1f, bounds.center.z);
+
+            var cam = new GameObject("Avatar Portrait Camera").AddComponent<Camera>();
+            cam.enabled = false;
+            cam.cullingMask = 1 << PortraitLayer;
+            cam.clearFlags = CameraClearFlags.SolidColor;
+            cam.backgroundColor = PortraitSky;
+            cam.fieldOfView = 20f;
+            cam.nearClipPlane = 0.05f;
+            cam.farClipPlane = 20f;
+            cam.transform.position = head + new Vector3(0f, height * 0.02f, height * 0.85f);
+            cam.transform.LookAt(head);
+
+            var rt = RenderTexture.GetTemporary(PortraitSize, PortraitSize, 24);
+            cam.targetTexture = rt;
+            cam.Render();
+            var previous = RenderTexture.active;
+            RenderTexture.active = rt;
+            if (portrait == null) portrait = new Texture2D(PortraitSize, PortraitSize, TextureFormat.RGBA32, false) { name = "AvatarPortrait" };
+            portrait.ReadPixels(new Rect(0, 0, PortraitSize, PortraitSize), 0, 0);
+            RenderTexture.active = previous;
+            cam.targetTexture = null;
+            RenderTexture.ReleaseTemporary(rt);
+            DestroyImmediate(cam.gameObject);
+            DestroyImmediate(root);
+
+            var pixels = portrait.GetPixels32();
+            float radius = PortraitSize * 0.5f;
+            for (int y = 0; y < PortraitSize; y++)
+                for (int x = 0; x < PortraitSize; x++)
+                {
+                    float d = new Vector2(x + 0.5f - radius, y + 0.5f - radius).magnitude;
+                    pixels[y * PortraitSize + x].a = (byte)(Mathf.Clamp01(radius - d) * 255f);
+                }
+            portrait.SetPixels32(pixels);
+            portrait.Apply();
+            Debug.Log("[Avatar] portrait rendered");
         }
 
         static void Dim()

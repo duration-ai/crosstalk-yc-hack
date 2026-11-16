@@ -193,6 +193,8 @@ namespace Dogpatch.Gameplay
             body.isKinematic = false;
         }
 
+        public void ClearStun() => stunnedUntil = 0f;
+
         void FixedUpdate()
         {
             bool hover = Hovers;
