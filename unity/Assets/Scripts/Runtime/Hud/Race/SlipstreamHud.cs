@@ -707,46 +707,5 @@ namespace Dogpatch.Slipstream
             float stripeLength = since < 0.18f ? 90f * s : 30f * s;
             Stripes(bar.xMax + 6f * s, y + 8f * s, 24f * s, stripeLength, showing.Color, true);
         }
-<<<<<<< HEAD
-
-        // The cell-phone button: the Operator, always in reach. Hold to talk, let go to send. The badge is
-        // the asks left; with none the button greys out and pressing it shows the no-asks line. It
-        // wiggles and pulses when the phone buzzes (a new ask, GO).
-        void PhoneButton(bool readyShowing)
-        {
-            var calls = Race.Calls;
-            float now = Time.time;
-            bool live = calls.State == CallState.Talking || calls.State == CallState.Waiting;
-            bool hasAsks = calls.HasAsks;
-            float size = 64f * s;
-            float width = live ? 150f * s : 96f * s;
-            var slot = Gameplay.HudLayout.Call(width, size, readyShowing);
-            float x = slot.x;
-            float y = slot.y;
-            float buzz = now - calls.BuzzedAt;
-            if (buzz < 1.2f && !live) x += Mathf.Sin(buzz * 42f) * 4f * s * (1f - buzz / 1.2f);
-            var r = new Rect(x, y, width, size);
-            callRect = r;
-            callVisible = true;
-
-            bool pressed = calls.State == CallState.Talking && now - calls.StateSince < 0.12f;
-            var look = pressed ? V3.CallLook.Pressed : live ? V3.CallLook.Live : !hasAsks ? V3.CallLook.OutOfAsks : buzz < 1.2f ? V3.CallLook.Ringing : V3.CallLook.Rest;
-            V3.HudPlates.Call(r, look, calls.CountsAsks ? Mathf.Max(0, calls.Asks()) : -1, s, calls.State == CallState.Talking ? 1f : 0.35f, buzz);
-
-            float refused = now - calls.TurnedDownAt;
-            if (refused < 2.2f)
-            {
-                float a = Mathf.Clamp01(refused / 0.1f) * Mathf.Clamp01((2.2f - refused) / 0.3f);
-                string line = CallController.NoAsksLine.ToUpperInvariant();
-                var m = Measure(line, 14f);
-                var bar = Gameplay.HudLayout.CallFromLeft
-                    ? new Rect(r.xMax + 10f * s, r.center.y - 15f * s, m.x + 24f * s, 30f * s)
-                    : new Rect(r.x - m.x - 34f * s, r.center.y - 15f * s, m.x + 24f * s, 30f * s);
-                Panel(bar, new Color(Ink.r, Ink.g, Ink.b, a));
-                Text(new Rect(bar.x + 12f * s, bar.y, bar.width, bar.height), line, 14f, new Color(1f, 1f, 1f, a));
-            }
-        }
-=======
->>>>>>> origin/main
     }
 }
