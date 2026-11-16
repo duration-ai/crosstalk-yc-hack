@@ -12,7 +12,7 @@ namespace Dogpatch.Look
 {
     // Headless smoke drive from Dogpatch into SoMa, inert unless the player is launched with
     //   -somaSmoke <dir>
-    // Enters a parked car, drives 3rd Street north from Mariposa to Brannan, then Brannan, 6th and
+    // Enters a parked car, drives 3rd Street north from Mariposa to King, King and 4th to Brannan, then Brannan, 6th and
     // Folsom to 7th, steering at waypoints through the normal CarController input. Logs the car's
     // height (falling through), stalls, draw calls, triangles and memory inside SoMa, writes a chase
     // still and a top-down still, then quits.
@@ -20,8 +20,8 @@ namespace Dogpatch.Look
     {
         static readonly (Vector2 at, float side)[] Route =
         {
-            (new Vector2(-45.1f, 818.9f), 7f), (new Vector2(-324.8f, 2354.9f), 7f), (new Vector2(-398f, 2431.3f), 3f),
-            (new Vector2(-533.4f, 2568f), 3f), (new Vector2(-734.7f, 2367.1f), 3f), (new Vector2(-926.1f, 2177.1f), 3f),
+            (new Vector2(-45.1f, 818.9f), 7f), (new Vector2(-324.8f, 2354.9f), 7f), (new Vector2(-504.2f, 2133.5f), 3f),
+            (new Vector2(-599.6f, 2232f), 3f), (new Vector2(-734.7f, 2367.1f), 3f), (new Vector2(-926.1f, 2177.1f), 3f),
             (new Vector2(-1121.1f, 1981.5f), 3f), (new Vector2(-1256f, 2117.7f), 3f), (new Vector2(-1391.8f, 2254.8f), 3f),
             (new Vector2(-1528f, 2391.6f), 3f), (new Vector2(-1723.4f, 2196.4f), 3f),
         };
