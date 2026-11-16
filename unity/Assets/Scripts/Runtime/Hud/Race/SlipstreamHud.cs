@@ -707,26 +707,7 @@ namespace Dogpatch.Slipstream
 
         void OperatorAndNews()
         {
-            var calls = Race.Calls;
-            bool operatorUp = calls.State == CallState.Answered;
-            if (operatorUp)
-            {
-                float t = Time.time - calls.StateSince;
-                float inP = Overshoot(Mathf.Clamp01(t / 0.24f));
-                float outP = Mathf.Clamp01((t - 2.3f) / 0.25f);
-                float baseX = narrow ? left : Screen.width * 0.5f - 150f * s;
-                float x = Mathf.Lerp(-360f * s, baseX, inP) - outP * outP * (baseX + 400f * s);
-                float lineY = band;
-                var size = Measure(calls.Line, 18f);
-                var handset = new Rect(x, lineY, 40f * s, 38f * s);
-                var line = new Rect(handset.xMax + 2f * s, lineY, size.x + 34f * s, 38f * s);
-                Stripes(handset.x - 6f * s, lineY + 8f * s, 30f * s, 48f * s, Pink, false);
-                Panel(line, Pink);
-                Panel(handset, White);
-                Icon(new Rect(handset.x + 7f * s, handset.y + 6f * s, 26f * s, 26f * s), "call", Pink);
-                Text(new Rect(line.x + 14f * s, line.y, line.width, line.height), calls.Line, 18f, White);
-                return;
-            }
+            if (OperatorBand()) return;
 
             if (showing == null && queue.Count > 0)
             {

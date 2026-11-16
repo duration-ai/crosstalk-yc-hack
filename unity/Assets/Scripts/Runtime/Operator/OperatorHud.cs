@@ -104,7 +104,6 @@ namespace Dogpatch.Operator
             live.Clear();
             if (Dogpatch.Map.Minimap.FullOpen) return;
 
-            Hearing();
             var chips = Gameplay.HudLayout.Chips;
             Chips(chips.x, chips.y);
             Toasting();
@@ -112,39 +111,60 @@ namespace Dogpatch.Operator
             if (DebugInput && Debug.isDebugBuild && !Slipstream.SlipstreamHud.ManualCallsLocked) DebugField(Gameplay.HudLayout.Left, Gameplay.HudLayout.Call(72f * s, 72f * s).y - 2f * s);
         }
 
-        void Hearing()
-        {
-            string words = Calls.State == CallState.Waiting ? (string.IsNullOrEmpty(Calls.Heard) ? Calls.Partial : Calls.Heard) : "";
-            if (!string.IsNullOrEmpty(words)) words = "“" + words + "”";
-            if (string.IsNullOrEmpty(words)) return;
-            float w = Mathf.Min(Width(words, 15f) + 28f * s, Screen.width * 0.6f);
-            var r = Gameplay.HudLayout.Hearing(w, 30f * s);
-            Panel(r, new Color(Ink.r, Ink.g, Ink.b, 0.9f));
-            Text(new Rect(r.x + 14f * s, r.y, r.width - 20f * s, r.height), words, 15f, Calls.State == CallState.Waiting ? Sun : Color.white);
-        }
-
+        // Effect chips (board 5): a coloured block with the effect's pictogram (pink for yours,
+        // sunshine for everyone else's) on an ink bar with the label and the seconds left; the last
+        // 5 s blink pink. Three at most, then +N.
         void Chips(float left, float y)
         {
             if (Effects == null) return;
-            foreach (var chip in Effects.Chips)
+            var list = Effects.Chips;
+            int shown = 0;
+            foreach (var chip in list)
             {
+                if (shown == 3)
+                {
+                    Text(new Rect(left + 6f * s, y, 60f * s, 22f * s), "+" + (list.Count - 3), 14f, Color.white);
+                    break;
+                }
+                shown++;
                 var row = chip.Row;
                 string label = (string.IsNullOrEmpty(row.label) ? row.effect.Replace('_', ' ') : row.label).ToUpperInvariant();
                 float secs = Effects.SecondsLeft(row);
                 string time = row.instant ? "!" : Mathf.CeilToInt(secs) + "s";
-                float w = Width(label, 13f) + Width(time, 13f) + 40f * s;
+                bool mine = row.requestedBy == Calls.PlayerId();
+                bool ending = !row.instant && secs <= 5f && Mathf.Repeat(Time.time, 0.5f) < 0.25f;
+                var color = mine || ending ? Pink : Sun;
                 var block = new Rect(left, y, 30f * s, 22f * s);
+                float w = Width(label, 12f) + Width(time, 13f) + 30f * s;
                 var bar = new Rect(block.xMax + 2f * s, y, w, 22f * s);
-                Panel(bar, Paper);
-                Panel(block, row.requestedBy == Calls.PlayerId() ? Pink : Sun);
-                Text(block, time, 12f, Ink, TextAnchor.MiddleCenter);
-                Text(new Rect(bar.x + 10f * s, bar.y, bar.width, bar.height), label, 13f, Ink);
+                Panel(bar, Ink);
+                Panel(block, color);
+                GUI.color = mine || ending ? Color.white : Ink;
+                GUI.DrawTexture(new Rect(block.x + 5f * s, block.y + 1f * s, 20f * s, 20f * s), Slipstream.Pictograms.Get(Picto(row.effect)), ScaleMode.ScaleToFit);
+                GUI.color = Color.white;
+                Text(new Rect(bar.x + 9f * s, bar.y, bar.width, bar.height), label, 12f, Color.white);
+                Text(new Rect(bar.x, bar.y, bar.width - 8f * s, bar.height), time, 13f, color, TextAnchor.MiddleRight);
                 if (!row.instant && row.durationS > 0f)
-                {
-                    float k = Mathf.Clamp01(secs / row.durationS);
-                    Panel(new Rect(bar.x, bar.yMax - 3f * s, bar.width * k, 3f * s), Pink, 0f);
-                }
+                    Panel(new Rect(bar.x, bar.yMax - 2.5f * s, bar.width * Mathf.Clamp01(secs / row.durationS), 2.5f * s), color, 0f);
                 y += 27f * s;
+            }
+        }
+
+        static string Picto(string effect)
+        {
+            switch (effect)
+            {
+                case "night": case "sunset": case "day": return "time";
+                case "bigger": case "smaller": case "grow": case "shrink": case "big_heads": return "resize";
+                case "gravity_lower": case "gravity_higher": case "slow_fall": case "vehicle_hop": case "launch": return "gravity";
+                case "change_vehicle": case "waymo_swarm": return "swap";
+                case "grip_down": case "slippery_ground": return "ice";
+                case "storm": case "rain": return "rain";
+                case "snow": return "snow";
+                case "fog": return "fog";
+                case "recolor": return "recolor";
+                case "vehicle_faster": case "nitro": case "run_faster": return "dash";
+                default: return "call";
             }
         }
 
