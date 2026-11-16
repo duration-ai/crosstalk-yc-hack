@@ -738,7 +738,7 @@ namespace Dogpatch.Ambient
             }
             int node = ped.Path[ped.PathIndex];
             var target = PathPoint(ped, ped.PathIndex);
-            float speed = ped.Cruise * (ped.Hurry > 0f ? 1.3f : 1f) * PlayerController.RunScale * MoodPace;
+            float speed = ped.Cruise * (ped.Hurry > 0f ? 1.3f : 1f) * PlayerController.RunScale * MoodPace * Hyper;
             ped.Hurry = Mathf.Max(0f, ped.Hurry - dt);
             bool crossing = ped.Crossing >= 0;
             if (crossing)
@@ -916,7 +916,7 @@ namespace Dogpatch.Ambient
             if (dist > 0.01f && Vector2.Dot(fwd, to / dist) < 0.2f) desired *= 0.4f;
             if (avoid) desired += Avoidance(ped, fwd);
             float accel = ped.Role == PedRole.Skater ? 2f : 3f;
-            ped.Vel = Vector2.MoveTowards(ped.Vel, desired, accel * dt);
+            ped.Vel = Vector2.MoveTowards(ped.Vel, desired, accel * Hyper * dt);
             Move(ped, ped.Vel * dt);
             if (ped.Vel.sqrMagnitude > 0.02f)
             {
@@ -1013,7 +1013,7 @@ namespace Dogpatch.Ambient
 
         void Animate(Pedestrian ped, float dt)
         {
-            float speed = ped.Vel.magnitude;
+            float speed = ped.Vel.magnitude / Hyper;
             Clip clip;
             float rate = 1f;
             switch (ped.State)
@@ -1050,8 +1050,8 @@ namespace Dogpatch.Ambient
                 Pose(ped, clip, 0.22f);
                 if (cycle) ped.ClipTime = time;
             }
-            ped.ClipTime += dt * rate;
-            ped.PrevClipTime += dt * rate;
+            ped.ClipTime += dt * rate * Hyper;
+            ped.PrevClipTime += dt * rate * Hyper;
             ped.Fade = Mathf.MoveTowards(ped.Fade, ped.FadeCap, dt * ped.FadeSpeed);
         }
 

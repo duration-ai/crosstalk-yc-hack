@@ -8,7 +8,7 @@ namespace Dogpatch.Slipstream
     // The mission briefing (CRO-68). Entering a mission's lobby slides in a card with the route, a
     // one-line objective, the story, and the route length and finish, while the Operator tells the
     // story once per lobby (keyed by room and route, so stepping out of the ring and back does not
-    // replay it), with the music ducked under him. From the lock to the results the card collapses
+    // replay it), with every other bus ducked to about a quarter; opening the mic stops him. From the lock to the results the card collapses
     // to a one-line objective chip. Read-only over RaceDirector: it never changes the lobby or race.
     public sealed class MissionBriefing : MonoBehaviour
     {
@@ -53,8 +53,11 @@ namespace Dogpatch.Slipstream
         static readonly Color White = SlipstreamHud.Hex("#FFFFFF");
         static readonly Color Paper = SlipstreamHud.Hex("#F7F8F9");
         const float Lean = 0.21f;
+        const float StorySize = 14.5f;
 
         readonly HashSet<string> told = new HashSet<string>();
+        AudioSource narration;
+        AudioClip narrationClip;
         Font font;
         GUIStyle style;
         float s;
@@ -101,9 +104,19 @@ namespace Dogpatch.Slipstream
                 if (told.Add(race.RoomId + "|" + race.RouteId) && Briefs.TryGetValue(race.RouteId, out var brief))
                 {
                     Debug.Log($"[SpeedDial] mission briefing: {brief.Clip} for room {race.RoomId}");
-                    SoundSystem.PlayVoice(SoundBank.Get(brief.Clip));
+                    narrationClip = SoundBank.Get(brief.Clip);
+                    narration = SoundSystem.PlayVoice(narrationClip);
                 }
             }
+            // Opening the mic cuts the story short, so the speaker never feeds it into the transcript.
+            bool speaking = narration != null && narration.isPlaying && narration.clip == narrationClip;
+            if (speaking && race?.Calls != null && race.Calls.State == Dogpatch.Operator.CallState.Talking)
+            {
+                narration.Stop();
+                speaking = false;
+            }
+            if (!speaking) narration = null;
+            SoundSystem.SetDeepDuck(this, speaking);
             lobbyWas = lobby;
             bool chip = Racing(race);
             if (chip && !chipWas) chipAt = Time.time;
@@ -130,9 +143,19 @@ namespace Dogpatch.Slipstream
 
             float titleH = 26f * s, objH = 22f * s, footH = 18f * s, pad = 9f * s, gap = 4f * s;
             float textW = Gameplay.HudLayout.Briefing(0f).width - 2f * pad - 8f * s;
-            var story = Style(10.5f, TextAnchor.UpperLeft, true);
-            float storyH = story.CalcHeight(new GUIContent(brief.Story), textW) + 2f * pad;
-            var slot = Gameplay.HudLayout.Briefing(titleH + objH + storyH + footH + 3f * gap);
+            // Where the slot is short (4:3 landscape) the story shrinks until the card clears the stick.
+            float size = StorySize;
+            GUIStyle story;
+            float storyH;
+            Rect slot;
+            while (true)
+            {
+                story = Style(size, TextAnchor.UpperLeft, true);
+                storyH = story.CalcHeight(new GUIContent(brief.Story), textW) + 2f * pad;
+                slot = Gameplay.HudLayout.Briefing(titleH + objH + storyH + footH + 3f * gap);
+                if (size <= 9f || !OverStick(slot)) break;
+                size -= 0.5f;
+            }
 
             var r = Row(0, slot, slot.y, titleH);
             Panel(r, Sun);
@@ -145,13 +168,20 @@ namespace Dogpatch.Slipstream
 
             r = Row(2, slot, r.yMax + gap, storyH);
             Panel(r, Paper, 0.06f);
-            story = Style(10.5f, TextAnchor.UpperLeft, true);
+            story = Style(size, TextAnchor.UpperLeft, true);
             story.normal.textColor = TextColor(Ink);
             GUI.Label(new Rect(r.x + pad + 4f * s, r.y + pad, textW, r.height - 2f * pad), brief.Story, story);
 
             r = Row(3, slot, r.yMax + gap, footH);
             Panel(r, Pink);
             Text(new Rect(r.x + 12f * s, r.y, r.width - 16f * s, r.height), foot, 10f, White);
+        }
+
+        static bool OverStick(Rect r)
+        {
+            var stick = Gameplay.HudLayout.StickScreen;
+            float grab = Gameplay.HudLayout.StickRadius * 1.6f;
+            return r.xMax > stick.x - grab && r.yMax > Screen.height - stick.y - grab;
         }
 
         // One card row, sliding in from the right with the HUD's overshoot, staggered like the lobby rows.

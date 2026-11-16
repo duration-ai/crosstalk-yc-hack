@@ -197,6 +197,7 @@ namespace Dogpatch.Gameplay
         void ShowKeyboard()
         {
             if (!TouchScreenKeyboard.isSupported) return;
+            TouchScreenKeyboard.hideInput = true;
             keyboard = TouchScreenKeyboard.Open(typed, TouchScreenKeyboardType.Default, false, false, false, false, placeholder, MaxName);
         }
 
@@ -458,10 +459,10 @@ namespace Dogpatch.Gameplay
                     break;
                 case Stage.Name:
                     var field = NameField();
-                    float bw = 130f * s, bh = 88f * s;
+                    float gap = 16f * s;
                     list.Add(("field", field));
-                    list.Add(("ok", new Rect(field.xMax - bw, field.y - 28f * s - bh, bw, bh)));
-                    list.Add(("keep", new Rect(field.x, field.y - 28f * s - bh, 100f * s, bh)));
+                    list.Add(("keep", new Rect(field.x - gap - 100f * s, field.y, 100f * s, field.height)));
+                    list.Add(("ok", new Rect(field.xMax + gap, field.y, 130f * s, field.height)));
                     break;
                 case Stage.Viewfinder:
                 case Stage.Refused:
@@ -476,13 +477,15 @@ namespace Dogpatch.Gameplay
             return list;
         }
 
-        // The name field, in the upper half so the keyboard never covers it; origin bottom-left.
+        // One row under the title, X | field | OK, at the top of the screen so the keyboard never
+        // covers it; origin bottom-left.
         Rect NameField()
         {
             float s = Scale;
             var safe = HudLayout.Safe;
-            float w = Mathf.Min(safe.width - 72f * s, 640f * s), h = 104f * s;
-            return new Rect(safe.center.x - w / 2f, safe.yMax - safe.height * 0.3f - h, w, h);
+            float row = Mathf.Min(safe.width - 72f * s, 900f * s), h = 88f * s;
+            float w = row - 100f * s - 130f * s - 32f * s;
+            return new Rect(safe.center.x - row / 2f + 100f * s + 16f * s, safe.yMax - 96f * s - h, w, h);
         }
 
         // Touches on the card and the chip never become a drag or a jump. The HUD owns
@@ -658,7 +661,7 @@ namespace Dogpatch.Gameplay
             Label(title, "YOUR NAME", Sunshine, 34f * s);
             bool caret = typed.Length < MaxName && Mathf.Repeat(Time.unscaledTime, 1f) < 0.55f;
             string shown = typed.Length > 0 ? typed + (caret ? "|" : "") : (caret ? "|" : "") + placeholder;
-            Label(field, shown, typed.Length > 0 ? Ink : new Color(Ink.r, Ink.g, Ink.b, 0.35f), 46f * s);
+            Label(field, shown, typed.Length > 0 ? Ink : new Color(Ink.r, Ink.g, Ink.b, 0.35f), 40f * s);
         }
 
         void LateUpdate()

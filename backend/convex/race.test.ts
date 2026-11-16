@@ -183,7 +183,7 @@ describe("race", () => {
     ]);
   });
 
-  it("closes the race 60 s after the first finish and gives awards", async () => {
+  it("keeps finishers racing until 45 s after the first finish, then closes with DNFs and gives awards", async () => {
     const setup = await fourPlayers();
     const { t, roomId, tim, maya, jun, rosa } = setup;
     const room = await startRace(setup);
@@ -197,6 +197,16 @@ describe("race", () => {
     vi.setSystemTime(room.startsAt + 52_000);
     await t.mutation(api.race.update, { playerId: jun.id, roomId, position: at(800), heading: 0 });
     await t.mutation(api.rooms.leave, { playerId: rosa.id, roomId });
+
+    expect(CLOSE_AFTER_FIRST_FINISH_MS).toBe(45_000);
+    vi.setSystemTime(room.startsAt + 50_000 + CLOSE_AFTER_FIRST_FINISH_MS - 1);
+    const waiting = await poll(t, roomId);
+    expect(waiting.room).toMatchObject({ status: "racing", closesAt: room.startsAt + 50_000 + CLOSE_AFTER_FIRST_FINISH_MS });
+    expect(waiting.racers.filter((r) => r.finished).map((r) => [r.displayName, r.finishMs])).toEqual([
+      ["Tim", 50_000],
+      ["Jun", 52_000],
+    ]);
+    expect(waiting.results).toEqual([]);
 
     vi.setSystemTime(room.startsAt + 50_000 + CLOSE_AFTER_FIRST_FINISH_MS);
     const done = await poll(t, roomId);
