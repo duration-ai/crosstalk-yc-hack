@@ -17,6 +17,7 @@ namespace Dogpatch.Ambient
         public static readonly Knob Crowd = new Knob();
         public static CrowdMood Mood;
         public static float MoodPace = 1f;
+        public static float Hyper = 1f;
 
         static readonly List<(CrowdMood mood, float k)> moods = new List<(CrowdMood, float)>();
         static readonly List<string> themes = new List<string>();

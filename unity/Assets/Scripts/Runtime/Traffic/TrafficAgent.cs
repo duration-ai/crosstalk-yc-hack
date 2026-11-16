@@ -269,8 +269,10 @@ namespace Dogpatch.Traffic
             float cruise = OnRail ? Spec.CruiseSpeed
                 : Express ? Mathf.Max(Car.Handling.TopSpeed, 25f)
                 : Mathf.Min(Spec.CruiseSpeed, Lane.Speed * (Spec.Robotaxi ? 0.8f : 1f));
-            float target = cruise * Mathf.Clamp(Pace * (1f + Rage * 0.6f), 0.3f, 2.5f);
-            if (!OnRail && Link != null && Mathf.Abs(Link.Turn) > 30f) target = Mathf.Min(target, Express ? 9f : Spec.Robotaxi ? 4.5f : 6f);
+            float hyper = Express ? 1f : Hyper;
+            float brake = this.brake * hyper * hyper;
+            float target = cruise * Mathf.Clamp(Pace * (1f + Rage * 0.6f), 0.3f, 2.5f) * hyper;
+            if (!OnRail && Link != null && Mathf.Abs(Link.Turn) > 30f) target = Mathf.Min(target, (Express ? 9f : Spec.Robotaxi ? 4.5f : 6f) * hyper);
             if (AllStop) target = 0f;
             float rate = brake;
             State = "cruising";
@@ -295,7 +297,7 @@ namespace Dogpatch.Traffic
                 var node = Lane.To;
                 if (node.Control == NodeControl.Signal)
                 {
-                    int signal = node.SignalState(Lane.EndDirection, now);
+                    int signal = node.SignalState(Lane.EndDirection, now + HyperClock);
                     bool canStop = stopDistance > Speed * Speed / (2f * brake) * (Spec.Robotaxi ? 0.6f : 0.9f);
                     if ((signal == 2 && Rage < 0.75f) || (signal == 1 && canStop && Rage == 0f))
                     {
@@ -309,7 +311,7 @@ namespace Dogpatch.Traffic
                     State = "approaching stop sign";
                     if (stopDistance < 1.6f && Speed < 0.1f)
                     {
-                        hold += dt;
+                        hold += dt * hyper;
                         State = "stopped at stop sign";
                         if (hold >= stopHold && (node.Occupants == 0 || hold > stopHold + 4f)) stopCleared = true;
                     }
@@ -329,7 +331,7 @@ namespace Dogpatch.Traffic
                     {
                         if (dwellUntil <= 0f)
                         {
-                            dwellUntil = now + (OnRail ? 14f : 7f);
+                            dwellUntil = now + (OnRail ? 14f : 7f) / hyper;
                             audioSource?.Signal(1f);
                         }
                         if (now >= dwellUntil)
@@ -448,7 +450,7 @@ namespace Dogpatch.Traffic
                 State = "hit";
             }
 
-            Speed = Mathf.MoveTowards(Speed, target, (target > Speed ? (Express ? accel * 2.5f : accel) : Express ? rate * 2f : rate) * dt);
+            Speed = Mathf.MoveTowards(Speed, target, (target > Speed ? (Express ? accel * 2.5f : accel) * hyper * hyper : Express ? rate * 2f : rate) * dt);
             Idle = Speed < 0.05f ? Idle + dt : 0f;
             if (!playerAhead) swerve = Mathf.MoveTowards(swerve, 0f, 0.6f * dt);
 
