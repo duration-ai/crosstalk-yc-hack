@@ -106,6 +106,7 @@ namespace Dogpatch.Vehicles
             if (spec.Robotaxi) bounds.Encapsulate(new Vector3(bounds.center.x, bounds.max.y + 0.6f, bounds.center.z));
             if (!spec.TwoWheeler) AddBrakeGlow(visual, material, spec, bounds);
             if (spec.Id == VehicleTypes.YellowCab) AddRoofSign(visual, material, bounds);
+            if (spec.Id == VehicleTypes.MuniBus) AdWrap.Add(visual, material, bounds);
             return (visual, bounds);
         }
 
