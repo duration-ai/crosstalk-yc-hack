@@ -17,6 +17,8 @@ namespace Dogpatch.HudV3
 
         static float readyAt = -10f;
         static bool readyWas;
+        static float countdownAt = -10f;
+        static bool countdownWas;
 
         static string Objective(string routeId) => routeId switch
         {
@@ -114,6 +116,49 @@ namespace Dogpatch.HudV3
                     float sweep = Mathf.Repeat(now / 1.4f + i * 0.12f, 1f);
                     if (sweep < 0.5f) Panel(new Rect(b.x + sweep * 2f * (b.width - 8f * p), b.y + 2f * p, 8f * p, b.height - 4f * p), Alpha(White, 0.35f), 6f);
                 }
+            }
+
+            bool counting = room.status == RoomStatus.Countdown;
+            if (counting && !countdownWas) countdownAt = now;
+            countdownWas = counting;
+            float storyKeep = keep * (counting ? 1f - EaseOut((now - countdownAt) / 0.16f) : 1f);
+            var story = Slipstream.MissionBriefing.StoryOf(race.RouteId);
+            if (storyKeep > 0.01f && !string.IsNullOrEmpty(story))
+            {
+                float u = Gameplay.HudLayout.U;
+                float top = y + 30f * p + 14f * p;
+                float right = Screen.width - Gameplay.HudLayout.Safe.xMin - 22f * u;
+                var map = Gameplay.HudLayout.MinimapScreen;
+                float mapR = Gameplay.HudLayout.MinimapRadius;
+                if (top < Screen.height - map.y + mapR + 8f * p) right = Mathf.Min(right, map.x - mapR - 14f * p);
+                float floor = Gameplay.HudLayout.Bottom;
+                var call = Gameplay.HudLayout.Call(112f * u, 64f * u, true);
+                if (call.x < right) floor = Mathf.Min(floor, call.y - 10f * p);
+                var stick = Gameplay.HudLayout.StickScreen;
+                float stickTop = Screen.height - stick.y - Gameplay.HudLayout.StickRadius - 10f * p;
+                if (stick.x - Gameplay.HudLayout.StickRadius < right) floor = Mathf.Min(floor, stickTop);
+                float w = Mathf.Min(360f * p, right - x);
+                float pad = 10f * p;
+                var st = Style(20f, TextAnchor.UpperLeft);
+                st.wordWrap = true;
+                float pt = 20f;
+                float h = st.CalcHeight(new GUIContent(story), w - 2f * pad);
+                while (pt > 11f && top + h + 2f * pad > floor)
+                {
+                    pt -= 1f;
+                    st.fontSize = Mathf.Max(1, Mathf.RoundToInt(pt * p));
+                    h = st.CalcHeight(new GUIContent(story), w - 2f * pad);
+                }
+                var storyPlate = new Rect(x + 6f * p + Slide(4), top, w, (h + 2f * pad) * storyKeep);
+                Panel(new Rect(storyPlate.x - 2.5f * p, storyPlate.y - 2.5f * p, storyPlate.width + 5f * p, storyPlate.height + 5f * p), Alpha(Ink, storyKeep), 4f);
+                Panel(storyPlate, Alpha(White, storyKeep), 4f);
+                if (storyKeep > 0.5f)
+                {
+                    var ink = QualitySettings.activeColorSpace == ColorSpace.Linear ? Ink.gamma : Ink;
+                    st.normal.textColor = new Color(ink.r, ink.g, ink.b, storyKeep);
+                    GUI.Label(new Rect(storyPlate.x + pad, storyPlate.y + pad, w - 2f * pad, h), story, st);
+                }
+                st.wordWrap = false;
             }
 
             if (room.status == RoomStatus.Countdown)
