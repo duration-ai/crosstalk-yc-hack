@@ -502,6 +502,15 @@ namespace Dogpatch.Map
                     });
                     if (!string.IsNullOrEmpty(r.displayName)) Label(p, r.displayName.Substring(0, 1).ToUpperInvariant(), 10.5f, White);
                 }
+            foreach (var r in WorldPlayers(race))
+            {
+                var p = ToMap(r.Position);
+                if (!Inside(p, 6f * s)) continue;
+                var color = SlipstreamHud.SlotColor(r.WorldColor);
+                var dir = MapDirection(r.Heading);
+                Gl(() => Arrow(p, dir, 7.5f * s, color));
+                NameTag(p + new Vector2(0f, 15f * s), r.Name, 11f);
+            }
             if (race != null && race.Joined) picked = default;
             bool named = fullZoom / BaseZoom >= 1.45f;
             foreach (var c in Clusters()) DrawPin(c.Pin, c.At, c.Count, named, false);
