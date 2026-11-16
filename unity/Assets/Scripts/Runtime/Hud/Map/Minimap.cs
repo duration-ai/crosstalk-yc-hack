@@ -456,7 +456,36 @@ namespace Dogpatch.Map
             GL.End();
             GL.PopMatrix();
             if (FullOpen) DrawFullLabels(player);
-            else DrawDistance();
+            else
+            {
+                var named = new List<Vector2>();
+                foreach (var r in WorldPlayers(RaceDirector.Instance))
+                {
+                    var p = ToMap(r.Position);
+                    if (!Inside(p, 5f * s) || named.Exists(q => Mathf.Abs(q.x - p.x) < 44f * s && Mathf.Abs(q.y - p.y) < 12f * s)) continue;
+                    named.Add(p);
+                    NameTag(p + new Vector2(0f, 10f * s), r.Name, 9.5f);
+                }
+                DrawDistance();
+            }
+        }
+
+        // Everyone else in the shared world outside your race, from their presence, until they go
+        // 5 s unheard; on the grid and in the race only the racer markers show.
+        static IEnumerable<RemoteRacers.Remote> WorldPlayers(RaceDirector race)
+        {
+            if (race == null || !race.Setup || race.Gridded) yield break;
+            foreach (var r in race.Remotes.All)
+                if (!r.Left && Time.time - r.WorldSeenAt < 5f && !(r.InRace && race.Last != null)) yield return r;
+        }
+
+        void NameTag(Vector2 p, string name, float fontSize)
+        {
+            EnsureStyle();
+            style.fontSize = Mathf.RoundToInt(fontSize * s);
+            var text = (name ?? "").ToUpperInvariant();
+            var size = style.CalcSize(Dogpatch.Gameplay.HudLayout.Text(text));
+            Outlined(new Rect(p.x - size.x * 0.5f, Screen.height - p.y - size.y * 0.5f, size.x, size.y), text, 1.2f * s);
         }
 
         // Renders the vector map into a 4x MSAA target the size of what it fills on screen (the
@@ -638,6 +667,17 @@ namespace Dogpatch.Map
                     }
                     else Pin(p, 3.6f * s, color);
                 }
+
+            foreach (var r in WorldPlayers(race))
+            {
+                var p = ToMap(r.Position);
+                var color = SlipstreamHud.SlotColor(r.WorldColor);
+                if (Inside(p, 5f * s))
+                {
+                    if (!FullOpen) Arrow(p, MapDirection(r.Heading), 4.4f * s, color);
+                }
+                else if (!FullOpen) Pin(p, 3.6f * s, color);
+            }
 
             var heading = MapDirection(focus.eulerAngles.y);
             var mine = ToMap(player);
