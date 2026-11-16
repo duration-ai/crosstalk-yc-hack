@@ -429,7 +429,7 @@ namespace Dogpatch.Look
             }
             for (int w = 0; w < rearWheels.Count && w < 2; w++) Mark(w, rearWheels[w].position, grounded && Mathf.Max(Mathf.Max(drift, braking), launch * 0.6f) > 0.3f);
 
-            float wet = Mathf.Max(WorldEnvironment.Wetness, WorldEnvironment.SnowCover);
+            float wet = Mathf.Max(Mathf.Max(WorldEnvironment.Wetness, WorldEnvironment.SnowCover), WorldEnvironment.Ice * Mathf.Clamp01(0.35f + drift));
             sprayDebt += wet * Mathf.Clamp01((Mathf.Abs(speed) - 3f) / 12f) * 13f * EffectsSettings.Intensity * dt;
             while (sprayDebt >= 1f)
             {
@@ -571,7 +571,7 @@ namespace Dogpatch.Look
             var back = car != null ? -car.transform.forward * Mathf.Sign(car.Speed == 0f ? 1f : car.Speed) : Vector3.zero;
             var side = car != null ? car.transform.right : Vector3.right;
             AddPuff(position + back * 0.4f, back * R(1.5f, 3f) * (0.5f + strength) + side * R(-0.9f, 0.9f) + Vector3.up * R(1.2f, 2.6f),
-                R(0.08f, 0.13f) * (0.7f + strength), R(0.3f, 0.45f), WorldEnvironment.SnowCover > WorldEnvironment.Wetness ? Powder : SprayColor);
+                R(0.08f, 0.13f) * (0.7f + strength), R(0.3f, 0.45f), Mathf.Max(WorldEnvironment.SnowCover, WorldEnvironment.Ice) > WorldEnvironment.Wetness ? Powder : SprayColor);
         }
 
         void AddPuff(Vector3 position, Vector3 velocity, float size, float life, Color color)
