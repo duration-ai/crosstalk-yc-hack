@@ -1,5 +1,8 @@
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using UnityEngine;
 
 namespace Dogpatch.Race
@@ -34,6 +37,9 @@ namespace Dogpatch.Race
             string route = root.name.Replace("SetPieces ", "").Replace(" ", "-").Replace("&", "and").ToLowerInvariant();
             foreach (Transform piece in root)
             {
+                SetPieces.SnapMoves = true;
+                foreach (var clock in piece.GetComponentsInChildren<HazardClock>()) clock.Tick(clock.StillAt);
+                SetPieces.SnapMoves = false;
                 var bounds = new Bounds(piece.position, Vector3.one);
                 foreach (var r in piece.GetComponentsInChildren<Renderer>()) bounds.Encapsulate(r.bounds);
                 float size = Mathf.Clamp(bounds.extents.magnitude, 3f, 45f);
@@ -51,6 +57,50 @@ namespace Dogpatch.Race
             Destroy(cam.gameObject);
             Destroy(tex);
             rt.Release();
+        }
+    }
+
+    // Headless check: "-setpiece-smoke" walks onto the ring, races the route on autopilot with the
+    // bots, logs every racer passing every set piece and quits with each racer's progress.
+    public sealed class SetPieceSmoke : MonoBehaviour
+    {
+        const float Limit = 600f;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        static void Boot()
+        {
+            if (Array.IndexOf(Environment.GetCommandLineArgs(), "-setpiece-smoke") >= 0) new GameObject("SetPieceSmoke").AddComponent<SetPieceSmoke>();
+        }
+
+        IEnumerator Start()
+        {
+            RaceDirector race;
+            while ((race = RaceDirector.Instance) == null || !race.Setup || race.Last == null) yield return null;
+            float began = Time.realtimeSinceStartup;
+            race.EnableAutopilot();
+            race.Game.Player.Teleport(race.RingSpot(race.MySlot), 0f);
+            yield return new WaitForSeconds(2f);
+            race.Hud.PressReady();
+            while (!race.Gridded || SetPieces.Instance.Root == null)
+            {
+                if (Time.realtimeSinceStartup - began > 90f) break;
+                yield return null;
+            }
+            var route = race.Course.Route;
+            var marks = SetPieces.Instance.Root == null ? new List<(string name, float at)>() : SetPieces.Instance.Root.Cast<Transform>().Select(t => (name: t.name, at: route.Project(RoutePath.Flat(t.position)))).ToList();
+            var passed = new HashSet<(string, int)>();
+            while (!race.ResultsIn && Time.realtimeSinceStartup - began < Limit)
+            {
+                foreach (var r in race.Last.racers)
+                    for (int i = 0; i < marks.Count; i++)
+                        if (r.progress >= marks[i].at + 5f && passed.Add((r.playerId, i)))
+                            Debug.Log($"[SetPieces] smoke: {race.NameOf(r.playerId)} passed {marks[i].name} at {(race.NowMs - race.Room.startsAt) / 1000f:F0} s");
+                yield return new WaitForSeconds(0.5f);
+            }
+            foreach (var r in race.Last.racers)
+                Debug.Log($"[SetPieces] smoke result: {race.NameOf(r.playerId)} {(r.finished ? "finished" : "did not finish")} at {r.progress:F0} of {route.Length:F0} m, passed {passed.Count(p => p.Item1 == r.playerId)} of {marks.Count} pieces");
+            Debug.Log($"[SetPieces] smoke done: {(race.ResultsIn ? "race over" : "timed out")} after {Time.realtimeSinceStartup - began:F0} s");
+            Application.Quit(race.ResultsIn ? 0 : 1);
         }
     }
 }

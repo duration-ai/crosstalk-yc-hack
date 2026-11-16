@@ -66,14 +66,14 @@
       "lon": -122.385748,
       "count": 4,
       "spacing": 14,
-      "width": 5.2
+      "width": 6.5
     },
     {
       "type": "dock",
       "lat": 37.758061,
       "lon": -122.38461,
-      "width": 5,
-      "height": 1.2,
+      "width": 8.5,
+      "height": 1.0,
       "spacing": 8
     },
     {
@@ -82,7 +82,7 @@
       "lon": -122.383302,
       "count": 4,
       "spacing": 14,
-      "width": 5.2
+      "width": 6.5
     },
     {
       "type": "scooters",
@@ -90,6 +90,15 @@
       "lon": -122.384269,
       "offset": -3.3,
       "count": 7
+    },
+    {
+      "type": "crossing",
+      "lat": 37.751244,
+      "lon": -122.387397,
+      "look": "muni",
+      "period": 25,
+      "phase": 2,
+      "width": 16
     }
   ]
 }
