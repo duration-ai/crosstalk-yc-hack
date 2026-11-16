@@ -19,9 +19,9 @@ namespace Dogpatch.World
     public sealed class CityRegions : MonoBehaviour
     {
         // The world-bounds setting: regions stream in, in this order, up to and including the one named
-        // here; "dogpatch" switches the expansion off. "drivable" loads Dogpatch and Mission Bay as one
-        // playable world (World/dogpatch-missionbay, extracted with DataPrep --north) and streams the
-        // regions beyond it as scenery. The command line -world-bounds <name> overrides it.
+        // here; "dogpatch" switches the expansion off. "drivable" loads Dogpatch, Mission Bay and South
+        // Beach as one playable world (World/dogpatch-drivable, extracted with DataPrep --north) and
+        // streams the regions beyond it as scenery. The command line -world-bounds <name> overrides it.
         public const string WorldBounds = "drivable";
 
         public static string Bounds
@@ -37,7 +37,9 @@ namespace Dogpatch.World
         public static bool Drivable => Bounds == "drivable";
 
         // The world data every system loads (GameController, TrafficData).
-        public static string WorldResource => Drivable ? "World/dogpatch-missionbay" : "World/dogpatch";
+        public static string WorldResource => Drivable ? "World/dogpatch-drivable" : "World/dogpatch";
+
+        static readonly HashSet<string> DrivableRegions = new HashSet<string> { "missionbay", "southbeach" };
 
         // The north edge of the original Dogpatch map. Beyond it (the drivable expansion) only one parked
         // car in three is kept, so the expansion doesn't double the parked fleet.
@@ -76,7 +78,7 @@ namespace Dogpatch.World
             if (bounds == "dogpatch") return active;
             foreach (var region in Regions)
             {
-                if (!(Drivable && region.name == "missionbay")) active.Add(region);
+                if (!(Drivable && DrivableRegions.Contains(region.name))) active.Add(region);
                 if (region.name == bounds) break;
             }
             return active;
