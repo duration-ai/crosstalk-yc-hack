@@ -75,6 +75,9 @@ namespace Dogpatch.Audio
             float load = Mathf.Clamp01(accel / 4f);
             if (profile.Electric) UpdateElectric(speed, load, priority);
             else UpdateCombustion(speed, load, dt, priority);
+            float squeak = Mathf.Clamp(1f / Mathf.Sqrt(Mathf.Max(transform.lossyScale.y, 0.05f)), 0.7f, 1.8f);
+            if (low != null) low.Pitch *= squeak;
+            if (high != null) high.Pitch *= squeak;
 
             if (road != null)
             {

@@ -88,27 +88,27 @@ export type EffectCommand = {
 
 export type Command = EffectCommand | { kind: "refuse"; reason: RefusalReason };
 
-/** Toast and Operator bar text; the style guide caps Operator HUD text at four words. */
+/** Toast and Operator bar text in Jay's voice (your buddy on the phone); the style guide caps Operator HUD text at four words. */
 export const REFUSAL_MESSAGES: Record<RefusalReason, string> = {
-  unsupported: "Can't do that one.",
-  transformation: "Can't transform things.",
-  spawning: "Can't add new things.",
-  teleport: "No teleporting, sorry.",
-  deferred: "Only right now, sorry.",
-  cheat: "Nice try, cheater.",
-  vague: "Didn't catch that.",
-  not_a_request: "Was that a request?",
-  too_broad: "Too much at once.",
-  player_target: "Not on players, sorry.",
-  no_op: "Nothing to change.",
-  incompatible: "That won't work there.",
-  not_visible: "Can't see one.",
-  protected: "That landmark's protected.",
-  unavailable: "Operator busy. Retry.",
-  undo: "No take-backs, sugar.",
-  not_built: "Can't do that one yet.",
+  unsupported: "Can't do that, dude.",
+  transformation: "Can't morph stuff, man.",
+  spawning: "Can't conjure that, dude.",
+  teleport: "No teleporting, man.",
+  deferred: "Right now only, dude.",
+  cheat: "Ha, nice try, man.",
+  vague: "Didn't catch that, man.",
+  not_a_request: "You talking to me?",
+  too_broad: "Whoa, too much, dude.",
+  player_target: "Not on them, man.",
+  no_op: "Nothing to change, dude.",
+  incompatible: "Won't work there, man.",
+  not_visible: "Don't see one, dude.",
+  protected: "Can't touch that one.",
+  unavailable: "Line's busy. Retry.",
+  undo: "No take-backs, dude.",
+  not_built: "Not yet, man.",
   no_asks: "Grab a phone first!",
-  race_over: "The race is over.",
+  race_over: "Race is over, man.",
 };
 
 const NONE = "none";
@@ -298,6 +298,7 @@ export function decide(a: Answers, view: View, active: ActiveSummary[]): Command
       if (!namedClass(a)) return refuse("too_broad");
       const effect = a.object_effect.choice;
       if (!OBJECT_EFFECTS[effect]) return refuse("vague");
+      if (effect === "stop" && (cls === "vehicle" || cls === "car")) return effectCommand(a, "world", "stop_all");
       if (!allows(effect, cls)) return refuse("incompatible");
       if (effect === "extinguish" && !active.some((e) => e.effect === "set_fire" && (isA(e.targetClass, cls) || isA(cls, e.targetClass)))) {
         return refuse("no_op");
@@ -376,13 +377,13 @@ export function nextBest(a: Answers, command: Command, transcript: string, rando
 }
 
 const STAND_IN_LINES = [
-  (thing: string) => `No can do, sugar. How about ${thing}?`,
-  (thing: string) => `Fresh out of those, sugar. Here's ${thing}!`,
-  (thing: string) => `Can't swing that, hon. Closest I've got: ${thing}!`,
-  (thing: string) => `That's not on my switchboard, sugar. Here's ${thing}!`,
+  (thing: string) => `No can do, dude. How about ${thing}?`,
+  (thing: string) => `Okay okay, closest I've got: ${thing}!`,
+  (thing: string) => `Ha, can't do that one, man. Here's ${thing}!`,
+  (thing: string) => `Dude, I got you ${thing} instead!`,
 ];
 
-/** The Operator owning up to a swap, playfully, in under a dozen words; the transcript picks the phrasing. */
+/** Jay owning up to a swap like a friend would, in under a dozen words; the transcript picks the phrasing. */
 export function standInLine(transcript: string, label: string, vehicle: string) {
   const thing = vehicle ? `a ${vehicle.replace(/_/g, " ")}` : label;
   let hash = 0;

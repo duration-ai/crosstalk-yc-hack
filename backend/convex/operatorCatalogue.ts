@@ -115,6 +115,7 @@ export const POPULATION_EFFECTS: Record<string, Effect> = {
     description: "a swarm of Waymo robotaxis hunts and rams the other racers (send the Waymos after them, Waymo attack, sic the robotaxis on everyone)",
     duration: [15, 20],
   },
+  stop_all: { label: "All stop", description: "every vehicle stops for a moment, traffic and racers alike: stop all cars, freeze traffic, everybody stop", duration: [4, 6] },
   green_lights: { label: "Green lights", description: "every traffic light turns green", duration: CROWD },
   more_pedestrians: { label: "Crowds", description: "more people on the streets", duration: CROWD },
   fewer_pedestrians: { label: "Ghost town", description: "fewer people on the streets", duration: CROWD },

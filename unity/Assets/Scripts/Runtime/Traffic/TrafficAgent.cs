@@ -265,6 +265,7 @@ namespace Dogpatch.Traffic
                 : Mathf.Min(Spec.CruiseSpeed, Lane.Speed * (Spec.Robotaxi ? 0.8f : 1f));
             float target = cruise * Mathf.Clamp(Pace * (1f + Rage * 0.6f), 0.3f, 2.5f);
             if (!OnRail && Link != null && Mathf.Abs(Link.Turn) > 30f) target = Mathf.Min(target, Express ? 9f : Spec.Robotaxi ? 4.5f : 6f);
+            if (AllStop) target = 0f;
             float rate = brake;
             State = "cruising";
 

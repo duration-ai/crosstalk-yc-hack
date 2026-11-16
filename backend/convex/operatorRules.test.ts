@@ -428,7 +428,8 @@ describe("next best thing", () => {
     for (const said of ["give me a tank", "make it rain frogs", "summon Godzilla", "turn me into a dragon", "teleport me home"]) {
       const line = standInLine(said, "Earthquake", said.includes("tank") ? "cybertruck" : "");
       expect(line.split(/\s+/).length, line).toBeLessThanOrEqual(12);
-      expect(line, line).toMatch(/sugar|hon/);
+      expect(line, line).toMatch(/\b(dude|man|okay)\b/i);
+      expect(line, line).not.toMatch(/sugar|\bhon\b|boss|pal\b/i);
       expect(line).toContain(said.includes("tank") ? "a cybertruck" : "Earthquake");
     }
   });
@@ -487,5 +488,23 @@ describe("loose acceptance: err on the side of doing something", () => {
     expect(play("take it back", { scope: "reject", reject_reason: "undo", nearest: "rain" })).toEqual(refused("undo"));
     const yc = answers({ scope: "object", object_effect: "demolish", class: "building", described: 0.9, target: "bld_yc", nearest: "earthquake" });
     expect(nextBest(yc, decide(yc, onFoot, []), "knock down the YC building")).toEqual(refused("protected"));
+  });
+});
+
+describe("stop all cars", () => {
+  it("stops every vehicle as a world effect", () => {
+    for (const cls of ["car", "vehicle"]) {
+      expect(decide(answers({ scope: "class", object_effect: "stop", class: cls }), onFoot, []), cls).toEqual(
+        effect({ scope: "world", effect: "stop_all", target: "", targetClass: "", strength: "medium" }),
+      );
+    }
+    const frozen = answers({ scope: "world", world_group: "population", population_effect: "stop_all" });
+    expect(decide(frozen, onFoot, [])).toEqual(effect({ scope: "world", effect: "stop_all" }));
+  });
+
+  it("keeps stopping one kind of vehicle a class effect", () => {
+    expect(decide(answers({ scope: "class", object_effect: "stop", class: "bus" }), onFoot, [])).toEqual(
+      effect({ scope: "class", effect: "stop", targetClass: "bus" }),
+    );
   });
 });
