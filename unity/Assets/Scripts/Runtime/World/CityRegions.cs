@@ -39,9 +39,6 @@ namespace Dogpatch.World
         // The world data every system loads (GameController, TrafficData).
         public static string WorldResource => Drivable ? "World/dogpatch-drivable" : "World/dogpatch";
 
-        // The north edge of the original Dogpatch map; parked cars thin out beyond it.
-        public const float DogpatchNorth = 834f;
-
         static readonly HashSet<string> DrivableRegions = new HashSet<string> { "missionbay", "southbeach" };
 
         // The north edge of the original Dogpatch map. Beyond it (the drivable expansion) only one parked
