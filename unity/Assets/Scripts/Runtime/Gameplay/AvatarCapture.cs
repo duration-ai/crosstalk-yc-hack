@@ -21,7 +21,7 @@ namespace Dogpatch.Gameplay
     //   -dogpatch-no-avatar-prompt / DOGPATCH_NO_AVATAR_PROMPT, and batchmode: no portrait button.
     //   -dogpatch-avatar-test-photo / DOGPATCH_AVATAR_TEST_PHOTO: the bundled test photo stands in
     //   for the camera (also used automatically on a device with no camera, e.g. the simulator).
-    public sealed class AvatarCapture : MonoBehaviour
+    public sealed partial class AvatarCapture : MonoBehaviour
     {
         const string AvatarKey = "dogpatch.avatar";
         const string NameAskedKey = "dogpatch.nameAsked";
@@ -459,10 +459,10 @@ namespace Dogpatch.Gameplay
                     break;
                 case Stage.Name:
                     var field = NameField();
-                    float gap = 16f * s;
+                    float bh = 64f * s;
                     list.Add(("field", field));
-                    list.Add(("keep", new Rect(field.x - gap - 100f * s, field.y, 100f * s, field.height)));
-                    list.Add(("ok", new Rect(field.xMax + gap, field.y, 130f * s, field.height)));
+                    list.Add(("dice", new Rect(field.x + 10f * s, field.y - 18f * s - bh, 84f * s, bh)));
+                    list.Add(("ok", new Rect(field.xMax - 150f * s, field.y - 18f * s - bh, 150f * s, bh)));
                     break;
                 case Stage.Viewfinder:
                 case Stage.Refused:
@@ -477,15 +477,16 @@ namespace Dogpatch.Gameplay
             return list;
         }
 
-        // One row under the title, X | field | OK, at the top of the screen so the keyboard never
-        // covers it; origin bottom-left.
+        // The name plate on the racer card, right of the racer and above where the keyboard rises;
+        // origin bottom-left.
         Rect NameField()
         {
             float s = Scale;
             var safe = HudLayout.Safe;
-            float row = Mathf.Min(safe.width - 72f * s, 900f * s), h = 88f * s;
-            float w = row - 100f * s - 130f * s - 32f * s;
-            return new Rect(safe.center.x - row / 2f + 100f * s + 16f * s, safe.yMax - 96f * s - h, w, h);
+            bool tall = Screen.height > Screen.width;
+            float h = 92f * s, w = Mathf.Min(tall ? safe.width * 0.56f : safe.width * 0.42f, 520f * s);
+            float y = tall ? safe.yMin + safe.height * 0.6f : safe.yMax - 150f * s - h;
+            return new Rect(safe.xMax - 28f * s - w - h * Lean, y, w, h);
         }
 
         // Touches on the card and the chip never become a drag or a jump. The HUD owns
@@ -524,6 +525,7 @@ namespace Dogpatch.Gameplay
             }
 
             HookDrag();
+            CardOpen = FullScreen;
             if (stage == Stage.Closed && !NameAsked && game != null && game.IsReady && (hud == null || !hud.Paused) && FindAnyObjectByType<LoadingCard>() == null
                 && !(Race.RaceDirector.Instance is Race.RaceDirector race && (race.Gridded || race.Locked))) OpenName();
             if (stage == Stage.Menu && !PortraitVisible) stage = Stage.Closed;
@@ -544,6 +546,7 @@ namespace Dogpatch.Gameplay
             else if (id == "name") OpenName();
             else if (id == "ok") CloseName(true);
             else if (id == "keep") CloseName(false);
+            else if (id == "dice") RollName();
             else if (id == "field") ShowKeyboard();
             else if (id == "open") Open();
             else if (id == "shutter") Shoot();
@@ -611,23 +614,6 @@ namespace Dogpatch.Gameplay
             Label(panel, text, refused ? Ink : Sunshine, 34f * s);
         }
 
-        // The portrait button: the head of whatever the player wears, in a circle with a thin ring in
-        // the player's colour. Pressed shifts down-right and shrinks slightly, like every plate.
-        void DrawPortrait()
-        {
-            float s = Scale;
-            var rect = PortraitRect();
-            if (pressed == "menu")
-            {
-                var c = rect.center + new Vector2(3f * s, -3f * s);
-                rect = new Rect(c.x - rect.width * 0.46f, c.y - rect.height * 0.46f, rect.width * 0.92f, rect.height * 0.92f);
-            }
-            GUI.DrawTexture(new Rect(rect.x, Screen.height - rect.yMax, rect.width, rect.height), portrait);
-            BeginShapes();
-            Ring(rect.center, rect.width * 0.5f, 4f * s, PlayerColor);
-            EndShapes();
-        }
-
         void DrawMenu()
         {
             float s = Scale;
@@ -639,30 +625,7 @@ namespace Dogpatch.Gameplay
                 Label(rect, id == "open" ? "RETAKE PHOTO" : "CHANGE NAME", pressed == id ? Ink : White, 20f * s);
         }
 
-        // YOUR NAME: a big white field with the name (or the grey "Racer NN" it keeps), an OK tick
-        // and a skip.
-        void DrawName()
-        {
-            float s = Scale;
-            var title = TagRect("YOUR NAME");
-            var field = NameField();
-            BeginShapes();
-            Dim();
-            Para(title, Ink);
-            Para(new Rect(field.x - 4f * s, field.y - 4f * s, field.width + 8f * s, field.height + 8f * s), Ink);
-            Para(field, White);
-            foreach (var (id, rect) in Buttons())
-            {
-                bool down = pressed == id;
-                if (id == "ok") Plate(rect, Sunshine, Ink, down, r => TickPictogram(r.center, r.height * 0.26f, down ? Sunshine : Ink));
-                else if (id == "keep") Plate(rect, Ink, White, down, r => ClosePictogram(r.center, r.height * 0.22f, down ? Ink : White));
-            }
-            EndShapes();
-            Label(title, "YOUR NAME", Sunshine, 34f * s);
-            bool caret = typed.Length < MaxName && Mathf.Repeat(Time.unscaledTime, 1f) < 0.55f;
-            string shown = typed.Length > 0 ? typed + (caret ? "|" : "") : (caret ? "|" : "") + placeholder;
-            Label(field, shown, typed.Length > 0 ? Ink : new Color(Ink.r, Ink.g, Ink.b, 0.35f), 40f * s);
-        }
+        internal static bool CardOpen { get; private set; }
 
         void LateUpdate()
         {
@@ -713,15 +676,17 @@ namespace Dogpatch.Gameplay
             DestroyImmediate(root);
 
             var pixels = portrait.GetPixels32();
-            float radius = PortraitSize * 0.5f;
+            float lean = PortraitSize * Lean;
             for (int y = 0; y < PortraitSize; y++)
                 for (int x = 0; x < PortraitSize; x++)
                 {
-                    float d = new Vector2(x + 0.5f - radius, y + 0.5f - radius).magnitude;
-                    pixels[y * PortraitSize + x].a = (byte)(Mathf.Clamp01(radius - d) * 255f);
+                    float left = lean * (y + 0.5f) / PortraitSize;
+                    float d = Mathf.Min(x + 0.5f - left, left + PortraitSize - lean - (x + 0.5f));
+                    pixels[y * PortraitSize + x].a = (byte)(Mathf.Clamp01(d + 0.5f) * 255f);
                 }
             portrait.SetPixels32(pixels);
             portrait.Apply();
+            RenderBody();
             Debug.Log("[Avatar] portrait rendered");
         }
 

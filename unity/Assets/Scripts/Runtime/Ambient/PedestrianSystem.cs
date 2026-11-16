@@ -317,7 +317,7 @@ namespace Dogpatch.Ambient
 
         void OnGUI()
         {
-            if (!ShowStats) return;
+            if (!ShowStats || !Debug.isDebugBuild) return;
             GUI.Label(new Rect(12, Screen.height - 34, 900, 30), $"pedestrians {Count}  within 50 m {Near}  drawn {Drawn}  draw calls {DrawCalls}  CPU {AiMs + RenderMs:F2} ms/frame (AI {AiMs:F2}, render {RenderMs:F2})");
         }
 
