@@ -163,6 +163,7 @@ namespace Dogpatch.Gameplay
 
         void Outlined(Rect r, string text, GUIStyle style, Color fill, float o)
         {
+            GUI.color = Color.white;
             style.normal.textColor = A(Ink);
             for (int i = 0; i < 8; i++)
             {
@@ -180,8 +181,9 @@ namespace Dogpatch.Gameplay
             if (Event.current.type != EventType.Repaint) return;
             ring ??= Circle(256, 0.86f);
             disc ??= Circle(128, 0f);
-            float w = Screen.width, h = Screen.height, u = Mathf.Min(w, h);
+            float w = Screen.width, h = Screen.height;
             bool landscape = w > h;
+            float u = Mathf.Min(w, h) * (landscape ? 1f : Mathf.Min(1f, h / (w * 1.9f)));
             var matrix = GUI.matrix;
             float now = Time.realtimeSinceStartup;
 
