@@ -37,5 +37,57 @@
     }
   ],
   "finishRadius": 15,
-  "ringRadius": 7.2
+  "ringRadius": 7.2,
+  "setPieces": [
+    {
+      "type": "scaffold",
+      "lat": 37.762936,
+      "lon": -122.392971,
+      "count": 3,
+      "spacing": 7,
+      "width": 4.2
+    },
+    {
+      "type": "mound",
+      "lat": 37.762036,
+      "lon": -122.392936
+    },
+    {
+      "type": "scaffold",
+      "lat": 37.761137,
+      "lon": -122.392914,
+      "count": 3,
+      "spacing": 7,
+      "width": 4.2
+    },
+    {
+      "type": "mound",
+      "lat": 37.760327,
+      "lon": -122.392891
+    },
+    {
+      "type": "boost",
+      "lat": 37.759608,
+      "lon": -122.392891
+    },
+    {
+      "type": "scooters",
+      "lat": 37.757791,
+      "lon": -122.391094,
+      "offset": 3.3,
+      "count": 6
+    },
+    {
+      "type": "boost",
+      "lat": 37.759248,
+      "lon": -122.38825
+    },
+    {
+      "type": "scooters",
+      "lat": 37.761524,
+      "lon": -122.389274,
+      "offset": 3.3,
+      "count": 7
+    }
+  ]
 }

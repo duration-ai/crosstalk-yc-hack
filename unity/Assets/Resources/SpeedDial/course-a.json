@@ -30,5 +30,47 @@
   ],
   "finishRadius": 15,
   "ringRadius": 7.2,
-  "freeway": true
+  "freeway": true,
+  "setPieces": [
+    {
+      "type": "boost",
+      "lat": 37.751964,
+      "lon": -122.390639
+    },
+    {
+      "type": "scooters",
+      "lat": 37.752503,
+      "lon": -122.390661,
+      "offset": -3.6,
+      "count": 6
+    },
+    {
+      "type": "cones",
+      "lat": 37.75646,
+      "lon": -122.392174,
+      "offset": 1.8,
+      "width": 3.4,
+      "count": 16,
+      "spacing": 4.5
+    },
+    {
+      "type": "boost",
+      "lat": 37.760777,
+      "lon": -122.392231
+    },
+    {
+      "type": "scooters",
+      "lat": 37.764168,
+      "lon": -122.389956,
+      "offset": 3.6,
+      "count": 7
+    },
+    {
+      "type": "scooters",
+      "lat": 37.763295,
+      "lon": -122.387169,
+      "offset": -3.3,
+      "count": 6
+    }
+  ]
 }
