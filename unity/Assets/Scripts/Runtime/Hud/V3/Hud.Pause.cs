@@ -178,6 +178,23 @@ namespace Dogpatch.Gameplay
             PlayGlyph(new Vector2(resume.x + 46f * k, resume.center.y), 22f * k, Ink);
             Text(new Rect(resume.x + 70f * k, resume.y, resumeW - 70f * k, resumeH), "RESUME", heading, Mathf.RoundToInt(28f * k), Ink);
             if (Hit(resume)) SetPaused(false);
+
+            var race = Race.RaceDirector.Instance;
+            if (race != null && race.RoomId != null && (race.Joined || race.ResultsIn))
+            {
+                var exit = landscape
+                    ? new Rect(resume.xMax + 24f * k, resume.y, 220f * k, resumeH)
+                    : new Rect(resume.x, resume.y - resumeH - 16f * k, 220f * k, resumeH);
+                Plate(new Rect(exit.x + 3f * k, exit.y + 4f * k, exit.width, exit.height), 10f * k, new Color(0f, 0f, 0f, 0.25f));
+                Plate(exit, 10f * k, White);
+                Text(exit, "EXIT RACE", heading, Mathf.RoundToInt(26f * k), Ink, TextAnchor.MiddleCenter);
+                if (Hit(exit))
+                {
+                    Debug.Log("[Hud] exit race from the pause menu");
+                    SetPaused(false);
+                    race.Leave();
+                }
+            }
         }
 
         void DrawFounderTag(Rect r, float k)
