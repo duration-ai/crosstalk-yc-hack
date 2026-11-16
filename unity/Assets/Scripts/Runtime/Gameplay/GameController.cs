@@ -96,6 +96,8 @@ namespace Dogpatch.Gameplay
             gameObject.AddComponent<HitchLogger>();
             Debug.Log($"[Dogpatch] world built in {Time.realtimeSinceStartup - t0:F1}s: {data.roads.Length} roads, {data.buildings.Length} buildings, {world.ParkedCars.Count + 1} cars");
             PedestrianSystem.Create(world, data);
+            Ambient.BannerPlanes.Create(world, material);
+            Ambient.SidewalkRobots.Create(material);
 
             input = gameObject.AddComponent<DragInput>();
             input.Tapped += OnTap;
