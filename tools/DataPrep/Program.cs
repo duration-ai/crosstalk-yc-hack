@@ -13,7 +13,13 @@ using P = (double x, double z);
 //
 // Bounds (kept from the first extract): 37.7495..37.7645 N, -122.3965..-122.3800 W. YC (580 20th St, OSM node 11657169276) is >=400 m from every edge
 // and the whole Pier 70 site up to the bay edge (coastline at lon -122.3816 at lat 37.7626) is inside, so the box was not expanded.
-const double South = 37.7495, North = 37.7645, West = -122.3965, East = -122.3800;
+const double South = 37.7495, DogpatchNorth = 37.7645, West = -122.3965, East = -122.3800;
+// --north <lat> --name <file>: the same extract with the north edge moved (a drivable expansion), written to
+// World/<file>.json in the same local frame (origin stays the Dogpatch box centre); stats, preview and
+// validation are left alone.
+int northArg = Array.IndexOf(args, "--north");
+double North = northArg >= 0 ? double.Parse(args[northArg + 1], CultureInfo.InvariantCulture) : DogpatchNorth;
+string worldName = northArg >= 0 ? args[Array.IndexOf(args, "--name") + 1] : "dogpatch";
 const string BoundsReason = "Unchanged from the first extract. Contains the whole Pier 70 site to the bay edge and the YC campus (580 20th St, 37.76078 -122.38664) with >= 413 m margin to the nearest edge; no clipping to the official Dogpatch outline.";
 const string Attribution = "Streets, props, landmarks (c) OpenStreetMap contributors (ODbL). DataSF (PDDL / CC0): Building Footprints ynuv-fyni, Parcels acdm-wktn, Land Use c5ge-t6pj, Assessor Secured Rolls wv5m-vpq2, Street Tree Inventory tkzw-k3nq, Traffic Signals ybh5-27n2, Muni Stops i28k-bkz6, Parking Meters 8vzz-qzz9, Bicycle Parking Racks hn4j-6fx5, Trash Can Locations 5buk-jp7b, Bay Area Bike Share Stations 7jbp-yzp3, Stop Signs 4542-gpa3, Rec & Park Assets e3jj-mbb3. Models: polyfork.dev.";
 
@@ -26,7 +32,7 @@ string Rel(params string[] p) => Path.Combine(new[] { root }.Concat(p).ToArray()
 var fetch = new Fetch(Rel("data", "cache"), refresh);
 var warnings = new List<string>();
 
-Geo.OriginLat = (South + North) / 2; Geo.OriginLon = (West + East) / 2;
+Geo.OriginLat = (South + DogpatchNorth) / 2; Geo.OriginLon = (West + East) / 2;
 var sw = Geo.Proj(South, West); var ne = Geo.Proj(North, East);
 double minX = Math.Round(sw.x, 1), maxX = Math.Round(ne.x, 1), minZ = Math.Round(sw.z, 1), maxZ = Math.Round(ne.z, 1);
 Geo.MinX = minX; Geo.MaxX = maxX; Geo.MinZ = minZ; Geo.MaxZ = maxZ;
@@ -529,9 +535,14 @@ var world = new WorldData
     Bridges = bridges.ToArray(), Viaducts = viaducts.ToArray(), Platforms = platforms.ToArray(), Water = water.ToArray(), Coastline = coastLines.ToArray(),
 };
 var jopts = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
-var worldPath = Rel("unity", "Assets", "Resources", "World", "dogpatch.json");
+var worldPath = Rel("unity", "Assets", "Resources", "World", worldName + ".json");
 Directory.CreateDirectory(Path.GetDirectoryName(worldPath));
 File.WriteAllText(worldPath, JsonSerializer.Serialize(world, jopts));
+if (northArg >= 0)
+{
+    Console.WriteLine($"{worldName}: {world.Roads.Length} roads, {world.Buildings.Length} buildings, {world.Props.Length} props, bounds z {minZ}..{maxZ} -> {worldPath}");
+    return;
+}
 
 // ---- Polyfork models (only with --models; the parent agent owns model choice and unity/Assets/Resources/Polyfork)
 ModelEntry[] entries = Array.Empty<ModelEntry>();
