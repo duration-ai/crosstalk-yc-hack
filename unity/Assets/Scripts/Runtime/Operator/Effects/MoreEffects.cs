@@ -174,7 +174,7 @@ namespace Dogpatch.Operator
                 if (slipping != null && now > slipUntil) Recover();
                 if (mine) return;
                 var me = Context.Game.CurrentCar;
-                if (me == null || !Racers.Physical(me)) return;
+                if (me == null || !Racers.Physical(me) || !me.OnGround) return;
                 var p = me.transform.position;
                 foreach (var s in slicks)
                 {
