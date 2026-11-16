@@ -61,7 +61,12 @@ if (args.Contains("--city"))
 }
 if (args.Contains("--ground"))
 {
-    await GroundPrep.Run(fetch, Rel("unity", "Assets", "Resources", "World", "ground.json"), bbox, minX, maxX, minZ, maxZ);
+    // Ground cover reaches past the drivable extract (north to 37.8000, west to -122.4200) so a wider
+    // world inherits it without a rerun; the game clips it to whichever world it loads.
+    const double GroundNorth = 37.8000, GroundWest = -122.4200;
+    var gsw = Geo.Proj(South, GroundWest); var gne = Geo.Proj(GroundNorth, East);
+    await GroundPrep.Run(fetch, Rel("unity", "Assets", "Resources", "World", "ground.json"), string.Join(",", South, GroundWest, GroundNorth, East),
+        Math.Round(gsw.x, 1), Math.Round(gne.x, 1), Math.Round(gsw.z, 1), Math.Round(gne.z, 1));
     return;
 }
 string pbbox = string.Join(",", South - Pad, West - Pad, North + Pad, East + Pad);
