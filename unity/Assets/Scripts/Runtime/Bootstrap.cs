@@ -15,7 +15,8 @@ namespace Dogpatch
                 new GameObject("SmashDemo").AddComponent<Smash.Demo.SmashDemo>().Scene = scene;
                 return;
             }
-            new GameObject("Game").AddComponent<GameController>();
+            if (LoadingCard.Enabled) LoadingCard.Show(() => new GameObject("Game").AddComponent<GameController>());
+            else new GameObject("Game").AddComponent<GameController>();
         }
     }
 }
