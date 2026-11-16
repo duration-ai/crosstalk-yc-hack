@@ -30,10 +30,12 @@ namespace Dogpatch.Race
         const int MaxInFlight = 3;
         const float BackToWorldAfter = 10f;
         const float RingExitMargin = 3f;
+        const float StrandedAfter = 10f;
 
         ConvexRaceSession convex;
         float nextMissionTry;
         bool ringArmed;
+        float strandedSince = -1f;
 
         public bool Online => convex != null;
         public string RoomCode { get; private set; }
@@ -216,8 +218,9 @@ namespace Dogpatch.Race
             Debug.Log("[SpeedDial] back in the world");
         }
 
-        // Stepping into the start ring enters the mission; walking out of it before the grid, or
-        // the results being up for a while, takes the player back to free roam.
+        // Stepping into the start ring enters the mission; walking out of it while not on the grid
+        // (outside the countdown lock), the results being up for a while, or a room that finished or
+        // raced on without you for a while, takes the player back to free roam.
         void MissionRing()
         {
             if (Busy || Reconnecting) return;
@@ -225,6 +228,7 @@ namespace Dogpatch.Race
             float d = Vector2.Distance(RoutePath.Flat(me), RoutePath.Flat(Course.RingCenter));
             if (RoomId == null)
             {
+                strandedSince = -1f;
                 if (d > Course.RingRadius + 1f) ringArmed = true;
                 if (ringArmed && d < Course.RingRadius && Time.time >= nextMissionTry)
                 {
@@ -235,7 +239,17 @@ namespace Dogpatch.Race
             }
             if (Room == null) return;
             if (ResultsIn && Time.time - ResultsAt > BackToWorldAfter) Leave();
-            else if (!Gridded && d > Course.RingRadius + RingExitMargin && (Room.status == RoomStatus.Lobby || (Room.status == RoomStatus.Countdown && MsToStart > LockMs + 500f))) Leave();
+            else if (!Gridded && d > Course.RingRadius + RingExitMargin && !(Room.status == RoomStatus.Countdown && MsToStart <= LockMs + 500f)) Leave();
+            else if (!ResultsIn && (Room.status == RoomStatus.Finished || (Room.status == RoomStatus.Racing && !Gridded)))
+            {
+                if (strandedSince < 0f) strandedSince = Time.time;
+                else if (Time.time - strandedSince > StrandedAfter)
+                {
+                    Debug.Log($"[SpeedDial] room {RoomCode} is {Room.status} without you for {StrandedAfter:F0} s: back to free roam");
+                    Leave();
+                }
+            }
+            else strandedSince = -1f;
         }
 
         // Presence on a fixed clock: every 1/15 s (every 0.25 s while racing, when the race poll
