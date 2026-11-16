@@ -33,7 +33,7 @@ namespace Dogpatch.Operator
         const float LatchWindow = 5f;
         const float LatchSilence = 1f;
         const float QuietSpan = 0.55f;
-        const float QuietLevel = 0.06f;
+        const float SpeechNeeded = 0.8f;
         const float RetryDelay = 1.5f;
 
         public GameController Game;
@@ -69,7 +69,9 @@ namespace Dogpatch.Operator
         string lastPartial = "";
         float partialAt;
         float loudAt;
-        bool spoke;
+        float floor;
+        float peak;
+        float speech;
         float listenAt;
         float greetingLead;
         bool pickupCall;
@@ -182,7 +184,14 @@ namespace Dogpatch.Operator
             latched = true;
             lastPartial = Voice?.Partial ?? "";
             partialAt = Time.time;
-            spoke = false;
+            ResetLevels();
+        }
+
+        void ResetLevels()
+        {
+            floor = -1f;
+            peak = 0f;
+            speech = 0f;
         }
 
         // Typed words straight to the Operator, for live tests only (the dev-flag text field,
@@ -253,7 +262,7 @@ namespace Dogpatch.Operator
                 listenAt = 0f;
                 Voice?.BeginTalk(false);
                 partialAt = Time.time;
-                spoke = false;
+                ResetLevels();
             }
             if (State == CallState.Talking && latched && listenAt == 0f)
             {
@@ -263,14 +272,23 @@ namespace Dogpatch.Operator
                     lastPartial = partial;
                     partialAt = Time.time;
                 }
-                if (global::Dogpatch.Operator.Voice.MicCapture.Level > QuietLevel)
+                float level = global::Dogpatch.Operator.Voice.MicCapture.Level;
+                if (level > 0f)
                 {
-                    loudAt = Time.time;
-                    spoke = true;
+                    floor = floor < 0f || level < floor ? level : Mathf.MoveTowards(floor, level, 0.01f * Time.deltaTime);
+                    peak = Mathf.Max(peak, level);
+                    if (level > Mathf.Max(floor * 2.5f, floor + (peak - floor) * 0.3f, 0.015f))
+                    {
+                        loudAt = Time.time;
+                        speech += Time.deltaTime;
+                    }
                 }
-                bool quiet = partial.Trim().Length > 0 && (Time.time - partialAt >= LatchSilence || spoke && Time.time - loudAt >= QuietSpan);
-                if (quiet || Time.time - StateSince >= LatchWindow + greetingLead)
+                bool heard = partial.Trim().Length > 0;
+                bool steady = heard && Time.time - partialAt >= LatchSilence;
+                bool hushed = heard && speech >= SpeechNeeded && Time.time - loudAt >= QuietSpan && Time.time - partialAt >= 0.3f;
+                if (steady || hushed || Time.time - StateSince >= LatchWindow + greetingLead)
                 {
+                    Debug.Log($"[SpeedDial] call commits on {(hushed ? "mic quiet" : steady ? "steady transcript" : "the window")}: floor {floor:F3} peak {peak:F3} speech {speech:F2} s, heard \"{partial}\"");
                     latched = false;
                     _ = SendAsync(null);
                 }
