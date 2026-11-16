@@ -38,6 +38,16 @@ namespace Dogpatch.Gameplay
 
         public static bool Portrait => Screen.height > Screen.width;
 
+        static readonly GUIContent measured = new GUIContent();
+
+        // One shared GUIContent for GUIStyle.CalcSize, so measuring HUD text doesn't allocate a new
+        // one per label per frame. Only valid until the next call.
+        public static GUIContent Text(string text)
+        {
+            measured.text = text;
+            return measured;
+        }
+
         public static Rect Safe
         {
             get
@@ -182,6 +192,23 @@ namespace Dogpatch.Gameplay
         }
 
         public static bool CallFromLeft => Option != HudOption.A;
+
+        // The mission briefing card and its race chip (CRO-68), at width up to 250 U and height h: a
+        // bottom strip right of the screen centre and left of the stick's grab circle, so it clears
+        // the centre, Ready and Call (bottom left) and the call card (left third). Where that strip is
+        // too narrow (portrait) it stacks above the stick instead, right-aligned.
+        public static Rect Briefing(float h)
+        {
+            float from = Screen.width * 0.5f + 24f * U;
+            float stickLeft = StickScreen.x - StickRadius * 1.6f - 10f * U;
+            if (stickLeft - from >= 150f * U)
+            {
+                float w = Mathf.Min(250f * U, stickLeft - from);
+                return new Rect(stickLeft - w, Bottom - h, w, h);
+            }
+            float wide = Mathf.Min(250f * U, Right - from);
+            return new Rect(Right - wide, StickTopGui - StickRadius * 0.6f - 12f * U - h, wide, h);
+        }
 
         // The transcript bar, attached to the top of the Call plate.
         public static Rect Hearing(float w, float h)

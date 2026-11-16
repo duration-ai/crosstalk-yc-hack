@@ -461,7 +461,7 @@ namespace Dogpatch.Map
             {
                 var p = ToMap(label.Position);
                 if (!Inside(p, 24f * s)) continue;
-                var size = style.CalcSize(new GUIContent(label.Text));
+                var size = style.CalcSize(Dogpatch.Gameplay.HudLayout.Text(label.Text));
                 float reach = size.x * 0.5f + 6f * s;
                 bool crowded = false;
                 foreach (var (at, r) in drawn)
@@ -638,7 +638,7 @@ namespace Dogpatch.Map
         {
             EnsureStyle();
             style.fontSize = Mathf.RoundToInt(fontSize * s);
-            var size = style.CalcSize(new GUIContent(text));
+            var size = style.CalcSize(Dogpatch.Gameplay.HudLayout.Text(text));
             style.normal.textColor = TextColor(color);
             GUI.Label(new Rect(p.x, Screen.height - p.y, size.x, size.y), text, style);
         }
@@ -662,7 +662,7 @@ namespace Dogpatch.Map
                 var c = CloseAt;
                 EnsureStyle();
                 style.fontSize = Mathf.RoundToInt(20f * s);
-                var title = style.CalcSize(new GUIContent("DOGPATCH"));
+                var title = style.CalcSize(Dogpatch.Gameplay.HudLayout.Text("DOGPATCH"));
                 Chip(new Vector2(c.x + ButtonR + 16f * s + title.x * 0.5f, c.y), "DOGPATCH", 20f, Ink, White);
                 if (picked.Kind == TargetKind.None) DrawLegend();
             }
@@ -697,7 +697,7 @@ namespace Dogpatch.Map
         {
             EnsureStyle();
             style.fontSize = Mathf.RoundToInt(fontSize * s);
-            var size = style.CalcSize(new GUIContent(text));
+            var size = style.CalcSize(Dogpatch.Gameplay.HudLayout.Text(text));
             style.normal.textColor = TextColor(color);
             GUI.Label(new Rect(p.x - size.x * 0.5f, Screen.height - p.y - size.y * 0.5f, size.x, size.y), text, style);
         }
@@ -711,7 +711,7 @@ namespace Dogpatch.Map
             EnsureStyle();
             style.fontSize = Mathf.RoundToInt(13f * s);
             float total = 0f;
-            foreach (var n in names) total += icon + 4f * s + style.CalcSize(new GUIContent(n)).x + gap;
+            foreach (var n in names) total += icon + 4f * s + style.CalcSize(Dogpatch.Gameplay.HudLayout.Text(n)).x + gap;
             total -= gap;
             float x = Screen.width * 0.5f - total * 0.5f;
             Gl(() => Parallelogram(new Vector2(Screen.width * 0.5f, y), total * 0.5f + 16f * s, LegendH * 0.5f, 5f * s, Ink));
@@ -732,7 +732,7 @@ namespace Dogpatch.Map
                     }
                 });
                 style.fontSize = Mathf.RoundToInt(13f * s);
-                var size = style.CalcSize(new GUIContent(names[i]));
+                var size = style.CalcSize(Dogpatch.Gameplay.HudLayout.Text(names[i]));
                 style.normal.textColor = TextColor(White);
                 GUI.Label(new Rect(x + icon + 4f * s, Screen.height - y - size.y * 0.5f, size.x, size.y), names[i], style);
                 x += icon + 4f * s + size.x + gap;

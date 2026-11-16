@@ -16,7 +16,7 @@ afterEach(() => vi.useRealTimers());
 const here = { x: 1, y: 0, z: 2 };
 
 describe("mission lobby", () => {
-  it("puts players who enter the ring in one room, counts down at two, and resets on each join", async () => {
+  it("puts players who enter the ring in one room, counts down only once everyone is ready, and holds again on a join", async () => {
     const t = convexTest(schema, modules);
     const ids = [];
     for (const name of ["Tim", "Maya", "Jun"]) {
@@ -31,22 +31,29 @@ describe("mission lobby", () => {
     expect(again.room.id).toBe(a.room.id);
     const b = await t.mutation(internal.missions.enter, { playerId: ids[1], mission: "yc" });
     expect(b.room.id).toBe(a.room.id);
-    expect(b.room.status).toBe("countdown");
-    expect(b.room.startsAt - T0 - MISSION_COUNTDOWN_MS).toBeLessThan(50);
+    expect(b.room.status).toBe("lobby");
+    const oneReady = await t.mutation(api.rooms.setReady, { playerId: ids[0], roomId: a.room.id, ready: true });
+    expect(oneReady.room).toMatchObject({ status: "lobby", startsAt: 0, readyCount: 1 });
+    vi.setSystemTime(T0 + 60_000);
+    expect((await t.query(internal.rooms.poll, { roomId: a.room.id, now: Date.now() })).room.status).toBe("lobby");
+    const bothReady = await t.mutation(api.rooms.setReady, { playerId: ids[1], roomId: a.room.id, ready: true });
+    expect(bothReady.room.status).toBe("countdown");
+    expect(bothReady.room.startsAt - (T0 + 60_000) - MISSION_COUNTDOWN_MS).toBeLessThan(50);
     expect(b.you.slot).not.toBe(a.you.slot);
     for (const [id, joined] of [[ids[0], a], [ids[1], b]] as const) {
       const world = await t.run((ctx) => ctx.db.query("worldPresence").collect());
       expect(joined.you.slot).toBe(world.find((w) => w.playerId === id)!.slot);
     }
-    vi.setSystemTime(T0 + 4000);
+    vi.setSystemTime(T0 + 64_000);
     const c = await t.mutation(internal.missions.enter, { playerId: ids[2], mission: "yc" });
-    expect(c.room.startsAt).toBeGreaterThanOrEqual(T0 + 4000 + MISSION_COUNTDOWN_MS);
+    expect(c.room.id).toBe(a.room.id);
+    expect(c.room).toMatchObject({ status: "lobby", startsAt: 0 });
     await expect(t.mutation(api.rooms.join, { playerId: ids[2], code: c.room.code })).rejects.toThrow(/location/);
 
     await t.mutation(api.rooms.leave, { playerId: ids[2], roomId: c.room.id });
     await t.mutation(api.rooms.leave, { playerId: ids[1], roomId: c.room.id });
     const poll = await t.query(internal.rooms.poll, { roomId: c.room.id, now: Date.now() });
-    expect(poll.room.status).toBe("lobby");
+    expect(poll.room).toMatchObject({ status: "lobby", playerCount: 1, readyCount: 1 });
   });
 
   it("opens a fresh room once the last one is racing, and keeps world membership", async () => {
@@ -60,6 +67,7 @@ describe("mission lobby", () => {
     }
     const first = await t.mutation(internal.missions.enter, { playerId: ids[0], mission: "yc" });
     await t.mutation(internal.missions.enter, { playerId: ids[1], mission: "yc" });
+    for (const playerId of ids.slice(0, 2)) await t.mutation(api.rooms.setReady, { playerId, roomId: first.room.id, ready: true });
     vi.setSystemTime(T0 + MISSION_COUNTDOWN_MS + 1);
     const late = await t.mutation(internal.missions.enter, { playerId: ids[2], mission: "yc" });
     expect(late.room.id).not.toBe(first.room.id);

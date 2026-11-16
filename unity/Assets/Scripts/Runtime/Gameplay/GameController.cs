@@ -69,6 +69,12 @@ namespace Dogpatch.Gameplay
 
         public Task EnterCar(CarController car) => RunAsync(() => EnterCarAsync(car));
 
+        // Drops a car someone else is about to destroy, such as a race bot's, so nothing finds it later.
+        public void Forget(CarController car)
+        {
+            if (cars.TryGetValue(car.VehicleId, out var known) && known == car) cars.Remove(car.VehicleId);
+        }
+
         public Task ExitCar() => current == null ? Task.CompletedTask : RunAsync(ExitCarAsync);
         public string StreetName { get; private set; } = "";
         public string StatusLine { get; private set; } = "Loading Dogpatch…";

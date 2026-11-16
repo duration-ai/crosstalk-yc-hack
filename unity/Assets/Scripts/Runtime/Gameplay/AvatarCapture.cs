@@ -630,7 +630,7 @@ namespace Dogpatch.Gameplay
             return label;
         }
 
-        float TextWidth(string text, float size) => Style(size).CalcSize(new GUIContent(text)).x;
+        float TextWidth(string text, float size) => Style(size).CalcSize(Dogpatch.Gameplay.HudLayout.Text(text)).x;
 
         // Text inside a panel given in bottom-left screen pixels.
         void Label(Rect rect, string text, Color color, float size)

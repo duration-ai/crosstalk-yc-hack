@@ -84,7 +84,7 @@ namespace Dogpatch.Operator
 
         void Text(Rect r, string text, float size, Color color, TextAnchor anchor = TextAnchor.MiddleLeft) => GUI.Label(r, text, Style(size, anchor, color));
 
-        float Width(string text, float size) => Style(size, TextAnchor.MiddleLeft, Color.white).CalcSize(new GUIContent(text)).x;
+        float Width(string text, float size) => Style(size, TextAnchor.MiddleLeft, Color.white).CalcSize(Dogpatch.Gameplay.HudLayout.Text(text)).x;
 
         bool Button(Rect r, string label, Color fill, Color ink)
         {

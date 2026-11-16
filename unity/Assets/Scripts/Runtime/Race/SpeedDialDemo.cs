@@ -69,8 +69,8 @@ namespace Dogpatch.Race
             yield return Shot("08-phone-buzz");
 
             game.Player.Teleport(race.RingSpot(race.MySlot), 0f);
-            yield return Until(() => race.Room.status == RoomStatus.Countdown, 15f, "auto-start countdown running");
-            yield return Until(() => race.MsToStart <= 6900f, 15f, "count at 07");
+            yield return Seconds(12f);
+            Log(race.Room.status == RoomStatus.Lobby ? $"lobby held while you're unready: {race.Room.readyCount} of {race.Room.playerCount} ready" : "FAILED: the lobby counted down while you were unready");
             yield return Shot("10-lobby");
 
             var jun = GameObject.Find("Racer Jun");
@@ -89,6 +89,8 @@ namespace Dogpatch.Race
             }
 
             race.Hud.PressReady();
+            yield return Until(() => race.Room.status == RoomStatus.Countdown, 8f, "countdown once everyone is ready");
+            Log($"countdown with {race.Room.readyCount} of {race.Room.playerCount} ready");
             yield return Until(() => race.Gridded, 6f, "on the grid");
             yield return Until(() => race.MsToStart <= 1900f, 6f, "countdown at 2");
             yield return Seconds(0.1f);
