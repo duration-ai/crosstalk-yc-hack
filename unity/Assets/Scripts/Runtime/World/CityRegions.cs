@@ -46,6 +46,27 @@ namespace Dogpatch.World
         // car in three is kept, so the expansion doesn't double the parked fleet.
         public const float DogpatchNorth = 834f;
 
+        // The playable world's outline when it isn't the box (the SoMa annex, DataPrep --soma), set by
+        // WorldBuilder from WorldData.edge.
+        public static Vector2[] Edge;
+
+        public static bool InEdge(Vector2 p) => Edge != null && Geometry.Contains(Edge, p);
+
+        // The part of the playable world west of the box (the SoMa annex), or an empty rect.
+        public static Rect Annex(Rect map)
+        {
+            if (Edge == null) return Rect.zero;
+            float x0 = map.xMin, z0 = float.MaxValue, z1 = float.MinValue;
+            foreach (var p in Edge)
+            {
+                if (p.x >= map.xMin - 0.5f) continue;
+                x0 = Mathf.Min(x0, p.x);
+                z0 = Mathf.Min(z0, p.y);
+                z1 = Mathf.Max(z1, p.y);
+            }
+            return x0 < map.xMin ? Rect.MinMaxRect(x0, z0, map.xMin, z1) : Rect.zero;
+        }
+
         static readonly (string name, Rect rect)[] Regions =
         {
             ("missionbay", Rect.MinMaxRect(-1120.9f, 834f, 725.3f, 2446.3f)),
@@ -61,7 +82,7 @@ namespace Dogpatch.World
         const float SkylineDistance = 2800f;
         const float GroundCell = 50f;
 
-        static readonly Color[] Walls = { L("#FFF3DA"), L("#DCD6CC"), L("#9ED7FF"), L("#FFE27A"), L("#8CE3BF"), L("#FF9C86"), L("#BBA6F7"), L("#C9C6C0") };
+        internal static readonly Color[] Walls = { L("#FFF3DA"), L("#DCD6CC"), L("#9ED7FF"), L("#FFE27A"), L("#8CE3BF"), L("#FF9C86"), L("#BBA6F7"), L("#C9C6C0") };
         static readonly Color[] TowerWalls = { L("#FFF3DA"), L("#9ED7FF"), L("#DCD6CC"), L("#C94A32") };
         static readonly Color Roof = L("#6C758B");
         static Color L(string hex) => SpeedDial.Hex(hex).linear;
@@ -231,7 +252,7 @@ namespace Dogpatch.World
             return (near, far, (region.buildings.Length, region.roads.Length));
         }
 
-        static void Extrude(MeshBuilder mesh, Vector2[] pts, float height, Color wall)
+        internal static void Extrude(MeshBuilder mesh, Vector2[] pts, float height, Color wall)
         {
             for (int i = 0; i < pts.Length; i++)
             {

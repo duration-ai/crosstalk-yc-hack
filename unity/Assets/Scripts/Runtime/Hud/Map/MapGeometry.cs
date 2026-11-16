@@ -62,6 +62,9 @@ namespace Dogpatch.Map
         public static MapGeometry Build(WorldData data, Palette palette)
         {
             var g = new MapGeometry { Bounds = Rect.MinMaxRect(data.minX, data.minZ, data.maxX, data.maxZ) };
+            if (data.edge != null)
+                for (int i = 0; i + 1 < data.edge.Length; i += 2)
+                    g.Bounds = Rect.MinMaxRect(Mathf.Min(g.Bounds.xMin, data.edge[i]), Mathf.Min(g.Bounds.yMin, data.edge[i + 1]), Mathf.Max(g.Bounds.xMax, data.edge[i]), Mathf.Max(g.Bounds.yMax, data.edge[i + 1]));
             if (data.land != null) foreach (var poly in data.land) g.Fill(g.global, Geometry.ToPoints(poly.pts), 0, palette.Land);
             if (data.parks != null) foreach (var poly in data.parks) g.Fill(null, Geometry.ToPoints(poly.pts), 1, palette.Park);
             foreach (var road in data.roads)

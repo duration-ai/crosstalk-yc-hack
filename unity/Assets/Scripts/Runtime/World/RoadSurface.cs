@@ -865,7 +865,8 @@ namespace Dogpatch.World
         ChunkedMeshBuilder LandColliders()
         {
             const float Cell = 1f;
-            var bounds = ctx.Bounds;
+            var annex = CityRegions.Annex(ctx.Bounds);
+            var bounds = annex.width > 0f ? UnityEngine.Rect.MinMaxRect(annex.xMin, ctx.Bounds.yMin, ctx.Bounds.xMax, ctx.Bounds.yMax) : ctx.Bounds;
             int w = Mathf.CeilToInt(bounds.width / Cell), h = Mathf.CeilToInt(bounds.height / Cell);
             var solid = new bool[w * h];
             var xs = new List<float>();

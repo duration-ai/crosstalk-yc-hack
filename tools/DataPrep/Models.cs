@@ -12,7 +12,7 @@ class WorldData
     public Polygon[] Parks { get; set; } public Polygon[] Land { get; set; } public float[] Trees { get; set; }
     public TreeRecord[] TreeRecords { get; set; } public Prop[] Props { get; set; } public Landmark[] Landmarks { get; set; }
     public Bridge[] Bridges { get; set; } public Viaduct[] Viaducts { get; set; } public Platform[] Platforms { get; set; }
-    public Polygon[] Water { get; set; } public Polyline[] Coastline { get; set; }
+    public Polygon[] Water { get; set; } public Polyline[] Coastline { get; set; } public float[] Edge { get; set; }
 }
 
 class Road
