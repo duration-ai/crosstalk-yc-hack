@@ -411,7 +411,7 @@ namespace Dogpatch.Slipstream
 
         void ReadyButton(bool pressed)
         {
-            var r = Gameplay.HudLayout.Ready(112f * s, 62f * s);
+            var r = Gameplay.HudLayout.Ready(112f * s, 64f * s);
             readyRect = r;
             readyVisible = true;
             if (!readyWasVisible) readyShownAt = Time.time;
@@ -423,18 +423,10 @@ namespace Dogpatch.Slipstream
             k = Mathf.Max(0.01f, k);
             float sx = k < 1f ? k + (1f - k) * 0.7f : k;
             r = new Rect(r.center.x - r.width * sx * 0.5f, r.center.y - r.height * k * 0.5f, r.width * sx, r.height * k);
-            DrawFrame(new Rect(r.x + 7f * s, r.y + 7f * s, r.width, r.height), Sun, 1.6f * s);
-            if (pressed || held)
-            {
-                var p = new Rect(r.x + 2f * s + r.width * 0.02f, r.y + 2f * s + r.height * 0.02f, r.width * 0.96f, r.height * 0.96f);
-                Framed(p, White, Ink, 3f * s);
-                Icon(new Rect(p.center.x - 16f * s, p.center.y - 16f * s, 32f * s, 32f * s), "ready", Ink);
-            }
-            else
-            {
-                Framed(r, Sun, Ink, 3f * s);
-                Icon(new Rect(r.center.x - 16f * s, r.center.y - 16f * s, 32f * s, 32f * s), "ready", Ink);
-            }
+            var racers = Race.Last?.racers;
+            int total = racers?.Count ?? 0;
+            int ready = racers?.Count(o => o.ready) ?? 0;
+            V3.HudPlates.Ready(r, held ? V3.ReadyLook.Pressed : pressed ? V3.ReadyLook.Locked : V3.ReadyLook.Rest, s, ready, total);
         }
 
         void DrawFrame(Rect r, Color color, float width)
@@ -784,8 +776,8 @@ namespace Dogpatch.Slipstream
             float now = Time.time;
             bool live = calls.State == CallState.Talking || calls.State == CallState.Waiting;
             bool hasAsks = calls.HasAsks;
-            float size = 72f * s;
-            float width = live ? 150f * s : size;
+            float size = 64f * s;
+            float width = live ? 150f * s : 96f * s;
             var slot = Gameplay.HudLayout.Call(width, size, readyShowing);
             float x = slot.x;
             float y = slot.y;
@@ -795,41 +787,9 @@ namespace Dogpatch.Slipstream
             callRect = r;
             callVisible = true;
 
-            if (buzz < 1.2f && !live)
-            {
-                float pulse = 0.5f + 0.5f * Mathf.Sin(buzz * 18f);
-                DrawFrame(Inflate(new Rect(r.x + 6f * s, r.y + 6f * s, r.width, r.height), pulse * 4f * s), new Color(Pink.r, Pink.g, Pink.b, 0.5f + 0.5f * pulse), 2f * s);
-            }
-
-            var fill = hasAsks ? Pink : new Color(0.55f, 0.57f, 0.63f);
             bool pressed = calls.State == CallState.Talking && now - calls.StateSince < 0.12f;
-            if (pressed) Framed(new Rect(r.x + r.width * 0.02f, r.y + r.height * 0.02f, r.width * 0.96f, r.height * 0.96f), White, Pink, 3f * s);
-            else
-            {
-                Panel(new Rect(r.x - 3f * s, r.y - 3f * s, r.width + 6f * s, r.height + 6f * s), Ink);
-                Panel(r, fill);
-            }
-            var icon = new Rect(r.x + (size - 50f * s) * 0.5f, r.center.y - 25f * s, 50f * s, 50f * s);
-            Icon(icon, "cellphone", pressed ? Pink : hasAsks ? White : new Color(1f, 1f, 1f, 0.6f));
-
-            if (live)
-            {
-                float level = calls.State == CallState.Talking ? 1f : 0.35f;
-                for (int i = 0; i < 6; i++)
-                {
-                    float h = (0.3f + 0.7f * Mathf.Abs(Mathf.Sin(now * (7f + i * 1.7f) + i * 1.3f))) * level;
-                    float bh = Mathf.Max(4f * s, h * 38f * s);
-                    Panel(new Rect(r.x + size + i * 12f * s, r.center.y + 19f * s - bh, 6.5f * s, bh), White, 0.12f);
-                }
-            }
-
-            if (calls.CountsAsks)
-            {
-                var badge = new Rect(r.x + size - 20f * s, r.y - 10f * s, 30f * s, 24f * s);
-                Panel(new Rect(badge.x - 2f * s, badge.y - 2f * s, badge.width + 4f * s, badge.height + 4f * s), Ink);
-                Panel(badge, hasAsks ? Sun : Paper);
-                Text(badge, Mathf.Max(0, calls.Asks()).ToString(), 15f, Ink, TextAnchor.MiddleCenter);
-            }
+            var look = pressed ? V3.CallLook.Pressed : live ? V3.CallLook.Live : !hasAsks ? V3.CallLook.OutOfAsks : buzz < 1.2f ? V3.CallLook.Ringing : V3.CallLook.Rest;
+            V3.HudPlates.Call(r, look, calls.CountsAsks ? Mathf.Max(0, calls.Asks()) : -1, s, calls.State == CallState.Talking ? 1f : 0.35f, buzz);
 
             float refused = now - calls.TurnedDownAt;
             if (refused < 2.2f)
