@@ -130,8 +130,12 @@ namespace Dogpatch.HudV3
                 float right = Screen.width - Gameplay.HudLayout.Safe.xMin - 22f * u;
                 var map = Gameplay.HudLayout.MinimapScreen;
                 float mapR = Gameplay.HudLayout.MinimapRadius;
-                if (top < Screen.height - map.y + mapR + 8f * p) right = Mathf.Min(right, map.x - mapR - 14f * p);
                 float floor = Gameplay.HudLayout.Bottom;
+                if (map.x - mapR > x)
+                {
+                    if (top < Screen.height - map.y + mapR + 8f * p) right = Mathf.Min(right, map.x - mapR - 14f * p);
+                }
+                else floor = Mathf.Min(floor, Screen.height - map.y - mapR - 10f * p);
                 var readyRect = Gameplay.HudLayout.Ready(112f * u, 64f * u);
                 if (readyRect.x < right) floor = Mathf.Min(floor, readyRect.y - 10f * p);
                 var stick = Gameplay.HudLayout.StickScreen;
