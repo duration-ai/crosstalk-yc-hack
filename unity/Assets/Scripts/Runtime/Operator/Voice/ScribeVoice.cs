@@ -92,13 +92,14 @@ namespace Dogpatch.Operator.Voice
             }
         }
 
-        public void BeginTalk()
+        public void BeginTalk(bool preRoll = true)
         {
             if (!open) Open();
             talking = true;
             Partial = "";
             pending.Clear();
-            preRoll.DrainTo(pending);
+            this.preRoll.DrainTo(pending);
+            if (!preRoll) pending.Clear();
             lastSend = Time.unscaledTime;
             if (session == null || (!session.IsOpen && opening.IsCompleted)) Connect();
         }
