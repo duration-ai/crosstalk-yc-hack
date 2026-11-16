@@ -104,6 +104,9 @@ namespace Dogpatch.Race
         // further each time and drops to the middle of the road, so a blocked lane never holds it.
         void Respawn()
         {
+            var at = Car.transform.position;
+            string blocker = Physics.SphereCast(at + Vector3.up * 0.9f, 0.9f, Car.transform.forward, out var hit, 6f, ~0, QueryTriggerInteraction.Ignore) ? hit.collider.name : "nothing";
+            Debug.Log($"[SpeedDial] bot {name} stuck at {Progress:F0} m, ({at.x:F1},{at.y:F1},{at.z:F1}), {Mathf.Abs(Car.Speed):F1} m/s, ahead {blocker}");
             recoveries = 0;
             streak = Mathf.Abs(Progress - lastRespawn) < 15f ? streak + 1 : 0;
             lastRespawn = Progress;
