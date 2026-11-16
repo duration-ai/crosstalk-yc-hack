@@ -36,7 +36,7 @@ namespace Dogpatch.Gameplay
         static readonly Color White = Color.white;
         static readonly Color PortraitSky = new Color32(0x9E, 0xD7, 0xFF, 0xFF);
 
-        enum Stage { Closed, Menu, Name, Viewfinder, Uploading, Refused, Failed }
+        enum Stage { Closed, Menu, Name, Viewfinder, Uploading, Refused, Failed, Reveal }
 
         GameController game;
         Hud hud;
@@ -84,7 +84,7 @@ namespace Dogpatch.Gameplay
 
         static bool ForceTestPhoto => Flag("-dogpatch-avatar-test-photo", "DOGPATCH_AVATAR_TEST_PHOTO");
 
-        bool FullScreen => stage == Stage.Name || stage == Stage.Viewfinder || stage == Stage.Uploading || stage == Stage.Refused || stage == Stage.Failed;
+        bool FullScreen => stage == Stage.Name || stage == Stage.Viewfinder || stage == Stage.Uploading || stage == Stage.Refused || stage == Stage.Failed || stage == Stage.Reveal;
 
         string PlayerId => game != null && game.Profile != null ? game.Profile.id : null;
 
@@ -336,6 +336,7 @@ namespace Dogpatch.Gameplay
         async Task UploadAsync(byte[] jpeg)
         {
             stage = Stage.Uploading;
+            uploadAt = Time.unscaledTime;
             AvatarResult result;
             try
             {
@@ -345,26 +346,26 @@ namespace Dogpatch.Gameplay
             catch (BackendException e) when (e.Code == AvatarErrorCodes.Retake)
             {
                 Debug.Log("[Avatar] retake: " + e.Message);
-                if (stage == Stage.Uploading) stage = Stage.Refused;
+                if (stage == Stage.Uploading || stage == Stage.Reveal) stage = Stage.Refused;
                 return;
             }
             catch (Exception e)
             {
                 Debug.LogWarning("[Avatar] photo failed: " + (e is BackendException b ? b.Code + " " : "") + e.Message);
-                if (stage == Stage.Uploading) Fail("TRY AGAIN");
+                if (stage == Stage.Uploading || stage == Stage.Reveal) Fail("TRY AGAIN");
                 return;
             }
             var d = result.decision;
             Debug.Log($"[Avatar] decided by {d?.provider} in {d?.latencyMs}ms realPerson={d?.realPerson} costume={d?.costume}: {result.avatar.@base} {result.avatar.glbUrl}");
             Save(result.avatar);
             bool wore = await WearAsync(result.avatar);
-            if (stage != Stage.Uploading) return;
+            if (stage != Stage.Uploading && stage != Stage.Reveal) return;
             if (!wore)
             {
                 Fail("TRY AGAIN");
                 return;
             }
-            Close();
+            StartReveal();
         }
 
         // The frame upright and at most maxSide pixels on its long side: the camera's vertical
@@ -450,14 +451,17 @@ namespace Dogpatch.Gameplay
                 case Stage.Closed:
                     if (PauseChipVisible) list.Add(("open", PauseChipRect()));
                     if (PortraitVisible) list.Add(("menu", PortraitRect()));
+                    if (TicketVisible) list.Add(("ticket", TicketRect()));
+                    break;
+                case Stage.Reveal:
+                    RevealButtons(list);
                     break;
                 case Stage.Menu:
                     if (!PortraitVisible) break;
-                    var portraitRect = PortraitRect();
-                    list.Add(("menu", portraitRect));
-                    float mw = 250f * s, mh = 46f * s;
-                    list.Add(("open", new Rect(portraitRect.x, portraitRect.y - 14f * s - mh, mw, mh)));
-                    list.Add(("name", new Rect(portraitRect.x, portraitRect.y - 2f * (14f * s + mh), mw, mh)));
+                    list.Add(("menu", PortraitRect()));
+                    var card = RacerCardRect();
+                    list.Add(("name", new Rect(card.x + 150f * s, card.y + 24f * s, 76f * s, 60f * s)));
+                    list.Add(("open", new Rect(card.x + 244f * s, card.y + 24f * s, 76f * s, 60f * s)));
                     break;
                 case Stage.Name:
                     var field = NameField();
@@ -553,6 +557,8 @@ namespace Dogpatch.Gameplay
             else if (id == "settings") Application.OpenURL("app-settings:");
             else if (id == "flip") Flip();
             else if (id == "skip") Close();
+            else if (id == "done") Close();
+            else if (id == "ticket") TapTicket();
         }
 
         internal string StageName => stage.ToString();
@@ -585,7 +591,8 @@ namespace Dogpatch.Gameplay
             }
             if (stage == Stage.Closed || stage == Stage.Menu)
             {
-                if (PortraitVisible) DrawPortrait();
+                if (TicketVisible) DrawTicket();
+                else if (PortraitVisible) DrawPortrait();
                 if (stage == Stage.Menu) DrawMenu();
                 return;
             }
@@ -595,25 +602,17 @@ namespace Dogpatch.Gameplay
                 return;
             }
 
-            DrawBooth();
+            if (stage == Stage.Reveal) DrawReveal();
+            else DrawBooth();
         }
 
-        void DrawMenu()
-        {
-            float s = Scale;
-            var chips = Buttons().Where(b => b.id != "menu").ToList();
-            BeginShapes();
-            foreach (var (id, rect) in chips) Para(rect, pressed == id ? White : Ink);
-            EndShapes();
-            foreach (var (id, rect) in chips)
-                Label(rect, id == "open" ? "RETAKE PHOTO" : "CHANGE NAME", pressed == id ? Ink : White, 20f * s);
-        }
 
         internal static bool CardOpen { get; private set; }
 
         void LateUpdate()
         {
             if (portraitDirty && worn != null) RenderPortrait();
+            UpdateTurntable();
         }
 
         // Renders the worn model's head once into a small cached texture with a round alpha mask,

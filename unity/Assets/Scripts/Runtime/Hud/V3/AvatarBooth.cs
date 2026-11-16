@@ -13,7 +13,32 @@ namespace Dogpatch.Gameplay
         static readonly Color Night = new Color32(0x22, 0x2A, 0x5A, 0xFF);
         static readonly Color NightRay = new Color32(0x2A, 0x34, 0x6C, 0xFF);
 
+        const float SuitSeconds = 1.8f;
+
         float countFrom = -1f;
+        float uploadAt;
+
+        float SuitProgress => Mathf.Clamp01((Time.unscaledTime - uploadAt) / SuitSeconds);
+
+        static readonly Color[] SuitColors =
+        {
+            new Color32(0xE8, 0xB0, 0x8A, 0xFF), new Color32(0x3B, 0x2A, 0x1E, 0xFF), new Color32(0xFF, 0x4F, 0x9A, 0xFF), new Color32(0x2E, 0x6C, 0xD8, 0xFF),
+        };
+
+        // Twelve segments filling with the SUITING UP progress, the lead one flickering.
+        static void Sweep(Rect r, float progress)
+        {
+            float gap = r.width * 0.012f;
+            float w = (r.width - gap * 11f) / 12f;
+            int lit = Mathf.FloorToInt(progress * 12.99f);
+            for (int i = 0; i < 12; i++)
+            {
+                var seg = new Rect(r.x + i * (w + gap), r.y, w, r.height);
+                Para(new Rect(seg.x - 1.5f, seg.y - 1.5f, seg.width + 3f, seg.height + 3f), Ink);
+                bool lead = i == lit && Mathf.Repeat(Time.unscaledTime * 12f, 1f) < 0.5f;
+                Para(seg, i < lit || lead ? Sunshine : White);
+            }
+        }
         float flashAt = -10f;
         GUIStyle big;
 
@@ -33,6 +58,7 @@ namespace Dogpatch.Gameplay
 
         void UpdateCount()
         {
+            if (stage == Stage.Uploading && Time.unscaledTime - uploadAt > SuitSeconds) StartReveal();
             if (stage != Stage.Viewfinder) countFrom = -1f;
             if (countFrom < 0f || Time.unscaledTime - countFrom < CountSeconds) return;
             PressShutter();
@@ -112,7 +138,7 @@ namespace Dogpatch.Gameplay
                 tag.x = safe.xMin + 24f * s;
                 BeginShapes();
                 Para(tag, Ink);
-                Segments(new Rect(tag.x + 10f * s, tag.y - 28f * s, Mathf.Max(tag.width, 300f * s), 16f * s));
+                Sweep(new Rect(tag.x + 10f * s, tag.y - 28f * s, Mathf.Max(tag.width, 300f * s), 16f * s), SuitProgress);
                 EndShapes();
                 Label(tag, "SUITING UP", White, 30f * s);
             }
@@ -198,11 +224,15 @@ namespace Dogpatch.Gameplay
                 Disc(new Vector2(area.center.x, area.yMin + h * 0.07f), w * 0.29f, w * 0.055f, Ink);
                 EndShapes();
                 GUI.color = stage == Stage.Uploading ? Ink : new Color32(0x3A, 0x48, 0x8A, 0xFF);
-                GUI.DrawTexture(new Rect(area.x, Screen.height - area.yMax, w, h), body);
+                float turn = stage == Stage.Uploading ? Mathf.Cos(SuitProgress * Mathf.PI * 4f) : 1f;
+                float sw = w * Mathf.Max(0.12f, Mathf.Abs(turn));
+                var spun = new Rect(area.center.x - sw / 2f, Screen.height - area.yMax, sw, h);
+                if (turn < 0f) GUI.DrawTexture(new Rect(spun.xMax, spun.y, -sw, h), body);
+                else GUI.DrawTexture(spun, body);
                 GUI.color = Color.white;
                 if (stage == Stage.Uploading)
                 {
-                    float y = area.yMin + h * Mathf.Repeat(Time.unscaledTime * 0.45f, 1f);
+                    float y = area.yMin + h * Mathf.Repeat(SuitProgress * 3f, 1f);
                     BeginShapes();
                     Line(new Vector2(area.xMin - 20f * s, y), new Vector2(area.xMax + 20f * s, y), 6f * s, Sunshine);
                     EndShapes();
@@ -212,6 +242,15 @@ namespace Dogpatch.Gameplay
             float pw = 150f * s, ph = pw * still.height / Mathf.Max(1f, still.width);
             ph = Mathf.Min(ph, 210f * s);
             var photo = new Rect(safe.xMin + 30f * s, Screen.height - safe.yMax + 30f * s, pw, ph);
+            if (stage == Stage.Uploading)
+            {
+                float fly = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(SuitProgress / 0.22f));
+                float k = Mathf.Lerp(Mathf.Min(Screen.width * 0.8f / pw, Screen.height * 0.7f / ph), 1f, fly);
+                var full = new Rect(Screen.width / 2f - pw * k / 2f, Screen.height / 2f - ph * k / 2f, pw * k, ph * k);
+                photo = new Rect(Mathf.Lerp(full.x, photo.x, fly), Mathf.Lerp(full.y, photo.y, fly), full.width, full.height);
+                pw = photo.width;
+                ph = photo.height;
+            }
             var old = GUI.matrix;
             GUIUtility.RotateAroundPivot(-5f, photo.center);
             float b = 8f * s;
@@ -221,6 +260,17 @@ namespace Dogpatch.Gameplay
             GUI.DrawTexture(new Rect(photo.x - b, photo.y - b, pw + 2f * b, ph + 2f * b), Texture2D.whiteTexture);
             GUI.DrawTexture(photo, still, ScaleMode.ScaleAndCrop);
             GUI.matrix = old;
+            if (stage != Stage.Uploading || SuitProgress < 0.22f) return;
+            BeginShapes();
+            for (int i = 0; i < SuitColors.Length; i++)
+            {
+                var pip = new Rect(photo.x + i * 34f * s, Screen.height - photo.yMax - 30f * s - 28f * s, 26f * s, 26f * s);
+                bool done = SuitProgress > 0.3f + i * 0.15f;
+                Para(new Rect(pip.x - 2f * s, pip.y - 2f * s, pip.width + 4f * s, pip.height + 4f * s), Ink);
+                Para(pip, done ? SuitColors[i] : White);
+                if (done) TickPictogram(pip.center, pip.height * 0.22f, White);
+            }
+            EndShapes();
         }
 
         void CenterTag(string text, Vector2 center, Color fill, Color ink, float size)

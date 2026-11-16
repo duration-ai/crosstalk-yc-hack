@@ -23,6 +23,7 @@ namespace Dogpatch.HudV3
             "a" => "PITCH THE INVESTOR FIRST",
             "b" => "PLUG IN AT PIER 70",
             "c" => "STOP YOUR COFOUNDER",
+            "d" => "HOT DEMO OVER THE BRIDGE",
             _ => "BEAT THE INVITE TO YC",
         };
 

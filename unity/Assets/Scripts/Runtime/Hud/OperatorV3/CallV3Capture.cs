@@ -74,7 +74,7 @@ namespace Dogpatch.Slipstream
             {
                 double now = hud.Effects.ServerNow();
                 hud.Effects.Optimistic(new ActiveEffect { id = "capture-night", effect = "night", label = "night", status = "active", scope = "world", startsAt = now, endsAt = now + 58000, durationS = 60f, requestedBy = race.Calls.PlayerId() });
-                hud.Effects.Optimistic(new ActiveEffect { id = "capture-gravity", effect = "gravity_lower", label = "gravity", status = "active", scope = "world", startsAt = now, endsAt = now + 4000, durationS = 30f, requestedBy = "someone-else" });
+                hud.Effects.Optimistic(new ActiveEffect { id = "capture-gravity", effect = "gravity_lower", label = "gravity", status = "active", scope = "world", startsAt = now, endsAt = now + 4000, durationS = 30f, requestedBy = race.Last.racers?.Find(r => r.playerId != race.MyId)?.playerId ?? "someone-else" });
             }
             race.Hud.PushNews("MAYA MADE IT NIGHT", "time", "purple");
             yield return new WaitForSecondsRealtime(0.8f);

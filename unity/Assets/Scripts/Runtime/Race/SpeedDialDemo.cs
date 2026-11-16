@@ -258,6 +258,7 @@ namespace Dogpatch.Race
                 var rings = FindObjectsByType<StartRingFx>(FindObjectsSortMode.None);
                 float nearest = rings.Length == 0 ? -1f : rings.Min(f => Vector2.Distance(RoutePath.Flat(f.transform.position), RoutePath.Flat(course.RingCenter)));
                 Log($"tour {name}: lobby {race.Room?.status} in room {race.RoomCode}, {rings.Length} beacon rings, nearest {nearest:F1} m from this ring, {race.Last?.racers.Count(r => !r.left)} racers, phones shown {Shown()}");
+                yield return Until(() => FindAnyObjectByType<Dogpatch.Gameplay.LoadingCard>() == null, 30f, name + " loading card gone", fatal: false);
                 yield return Seconds(1f);
                 yield return Shot("tour-ring-" + (id.Length > 0 ? id : "classic"));
                 race.Hud.PressReady();
@@ -272,6 +273,7 @@ namespace Dogpatch.Race
                 var first = race.Last.racers.FirstOrDefault(r => r.finished);
                 Log($"tour {name}: first finisher {(first != null ? race.NameOf(first.playerId) : "none")} at the {race.Course.Data.finishName} finish");
                 yield return Until(() => race.CrossedFinish || race.ResultsIn, 420f, name + " you over the line", fatal: false);
+                if (race.Me?.finished == true) yield return Shot("tour-finish-" + (id.Length > 0 ? id : "classic"));
                 if (race.WaitingForResults)
                 {
                     Log($"tour {name}: race end: you finished, waiting {race.WaitingForResults}, results {race.ResultsIn}, input blocked {game.ExternalInput}, camera on you {game.Follow.Target == race.BodyOf(race.MyId)}, speed {MySpeed():F1} m/s, standings {Standings()}");

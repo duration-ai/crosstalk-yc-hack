@@ -367,7 +367,7 @@ namespace Dogpatch.Slipstream
 
         void ReadyButton(bool pressed)
         {
-            var r = Gameplay.HudLayout.Ready(112f * s, 62f * s);
+            var r = Gameplay.HudLayout.Ready(112f * s, 64f * s);
             readyRect = r;
             readyVisible = true;
             if (!readyWasVisible) readyShownAt = Time.time;
@@ -379,18 +379,10 @@ namespace Dogpatch.Slipstream
             k = Mathf.Max(0.01f, k);
             float sx = k < 1f ? k + (1f - k) * 0.7f : k;
             r = new Rect(r.center.x - r.width * sx * 0.5f, r.center.y - r.height * k * 0.5f, r.width * sx, r.height * k);
-            DrawFrame(new Rect(r.x + 7f * s, r.y + 7f * s, r.width, r.height), Sun, 1.6f * s);
-            if (pressed || held)
-            {
-                var p = new Rect(r.x + 2f * s + r.width * 0.02f, r.y + 2f * s + r.height * 0.02f, r.width * 0.96f, r.height * 0.96f);
-                Framed(p, White, Ink, 3f * s);
-                Icon(new Rect(p.center.x - 16f * s, p.center.y - 16f * s, 32f * s, 32f * s), "ready", Ink);
-            }
-            else
-            {
-                Framed(r, Sun, Ink, 3f * s);
-                Icon(new Rect(r.center.x - 16f * s, r.center.y - 16f * s, 32f * s, 32f * s), "ready", Ink);
-            }
+            var racers = Race.Last?.racers;
+            int total = racers?.Count ?? 0;
+            int ready = racers?.Count(o => o.ready) ?? 0;
+            V3.HudPlates.Ready(r, held ? V3.ReadyLook.Pressed : pressed ? V3.ReadyLook.Locked : V3.ReadyLook.Rest, s, ready, total);
         }
 
         void DrawFrame(Rect r, Color color, float width)

@@ -214,7 +214,7 @@ export function buildQuestions(view: View): Question[] {
       type: "predicate",
       name: "everyone",
       instructions:
-        "Does the request explicitly cover every player, the caller included (make everyone tiny, all of us, all players, every racer, every car, the whole world)? Me, my car or an unspecified ask (make it tiny, go faster) is not everyone.",
+        "Does the request explicitly cover every player, the caller included (make everyone tiny, all of us, all players, every racer, every car, all our cars, everyone's car, for everyone, the whole world)? Me, my car or an unspecified ask (make it tiny, go faster) is not everyone.",
     },
     {
       type: "choice",

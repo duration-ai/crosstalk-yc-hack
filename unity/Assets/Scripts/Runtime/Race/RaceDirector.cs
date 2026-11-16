@@ -148,7 +148,7 @@ namespace Dogpatch.Race
         // course.json plus Resources/SpeedDial/course-<id>.json for each id in Routes. Online, driving
         // into another route's ring in free roam makes it the race course, and its mission (race-<id>)
         // keeps its lobby apart. "-speeddial-route b" picks the starting course for headless runs.
-        public static readonly string[] Routes = { "", "a", "b", "c" };
+        public static readonly string[] Routes = { "", "a", "b", "c", "d" };
         static string RouteChoice()
         {
             var args = Environment.GetCommandLineArgs();

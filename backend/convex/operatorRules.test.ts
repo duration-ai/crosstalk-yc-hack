@@ -539,6 +539,23 @@ describe("supersize", () => {
     expect(OBJECT_EFFECTS.grow.label).toBe("Supersize");
   });
 
+  it("flies the car you drive when Jev reads flight with cars flying", () => {
+    const fly = answers({ scope: "players", player_effect: "flight", world_group: "physics", physics_effect: "cars_fly", self_ref: 0.95 });
+    expect(decide(fly, driving, [])).toEqual(effect({ scope: "world", effect: "cars_fly" }));
+    expect(decide(fly, onFoot, [])).toEqual(effect({ scope: "players", effect: "flight" }));
+    const ride = answers({ scope: "players", player_effect: "flight", world_group: "physics", physics_effect: "cars_fly", vehicle: "flying_car" });
+    expect(decide(ride, driving, [])).toMatchObject({ kind: "effect", effect: "change_vehicle", vehicle: "flying_car" });
+    const everyoneRide = answers({ scope: "players", player_effect: "flight", world_group: "physics", physics_effect: "cars_fly", vehicle: "flying_car", everyone: 0.9 });
+    expect(decide(everyoneRide, driving, [])).toMatchObject({ kind: "effect", effect: "cars_fly" });
+    const theirs = answers({ scope: "players", player_effect: "flight", world_group: "physics", physics_effect: "cars_fly", other_player: 0.8 });
+    expect(decide(theirs, driving, [])).toMatchObject({ kind: "effect", effect: "cars_fly", confirm: true });
+  });
+
+  it("reads every car driving on water as boat cars rather than a transformation", () => {
+    const water = answers({ scope: "class", class: "car", object_effect: "x_transform", world_group: "physics", physics_effect: "cars_on_water" });
+    expect(decide(water, driving, [])).toEqual(effect({ scope: "world", effect: "cars_on_water" }));
+  });
+
   it("supersizes everyone as Giants even while driving", () => {
     const all = answers({ scope: "players", player_effect: "bigger", self_ref: 0.9, everyone: 0.95 });
     expect(decide(all, driving, [])).toEqual(effect({ scope: "players", effect: "bigger" }));
