@@ -42,7 +42,10 @@ namespace Dogpatch.Gameplay
             return Mathf.Abs(screen.x - c.x) < half && Mathf.Abs(Screen.height - screen.y - c.y) < half;
         }
 
-        bool PlateShown => !Paused && Game != null && Game.IsReady && !Minimap.FullOpen;
+        // Hidden from the grid's 3 to GO (HUD v3 race-flow board 4), so the count owns the screen.
+        bool PlateShown => !Paused && Game != null && Game.IsReady && !Minimap.FullOpen && !OnGrid;
+
+        static bool OnGrid => Race.RaceDirector.Instance is Race.RaceDirector race && race.Gridded && !race.Started;
 
         void HandlePausePlate()
         {
