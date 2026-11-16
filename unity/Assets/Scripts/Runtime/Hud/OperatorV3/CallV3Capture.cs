@@ -28,8 +28,16 @@ namespace Dogpatch.Slipstream
         IEnumerator Start()
         {
             Directory.CreateDirectory(output);
-            while (RaceDirector.Instance == null || !RaceDirector.Instance.Setup) yield return null;
-            yield return new WaitForSecondsRealtime(4f);
+            while (RaceDirector.Instance == null || !RaceDirector.Instance.Setup || RaceDirector.Instance.Last == null) yield return null;
+            var race = RaceDirector.Instance;
+            var game = race.Game;
+            var spot = new Vector2(race.Course.RingCenter.x, race.Course.RingCenter.z) + new Vector2(120f, 90f);
+            if (game.World.Roads.Nearest(spot, 60f, out var hit))
+            {
+                game.Player.Teleport(new Vector3(hit.Point.x, 0.3f, hit.Point.y), Mathf.Atan2(hit.Direction.x, hit.Direction.y) * Mathf.Rad2Deg);
+                game.Follow.Snap(game.Player.transform, false);
+            }
+            yield return new WaitForSecondsRealtime(8f);
             var shots = new (string name, CallState state, string words, int asks)[]
             {
                 ("1-call-ready", CallState.None, "", 2),
