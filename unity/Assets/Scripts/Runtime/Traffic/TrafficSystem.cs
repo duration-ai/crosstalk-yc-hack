@@ -685,7 +685,7 @@ namespace Dogpatch.Traffic
                 for (int i = 0; i < count; i++)
                 {
                     var q = p + axis * ((i - (count - 1) * 0.5f) * 0.9f);
-                    VehicleRoster.Spawn(VehicleTypes.BayWheels, new Vector3(q.x, 0.05f, q.y), heading + 90f, root);
+                    VehicleRoster.Spawn(VehicleTypes.BayWheels, new Vector3(q.x, 0.05f, q.y), heading + 90f, root).gameObject.AddComponent<FarCull>();
                     bikes++;
                 }
             }
