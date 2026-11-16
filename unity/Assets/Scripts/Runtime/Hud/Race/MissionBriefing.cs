@@ -52,6 +52,8 @@ namespace Dogpatch.Slipstream
             },
         };
 
+        public static string StoryOf(string routeId) => Briefs.TryGetValue(routeId, out var brief) ? brief.Story : null;
+
         static readonly Color Ink = SlipstreamHud.Hex("#1C2347");
         static readonly Color Sun = SlipstreamHud.Hex("#FFCB1F");
         static readonly Color White = SlipstreamHud.Hex("#FFFFFF");
