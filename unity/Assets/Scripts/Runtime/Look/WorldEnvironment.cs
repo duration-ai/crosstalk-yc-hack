@@ -28,6 +28,10 @@ namespace Dogpatch.Look
         public static float Snow { get; internal set; }
         public static float Wetness { get; internal set; }
         public static float SnowCover { get; internal set; }
+
+        // Icy road glaze (slippery_ground): Ice eases toward IceTarget.
+        public static float Ice { get; internal set; }
+        public static float IceTarget;
         public static float NightFactor { get; internal set; }
         public static bool IsNight => NightFactor > 0.5f;
 

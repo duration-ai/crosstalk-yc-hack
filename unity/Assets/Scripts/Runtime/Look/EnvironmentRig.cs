@@ -97,6 +97,7 @@ namespace Dogpatch.Look
             WorldEnvironment.Snow = Toward(WorldEnvironment.Snow, WorldEnvironment.TargetSnow, WorldEnvironment.WeatherBlend, dt);
             WorldEnvironment.Wetness = Toward(WorldEnvironment.Wetness, WorldEnvironment.TargetRain, WorldEnvironment.WeatherBlend * 2f, dt);
             WorldEnvironment.SnowCover = Toward(WorldEnvironment.SnowCover, WorldEnvironment.TargetSnow, WorldEnvironment.WeatherBlend * 3f, dt);
+            WorldEnvironment.Ice = Mathf.MoveTowards(WorldEnvironment.Ice, WorldEnvironment.IceTarget, 0.8f * dt);
             float rainAmount = WorldEnvironment.Rain, snowAmount = WorldEnvironment.Snow;
 
             int k = 0;
@@ -130,6 +131,7 @@ namespace Dogpatch.Look
             Shader.SetGlobalFloat("_DogpatchNight", night);
             Shader.SetGlobalFloat("_DogpatchWet", WorldEnvironment.Wetness);
             Shader.SetGlobalFloat("_DogpatchSnow", WorldEnvironment.SnowCover);
+            Shader.SetGlobalFloat("_DogpatchIce", WorldEnvironment.Ice);
 
             float sunYaw = (tod - 12f) * 22.5f;
             var sunRotation = Quaternion.Euler(Mathf.Max(elevation, 8f), sunYaw, 0f);
