@@ -53,7 +53,6 @@ namespace Dogpatch.Race
         static readonly Color White = PaintJob.Linear("#F4F4EE");
         static readonly Color Black = PaintJob.Linear("#23262E");
         static readonly Color Yellow = PaintJob.Linear("#FFCB1F");
-        static readonly Color Cyan = PaintJob.Linear("#2EE6FF");
         static readonly Color Navy = PaintJob.Linear("#1C2347");
         static readonly Color Concrete = PaintJob.Linear("#A9A69C");
         static readonly Color Dirt = PaintJob.Linear("#8A5A34");
@@ -173,7 +172,8 @@ namespace Dogpatch.Race
                 case "ramp": Ramp(f, holder, Or(p.length, 6f), Or(p.width, 6f), Or(p.height, 1.1f), 0f, false); break;
                 case "dock": Ramp(f, holder, Or(p.length, 5f), Or(p.width, 5f), Or(p.height, 1.2f), Or(p.spacing, 8f), false); break;
                 case "mound": Ramp(f, holder, Or(p.length, 5f), Or(p.width, 6f), Or(p.height, 1.3f), 0f, true); break;
-                case "boost": Boost(f, holder, Or(p.length, 6f), Or(p.width, 3.5f)); break;
+                // Boost pads are gone (Sudhir, 2026-11-15); courses that still list one get nothing.
+                case "boost": break;
                 case "puddle": Puddle(f, holder, Or(p.width, 4f), rng); break;
                 case "cones": Cones(f, holder, Math.Max(p.count, 12), Or(p.spacing, 4f), p.width); break;
                 case "chicane": Chicane(f, holder, Math.Max(p.count, 4), Or(p.spacing, 14f), Or(p.width, 5.5f), rng); break;
@@ -310,31 +310,6 @@ namespace Dogpatch.Race
                 float speed = ForwardSpeed(car, fwd);
                 if (speed < 5f || !Cooldown(car, "launch", 0.8f)) return;
                 CarFx.On(car).Launch(Mathf.Clamp(speed * 0.3f, 3.5f, up));
-            });
-        }
-
-        void Boost(Frame f, Transform holder, float length, float width)
-        {
-            var at = f.Point(0f, 0f, out float heading);
-            var mb = new MeshBuilder();
-            float hw = width * 0.5f;
-            mb.Box(new Vector3(0f, 0.02f, length * 0.5f), new Vector3(width, 0.04f, length), Quaternion.identity, Navy);
-            for (int i = 0; i < 3; i++)
-            {
-                float z = length * (0.2f + i * 0.28f);
-                var c = i == 1 ? Yellow : Cyan;
-                var a = new Vector3(-hw + 0.3f, 0.05f, z);
-                var b = new Vector3(0f, 0.05f, z + 1.1f);
-                var e = new Vector3(hw - 0.3f, 0.05f, z);
-                mb.Quad(a, a + Vector3.forward * 0.5f, b + Vector3.forward * 0.5f, b, c, Vector3.up);
-                mb.Quad(b, b + Vector3.forward * 0.5f, e + Vector3.forward * 0.5f, e, c, Vector3.up);
-            }
-            Static(holder, "boost pad", mb, at, heading, false);
-            Trigger(holder, "boost", at + Quaternion.Euler(0f, heading, 0f) * new Vector3(0f, 0f, length * 0.5f), heading, new Vector3(width, 1.8f, length), (car, fwd) =>
-            {
-                if (!Cooldown(car, "boost", 1f)) return;
-                HoldSpeed(car, "boost", 1.4f, 2f);
-                CarFx.On(car).Push(car.transform.forward * 7f);
             });
         }
 
