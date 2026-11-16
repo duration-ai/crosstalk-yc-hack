@@ -490,3 +490,21 @@ describe("loose acceptance: err on the side of doing something", () => {
     expect(nextBest(yc, decide(yc, onFoot, []), "knock down the YC building")).toEqual(refused("protected"));
   });
 });
+
+describe("stop all cars", () => {
+  it("stops every vehicle as a world effect", () => {
+    for (const cls of ["car", "vehicle"]) {
+      expect(decide(answers({ scope: "class", object_effect: "stop", class: cls }), onFoot, []), cls).toEqual(
+        effect({ scope: "world", effect: "stop_all", target: "", targetClass: "", strength: "medium" }),
+      );
+    }
+    const frozen = answers({ scope: "world", world_group: "population", population_effect: "stop_all" });
+    expect(decide(frozen, onFoot, [])).toEqual(effect({ scope: "world", effect: "stop_all" }));
+  });
+
+  it("keeps stopping one kind of vehicle a class effect", () => {
+    expect(decide(answers({ scope: "class", object_effect: "stop", class: "bus" }), onFoot, [])).toEqual(
+      effect({ scope: "class", effect: "stop", targetClass: "bus" }),
+    );
+  });
+});

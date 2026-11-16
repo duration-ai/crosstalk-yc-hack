@@ -181,7 +181,7 @@ namespace Dogpatch.EditorTools
         static void Registry()
         {
             var registry = EffectRegistry.Default();
-            Check(EffectRegistry.Catalogue.Length == 75 && EffectRegistry.Catalogue.Distinct().Count() == 75, "75 catalogue ids, no duplicates");
+            Check(EffectRegistry.Catalogue.Length == 76 && EffectRegistry.Catalogue.Distinct().Count() == 76, "76 catalogue ids, no duplicates");
             Check(!registry.Has("undo_last"), "no undo effect");
             foreach (var id in EffectRegistry.Catalogue) Check(registry.Has(id), "registered: " + id);
             foreach (var id in EffectRegistry.Built) Check(!registry.IsStub(id), "built for real: " + id);

@@ -339,7 +339,7 @@ namespace Dogpatch.Operator
 
         public override void Apply(string strength, EffectTarget target)
         {
-            float k = grow ? Scale(strength, 2f, 3f, 4.5f) : Scale(strength, 0.5f, 0.3f, 0.2f);
+            float k = grow ? Scale(strength, 2f, 3f, 4.5f) : Scale(strength, 0.32f, 0.28f, 0.22f);
             foreach (var tag in target.Entities)
             {
                 if (tag.Span != null) continue;
@@ -434,7 +434,7 @@ namespace Dogpatch.Operator
             r.Register("jump_higher", () => new KnobEffect((e, s) => { PlayerController.JumpScale = OperatorEffect.Scale(s, 2f, 3f, 4.5f); return () => PlayerController.JumpScale = 1f; }));
             r.Register("slow_fall", () => new KnobEffect((e, s) => { PlayerController.GravityScale = OperatorEffect.Scale(s, 0.35f, 0.2f, 0.1f); return () => PlayerController.GravityScale = 1f; }));
             r.Register("bigger", () => new SizeEffect(1.8f, 2.5f, 3.5f));
-            r.Register("smaller", () => new SizeEffect(0.5f, 0.35f, 0.25f));
+            r.Register("smaller", () => new SizeEffect(0.32f, 0.28f, 0.22f));
             r.Register("grip_down", () => new OilSlickEffect());
             r.Register("slippery_ground", () => new KnobEffect((e, s) => { CarFx.Traction = OperatorEffect.Scale(s, 0.06f, 0.03f, 0.015f); return () => CarFx.Traction = 1f; }));
             r.Register("gravity_higher", () => new KnobEffect((e, s) => Gravity(OperatorEffect.Scale(s, 2f, 3f, 4f))));

@@ -298,6 +298,7 @@ export function decide(a: Answers, view: View, active: ActiveSummary[]): Command
       if (!namedClass(a)) return refuse("too_broad");
       const effect = a.object_effect.choice;
       if (!OBJECT_EFFECTS[effect]) return refuse("vague");
+      if (effect === "stop" && (cls === "vehicle" || cls === "car")) return effectCommand(a, "world", "stop_all");
       if (!allows(effect, cls)) return refuse("incompatible");
       if (effect === "extinguish" && !active.some((e) => e.effect === "set_fire" && (isA(e.targetClass, cls) || isA(cls, e.targetClass)))) {
         return refuse("no_op");
