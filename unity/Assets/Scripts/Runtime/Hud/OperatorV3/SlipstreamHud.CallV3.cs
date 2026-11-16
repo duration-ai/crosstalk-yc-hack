@@ -79,6 +79,14 @@ namespace Dogpatch.Slipstream
                 return;
             }
 
+            if (talking && PreviewState == null && now - calls.StateSince < 0.12f)
+            {
+                var held = new Rect(r.x + 3f * s, r.y + 3f * s, 86f * s, h);
+                Framed(held, White, Pink, 3f * s);
+                Icon(new Rect(held.x + 5f * s, held.center.y - 19f * s, 38f * s, 38f * s), "call", Pink);
+                return;
+            }
+
             Panel(new Rect(r.x - 3f * s, r.y - 3f * s, r.width + 6f * s, r.height + 6f * s), Ink);
             Panel(r, Pink);
 

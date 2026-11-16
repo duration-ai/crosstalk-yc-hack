@@ -111,8 +111,8 @@ namespace Dogpatch.Operator
             if (DebugInput && Debug.isDebugBuild && !Slipstream.SlipstreamHud.ManualCallsLocked) DebugField(Gameplay.HudLayout.Left, Gameplay.HudLayout.Call(72f * s, 72f * s).y - 2f * s);
         }
 
-        // Effect chips (board 5): a coloured block with the effect's pictogram (pink for yours,
-        // sunshine for everyone else's) on an ink bar with the label and the seconds left; the last
+        // Effect chips (board 5): a coloured block with the effect's pictogram (pink for yours, the
+        // requester's slot colour for theirs, sunshine when they're not in the room) on an ink bar with the label and the seconds left; the last
         // 5 s blink pink. Three at most, then +N.
         void Chips(float left, float y)
         {
@@ -133,13 +133,14 @@ namespace Dogpatch.Operator
                 string time = row.instant ? "!" : Mathf.CeilToInt(secs) + "s";
                 bool mine = row.requestedBy == Calls.PlayerId();
                 bool ending = !row.instant && secs <= 5f && Mathf.Repeat(Time.time, 0.5f) < 0.25f;
-                var color = mine || ending ? Pink : Sun;
+                var theirs = mine ? Pink : Their(row.requestedBy);
+                var color = ending ? Pink : theirs;
                 var block = new Rect(left, y, 30f * s, 22f * s);
                 float w = Width(label, 12f) + Width(time, 13f) + 30f * s;
                 var bar = new Rect(block.xMax + 2f * s, y, w, 22f * s);
                 Panel(bar, Ink);
                 Panel(block, color);
-                GUI.color = mine || ending ? Color.white : Ink;
+                GUI.color = color == Sun ? Ink : Color.white;
                 GUI.DrawTexture(new Rect(block.x + 5f * s, block.y + 1f * s, 20f * s, 20f * s), Slipstream.Pictograms.Get(Picto(row.effect)), ScaleMode.ScaleToFit);
                 GUI.color = Color.white;
                 Text(new Rect(bar.x + 9f * s, bar.y, bar.width, bar.height), label, 12f, Color.white);
@@ -148,6 +149,12 @@ namespace Dogpatch.Operator
                     Panel(new Rect(bar.x, bar.yMax - 2.5f * s, bar.width * Mathf.Clamp01(secs / row.durationS), 2.5f * s), color, 0f);
                 y += 27f * s;
             }
+        }
+
+        static Color Their(string playerId)
+        {
+            var racer = Race.RaceDirector.Instance?.Last?.racers?.Find(r => r.playerId == playerId);
+            return racer != null ? Slipstream.SlipstreamHud.SlotColor(racer.color) : Sun;
         }
 
         static string Picto(string effect)
