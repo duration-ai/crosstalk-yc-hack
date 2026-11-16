@@ -54,6 +54,7 @@ namespace Dogpatch.Slipstream
                 ("3-thinking", CallState.Waiting, "make it night and everyone tiny", 2, false, ""),
                 ("4-done", CallState.Answered, "", 1, false, "Lights out, Dogpatch."),
                 ("5-nope", CallState.Answered, "", 2, true, "Not on my watch, sugar."),
+                ("7-out-of-asks", CallState.None, "", 0, false, ""),
             };
             foreach (var shot in shots)
             {
