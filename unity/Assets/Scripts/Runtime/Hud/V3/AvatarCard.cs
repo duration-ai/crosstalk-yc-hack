@@ -159,7 +159,7 @@ namespace Dogpatch.Gameplay
             var field = NameField();
             bool tall = Screen.height > Screen.width;
             BeginShapes();
-            Sunburst(new Vector2(Screen.width * 0.5f, Screen.height * 0.62f), Burst, BurstRay);
+            Sunburst(new Vector2(Screen.width * 0.5f, Screen.height * 0.62f), Bright, BrightRay);
             EndShapes();
             var racer = tall
                 ? new Rect(safe.xMin + 12f * s, field.y - 40f * s, field.x - safe.xMin + 40f * s, safe.yMax - field.y - 30f * s)
