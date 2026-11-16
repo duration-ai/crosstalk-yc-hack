@@ -88,6 +88,14 @@
       "lon": -122.389274,
       "offset": 3.3,
       "count": 7
+    },
+    {
+      "type": "walker",
+      "lat": 37.761542,
+      "lon": -122.389615,
+      "width": 6,
+      "period": 24,
+      "phase": 4
     }
   ]
 }

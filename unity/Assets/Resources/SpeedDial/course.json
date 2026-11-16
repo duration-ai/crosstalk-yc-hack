@@ -50,6 +50,15 @@
       "lon": -122.387113,
       "offset": 3.3,
       "count": 6
+    },
+    {
+      "type": "crossing",
+      "lat": 37.757818,
+      "lon": -122.390184,
+      "look": "caltrain",
+      "period": 20,
+      "phase": 6,
+      "width": 20
     }
   ]
 }
