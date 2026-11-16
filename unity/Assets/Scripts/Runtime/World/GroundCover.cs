@@ -69,8 +69,10 @@ namespace Dogpatch.World
             return m;
         }
 
-        // Returns every surface it laid, by kind, for the clutter that goes on top.
-        public static List<(string kind, Vector2[] poly)> Build(Transform parent, Vector2[][] land, Material ground)
+        // Returns every surface it laid, by kind, for the clutter that goes on top. ground.json covers
+        // more than any one world (Dogpatch, the drivable extract, and room to widen it), so each
+        // polygon is clipped to this world's bounds.
+        public static List<(string kind, Vector2[] poly)> Build(Transform parent, Vector2[][] land, Material ground, Rect bounds)
         {
             var laid = new List<(string, Vector2[])>();
             var layers = new SortedDictionary<int, MeshBuilder>();
@@ -86,7 +88,7 @@ namespace Dogpatch.World
                 {
                     var g = data.polygons[i];
                     if (!Styles.TryGetValue(g.kind, out var style)) continue;
-                    var poly = Geometry.ToPoints(g.pts);
+                    var poly = Clip(Geometry.ToPoints(g.pts), bounds);
                     if (poly.Length < 3) continue;
                     if (Geometry.SignedArea(poly) < 0f) Array.Reverse(poly);
                     Cells(At(style.Layer), poly, style, i * 7919 + 13);
@@ -99,6 +101,27 @@ namespace Dogpatch.World
                 WorldBuilder.Emit(parent, layer == 0 ? "Land" : "Ground cover " + layer, mb.ToMesh("ground " + layer), Layer(ground, layer), false);
             Debug.Log($"[GroundCover] {count} surfaces, {stalls} parking stall lines");
             return laid;
+        }
+
+        // Sutherland-Hodgman against the four sides of the rect.
+        static Vector2[] Clip(Vector2[] poly, Rect r)
+        {
+            var points = new List<Vector2>(poly);
+            foreach (var (axis, edge, keepAbove) in new[] { (0, r.xMin, true), (0, r.xMax, false), (1, r.yMin, true), (1, r.yMax, false) })
+            {
+                if (points.Count == 0) break;
+                var input = points;
+                points = new List<Vector2>();
+                bool Inside(Vector2 p) => keepAbove ? p[axis] >= edge : p[axis] <= edge;
+                for (int i = 0; i < input.Count; i++)
+                {
+                    var a = input[(i + input.Count - 1) % input.Count];
+                    var b = input[i];
+                    if (Inside(a) != Inside(b)) points.Add(Vector2.Lerp(a, b, (edge - a[axis]) / (b[axis] - a[axis])));
+                    if (Inside(b)) points.Add(b);
+                }
+            }
+            return points.ToArray();
         }
 
         static float Hash(int x, int y, int seed)
