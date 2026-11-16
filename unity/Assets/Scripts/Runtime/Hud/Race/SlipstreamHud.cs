@@ -133,6 +133,15 @@ namespace Dogpatch.Slipstream
         void Update()
         {
             if (Race == null || !Race.Setup) return;
+            if (leaveAt >= 0f && Time.time >= leaveAt)
+            {
+                leaveAt = -1f;
+                if (Race.ResultsIn)
+                {
+                    Debug.Log("[SpeedDial] results tick: back to free roam");
+                    Race.Leave();
+                }
+            }
             for (int i = 0; i < Input.touchCount; i++)
             {
                 var t = Input.GetTouch(i);
@@ -150,15 +159,15 @@ namespace Dogpatch.Slipstream
         {
             float pad = 12f * s;
             if (OnlinePress(finger, p)) return;
-            if (callVisible && Inflate(callRect, pad).Contains(p))
-            {
-                callFinger = finger;
-                Race.Calls.BeginTalk();
-            }
-            else if (readyVisible && Inflate(readyRect, pad).Contains(p))
+            if (readyVisible && Inflate(readyRect, pad).Contains(p))
             {
                 readyFinger = finger;
                 readyHeldAt = Time.time;
+            }
+            else if (callVisible && Inflate(callRect, pad).Contains(p))
+            {
+                callFinger = finger;
+                Race.Calls.BeginTalk();
             }
         }
 
@@ -179,13 +188,16 @@ namespace Dogpatch.Slipstream
         }
 
         // READY in the lobby toggles you ready and back. On the results it's done: online that takes you
-        // back to free roam (a mission room is never rematched), offline it rematches the local room.
+        // back to free roam once its press has played (a mission room is never rematched), offline it
+        // rematches the local room.
         public void PressReady()
         {
             if (!Race.ResultsIn) Race.SetReady(!(Race.Me?.ready ?? false));
-            else if (Race.Online) Race.Leave();
+            else if (Race.Online) leaveAt = Time.time + 0.3f;
             else Race.SetReady(true);
         }
+
+        float leaveAt = -1f;
 
         // ---- drawing primitives ----
 
@@ -318,8 +330,12 @@ namespace Dogpatch.Slipstream
             if (lobby && !paused) Lobby(room);
             if (Race.Online && lobby && !paused) MissionPlate(room);
             if (Race.Gridded && !Race.ResultsIn) Countdown();
-            if (racing) RaceCorners();
-            if (racing && Race.CrossedFinish) FinishedBanner();
+            if (racing && !Race.CrossedFinish) RaceCorners();
+            if (Race.WaitingForResults)
+            {
+                FinishedBanner();
+                LiveStandings();
+            }
             if (Race.ResultsIn) Results();
             OperatorAndNews();
             if (!ManualCallsLocked) PhoneButton(lobby || Race.ResultsIn);
@@ -355,7 +371,7 @@ namespace Dogpatch.Slipstream
                 Panel(bar, me ? Ink : Paper);
                 Panel(block, SlotColor(r.color));
                 if (!Race.Online) Icon(new Rect(block.x + 6f * s, block.y + 2f * s, 20f * s, 20f * s), r.ready ? "ready" : "dash", White);
-                Text(new Rect(bar.x + 12f * s, bar.y, bar.width, bar.height), me ? "YOU" : r.displayName.ToUpperInvariant(), 14f, me ? White : Ink);
+                Text(new Rect(bar.x + 12f * s, bar.y, bar.width, bar.height), r.displayName.ToUpperInvariant(), 14f, me ? White : Ink);
                 y += 31f * s;
             }
 
@@ -609,11 +625,32 @@ namespace Dogpatch.Slipstream
                 }
             }
 
-            float rowY = Gameplay.HudLayout.ResultsTop;
             var ordered = results.OrderBy(r => r.place).ToList();
-            for (int i = 0; i < ordered.Count; i++)
+            float rowY = Standings(ordered.Select(r => (r.place, r.playerId, r.displayName, r.color, r.finished ? FinishTime(r.finishMs) : "DNF")).ToList(), since);
+            Podium(ordered, rowY + 6f * s, since);
+            if (since > 0.6f) ReadyButton(false);
+        }
+
+        static string FinishTime(long ms) => (ms / 1000f).ToString("F1") + "S";
+
+        // Over the line while others still race: the standings as they stand, each finish time as it
+        // lands and the metres still to go for the rest, in the same place the results take.
+        void LiveStandings()
+        {
+            var rows = Race.Last.racers.Where(r => !r.left).OrderBy(r => r.place)
+                .Select(r => (r.place, r.playerId, r.displayName, r.color, r.finished ? FinishTime(r.finishMs) : Mathf.RoundToInt(r.metersToFinish) + "M"))
+                .ToList();
+            Standings(rows, Time.time - Race.FinishedAt);
+        }
+
+        // The standings rows top right, sliding in one by one: place, name, and a time or note beside
+        // each. Returns the y under the last row.
+        float Standings(List<(int place, string playerId, string name, string color, string note)> rows, float since)
+        {
+            float rowY = Gameplay.HudLayout.ResultsTop;
+            for (int i = 0; i < rows.Count; i++)
             {
-                var r = ordered[i];
+                var r = rows[i];
                 bool me = r.playerId == Race.MyId;
                 float slide = Mathf.Clamp01((since - 0.45f - i * 0.08f) / 0.28f);
                 if (slide <= 0f)
@@ -627,11 +664,11 @@ namespace Dogpatch.Slipstream
                 Panel(bar, me ? Ink : Paper);
                 Panel(block, me ? Sun : SlotColor(r.color));
                 Text(block, r.place.ToString(), 15f, me ? Ink : White, TextAnchor.MiddleCenter);
-                Text(new Rect(bar.x + 10f * s, bar.y, bar.width, bar.height), me ? "YOU" : r.displayName.ToUpperInvariant(), 14f, me ? White : Ink);
+                Text(new Rect(bar.x + 10f * s, bar.y, bar.width, bar.height), me ? "YOU" : r.name.ToUpperInvariant(), 14f, me ? White : Ink);
+                Text(new Rect(block.x - 78f * s, rowY, 70f * s, 24f * s), r.note, 15f, r.note == "DNF" ? Pink : White, TextAnchor.MiddleRight, 1.4f * s);
                 rowY += 31f * s;
             }
-            Podium(ordered, rowY + 6f * s, since);
-            if (since > 0.6f) ReadyButton(false);
+            return rowY;
         }
 
         // Mario Kart's podium in flat Slipstream blocks under the standings: 2nd, 1st, 3rd rise in turn

@@ -18,7 +18,7 @@ namespace Dogpatch.Race
         const int MaxPlayers = 4;
         const long AllReadyMs = 3000;
         const long LockMs = 3000;
-        const long CloseAfterFirstFinishMs = 30000;
+        const long CloseAfterFirstFinishMs = 45000;
         const int DefaultAsks = 100;
         const int MaxAsks = 100;
         const int MaxPickups = 64;
@@ -129,6 +129,14 @@ namespace Dogpatch.Race
                 var code = new string(Enumerable.Range(0, 4).Select(_ => letters[random.Next(letters.Length)]).ToArray());
                 if (rooms.Values.All(r => r.Room.code != code)) return code;
             }
+        }
+
+        // Offline the rooms keep their own copy of each racer's name, as the server's do.
+        public void Rename(string playerId, string displayName)
+        {
+            foreach (var state in rooms.Values)
+                foreach (var racer in state.Racers)
+                    if (racer.playerId == playerId) racer.displayName = displayName;
         }
 
         Racer AddRacer(RoomState state, Player player)

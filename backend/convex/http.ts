@@ -71,6 +71,14 @@ http.route({
 });
 
 http.route({
+  path: "/api/players/rename",
+  method: "POST",
+  handler: endpoint(async (ctx, { playerId, displayName }) => ({
+    player: await ctx.runMutation(api.players.rename, { playerId, displayName }),
+  })),
+});
+
+http.route({
   path: "/api/players",
   method: "GET",
   handler: endpoint(async (ctx, { id }) => ({

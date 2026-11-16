@@ -263,12 +263,30 @@ namespace Dogpatch.Race
                 yield return Until(() => race.Last.racers.Any(r => r.finished), 420f, name + " first finisher", fatal: false);
                 var first = race.Last.racers.FirstOrDefault(r => r.finished);
                 Log($"tour {name}: first finisher {(first != null ? race.NameOf(first.playerId) : "none")} at the {race.Course.Data.finishName} finish");
+                yield return Until(() => race.CrossedFinish || race.ResultsIn, 420f, name + " you over the line", fatal: false);
+                if (race.WaitingForResults)
+                {
+                    Log($"tour {name}: race end: you finished, waiting {race.WaitingForResults}, results {race.ResultsIn}, input blocked {game.ExternalInput}, camera on you {game.Follow.Target == race.BodyOf(race.MyId)}, speed {MySpeed():F1} m/s, standings {Standings()}");
+                    yield return Seconds(4f);
+                    Log($"tour {name}: race end: 4 s later waiting {race.WaitingForResults}, results {race.ResultsIn}, input blocked {game.ExternalInput}, camera on you {game.Follow.Target == race.BodyOf(race.MyId)}, speed {MySpeed():F1} m/s, standings {Standings()}");
+                }
                 yield return Until(() => race.ResultsIn, 60f, name + " results", fatal: false);
+                if (race.ResultsIn)
+                {
+                    float after = Time.time - race.FinishedAt;
+                    Log($"tour {name}: race end: results {after:F1} s after your finish, {race.Last.results.Count(r => r.finished)} of {race.Last.results.Count} finished, DNF {string.Join("/", race.Last.results.Where(r => !r.finished).Select(r => r.displayName))}");
+                    yield return Seconds(1.5f);
+                    Log($"tour {name}: race end: results camera {Vector3.Distance(game.View.transform.position, race.BodyOf(race.MyId).position):F1} m from your body");
+                }
                 yield return Seconds(0.5f);
                 Log($"tour {name}: results {race.ResultsIn}, phones shown after {Shown()}, rings showing after {FindObjectsByType<StartRingFx>(FindObjectsSortMode.None).Count(f => f.gameObject.activeInHierarchy)}");
             }
             Log("tour done");
         }
+
+        float MySpeed() => race.Game.CurrentCar != null ? Mathf.Abs(race.Game.CurrentCar.Speed) : 0f;
+
+        string Standings() => string.Join(" ", race.Last.racers.Where(r => !r.left).OrderBy(r => r.place).Select(r => $"{r.place}.{race.NameOf(r.playerId)}:{(r.finished ? (r.finishMs / 1000f).ToString("F1") + "s" : "racing")}"));
 
         static int Shown()
         {
