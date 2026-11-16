@@ -97,6 +97,17 @@ namespace Dogpatch.Slipstream
                 }
             }
             Pips(r, counts, asks);
+
+            float refused = now - calls.TurnedDownAt;
+            if (refused < 2.2f)
+            {
+                float a = Mathf.Clamp01(refused / 0.1f) * Mathf.Clamp01((2.2f - refused) / 0.3f);
+                string line = CallController.NoAsksLine.ToUpperInvariant();
+                var m = Measure(line, 14f);
+                var bar = new Rect(r.xMax + 10f * s, r.center.y - 15f * s, m.x + 24f * s, 30f * s);
+                Panel(bar, new Color(Ink.r, Ink.g, Ink.b, a));
+                Text(new Rect(bar.x + 12f * s, bar.y, bar.width, bar.height), line, 14f, White, TextAnchor.MiddleLeft, 0f, a);
+            }
         }
 
         void Pips(Rect r, bool counts, int asks)
