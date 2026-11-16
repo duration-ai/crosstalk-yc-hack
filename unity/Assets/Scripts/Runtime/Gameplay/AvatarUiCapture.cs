@@ -25,6 +25,7 @@ namespace Dogpatch.Gameplay
             int i = Array.IndexOf(args, "-avatarUiCapture");
             if (i < 0 || i + 1 >= args.Length) return;
             PlayerPrefs.DeleteKey("dogpatch.avatar");
+            PlayerPrefs.DeleteKey("dogpatch.racerTicket");
             PlayerPrefs.Save();
             Application.runInBackground = true;
             new GameObject("AvatarUiCapture").AddComponent<AvatarUiCapture>().output = args[i + 1];
@@ -76,7 +77,11 @@ namespace Dogpatch.Gameplay
             yield return Until("Uploading", 5f);
             yield return new WaitForSecondsRealtime(1f);
             yield return Shot("04-suiting-up");
-            yield return Until("Closed", 90f);
+            yield return Until("Reveal", 90f);
+            yield return new WaitForSecondsRealtime(1.6f);
+            yield return Shot("04b-new-racer");
+            capture.Press("done");
+            yield return Until("Closed", 5f);
 
             setPaused.Invoke(hud, new object[] { false });
             yield return new WaitForSecondsRealtime(3f);
