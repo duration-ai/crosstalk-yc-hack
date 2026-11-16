@@ -62,6 +62,7 @@ namespace Dogpatch.Slipstream
         GUIStyle style;
         float s;
         bool paused;
+        bool hiddenWas;
         bool lobbyWas;
         bool chipWas;
         float lobbyAt = -10f;
@@ -77,6 +78,9 @@ namespace Dogpatch.Slipstream
         void OnDisable() => GameEvents.Paused -= OnPaused;
 
         void OnPaused(bool on) => paused = on;
+
+        // Out of the way under the pause menu and the full map; it slides back in when they close.
+        bool Hidden => paused || Dogpatch.Map.Minimap.FullOpen;
 
         // Mirrors SlipstreamHud's lobby panel: the room's lobby or its countdown, before the lock, on
         // foot in or by the start ring.
@@ -121,11 +125,14 @@ namespace Dogpatch.Slipstream
             bool chip = Racing(race);
             if (chip && !chipWas) chipAt = Time.time;
             chipWas = chip;
+            bool hidden = Hidden;
+            if (hiddenWas && !hidden) lobbyAt = chipAt = Time.time;
+            hiddenWas = hidden;
         }
 
         void OnGUI()
         {
-            if (paused || Event.current.type != EventType.Repaint) return;
+            if (Hidden || Event.current.type != EventType.Repaint) return;
             var race = RaceDirector.Instance;
             if (race == null || !Briefs.TryGetValue(race.RouteId, out var brief)) return;
             GUI.depth = -4;
