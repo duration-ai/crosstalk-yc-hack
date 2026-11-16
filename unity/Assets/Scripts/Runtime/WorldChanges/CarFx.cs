@@ -19,6 +19,7 @@ namespace Dogpatch.WorldChanges
         public Vector3 Wind;
 
         Rigidbody body;
+        CarController car;
         float vy;
         bool airborne;
         float airTime;
@@ -38,6 +39,7 @@ namespace Dogpatch.WorldChanges
         void Awake()
         {
             body = GetComponent<Rigidbody>();
+            car = GetComponent<CarController>();
             seed = Random.value * 10f;
         }
 
@@ -70,6 +72,7 @@ namespace Dogpatch.WorldChanges
             var v = body.linearVelocity;
             var planar = new Vector3(v.x, 0f, v.z);
             float traction = Traction * Grip;
+            if (traction < 0.999f && (airborne || !car.OnGround)) traction = 1f;
             if (traction < 0.999f) planar = Vector3.Lerp(lastPlanar, planar, traction);
             planar += push + Wind;
             push = Vector3.MoveTowards(push, Vector3.zero, 14f * dt);

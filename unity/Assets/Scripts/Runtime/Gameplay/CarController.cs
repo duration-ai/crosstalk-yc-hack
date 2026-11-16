@@ -30,6 +30,13 @@ namespace Dogpatch.Gameplay
         // Hover vehicles (HandlingProfile.HoverHeight > 0) ride that high above the static ground under
         // them while driven, and settle onto it when not driven or while Grounding (getting out).
         public bool Hovers => handling.HoverHeight > 0f;
+
+        // Ground conditions (a wet, snowy or icy road, oil, lava, a quake) reach a car only while its
+        // wheels are within reach of the ground: a hovering or flying car, or one in the air off a
+        // launch or hop, rides over them and picks them up again when it lands.
+        public bool OnGround => !Hovers && Physics.Raycast(transform.position + Vector3.up * 0.05f, Vector3.down, 0.05f + GroundReach, ~0, QueryTriggerInteraction.Ignore);
+
+        public const float GroundReach = 1.5f;
         public bool Grounding;
         public float HoverAltitude { get; private set; }
         public Vector3 HoverGround { get; private set; }
@@ -260,7 +267,9 @@ namespace Dogpatch.Gameplay
             float target = throttle >= 0f ? throttle * handling.TopSpeed * SpeedScale * SpeedMul : throttle * handling.ReverseSpeed;
             bool opposing = Mathf.Sign(target) != Mathf.Sign(forwardSpeed) && Mathf.Abs(forwardSpeed) > 0.5f;
             if (floating) target *= 0.8f;
-            float grip = floating ? 0.55f : Mathf.Clamp01(handling.Grip * RoadConditions.GripMultiplier);
+            float road = RoadConditions.GripMultiplier;
+            if (road < 0.999f && !OnGround) road = 1f;
+            float grip = floating ? 0.55f : Mathf.Clamp01(handling.Grip * road);
             float rate = handbrake ? handling.Braking * 0.3f : brake ? handling.Braking : target == 0f ? handling.Coasting : opposing ? handling.Braking : handling.Acceleration * AccelScale;
             rate *= Mathf.Lerp(0.5f, 1f, grip);
             brakeHeld = handbrake || brake || opposing;
