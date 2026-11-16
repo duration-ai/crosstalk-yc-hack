@@ -131,6 +131,14 @@ namespace Dogpatch.Race
             }
         }
 
+        // Offline the rooms keep their own copy of each racer's name, as the server's do.
+        public void Rename(string playerId, string displayName)
+        {
+            foreach (var state in rooms.Values)
+                foreach (var racer in state.Racers)
+                    if (racer.playerId == playerId) racer.displayName = displayName;
+        }
+
         Racer AddRacer(RoomState state, Player player)
         {
             int slot = Enumerable.Range(0, MaxPlayers).First(s => state.Racers.All(r => r.slot != s));
