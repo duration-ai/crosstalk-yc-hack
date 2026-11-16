@@ -688,28 +688,8 @@ namespace Dogpatch.Map
             if (MapStyle == 2) Chip(ToScreen(new Vector2(-half.x + 80f * s, half.y + 2f * s)), "DOGPATCH", 17f, Ink, White);
         }
 
-        void Button(Vector2 c, bool close)
-        {
-            float r = ButtonR;
-            Gl(() =>
-            {
-                Disc(c, r + 2f * s, White, 28);
-                Disc(c, r, Ink, 28);
-                if (close)
-                {
-                    float arm = r * 0.5f, thick = 1.8f * s;
-                    var d1 = new Vector2(1f, 1f).normalized;
-                    var d2 = new Vector2(1f, -1f).normalized;
-                    Quad(c - d1 * arm + d2 * thick, c + d1 * arm + d2 * thick, c + d1 * arm - d2 * thick, c - d1 * arm - d2 * thick, Sunshine);
-                    Quad(c - d2 * arm - d1 * thick, c + d2 * arm - d1 * thick, c + d2 * arm + d1 * thick, c - d2 * arm + d1 * thick, Sunshine);
-                    return;
-                }
-                Ring(c, r * 0.55f, 2f * s, Sunshine, 28);
-                Disc(c, 2.4f * s, Sunshine, 12);
-                foreach (var d in new[] { Vector2.up, Vector2.down, Vector2.left, Vector2.right })
-                    Quad(c + d * r * 0.4f + new Vector2(d.y, -d.x) * 1f * s, c + d * r * 0.8f + new Vector2(d.y, -d.x) * 1f * s, c + d * r * 0.8f - new Vector2(d.y, -d.x) * 1f * s, c + d * r * 0.4f - new Vector2(d.y, -d.x) * 1f * s, Sunshine);
-            });
-        }
+        void Button(Vector2 c, bool close) =>
+            Slipstream.V3.HudPlates.Small(new Rect(c.x - 24f * s, Screen.height - c.y - 24f * s, 48f * s, 48f * s), close ? "close" : "recentre", false, s);
 
         // Centred text at p (GL pixels).
         void Label(Vector2 p, string text, float fontSize, Color color)

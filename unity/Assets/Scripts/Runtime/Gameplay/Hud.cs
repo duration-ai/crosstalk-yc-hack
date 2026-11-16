@@ -181,26 +181,28 @@ namespace Dogpatch.Gameplay
             float reach = HudLayout.StickRadius;
             var a = HudLayout.StickScreen;
             var tip = a + Vector2.ClampMagnitude(traceTip - a, reach);
-            float ring = reach;
-            var faint = new Color(1f, 1f, 1f, 0.5f * traceAlpha);
-            Disc(a, ring, new Color(Ink.r, Ink.g, Ink.b, 0.16f), 48);
-            Ring(a, ring + 1.4f * s, 1.4f * s, new Color(Ink.r, Ink.g, Ink.b, 0.5f * traceAlpha));
-            Ring(a, ring, 2.6f * s, faint);
-            Disc(a, 4f * s, faint);
+            Disc(a, reach, new Color(Ink.r, Ink.g, Ink.b, 0.16f), 48);
             var d = tip - a;
-            if (d.magnitude > ring * 0.4f)
+            bool down = traceAlpha >= 0.999f;
+            bool pushed = d.magnitude > reach * 0.4f;
+            float heading = Mathf.Atan2(d.y, d.x) * Mathf.Rad2Deg;
+            float outer = reach, inner = reach * 0.8f;
+            for (int i = 0; i < 12; i++)
             {
-                var dir = d.normalized;
-                var n = new Vector2(-dir.y, dir.x);
-                float w = 1.6f * s;
-                var from = a + dir * 4f * s;
-                var to = tip - dir * 17f * s;
-                Quad(from + n * w, to + n * w, to - n * w, from - n * w, faint);
-                var head = tip - dir * 22f * s;
-                Tri(head + dir * 9f * s, head - dir * 3f * s + n * 7f * s, head - dir * 3f * s - n * 7f * s, faint);
+                float mid = i * 30f;
+                bool lit = pushed && Mathf.Abs(Mathf.DeltaAngle(mid, heading)) < 45f;
+                var color = lit ? Sunshine : new Color(1f, 1f, 1f, 0.5f * Mathf.Max(traceAlpha, 0.6f));
+                for (int k = 0; k < 3; k++)
+                {
+                    float a0 = (mid - 12f + k * 8f) * Mathf.Deg2Rad, a1 = (mid - 12f + (k + 1) * 8f) * Mathf.Deg2Rad;
+                    var u0 = new Vector2(Mathf.Cos(a0), Mathf.Sin(a0));
+                    var u1 = new Vector2(Mathf.Cos(a1), Mathf.Sin(a1));
+                    Quad(a + u0 * inner, a + u0 * outer, a + u1 * outer, a + u1 * inner, color);
+                }
             }
-            Disc(tip, reach * 0.36f + 1.4f * s, new Color(Ink.r, Ink.g, Ink.b, 0.6f * traceAlpha), 32);
-            Disc(tip, reach * 0.36f, new Color(1f, 1f, 1f, 0.85f * traceAlpha), 32);
+            float knob = reach * 0.39f;
+            Disc(tip, knob + 2.4f * s, new Color(Ink.r, Ink.g, Ink.b, down ? 1f : 0.6f * traceAlpha), 32);
+            Disc(tip, knob, down ? Sunshine : new Color(1f, 1f, 1f, 0.85f * traceAlpha), 32);
         }
 
         static void Outlined(Rect r, string text, GUIStyle style, Color color, float s)
