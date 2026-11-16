@@ -80,7 +80,7 @@ namespace Dogpatch.Gameplay
             material = new Material(Resources.Load<Shader>("Shaders/FlatVertexColor")) { name = "FlatVertexColor" };
             SetupRendering();
 
-            var data = JsonUtility.FromJson<WorldData>(Resources.Load<TextAsset>("World/dogpatch").text);
+            var data = JsonUtility.FromJson<WorldData>(Resources.Load<TextAsset>(Dogpatch.World.CityRegions.WorldResource).text);
             Data = data;
             models = new ModelLibrary();
             float t0 = Time.realtimeSinceStartup;
