@@ -62,6 +62,8 @@ namespace Dogpatch.Traffic
         float swerve;
         float baseLateral;
         float prevYaw;
+        Vector2 rear;
+        bool hasRear;
         float accel;
         float brake;
         float headway;
@@ -93,6 +95,7 @@ namespace Dogpatch.Traffic
             stopCleared = false;
             hold = dwellUntil = stunUntil = creepUntil = blocked = swerve = Idle = 0f;
             Knocked = false;
+            hasRear = false;
             bool cautious = spec.Robotaxi;
             accel = cautious ? 1.8f : spec.TwoWheeler ? 1.6f : spec.Id == VehicleTypes.MuniBus ? 1.1f : spec.Id == VehicleTypes.TThird ? 1.0f : 2.6f;
             brake = cautious ? 3.5f : spec.Id == VehicleTypes.TThird ? 1.4f : 5f;
@@ -112,6 +115,7 @@ namespace Dogpatch.Traffic
             Speed = speed;
             baseLateral = Spec.Rider || Spec.TwoWheeler ? Mathf.Max(0f, lane.Width * 0.5f - 0.55f) * (lane.Index == lane.Count - 1 ? 1f : 0f) : 0f;
             lateral = baseLateral;
+            hasRear = false;
             Pose(0.02f, true);
         }
 
@@ -125,6 +129,7 @@ namespace Dogpatch.Traffic
             nextStop = 0;
             while (nextStop < Stops.Count && (Stops[nextStop].Index != RailIndex || Stops[nextStop].S < S - 2f)) nextStop++;
             baseLateral = lateral = 0f;
+            hasRear = false;
             Pose(0.02f, true);
         }
 
@@ -140,6 +145,7 @@ namespace Dogpatch.Traffic
                 int index = OnRail ? RailIndex : RouteIndex;
                 while (nextStop < Stops.Count && (Stops[nextStop].Index < index || (Stops[nextStop].Index == index && Stops[nextStop].S < S - 2f))) nextStop++;
             }
+            hasRear = false;
             Pose(0.02f, true);
         }
 
@@ -499,6 +505,11 @@ namespace Dogpatch.Traffic
             Pose(dt, Far);
         }
 
+        // Off the rails the body steers like a real vehicle: the front axle follows the road half a
+        // wheelbase ahead of S, into the chosen turn, and the rear axle is dragged after it at a fixed
+        // wheelbase. Heading turns smoothly through polyline corners and lane-to-link handoffs instead
+        // of snapping to each segment, its rate is bounded by speed over wheelbase, and long vehicles
+        // swing wide at the front while the rear cuts in, rather than pivoting about their middle.
         void Pose(float dt, bool teleport)
         {
             var p = CurrentPath.Sample(S, out var t);
@@ -508,6 +519,17 @@ namespace Dogpatch.Traffic
             lateral = Mathf.MoveTowards(lateral, wantLateral, (Express ? 5f : 1.5f) * dt);
             p += right * lateral;
             float yaw = Mathf.Atan2(t.x, t.y) * Mathf.Rad2Deg;
+            if (!OnRail)
+            {
+                float wheelbase = Mathf.Max(1.2f, Car.HalfExtents.z * 1.2f);
+                var front = Ahead(wheelbase * 0.5f) + right * lateral;
+                var arm = front - rear;
+                if (!hasRear || arm.magnitude < wheelbase * 0.5f || arm.magnitude > wheelbase * 1.5f) arm = t * wheelbase;
+                hasRear = true;
+                rear = front - arm.normalized * wheelbase;
+                p = (front + rear) * 0.5f;
+                yaw = Mathf.Atan2(arm.x, arm.y) * Mathf.Rad2Deg;
+            }
             var position = new Vector3(p.x, Dogpatch.World.RoadSurface.GroundY(p) + 0.05f, p.y);
             var rotation = Quaternion.Euler(0f, yaw, 0f);
             if (teleport || body == null)
