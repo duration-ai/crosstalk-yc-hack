@@ -1,5 +1,6 @@
 using Dogpatch.Operator;
 using Dogpatch.Operator.Voice;
+using Dogpatch.Race;
 using UnityEngine;
 
 namespace Dogpatch.Slipstream
@@ -72,6 +73,12 @@ namespace Dogpatch.Slipstream
                 return;
             }
 
+            if (counts && asks == 0 && !talking && !thinking)
+            {
+                OutOfAsks(r);
+                return;
+            }
+
             Panel(new Rect(r.x - 3f * s, r.y - 3f * s, r.width + 6f * s, r.height + 6f * s), Ink);
             Panel(r, Pink);
 
@@ -108,6 +115,46 @@ namespace Dogpatch.Slipstream
                 Panel(bar, new Color(Ink.r, Ink.g, Ink.b, a));
                 Text(new Rect(bar.x + 12f * s, bar.y, bar.width, bar.height), line, 14f, White, TextAnchor.MiddleLeft, 0f, a);
             }
+        }
+
+        // Out of asks: no grey Call. The slot shrinks to a framed handset tile, plus an arrow to the
+        // nearest phone pickup still lit (relative to the camera) and its distance when one exists.
+        void OutOfAsks(Rect r)
+        {
+            var tile = new Rect(r.x, r.yMax - 42f * s, 46f * s, 42f * s);
+            Framed(tile, White, Pink, 3f * s);
+            Icon(new Rect(tile.center.x - 15f * s, tile.center.y - 15f * s, 30f * s, 30f * s), "call", Pink);
+            var cam = Camera.main;
+            var player = Race.Game != null && Race.Game.Player != null ? Race.Game.Player.transform : null;
+            if (cam == null || player == null) return;
+            var spots = AskPickups.Positions;
+            int best = -1;
+            float bestD = float.MaxValue;
+            for (int i = 0; i < spots.Count; i++)
+            {
+                if (!AskPickups.Available(i)) continue;
+                float d = Vector3.Distance(spots[i], player.position);
+                if (d < bestD) { bestD = d; best = i; }
+            }
+            if (best < 0) return;
+            var to = spots[best] - player.position;
+            var fwd = cam.transform.forward;
+            float angle = Vector2.SignedAngle(new Vector2(to.x, to.z), new Vector2(fwd.x, fwd.z));
+
+            var c = new Vector2(tile.xMax + 24f * s, tile.center.y);
+            var m = GUI.matrix;
+            GUIUtility.RotateAroundPivot(angle, c);
+            Panel(new Rect(c.x - 2f * s, c.y - 9f * s, 4f * s, 21f * s), White, 0f);
+            var tip = new Vector2(c.x, c.y - 12f * s);
+            var turned = GUI.matrix;
+            GUIUtility.RotateAroundPivot(-40f, tip);
+            Panel(new Rect(tip.x - 2f * s, tip.y, 4f * s, 13f * s), White, 0f);
+            GUI.matrix = turned;
+            GUIUtility.RotateAroundPivot(40f, tip);
+            Panel(new Rect(tip.x - 2f * s, tip.y, 4f * s, 13f * s), White, 0f);
+            GUI.matrix = m;
+            string dist = Mathf.RoundToInt(bestD) + "m";
+            Text(new Rect(c.x + 18f * s, tile.y, 120f * s, tile.height), dist, 26f, White, TextAnchor.MiddleLeft, 1.6f * s);
         }
 
         void Pips(Rect r, bool counts, int asks)
