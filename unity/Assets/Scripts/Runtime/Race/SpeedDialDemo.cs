@@ -273,7 +273,7 @@ namespace Dogpatch.Race
                 var first = race.Last.racers.FirstOrDefault(r => r.finished);
                 Log($"tour {name}: first finisher {(first != null ? race.NameOf(first.playerId) : "none")} at the {race.Course.Data.finishName} finish");
                 yield return Until(() => race.CrossedFinish || race.ResultsIn, 420f, name + " you over the line", fatal: false);
-                if (race.CrossedFinish) yield return Shot("tour-finish-" + (id.Length > 0 ? id : "classic"));
+                if (race.Me?.finished == true) yield return Shot("tour-finish-" + (id.Length > 0 ? id : "classic"));
                 if (race.WaitingForResults)
                 {
                     Log($"tour {name}: race end: you finished, waiting {race.WaitingForResults}, results {race.ResultsIn}, input blocked {game.ExternalInput}, camera on you {game.Follow.Target == race.BodyOf(race.MyId)}, speed {MySpeed():F1} m/s, standings {Standings()}");
