@@ -74,27 +74,43 @@ namespace Dogpatch.World
             };
             CityRegions.Edge = data.edge != null && data.edge.Length >= 6 ? Geometry.ToPoints(data.edge) : null;
             ctx.Statics = new StaticModels(models);
+            MemoryStages.Mark("start");
 
             var ground = BuildGround(data, ctx, material);
+            MemoryStages.Mark("ground");
             ctx.Surface = new RoadSurface(ctx, data);
             ctx.Surface.Build(material);
+            MemoryStages.Mark("surface");
             BuildBuildings(data, ctx, models, material, measure);
+            MemoryStages.Mark("buildings");
             ctx.Roads.AttachFreeway(Freeway.Build(data, ctx, material));
+            MemoryStages.Mark("freeway");
             ctx.Furniture = new StreetFurniture(ctx, ctx.Statics);
             ctx.Furniture.PlaceTrees(data.treeRecords);
             ctx.Furniture.PlaceProps(data.props);
+            MemoryStages.Mark("furniture");
             ctx.Landmarks = new Landmarks(ctx, ctx.Statics);
             ctx.Landmarks.Build(data);
+            MemoryStages.Mark("landmarks");
             var rails = new List<Vector2[]>();
             foreach (var rail in data.rails) rails.Add(Geometry.ToPoints(rail.pts));
             var keepClear = new List<Vector2>();
             foreach (var landmark in data.landmarks)
                 if (landmark.kind == "yc" || landmark.kind == "caltrain_22nd") keepClear.Add(new Vector2(landmark.x, landmark.z));
             YardClutter.Build(ctx, ground, rails, keepClear.ToArray(), material);
+            MemoryStages.Mark("clutter");
             ChooseSpawns(ctx, random);
 
             var lod = ctx.Root.AddComponent<DistanceLod>();
             ctx.Statics.Emit(ctx.Root.transform, material, lod);
+            if (StaticModels.Streaming)
+            {
+                ctx.Statics.Stream(ctx.HeroCar.Position, int.MaxValue);
+                var streamer = ctx.Root.AddComponent<WorldStreamer>();
+                streamer.Statics = ctx.Statics;
+                streamer.Lod = lod;
+            }
+            MemoryStages.Mark("statics emit");
             return ctx;
         }
 

@@ -132,7 +132,8 @@ namespace Dogpatch.Look
             yield return new WaitForEndOfFrame();
             ScreenCapture.CaptureScreenshot(Path.Combine(output, name + ".png"));
             var p = car.transform.position;
-            Debug.Log($"[SomaSmoke] {name} at ({p.x:F0},{p.z:F0}): draws={(frames > 0 ? drawSum / frames : -1)} tris={(frames > 0 ? triSum / frames : -1)} totalAllocatedMB={Profiler.GetTotalAllocatedMemoryLong() / 1048576} totalReservedMB={Profiler.GetTotalReservedMemoryLong() / 1048576} monoHeapMB={Profiler.GetMonoHeapSizeLong() / 1048576} gfxMB={Profiler.GetAllocatedMemoryForGraphicsDriver() / 1048576}");
+            int nearColliders = Physics.OverlapSphere(p, 60f, ~0, QueryTriggerInteraction.Ignore).Length;
+            Debug.Log($"[SomaSmoke] {name} at ({p.x:F0},{p.z:F0}): collidersWithin60m={nearColliders} draws={(frames > 0 ? drawSum / frames : -1)} tris={(frames > 0 ? triSum / frames : -1)} totalAllocatedMB={Profiler.GetTotalAllocatedMemoryLong() / 1048576} totalReservedMB={Profiler.GetTotalReservedMemoryLong() / 1048576} monoHeapMB={Profiler.GetMonoHeapSizeLong() / 1048576} gfxMB={Profiler.GetAllocatedMemoryForGraphicsDriver() / 1048576}");
         }
 
         IEnumerator TopDown()

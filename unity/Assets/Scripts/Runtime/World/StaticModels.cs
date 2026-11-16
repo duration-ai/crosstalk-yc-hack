@@ -134,93 +134,163 @@ namespace Dogpatch.World
             return (int)n;
         }
 
+        // Streaming (-stream-world): detailed building chunks, most of the merged-mesh memory, are built
+        // only within StreamLoad of the camera and freed past StreamUnload (WorldStreamer). Footprint
+        // colliders stay loaded, so buildings are always solid; plain extrusions show everywhere else.
+        public static bool Streaming => Array.IndexOf(Environment.GetCommandLineArgs(), "-stream-world") >= 0;
+        public const float StreamLoad = 360f, StreamUnload = 480f;
+
+        Transform emitParent;
+        Material emitMaterial;
+        DistanceLod emitLod;
+        readonly HashSet<Vector2Int> streamed = new HashSet<Vector2Int>();
+        readonly Dictionary<Vector2Int, GameObject> loaded = new Dictionary<Vector2Int, GameObject>();
+
         public void Emit(Transform parent, Material material, DistanceLod lod)
         {
             var breakables = new GameObject("Breakables").transform;
             breakables.SetParent(parent, false);
+            emitParent = parent;
+            emitMaterial = material;
+            emitLod = lod;
+            bool streaming = Streaming;
             var keys = new HashSet<(Layer, Vector2Int)>(instances.Keys);
             keys.UnionWith(generated.Keys);
             foreach (var key in keys)
             {
-                var combine = new List<CombineInstance>();
-                var parts = new List<Part>();
-                int vertexOffset = 0, indexOffset = 0;
-                if (instances.TryGetValue(key, out var list))
-                    foreach (var part in list)
+                if (streaming && key.Item1 == Layer.Buildings)
+                {
+                    streamed.Add(key.Item2);
+                    if (instances.TryGetValue(key, out var parts))
+                        foreach (var part in parts) Index.Bound(Index.Get(part.Instance), null);
+                    continue;
+                }
+                EmitChunk(key, parent, material, lod, breakables, true);
+            }
+        }
+
+        // Builds the streamed detail chunks within StreamLoad of eye (nearest first, at most budget of
+        // them) and frees those past StreamUnload. Returns how many it built.
+        public int Stream(Vector3 eye, int budget)
+        {
+            if (emitParent == null) return 0;
+            var at = new Vector2(eye.x, eye.z);
+            float Distance(Vector2Int c) => Vector2.Distance(at, new Vector2(Mathf.Clamp(at.x, c.x * ChunkSize, (c.x + 1) * ChunkSize), Mathf.Clamp(at.y, c.y * ChunkSize, (c.y + 1) * ChunkSize)));
+            var far = new List<Vector2Int>();
+            foreach (var (chunk, _) in loaded) if (Distance(chunk) > StreamUnload) far.Add(chunk);
+            foreach (var chunk in far) Unload(chunk);
+            var near = new List<Vector2Int>();
+            foreach (var chunk in streamed) if (!loaded.ContainsKey(chunk) && Distance(chunk) < StreamLoad) near.Add(chunk);
+            near.Sort((a, b) => Distance(a).CompareTo(Distance(b)));
+            int built = 0;
+            foreach (var chunk in near)
+            {
+                if (built >= budget) break;
+                EmitChunk((Layer.Buildings, chunk), emitParent, emitMaterial, emitLod, null, false);
+                if (!loaded.ContainsKey(chunk)) loaded[chunk] = null;
+                built++;
+            }
+            return built;
+        }
+
+        void Unload(Vector2Int chunk)
+        {
+            var go = loaded[chunk];
+            loaded.Remove(chunk);
+            if (instances.TryGetValue((Layer.Buildings, chunk), out var parts))
+                foreach (var part in parts) Index.Get(part.Instance).Chunk = null;
+            if (go == null) return;
+            var filter = go.GetComponent<MeshFilter>();
+            emitLod.Remove(go.GetComponent<MeshRenderer>());
+            Index.Forget(filter.sharedMesh);
+            UnityEngine.Object.Destroy(filter.sharedMesh);
+            UnityEngine.Object.Destroy(go);
+        }
+
+        void EmitChunk((Layer, Vector2Int) key, Transform parent, Material material, DistanceLod lod, Transform breakables, bool bind)
+        {
+            var combine = new List<CombineInstance>();
+            Mesh g = null;
+            var parts = new List<Part>();
+            int vertexOffset = 0, indexOffset = 0;
+            if (instances.TryGetValue(key, out var list))
+                foreach (var part in list)
+                {
+                    part.VertexStart = vertexOffset;
+                    part.IndexStart = indexOffset;
+                    part.VertexCount = part.Mesh.vertexCount;
+                    part.IndexCount = IndexCount(part.Mesh);
+                    vertexOffset += part.VertexCount;
+                    indexOffset += part.IndexCount;
+                    combine.Add(new CombineInstance { mesh = part.Mesh, transform = part.Transform });
+                    parts.Add(part);
+                }
+            if (generated.TryGetValue(key, out var mb) && mb.VertexCount > 0)
+            {
+                g = mb.ToMesh("generated");
+                combine.Add(new CombineInstance { mesh = g, transform = Matrix4x4.identity });
+                if (key.Item1 != Layer.BuildingsFar && bind) triangles[key.Item1] = Triangles(key.Item1) + g.triangles.Length / 3;
+                if (generatedParts.TryGetValue(key, out var gparts))
+                    foreach (var part in gparts)
                     {
-                        part.VertexStart = vertexOffset;
-                        part.IndexStart = indexOffset;
-                        part.VertexCount = part.Mesh.vertexCount;
-                        part.IndexCount = IndexCount(part.Mesh);
-                        vertexOffset += part.VertexCount;
-                        indexOffset += part.IndexCount;
-                        combine.Add(new CombineInstance { mesh = part.Mesh, transform = part.Transform });
+                        part.VertexStart += vertexOffset;
+                        part.IndexStart += indexOffset;
                         parts.Add(part);
                     }
-                if (generated.TryGetValue(key, out var mb) && mb.VertexCount > 0)
-                {
-                    var g = mb.ToMesh("generated");
-                    combine.Add(new CombineInstance { mesh = g, transform = Matrix4x4.identity });
-                    if (key.Item1 != Layer.BuildingsFar) triangles[key.Item1] = Triangles(key.Item1) + g.triangles.Length / 3;
-                    if (generatedParts.TryGetValue(key, out var gparts))
-                        foreach (var part in gparts)
-                        {
-                            part.VertexStart += vertexOffset;
-                            part.IndexStart += indexOffset;
-                            parts.Add(part);
-                        }
-                }
-                if (combine.Count == 0) continue;
-                var name = key.Item1 + " " + key.Item2.x + "," + key.Item2.y;
-                var mesh = new Mesh { name = name, indexFormat = IndexFormat.UInt32 };
-                mesh.CombineMeshes(combine.ToArray(), true, true);
-                mesh.RecalculateBounds();
-                Compact(mesh);
-                bool shadows = key.Item1 != Layer.BuildingsFar;
-                var go = WorldBuilder.Emit(parent, name, mesh, material, shadows);
-                lod.Add(key.Item1, key.Item2, go.GetComponent<MeshRenderer>());
-                var filter = go.GetComponent<MeshFilter>();
+            }
+            if (combine.Count == 0) return;
+            var name = key.Item1 + " " + key.Item2.x + "," + key.Item2.y;
+            var mesh = new Mesh { name = name, indexFormat = IndexFormat.UInt32 };
+            mesh.CombineMeshes(combine.ToArray(), true, true);
+            mesh.RecalculateBounds();
+            if (g != null && !bind) UnityEngine.Object.Destroy(g);
+            Compact(mesh);
+            bool shadows = key.Item1 != Layer.BuildingsFar;
+            var go = WorldBuilder.Emit(parent, name, mesh, material, shadows);
+            lod.Add(key.Item1, key.Item2, go.GetComponent<MeshRenderer>());
+            if (!bind) loaded[key.Item2] = go;
+            var filter = go.GetComponent<MeshFilter>();
 
-                var breakableRanges = new List<(int start, int count)>();
-                foreach (var part in parts)
-                {
-                    var instance = Index.Get(part.Instance);
-                    instance.Chunk = filter;
-                    instance.SubMesh = 0;
-                    instance.VertexStart = part.VertexStart;
-                    instance.VertexCount = part.VertexCount;
-                    instance.IndexStart = part.IndexStart;
-                    instance.IndexCount = part.IndexCount;
-                    if (part.Mesh == null) instance.WorldBounds = RangeBounds(mesh, part);
-                    Index.Bound(instance, Collide(breakables, instance, part));
-                    if (key.Item1 == Layer.Landmarks && instance.Class != PhysicsClass.Static) breakableRanges.Add((part.IndexStart, part.IndexCount));
-                }
+            var breakableRanges = new List<(int start, int count)>();
+            foreach (var part in parts)
+            {
+                var instance = Index.Get(part.Instance);
+                instance.Chunk = filter;
+                instance.SubMesh = 0;
+                instance.VertexStart = part.VertexStart;
+                instance.VertexCount = part.VertexCount;
+                instance.IndexStart = part.IndexStart;
+                instance.IndexCount = part.IndexCount;
+                if (!bind) continue;
+                if (part.Mesh == null) instance.WorldBounds = RangeBounds(mesh, part);
+                Index.Bound(instance, Collide(breakables, instance, part));
+                if (key.Item1 == Layer.Landmarks && instance.Class != PhysicsClass.Static) breakableRanges.Add((part.IndexStart, part.IndexCount));
+            }
 
-                // Viaduct columns, the stack, crane gantries and platforms collide as built. Breakable
-                // parts (billboards, shelters) have their own colliders, so they are left out; a chunk
-                // holding only breakables gets no chunk collider.
-                if (key.Item1 == Layer.Landmarks)
+            // Viaduct columns, the stack, crane gantries and platforms collide as built. Breakable
+            // parts (billboards, shelters) have their own colliders, so they are left out; a chunk
+            // holding only breakables gets no chunk collider.
+            if (key.Item1 == Layer.Landmarks)
+            {
+                var collider = mesh;
+                if (breakableRanges.Count > 0)
                 {
-                    var collider = mesh;
-                    if (breakableRanges.Count > 0)
+                    var all = mesh.GetTriangles(0);
+                    var keep = new bool[all.Length];
+                    for (int i = 0; i < keep.Length; i++) keep[i] = true;
+                    foreach (var (start, count) in breakableRanges)
+                        for (int i = 0; i < count; i++) keep[start + i] = false;
+                    var solid = new List<int>();
+                    for (int i = 0; i < all.Length; i++) if (keep[i]) solid.Add(all[i]);
+                    collider = null;
+                    if (solid.Count > 0)
                     {
-                        var all = mesh.GetTriangles(0);
-                        var keep = new bool[all.Length];
-                        for (int i = 0; i < keep.Length; i++) keep[i] = true;
-                        foreach (var (start, count) in breakableRanges)
-                            for (int i = 0; i < count; i++) keep[start + i] = false;
-                        var solid = new List<int>();
-                        for (int i = 0; i < all.Length; i++) if (keep[i]) solid.Add(all[i]);
-                        collider = null;
-                        if (solid.Count > 0)
-                        {
-                            collider = new Mesh { name = name + " collider", indexFormat = IndexFormat.UInt32 };
-                            collider.SetVertices(new List<Vector3>(mesh.vertices));
-                            collider.SetTriangles(solid, 0);
-                        }
+                        collider = new Mesh { name = name + " collider", indexFormat = IndexFormat.UInt32 };
+                        collider.SetVertices(new List<Vector3>(mesh.vertices));
+                        collider.SetTriangles(solid, 0);
                     }
-                    if (collider != null) go.AddComponent<MeshCollider>().sharedMesh = collider;
                 }
+                if (collider != null) go.AddComponent<MeshCollider>().sharedMesh = collider;
             }
         }
 
