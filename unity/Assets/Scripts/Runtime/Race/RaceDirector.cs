@@ -94,7 +94,6 @@ namespace Dogpatch.Race
         float stillFor;
         bool inRing;
         bool everInRing;
-        float lobbySince;
         float botCallsAfter;
         bool lobbyCam;
         bool ghosted;
@@ -401,7 +400,12 @@ namespace Dogpatch.Race
             foreach (var bot in bots.ToList())
             {
                 bots.Remove(bot);
-                if (bot.Car != null) Destroy(bot.Car.gameObject);
+                if (bot.Car != null && Game.CurrentCar == bot.Car) await Game.ExitCar();
+                if (bot.Car != null)
+                {
+                    Game.Forget(bot.Car);
+                    Destroy(bot.Car.gameObject);
+                }
                 if (bot.Avatar != null) Destroy(bot.Avatar.gameObject);
                 try { await Session.LeaveRoomAsync(bot.Id, RoomId); }
                 catch (BackendException e) { Debug.LogWarning($"[SpeedDial] {bot.Name} could not leave: {e.Code}"); }
@@ -465,7 +469,6 @@ namespace Dogpatch.Race
             else Game.Player.Teleport(Course.RingCenter + Course.RingFacing * (Course.RingRadius + 2.5f) + Vector3.up * 0.1f, LobbyHeading + 180f);
             Game.Follow.enabled = true;
             Game.Follow.Snap(Game.Player.transform, false);
-            lobbySince = Time.time;
             everInRing = onRing;
         }
 
@@ -522,7 +525,7 @@ namespace Dogpatch.Race
             if (room.status == RoomStatus.Lobby || room.status == RoomStatus.Countdown)
             {
                 if (room.status == RoomStatus.Countdown && MsToStart <= LockMs && !Gridded) yield return ToGrid();
-                bool go = (Me != null && Me.ready) || (!Online && (everInRing || Time.time - lobbySince > 25f));
+                bool go = Me != null && Me.ready;
                 if (go && !Gridded)
                     for (int i = 0; i < bots.Count; i++)
                     {
@@ -828,11 +831,11 @@ namespace Dogpatch.Race
                 myPilot = myCar.gameObject.AddComponent<BotDriver>();
                 myPilot.name = "You";
                 myPilot.Car = myCar;
-                myPilot.Route = Course.Route;
                 myPilot.Skill = 1f;
-                myPilot.Lane = RaceCourse.GridLane(MySlot);
-                myPilot.ResetProgress(Course.Grid[MySlot].Progress);
             }
+            myPilot.Route = Course.Route;
+            myPilot.Lane = RaceCourse.GridLane(MySlot);
+            myPilot.ResetProgress(Course.Route.Project(RoutePath.Flat(myCar.transform.position)));
             if (Started && !ResultsIn)
             {
                 Game.ExternalInput = true;

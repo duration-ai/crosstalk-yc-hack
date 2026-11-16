@@ -13,10 +13,10 @@ import {
   EVENTS_PER_POLL,
   MAX_PLAYERS,
   MAX_ROUTE_POINTS,
-  countdownPatch,
   getMembership,
   getRoom,
   isLocked,
+  lobbyPatch,
   phase,
   placeOrder,
   removeFromRoom,
@@ -176,7 +176,7 @@ export const join = mutation({
     const taken = new Set(rows.map((row) => row.slot));
     const slot = COLORS.findIndex((_, i) => !taken.has(i));
     await addRacer(ctx, room, player, slot, now);
-    await ctx.db.patch(room._id, countdownPatch(room, await roomPlayers(ctx, room._id), now));
+    await ctx.db.patch(room._id, lobbyPatch(room, await roomPlayers(ctx, room._id), now));
     return joinedResponse(ctx, room._id, player._id, now);
   },
 });
@@ -204,11 +204,12 @@ export const setReady = mutation({
   handler: async (ctx, args) => {
     const player = await getPlayer(ctx, args.playerId);
     const room = await getRoom(ctx, args.roomId);
-    if (room.kind) fail("CONFLICT", room.kind === "world" ? "The world room is not a race" : "Missions are joined at their location");
+    if (room.kind === "world") fail("CONFLICT", "The world room is not a race");
     const row = await getMembership(ctx, room, player._id);
     if (row.left) fail("CONFLICT", "Player left this room");
     const now = Date.now();
     const status = phase(room, now);
+    if (room.kind === "mission" && status === "finished") fail("CONFLICT", "Missions are joined at their location");
     const respond = async () =>
       ({ room: toRoom((await ctx.db.get(room._id))!, await roomPlayers(ctx, room._id), now) });
 
@@ -228,7 +229,7 @@ export const setReady = mutation({
       }
       const reset = { status: "lobby" as const, raceNumber: room.raceNumber + 1, startsAt: 0, closesAt: 0 };
       await ctx.db.patch(room._id, reset);
-      await ctx.db.patch(room._id, countdownPatch({ ...room, ...reset }, await roomPlayers(ctx, room._id), now));
+      await ctx.db.patch(room._id, lobbyPatch({ ...room, ...reset }, await roomPlayers(ctx, room._id), now));
       return respond();
     }
     if (row.ready === args.ready) return respond();
@@ -237,7 +238,7 @@ export const setReady = mutation({
 
     await ctx.db.patch(row._id, { ready: args.ready });
     if (status !== "finished") {
-      await ctx.db.patch(room._id, countdownPatch(room, await roomPlayers(ctx, room._id), now));
+      await ctx.db.patch(room._id, lobbyPatch(room, await roomPlayers(ctx, room._id), now));
     }
     return respond();
   },

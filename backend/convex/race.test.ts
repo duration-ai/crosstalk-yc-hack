@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import schema from "./schema";
-import { AUTO_START_MS, CLOSE_AFTER_FIRST_FINISH_MS, COUNTDOWN_MS, DEFAULT_ASKS, MAX_ASKS } from "./raceModel";
+import { CLOSE_AFTER_FIRST_FINISH_MS, COUNTDOWN_MS, DEFAULT_ASKS, MAX_ASKS } from "./raceModel";
 import { WORLD_CHANGE_TYPES, newsText, type WorldChange } from "./worldChanges";
 
 const modules = import.meta.glob("./**/*.*s");
@@ -82,27 +82,26 @@ describe("rooms", () => {
 });
 
 describe("ready and countdown", () => {
-  it("auto-starts 10 s after two are ready, shortens to 3 s when all are, and locks the last 3 s", async () => {
+  it("holds the lobby until every racer is ready, un-readying holds it again, and locks the last 3 s", async () => {
     const { t, roomId, tim, maya, jun, rosa, code } = await fourPlayers();
     await t.mutation(api.rooms.setReady, { playerId: tim.id, roomId, ready: true });
     expect((await poll(t, roomId)).room).toMatchObject({ status: "lobby", startsAt: 0, readyCount: 1 });
 
     vi.setSystemTime(T0 + 1_000);
-    const two = await t.mutation(api.rooms.setReady, { playerId: maya.id, roomId, ready: true });
-    expect(two.room).toMatchObject({ status: "countdown", startsAt: T0 + 1_000 + AUTO_START_MS });
+    await t.mutation(api.rooms.setReady, { playerId: maya.id, roomId, ready: true });
+    await t.mutation(api.rooms.setReady, { playerId: jun.id, roomId, ready: true });
+    expect((await poll(t, roomId)).room).toMatchObject({ status: "lobby", startsAt: 0, readyCount: 3 });
 
     vi.setSystemTime(T0 + 2_000);
     const cancelled = await t.mutation(api.rooms.setReady, { playerId: maya.id, roomId, ready: false });
-    expect(cancelled.room).toMatchObject({ status: "lobby", startsAt: 0 });
-    vi.setSystemTime(T0 + 3_000);
+    expect(cancelled.room).toMatchObject({ status: "lobby", startsAt: 0, readyCount: 2 });
+    vi.setSystemTime(T0 + 30_000);
+    expect((await poll(t, roomId)).room).toMatchObject({ status: "lobby", startsAt: 0 });
     await t.mutation(api.rooms.setReady, { playerId: maya.id, roomId, ready: true });
-    vi.setSystemTime(T0 + 4_000);
-    await t.mutation(api.rooms.setReady, { playerId: jun.id, roomId, ready: true });
-    expect((await poll(t, roomId)).room.startsAt).toBe(T0 + 3_000 + AUTO_START_MS);
 
-    vi.setSystemTime(T0 + 5_000);
+    vi.setSystemTime(T0 + 35_000);
     const all = await t.mutation(api.rooms.setReady, { playerId: rosa.id, roomId, ready: true });
-    expect(all.room).toMatchObject({ status: "countdown", startsAt: T0 + 5_000 + COUNTDOWN_MS, readyCount: 4 });
+    expect(all.room).toMatchObject({ status: "countdown", startsAt: T0 + 35_000 + COUNTDOWN_MS, readyCount: 4 });
 
     await expect(t.mutation(api.rooms.setReady, { playerId: jun.id, roomId, ready: false })).rejects.toThrow(
       /about to start/,
@@ -111,10 +110,10 @@ describe("ready and countdown", () => {
     const late = await t.mutation(api.players.create, { displayName: "Chris" });
     await expect(t.mutation(api.rooms.join, { playerId: late.id, code })).rejects.toThrow(/full|about to start/);
 
-    vi.setSystemTime(T0 + 5_000 + COUNTDOWN_MS);
+    vi.setSystemTime(T0 + 35_000 + COUNTDOWN_MS);
     const racing = await poll(t, roomId);
     expect(racing.room.status).toBe("racing");
-    expect(racing.serverTime).toBe(T0 + 5_000 + COUNTDOWN_MS);
+    expect(racing.serverTime).toBe(T0 + 35_000 + COUNTDOWN_MS);
     await expect(t.mutation(api.rooms.join, { playerId: late.id, code })).rejects.toThrow(/already started/);
   });
 
