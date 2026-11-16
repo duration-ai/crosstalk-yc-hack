@@ -296,6 +296,13 @@ namespace Dogpatch.Race
             return problems;
         }
 
+        // A late joiner's spot: in their slot's lane, a row behind the back of the grid.
+        public Spot LateSpot(int slot)
+        {
+            float d = Mathf.Max(1f, Grid[3].Progress - 2f * GridStep);
+            return new Spot { Position = Ground(Route.PointAt(d) + Route.RightAt(d) * GridLane(slot)) + Vector3.up * 0.3f, Heading = RoutePath.Heading(Route.DirectionAt(d)), Progress = d };
+        }
+
         void PlaceGrid()
         {
             float first = 3f * GridStep + 4f;

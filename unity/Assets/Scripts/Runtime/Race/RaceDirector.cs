@@ -96,6 +96,8 @@ namespace Dogpatch.Race
         bool everInRing;
         float botCallsAfter;
         bool lobbyCam;
+        bool lateJoin;
+        bool runningShown;
         bool ghosted;
         bool roadCleared;
         int clearZone;
@@ -114,6 +116,9 @@ namespace Dogpatch.Race
 
         public bool IsCourseRing(Vector3 at) => (RoutePath.Flat(at) - RoutePath.Flat(Course.RingCenter)).sqrMagnitude < 1f;
         public CarController MyCar => myCar;
+
+        // In a mission lobby: the race on this route that's already running, until it ends.
+        public RunningRace Running => Last?.running != null && Last.running.racers != null && Last.running.racers.Count > 0 ? Last.running : null;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Boot()
@@ -352,6 +357,8 @@ namespace Dogpatch.Race
             raceNumber = room.room.raceNumber;
             cursor = null;
             MySlot = room.you.slot;
+            runningShown = false;
+            lateJoin = room.room.status == RoomStatus.Racing || (room.room.status == RoomStatus.Countdown && room.room.startsAt - NowMs <= LockMs);
             PaintJob.For(myCar.gameObject, myCar.ModelId).SetBase(PaintJob.Linear(SlotHex[MySlot]));
             RoomChanged?.Invoke();
         }
@@ -506,6 +513,11 @@ namespace Dogpatch.Race
         {
             Last = poll;
             Remotes.Sync(poll);
+            if ((Running != null) != runningShown)
+            {
+                runningShown = Running != null;
+                Debug.Log(runningShown ? $"[SpeedDial] race in progress: {string.Join(", ", Running.racers.Select(r => r.displayName))} racing, ends in ~{Math.Max(0L, (Running.endsAt - NowMs) / 1000)} s; you're first in the next lobby" : "[SpeedDial] the running race is over; this lobby is next");
+            }
             var room = poll.room;
             bool rematch = room.raceNumber != raceNumber;
             if (rematch)
@@ -563,7 +575,8 @@ namespace Dogpatch.Race
                 Debug.Log("[SpeedDial] your race car was switched off where the last race left it; switched it back on");
             }
             Fresh(myCar);
-            var spot = Course.Grid[MySlot];
+            var spot = lateJoin ? Course.LateSpot(MySlot) : Course.Grid[MySlot];
+            if (lateJoin) Debug.Log($"[SpeedDial] late join: on the grid behind the others in slot {MySlot}, {(Room.status == RoomStatus.Racing ? $"{(NowMs - Room.startsAt) / 1000f:F1} s into the race" : "in the locked countdown")}");
             if (Game.CurrentCar != myCar)
             {
                 myCar.Place(spot.Position, spot.Heading);
@@ -774,6 +787,7 @@ namespace Dogpatch.Race
         IEnumerator BackToLobby()
         {
             Debug.Log($"[SpeedDial] rematch: race {raceNumber}");
+            lateJoin = false;
             Changes.ResetAll();
             RoomChanged?.Invoke();
             Gridded = Started = ResultsIn = false;

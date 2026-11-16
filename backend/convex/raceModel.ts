@@ -14,6 +14,12 @@ export const MAX_PLAYERS = COLORS.length;
 export const COUNTDOWN_MS = 3_000;
 export const MISSION_COUNTDOWN_MS = 10_000;
 export const MISSION_MIN_RACERS = 2;
+/** A mission race takes late joiners from its locked countdown until it has been racing this long. */
+export const LATE_JOIN_MS = 10_000;
+/** Pace used to guess a running race's end, in metres per millisecond: typical, and the clamp on a racer's own. */
+const RACE_PACE = 0.015;
+const MIN_RACE_PACE = 0.005;
+const MAX_RACE_PACE = 0.04;
 export const CLOSE_AFTER_FIRST_FINISH_MS = 30_000;
 export const PHOTO_FINISH_MS = 1_000;
 export const DEFAULT_FINISH_RADIUS = 15;
@@ -145,6 +151,28 @@ export function missionPatch(room: Room, rows: RoomPlayer[], now: number) {
     return { status: "countdown" as const, startsAt: room.status === "countdown" ? room.startsAt : now + MISSION_COUNTDOWN_MS };
   }
   return { status: "lobby" as const, startsAt: 0 };
+}
+
+/** A mission room a player stepping into its ring joins straight onto the grid, already ready: locked in its
+ * last seconds of countdown, or racing for under LATE_JOIN_MS. */
+export function takesLateJoin(room: Room, now: number) {
+  return isLocked(room, now) || (phase(room, now) === "racing" && now - room.startsAt < LATE_JOIN_MS);
+}
+
+/** When a running race should end: its close once someone has finished, else when its last racer gets in at
+ * their pace so far, capped by the close CLOSE_AFTER_FIRST_FINISH_MS after the leader's finish. */
+export function raceEndsAt(room: Room, rows: RoomPlayer[], now: number) {
+  if (room.closesAt > 0) return room.closesAt;
+  const from = Math.max(now, room.startsAt);
+  const elapsed = now - room.startsAt;
+  const etas = rows
+    .filter((row) => !row.left && row.finishedAt === 0)
+    .map((row) => {
+      const pace = elapsed > 5_000 ? Math.min(MAX_RACE_PACE, Math.max(MIN_RACE_PACE, row.progress / elapsed)) : RACE_PACE;
+      return from + Math.max(0, room.routeLength - row.progress) / pace;
+    });
+  if (etas.length === 0) return now;
+  return Math.round(Math.min(Math.max(...etas), Math.min(...etas) + CLOSE_AFTER_FIRST_FINISH_MS));
 }
 
 export function lobbyPatch(room: Room, rows: RoomPlayer[], now: number) {
