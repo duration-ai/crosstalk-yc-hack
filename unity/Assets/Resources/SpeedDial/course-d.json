@@ -1,0 +1,25 @@
+{
+  "routeName": "OVER THE CREEK",
+  "startName": "5th & Harrison, SoMa",
+  "start": {
+    "lat": 37.778755,
+    "lon": -122.401502
+  },
+  "finishName": "4th & Channel, Mission Bay",
+  "finish": {
+    "lat": 37.774357,
+    "lon": -122.391571
+  },
+  "via": [
+    {
+      "lat": 37.776659,
+      "lon": -122.398886
+    },
+    {
+      "lat": 37.777684,
+      "lon": -122.395757
+    }
+  ],
+  "finishRadius": 15,
+  "ringRadius": 7.2
+}

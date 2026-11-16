@@ -44,6 +44,12 @@ namespace Dogpatch.Slipstream
                 Story = "You won't believe this: your cofounder is quitting to launch an AI for dogs, and he's telling everyone at Esprit Park. Cut under the freeway, it's shadier than your cap table. Stop him before he tweets it!",
                 Clip = "mission_deck",
             },
+            ["d"] = new Brief
+            {
+                Objective = "Get the hot demo across the bridge",
+                Story = "Dude, your demo finally works, and nobody knows why! The judges are waiting just across the Fourth Street bridge in Mission Bay. Rip down Fourth through SoMa before the bridge goes up! Get it there while it's still hot!",
+                Clip = "mission_bridge",
+            },
         };
 
         static readonly Color Ink = SlipstreamHud.Hex("#1C2347");
