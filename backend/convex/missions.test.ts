@@ -53,7 +53,7 @@ describe("mission lobby", () => {
     await t.mutation(api.rooms.leave, { playerId: ids[2], roomId: c.room.id });
     await t.mutation(api.rooms.leave, { playerId: ids[1], roomId: c.room.id });
     const poll = await t.query(internal.rooms.poll, { roomId: c.room.id, now: Date.now() });
-    expect(poll.room.status).toBe("countdown");
+    expect(poll.room).toMatchObject({ status: "lobby", playerCount: 1, readyCount: 1 });
   });
 
   it("opens a fresh room once the last one is racing, and keeps world membership", async () => {

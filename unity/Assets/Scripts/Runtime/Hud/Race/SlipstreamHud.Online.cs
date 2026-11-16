@@ -51,7 +51,7 @@ namespace Dogpatch.Slipstream
         {
             if (room.status != RoomStatus.Lobby) return;
             int unready = room.playerCount - room.readyCount;
-            var label = "RACE: " + Race.RouteName(Race.RouteId) + (unready > 0 ? "  ·  WAITING FOR " + unready + " TO READY" : "  ·  ALL READY");
+            var label = "RACE: " + Race.RouteName(Race.RouteId) + (room.playerCount < 2 ? "  ·  WAITING FOR RACERS" : unready > 0 ? "  ·  WAITING FOR " + unready + " TO READY" : "  ·  ALL READY");
             var size = Measure(label, 16f);
             var r = new Rect(Screen.width * 0.5f - size.x * 0.5f - 18f * s, top + 2f * s, size.x + 36f * s, 32f * s);
             Panel(r, Ink);
