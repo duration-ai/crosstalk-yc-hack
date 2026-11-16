@@ -71,6 +71,30 @@
       "lon": -122.387169,
       "offset": -3.3,
       "count": 6
+    },
+    {
+      "type": "waymos",
+      "lat": 37.758349,
+      "lon": -122.392174,
+      "offset": -5.0,
+      "count": 3
+    },
+    {
+      "type": "crossing",
+      "lat": 37.764177,
+      "lon": -122.388307,
+      "look": "streetcar",
+      "period": 26,
+      "phase": 0,
+      "width": 16
+    },
+    {
+      "type": "crane",
+      "lat": 37.763025,
+      "lon": -122.387454,
+      "width": -13,
+      "length": 14,
+      "period": 12
     }
   ]
 }

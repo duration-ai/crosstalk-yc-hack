@@ -497,9 +497,11 @@ describe("hyper city", () => {
   it("speeds up the NPCs as a world effect", () => {
     const fast = answers({ scope: "world", world_group: "population", population_effect: "hyper_city" });
     expect(decide(fast, onFoot, [])).toEqual(effect({ scope: "world", effect: "hyper_city" }));
-    expect(decide(answers({ scope: "class", object_effect: "speed_up", class: "vehicle" }), onFoot, [])).toEqual(
-      effect({ scope: "world", effect: "hyper_city", target: "", targetClass: "", strength: "medium" }),
-    );
+    for (const cls of ["vehicle", "pedestrian"]) {
+      expect(decide(answers({ scope: "class", object_effect: "speed_up", class: cls }), onFoot, []), cls).toEqual(
+        effect({ scope: "world", effect: "hyper_city", target: "", targetClass: "", strength: "medium" }),
+      );
+    }
   });
 
   it("is countered by normal speed", () => {

@@ -27,6 +27,9 @@ namespace Dogpatch.Race
         public float height;
         public int count;
         public float spacing;
+        public string look;
+        public float period;
+        public float phase;
         public GeoPoint[] path;
     }
 
@@ -40,7 +43,7 @@ namespace Dogpatch.Race
     // the course json when the racers go to the grid and removed when the race is left. They only
     // exist for players racing that route, so free roam and other routes never see them. Everything
     // on the racing line is loose and light (bots plough through it); the solid pieces stand off it.
-    public sealed class SetPieces : MonoBehaviour
+    public sealed partial class SetPieces : MonoBehaviour
     {
         const float ClearOfGrid = 30f;
 
@@ -118,6 +121,7 @@ namespace Dogpatch.Race
                 }
                 catch (Exception e) { Debug.LogWarning($"[SetPieces] {piece.type} #{i} failed: {e.Message}"); }
             }
+            GhostBots();
             Debug.Log($"[SetPieces] {course.Data.routeName}: {list.Length} pieces ({string.Join(", ", tally.Select(kv => kv.Value + " " + kv.Key))})");
             Built?.Invoke(root);
         }
@@ -177,6 +181,10 @@ namespace Dogpatch.Race
                 case "scooters": Scooters(f, holder, Math.Max(p.count, 6), Or(p.length, 8f), rng); break;
                 case "parklet": Parklet(f, holder, Or(p.length, 7f)); break;
                 case "shortcut": Shortcut(p, holder); break;
+                case "crossing": Crossing(f, holder, p.look ?? "caltrain", Or(p.period, 20f), p.phase, Or(p.width, 34f)); break;
+                case "waymos": Waymos(f, holder, Math.Max(p.count, 3), rng); break;
+                case "crane": Crane(f, holder, p.width != 0f ? p.width : 14f, Or(p.length, 15f), Or(p.period, 14f), p.phase); break;
+                case "walker": Walker(f, holder, Or(p.width, 9f), Or(p.period, 24f), p.phase); break;
                 default: throw new ArgumentException("unknown set piece type " + p.type);
             }
         }
@@ -422,7 +430,7 @@ namespace Dogpatch.Race
                 Static(holder, "container", mb, at, h, true);
                 for (int b = 0; b < 3; b++)
                 {
-                    var bAt = f.Point(i * spacing - 1.2f + b * 1.2f, s * (width - 2.4f - (b % 2) * 0.9f), out float bh);
+                    var bAt = f.Point(i * spacing - 1.2f + b * 1.2f, s * (width - 1.9f - (b % 2) * 0.7f), out float bh);
                     Loose(holder, "barrel", Barrel(b % 2 == 0 ? Orange : Containers[1]), bAt, Quaternion.Euler(0f, bh + b * 25f, 0f), 22f);
                 }
             }

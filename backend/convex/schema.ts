@@ -140,6 +140,7 @@ export default defineSchema({
     vehicleType: v.string(),
     protocol: v.optional(v.number()),
     bump: v.optional(v.object({ target: v.string(), x: v.number(), z: v.number(), at: v.number() })),
+    look: v.optional(v.object({ paint: v.number(), tint: v.string(), avatar: v.string() })),
     worldRoomId: v.id("rooms"),
     joinedAt: v.number(),
     updatedAt: v.number(),

@@ -204,9 +204,9 @@ http.route({
 http.route({
   path: "/api/world/presence",
   method: "POST",
-  handler: endpoint(async (ctx, { playerId, position, heading, speed, mode, vehicleType, protocol, bump }) => {
+  handler: endpoint(async (ctx, { playerId, position, heading, speed, mode, vehicleType, protocol, bump, look }) => {
     const now = Date.now();
-    const me = await ctx.runMutation(internal.world.heartbeat, { playerId, position, heading, speed, mode, vehicleType, protocol, bump, now });
+    const me = await ctx.runMutation(internal.world.heartbeat, { playerId, position, heading, speed, mode, vehicleType, protocol, bump, look, now });
     const players = await ctx.runQuery(internal.world.snapshot, { shard: me.shard, playerId, now });
     return { serverTime: now, shard: me.shard, worldRoomId: me.worldRoomId, you: COLORS[me.slot % COLORS.length], players };
   }),

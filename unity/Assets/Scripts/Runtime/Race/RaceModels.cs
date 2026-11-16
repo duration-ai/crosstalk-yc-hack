@@ -212,7 +212,21 @@ namespace Dogpatch.Race
         public string vehicleType;
         public int protocol;
         public PresenceBump bump;
+        public PresenceLook look;
         public long updatedAt;
+    }
+
+    // How a player looks on their own phone, sent with presence when it changes (and every 2 s):
+    // their vehicle's roster paint, the base tint on it (hex, "" for its own paint) and the id their
+    // avatar is stored under ("" for the stock figure).
+    [Serializable]
+    public class PresenceLook
+    {
+        public int paint = -1;
+        public string tint;
+        public string avatar;
+
+        public bool Known => paint >= 0 || tint != null || avatar != null;
     }
 
     // A car-to-car hit one phone felt, sent along with its presence so the other phone feels the

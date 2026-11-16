@@ -20,7 +20,8 @@ namespace Dogpatch.Operator
 
         void Open();
 
-        void BeginTalk();
+        // preRoll false drops the audio buffered before the call, such as the greeting's own playback.
+        void BeginTalk(bool preRoll = true);
 
         Task<Heard> FinishAsync();
 

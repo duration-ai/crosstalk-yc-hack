@@ -23,6 +23,7 @@ export const presenceArgs = {
   vehicleType: v.optional(v.string()),
   protocol: v.optional(v.number()),
   bump: v.optional(v.object({ target: v.string(), x: v.number(), z: v.number(), at: v.number() })),
+  look: v.optional(v.object({ paint: v.number(), tint: v.string(), avatar: v.string() })),
 };
 
 // A bump is another phone's say over this player's car, so only a sane one is passed on: a
@@ -67,6 +68,7 @@ export function toWorldPlayer(row: Doc<"worldPresence">) {
     vehicleType: row.vehicleType,
     protocol: row.protocol ?? 0,
     bump: row.bump,
+    look: row.look,
     updatedAt: row.updatedAt,
   };
 }
@@ -94,6 +96,7 @@ export async function beat(ctx: MutationCtx, args: ObjectType<typeof heartbeatAr
     vehicleType,
     protocol: args.protocol ?? 0,
     bump: bounded(args.bump),
+    ...(args.look ? { look: args.look } : {}),
     updatedAt: args.now,
   };
   const row = await findPresence(ctx, player._id);

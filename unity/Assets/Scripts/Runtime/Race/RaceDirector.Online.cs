@@ -285,7 +285,15 @@ namespace Dogpatch.Race
                     outBumps.RemoveAll(b => now > b.until);
                     var bump = outBumps.Count > 0 ? outBumps[bumpTurn++ % outBumps.Count].bump : null;
                     presenceNow = false;
-                    pending.Add(AsPlayer(() => convex.PresenceAsync(MyId, position, heading, speed, mode, type, bump)));
+                    var look = CurrentLook(car);
+                    var lookKey = JsonUtility.ToJson(look);
+                    if (lookKey == sentLook && now < nextLookAt) look = null;
+                    else
+                    {
+                        sentLook = lookKey;
+                        nextLookAt = now + 2f;
+                    }
+                    pending.Add(AsPlayer(() => convex.PresenceAsync(MyId, position, heading, speed, mode, type, bump, look)));
                     float every = Gridded && !ResultsIn ? WorldEveryRacing : WorldEvery;
                     nextSend = Mathf.Max(nextSend + every, now);
                 }
@@ -301,6 +309,21 @@ namespace Dogpatch.Race
         readonly List<(PresenceBump bump, float until)> outBumps = new List<(PresenceBump, float)>();
         int bumpTurn;
         bool presenceNow;
+        string sentLook;
+        float nextLookAt;
+
+        // This phone's own look, for other phones to match: the car's roster paint and base tint,
+        // and the avatar's id.
+        PresenceLook CurrentLook(Dogpatch.Gameplay.CarController car)
+        {
+            var look = new PresenceLook { tint = "", avatar = Game.Profile != null ? Game.Profile.id ?? "" : "" };
+            if (car == null) return look;
+            var identity = car.GetComponent<VehicleIdentity>();
+            if (identity != null) look.paint = identity.Paint;
+            var tint = Dogpatch.WorldChanges.PaintJob.For(car.gameObject, car.ModelId).Base;
+            if (tint.HasValue) look.tint = "#" + ColorUtility.ToHtmlStringRGB(tint.Value.gamma);
+            return look;
+        }
 
         // A hit this phone felt goes out at once and rides along with presence for a second, so the
         // other phone sees it even if one update is lost (several at once take turns); it applies each

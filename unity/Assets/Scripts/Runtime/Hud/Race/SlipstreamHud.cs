@@ -46,9 +46,13 @@ namespace Dogpatch.Slipstream
         bool readyVisible;
         bool callVisible;
 
-        // On: from the lobby lock to the results, calls come only from driving through a spinning phone;
-        // the manual phone button (and the dev text field) return outside races for testing.
+        // On: from the mission lobby to the results, calls come only from driving through a spinning phone
+        // and the manual phone button is hidden; from the lobby lock to the results the dev text field is too.
         public static bool HidePhoneInRaces = true;
+
+        // The manual call button outside missions. A mission (its lobby, the race and the results) never
+        // shows it: calls there come only from phone pickups. False hides it in free roam too.
+        public static bool ManualCallsInFreeRoam = true;
 
         public static bool ManualCallsLocked => HidePhoneInRaces && RaceDirector.Instance is RaceDirector race && race.Gridded && !race.ResultsIn;
         int readyFinger = int.MinValue;
@@ -315,7 +319,7 @@ namespace Dogpatch.Slipstream
             if (Race.Last == null)
             {
                 OperatorAndNews();
-                PhoneButton(false);
+                if (ManualCallsInFreeRoam) PhoneButton(false);
                 return;
             }
 
@@ -338,7 +342,7 @@ namespace Dogpatch.Slipstream
             }
             if (Race.ResultsIn) Results();
             OperatorAndNews();
-            if (!ManualCallsLocked) PhoneButton(lobby || Race.ResultsIn);
+            if (lobby || Race.Gridded || Race.ResultsIn ? !HidePhoneInRaces : ManualCallsInFreeRoam) PhoneButton(lobby || Race.ResultsIn);
             if (Race.Wrecking) WreckedBanner();
             if (Race.WreckFade > 0f) Panel(new Rect(0f, 0f, Screen.width, Screen.height), new Color(Ink.r, Ink.g, Ink.b, Race.WreckFade), 0f);
         }
