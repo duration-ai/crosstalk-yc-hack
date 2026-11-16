@@ -5,11 +5,10 @@ using UnityEngine;
 
 namespace Dogpatch.Slipstream
 {
-    // The mission briefing (CRO-68). Entering a mission's lobby slides in a card with the route, a
-    // one-line objective, the story, and the route length and finish, while the Operator tells the
-    // story once per lobby (keyed by room and route, so stepping out of the ring and back does not
-    // replay it), with every other bus ducked to about a quarter; opening the mic stops him. From the lock to the results the card collapses
-    // to a one-line objective chip. Read-only over RaceDirector: it never changes the lobby or race.
+    // The mission briefing (CRO-68). Entering a mission's lobby (where HudV3.ArrivalCard shows the
+    // route, objective and racers) the Operator tells the story once per lobby (keyed by room and route, so stepping out of the ring and back does not
+    // replay it), with every other bus ducked to about a quarter; opening the mic stops him. From the lock to the results a one-line
+    // objective chip shows. Read-only over RaceDirector: it never changes the lobby or race.
     public sealed class MissionBriefing : MonoBehaviour
     {
         sealed class Brief
@@ -49,11 +48,8 @@ namespace Dogpatch.Slipstream
 
         static readonly Color Ink = SlipstreamHud.Hex("#1C2347");
         static readonly Color Sun = SlipstreamHud.Hex("#FFCB1F");
-        static readonly Color Pink = SlipstreamHud.Hex("#FF3E8E");
         static readonly Color White = SlipstreamHud.Hex("#FFFFFF");
-        static readonly Color Paper = SlipstreamHud.Hex("#F7F8F9");
         const float Lean = 0.21f;
-        const float StorySize = 14.5f;
 
         readonly HashSet<string> told = new HashSet<string>();
         AudioSource narration;
@@ -65,7 +61,6 @@ namespace Dogpatch.Slipstream
         bool hiddenWas;
         bool lobbyWas;
         bool chipWas;
-        float lobbyAt = -10f;
         float chipAt = -10f;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -104,7 +99,6 @@ namespace Dogpatch.Slipstream
             bool lobby = InLobby(race);
             if (lobby && !lobbyWas)
             {
-                lobbyAt = Time.time;
                 if (told.Add(race.RoomId + "|" + race.RouteId) && Briefs.TryGetValue(race.RouteId, out var brief))
                 {
                     Debug.Log($"[SpeedDial] mission briefing: {brief.Clip} for room {race.RoomId}");
@@ -126,7 +120,7 @@ namespace Dogpatch.Slipstream
             if (chip && !chipWas) chipAt = Time.time;
             chipWas = chip;
             bool hidden = Hidden;
-            if (hiddenWas && !hidden) lobbyAt = chipAt = Time.time;
+            if (hiddenWas && !hidden) chipAt = Time.time;
             hiddenWas = hidden;
         }
 
@@ -137,68 +131,7 @@ namespace Dogpatch.Slipstream
             if (race == null || !Briefs.TryGetValue(race.RouteId, out var brief)) return;
             GUI.depth = -4;
             s = Gameplay.HudLayout.U;
-            if (lobbyWas && InLobby(race)) Card(race, brief);
-            else if (chipWas && Racing(race)) Chip(brief);
-        }
-
-        void Card(RaceDirector race, Brief brief)
-        {
-            var data = race.Course.Data;
-            float length = race.Room.routeLength > 0f ? race.Room.routeLength : race.Course.Route != null ? race.Course.Route.Length : 0f;
-            string title = string.IsNullOrEmpty(data.routeName) ? "MISSION" : data.routeName.ToUpperInvariant();
-            string foot = (length > 0f ? $"{length / 1000f:0.0} KM  ·  " : "") + "FINISH: " + (data.finishName ?? "").ToUpperInvariant();
-
-            float titleH = 26f * s, objH = 22f * s, footH = 18f * s, pad = 9f * s, gap = 4f * s;
-            float textW = Gameplay.HudLayout.Briefing(0f).width - 2f * pad - 8f * s;
-            // Where the slot is short (4:3 landscape) the story shrinks until the card clears the stick.
-            float size = StorySize;
-            GUIStyle story;
-            float storyH;
-            Rect slot;
-            while (true)
-            {
-                story = Style(size, TextAnchor.UpperLeft, true);
-                storyH = story.CalcHeight(new GUIContent(brief.Story), textW) + 2f * pad;
-                slot = Gameplay.HudLayout.Briefing(titleH + objH + storyH + footH + 3f * gap);
-                if (size <= 9f || !OverStick(slot)) break;
-                size -= 0.5f;
-            }
-
-            var r = Row(0, slot, slot.y, titleH);
-            Panel(r, Sun);
-            Icon(new Rect(r.x + 10f * s, r.y + 3f * s, 20f * s, 20f * s), "yc", Ink);
-            Text(new Rect(r.x + 36f * s, r.y, r.width - 40f * s, r.height), title, 17f, Ink);
-
-            r = Row(1, slot, r.yMax + gap, objH);
-            Panel(r, Ink);
-            Text(new Rect(r.x + 12f * s, r.y, r.width - 16f * s, r.height), brief.Objective.ToUpperInvariant(), 11.5f, Sun);
-
-            r = Row(2, slot, r.yMax + gap, storyH);
-            Panel(r, Paper, 0.06f);
-            story = Style(size, TextAnchor.UpperLeft, true);
-            story.normal.textColor = TextColor(Ink);
-            GUI.Label(new Rect(r.x + pad + 4f * s, r.y + pad, textW, r.height - 2f * pad), brief.Story, story);
-
-            r = Row(3, slot, r.yMax + gap, footH);
-            Panel(r, Pink);
-            Text(new Rect(r.x + 12f * s, r.y, r.width - 16f * s, r.height), foot, 10f, White);
-        }
-
-        static bool OverStick(Rect r)
-        {
-            var stick = Gameplay.HudLayout.StickScreen;
-            float grab = Gameplay.HudLayout.StickRadius * 1.6f;
-            return r.xMax > stick.x - grab && r.yMax > Screen.height - stick.y - grab;
-        }
-
-        // One card row, sliding in from the right with the HUD's overshoot, staggered like the lobby rows.
-        Rect Row(int i, Rect slot, float y, float h)
-        {
-            float t = Mathf.Clamp01((Time.time - lobbyAt - i * 0.07f) / 0.26f);
-            float dx = (1f - Overshoot(t)) * (Screen.width - slot.x + 40f * s);
-            var r = new Rect(slot.x + dx, y, slot.width, h);
-            if (t < 1f) Stripes(r.xMax + 8f * s, r.y + 3f * s, h - 6f * s, 40f * s, Sun);
-            return r;
+            if (chipWas && Racing(race)) Chip(brief);
         }
 
         void Chip(Brief brief)
@@ -236,12 +169,6 @@ namespace Dogpatch.Slipstream
             GUI.color = color;
             GUI.DrawTexture(r, Pictograms.Get(name), ScaleMode.ScaleToFit);
             GUI.color = Color.white;
-        }
-
-        void Stripes(float x, float y, float height, float length, Color color)
-        {
-            for (int i = 0; i < 3; i++)
-                Panel(new Rect(x + i * 4f * s, y + i * height * 0.3f, length * (1f - i * 0.22f), Mathf.Max(2f, height * 0.12f)), color, 0f);
         }
 
         GUIStyle Style(float size, TextAnchor anchor, bool wrap = false)

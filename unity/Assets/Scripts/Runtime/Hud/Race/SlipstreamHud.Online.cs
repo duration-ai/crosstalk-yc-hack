@@ -54,6 +54,7 @@ namespace Dogpatch.Slipstream
             if (room.status != RoomStatus.Lobby && room.status != RoomStatus.Countdown) return;
             int unready = room.playerCount - room.readyCount;
             var running = Race.Running;
+            if (running == null) return;
             long endsIn = running == null ? 0 : (running.endsAt - Race.NowMs + 999) / 1000;
             var label = running != null
                 ? "RACE IN PROGRESS: " + string.Join(", ", running.racers.Select(r => r.displayName)) + " racing  ·  " + (endsIn > 0 ? "ends in ~" + endsIn + "s" : "ending now") + ". You're first in the next lobby"
