@@ -80,7 +80,7 @@ namespace Dogpatch.Slipstream
         void OnPaused(bool on) => paused = on;
 
         // Out of the way under the pause menu and the full map; it slides back in when they close.
-        bool Hidden => paused || Dogpatch.Map.Minimap.FullOpen;
+        bool Hidden => paused || Dogpatch.Map.Minimap.FullOpen || Dogpatch.Gameplay.AvatarCapture.CardOpen;
 
         // Mirrors SlipstreamHud's lobby panel: the room's lobby or its countdown, before the lock, on
         // foot in or by the start ring.
