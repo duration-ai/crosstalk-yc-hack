@@ -116,18 +116,20 @@ namespace Dogpatch.Operator
         const float Burst = 3f, Cycle = 6f;
         EffectTicker ticker;
         bool on;
+        float top = 1f, accel = 1f;
 
         public override void Apply(string strength, EffectTarget target)
         {
-            float top = Scale(strength, 1.5f, 1.8f, 2.2f), accel = Scale(strength, 2f, 2.5f, 3f);
+            top = Scale(strength, 1.5f, 1.8f, 2.2f);
+            accel = Scale(strength, 2f, 2.5f, 3f);
             float start = Time.time;
             ticker = EffectTicker.On(Context, () =>
             {
                 bool burst = Mathf.Repeat(Time.time - start, Cycle) < Burst;
                 if (burst == on) return;
                 on = burst;
-                CarController.SpeedScale = burst ? top : 1f;
-                CarController.AccelScale = burst ? accel : 1f;
+                CarController.SpeedScale *= burst ? top : 1f / top;
+                CarController.AccelScale *= burst ? accel : 1f / accel;
                 if (!burst) return;
                 Dogpatch.Feel.Haptics.Impact(Dogpatch.Feel.HapticStyle.Medium, 0.8f);
                 Dogpatch.Feel.CameraFeel.Instance?.AddTrauma(0.15f);
@@ -139,8 +141,12 @@ namespace Dogpatch.Operator
         public override void Revert()
         {
             if (ticker != null) Object.Destroy(ticker);
-            CarController.SpeedScale = 1f;
-            CarController.AccelScale = 1f;
+            if (on)
+            {
+                CarController.SpeedScale /= top;
+                CarController.AccelScale /= accel;
+            }
+            on = false;
         }
     }
 
@@ -428,15 +434,16 @@ namespace Dogpatch.Operator
         {
             r.Register("vehicle_faster", () => new KnobEffect((e, s) =>
             {
-                CarController.SpeedScale = OperatorEffect.Scale(s, 2.5f, 4f, 6f);
-                CarController.AccelScale = OperatorEffect.Scale(s, 1.4f, 1.6f, 1.9f);
+                float top = OperatorEffect.Scale(s, 2.5f, 4f, 6f), accel = OperatorEffect.Scale(s, 1.4f, 1.6f, 1.9f);
+                CarController.SpeedScale *= top;
+                CarController.AccelScale *= accel;
                 return () =>
                 {
-                    CarController.SpeedScale = 1f;
-                    CarController.AccelScale = 1f;
+                    CarController.SpeedScale /= top;
+                    CarController.AccelScale /= accel;
                 };
             }));
-            r.Register("vehicle_slower", () => new KnobEffect((e, s) => { CarController.SpeedScale = OperatorEffect.Scale(s, 0.4f, 0.25f, 0.15f); return () => CarController.SpeedScale = 1f; }));
+            r.Register("vehicle_slower", () => new KnobEffect((e, s) => { float k = OperatorEffect.Scale(s, 0.4f, 0.25f, 0.15f); CarController.SpeedScale *= k; return () => CarController.SpeedScale /= k; }));
             r.Register("nitro", () => new NitroEffect());
             r.Register("run_slower", () => new KnobEffect((e, s) => { float k = OperatorEffect.Scale(s, 0.4f, 0.25f, 0.15f); PlayerController.RunScale *= k; return () => PlayerController.RunScale /= k; }));
             r.Register("jump_higher", () => new KnobEffect((e, s) => { PlayerController.JumpScale = OperatorEffect.Scale(s, 2f, 3f, 4.5f); return () => PlayerController.JumpScale = 1f; }));
