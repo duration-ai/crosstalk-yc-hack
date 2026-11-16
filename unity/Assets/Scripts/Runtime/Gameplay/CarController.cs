@@ -34,10 +34,13 @@ namespace Dogpatch.Gameplay
 
         // Ground conditions (a wet, snowy or icy road, oil, lava, a quake) reach a car only while its
         // wheels are within reach of the ground: a hovering or flying car, or one in the air off a
-        // launch or hop, rides over them and picks them up again when it lands.
-        public bool OnGround => !Hovers && Physics.Raycast(transform.position + Vector3.up * 0.05f, Vector3.down, 0.05f + GroundReach, ~0, QueryTriggerInteraction.Ignore);
+        // launch or hop, rides over them and picks them up again when it lands. A phasing car (ghost or
+        // see-through) still drives on the road but passes through them too.
+        public bool OnGround => Phasing == 0 && !Hovers && Physics.Raycast(transform.position + Vector3.up * 0.05f, Vector3.down, 0.05f + GroundReach, ~0, QueryTriggerInteraction.Ignore);
 
         public const float GroundReach = 1.5f;
+
+        public int Phasing;
         public bool Grounding;
         public float HoverAltitude { get; private set; }
         public Vector3 HoverGround { get; private set; }

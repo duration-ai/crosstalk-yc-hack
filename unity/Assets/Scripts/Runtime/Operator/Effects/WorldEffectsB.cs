@@ -967,6 +967,11 @@ namespace Dogpatch.Operator
             var car = go.GetComponent<CarController>();
             var body = go.GetComponent<Rigidbody>();
             var colliders = go.GetComponentsInChildren<Collider>();
+            if (car != null && (kind == "ghost" || kind == "see_through"))
+            {
+                car.Phasing++;
+                undo.Add(() => { if (car != null) car.Phasing--; });
+            }
             void Swap(PhysicsMaterial with)
             {
                 foreach (var c in colliders)

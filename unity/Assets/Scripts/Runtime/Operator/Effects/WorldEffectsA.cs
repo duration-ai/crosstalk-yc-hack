@@ -873,7 +873,7 @@ namespace Dogpatch.Operator
                 }
                 foreach (var car in Racers.Cars(Context, target))
                 {
-                    if (!Racers.Physical(car) || car.Hovers) continue;
+                    if (!Racers.Physical(car) || !car.OnGround) continue;
                     var p = car.transform.position;
                     if (p.y > level + 0.5f || (nextHop.TryGetValue(car, out var at) && Time.time < at)) continue;
                     if (!Physics.Raycast(p + Vector3.up * 0.3f, Vector3.down, 0.7f, ~0, QueryTriggerInteraction.Ignore)) continue;
