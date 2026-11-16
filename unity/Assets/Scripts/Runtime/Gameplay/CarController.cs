@@ -72,6 +72,7 @@ namespace Dogpatch.Gameplay
         float lastSpeed, accelSmooth;
         float wheelSpin;
         float stunnedUntil;
+        float brakeUntil;
         bool swinging;
         float swingSign;
         float recoverUntil;
@@ -202,6 +203,9 @@ namespace Dogpatch.Gameplay
 
         public void ClearStun() => stunnedUntil = 0f;
 
+        // Keeps the brakes on for a moment (a racer past the finish line); call it every frame to hold them.
+        public void HoldBrake(float seconds) => brakeUntil = Time.time + seconds;
+
         void FixedUpdate()
         {
             bool hover = Hovers;
@@ -224,7 +228,7 @@ namespace Dogpatch.Gameplay
             // The drag becomes abstract controls first (steer -1..1, throttle -1..1 with negative for
             // reverse, brake, handbrake); everything after drives from those alone.
             float steerInput = 0f, throttle = 0f;
-            bool brake = false;
+            bool brake = Time.time < brakeUntil;
             var planar = Vector3.ProjectOnPlane(body.linearVelocity, Vector3.up);
             if (Driven && strength > 0f && desired.sqrMagnitude > 0.01f)
             {
