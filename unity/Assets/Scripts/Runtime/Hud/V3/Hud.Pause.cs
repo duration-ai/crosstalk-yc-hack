@@ -146,7 +146,9 @@ namespace Dogpatch.Gameplay
                 Plate(new Rect(0f, 0f, Screen.width * (landscape ? 0.62f : 1f), Screen.height), landscape ? 60f * k : 0f, new Color(Ink.r, Ink.g, Ink.b, 0.35f));
             }
 
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
             DrawFounderTag(new Rect(x0, top, 104f * k, 20f * k), k);
+#endif
             Outlined(new Rect(x0, top + 30f * k, 300f * k, 52f * k), devOpen ? "DEV" : "PAUSED", heading.Size(Mathf.RoundToInt(44f * k)), White, k * 0.9f);
 
             float colW = 330f * k;
