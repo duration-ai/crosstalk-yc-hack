@@ -38,7 +38,7 @@ namespace Dogpatch.Slipstream
             bool micOff = talking && PreviewState == null && calls.Voice != null && calls.Voice.MicBlocked;
 
             float h = 54f * s;
-            float w = talking && !micOff ? 196f * s : thinking ? 128f * s : 86f * s;
+            float w = talking && !micOff ? 196f * s : thinking ? 136f * s : 86f * s;
             var slot = Gameplay.HudLayout.Call(w, h, readyShowing);
             if (Time.frameCount - callFrame > 2) callShownAt = now;
             callFrame = Time.frameCount;
@@ -64,7 +64,7 @@ namespace Dogpatch.Slipstream
             if (micOff)
             {
                 Framed(r, White, Pink, 3f * s);
-                Icon(new Rect(r.center.x - 19f * s, r.center.y - 19f * s, 38f * s, 38f * s), "call", Pink);
+                Handset(r.center, 35f * s, Pink);
                 var tagSize = Measure("MIC OFF", 13f);
                 var tag = new Rect(r.x + 8f * s, r.y - 30f * s, tagSize.x + 40f * s, 24f * s);
                 Panel(tag, Ink);
@@ -83,7 +83,7 @@ namespace Dogpatch.Slipstream
             {
                 var held = new Rect(r.x + 3f * s, r.y + 3f * s, 86f * s, h);
                 Framed(held, White, Pink, 3f * s);
-                Icon(new Rect(held.x + 5f * s, held.center.y - 19f * s, 38f * s, 38f * s), "call", Pink);
+                Handset(held.center, 35f * s, Pink);
                 return;
             }
 
@@ -102,13 +102,13 @@ namespace Dogpatch.Slipstream
                 return;
             }
 
-            Icon(new Rect(r.x + 5f * s, r.center.y - 19f * s, 38f * s, 38f * s), "call", White);
+            Handset(new Vector2(thinking ? r.x + 32f * s : r.center.x, r.center.y), 35f * s, White);
             if (thinking)
             {
                 for (int i = 0; i < 3; i++)
                 {
                     float hop = Mathf.Max(0f, Mathf.Sin(now * 9f - i * 0.9f));
-                    Panel(new Rect(r.x + 56f * s + i * 18f * s, r.center.y - 2f * s - hop * 9f * s, 12f * s, 9f * s), White);
+                    Panel(new Rect(r.x + 64f * s + i * 18f * s, r.center.y - 2f * s - hop * 9f * s, 12f * s, 9f * s), White);
                 }
             }
             Pips(r, counts, asks);
@@ -131,7 +131,7 @@ namespace Dogpatch.Slipstream
         {
             var tile = new Rect(r.x, r.yMax - 42f * s, 46f * s, 42f * s);
             Framed(tile, White, Pink, 3f * s);
-            Icon(new Rect(tile.center.x - 15f * s, tile.center.y - 15f * s, 30f * s, 30f * s), "call", Pink);
+            Handset(tile.center, 27f * s, Pink);
             var cam = Camera.main;
             var player = Race.Game != null && Race.Game.Player != null ? Race.Game.Player.transform : null;
             if (cam == null || player == null) return;
@@ -163,6 +163,14 @@ namespace Dogpatch.Slipstream
             GUI.matrix = m;
             string dist = Mathf.RoundToInt(bestD) + "m";
             Text(new Rect(c.x + 18f * s, tile.y, 120f * s, tile.height), dist, 26f, White, TextAnchor.MiddleLeft, 1.6f * s);
+        }
+
+        // The handset glyph sized by its visible height: the "call" pictogram only fills about 58% of
+        // its texture, so the rect grows to put the handset at the asked height (65% of the plate).
+        void Handset(Vector2 c, float height, Color color)
+        {
+            float side = height / 0.58f;
+            Icon(new Rect(c.x - side * 0.5f, c.y - side * 0.5f, side, side), "call", color);
         }
 
         void Pips(Rect r, bool counts, int asks)

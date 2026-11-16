@@ -53,12 +53,12 @@ namespace Dogpatch.Slipstream
             var bar = new Rect(block.xMax + 2f * s, y, Mathf.Min(Measure(text, 14f).x + 26f * s, maxW), 30f * s);
             Panel(bar, Ink);
             Panel(block, Pink);
-            Icon(new Rect(block.x + 6f * s, block.y + 3f * s, 24f * s, 24f * s), "call", White);
+            Handset(new Vector2(block.x + 18f * s, block.center.y), 20f * s, White);
             float now = Time.time;
             for (int i = 0; i < 3; i++)
             {
                 float hop = Mathf.Max(0f, Mathf.Sin(now * 9f - i * 0.9f));
-                Panel(new Rect(block.x + 36f * s + i * 11f * s, block.center.y - 1f * s - hop * 6f * s, 8f * s, 6f * s), White);
+                Panel(new Rect(block.x + 40f * s + i * 11f * s, block.center.y - 1f * s - hop * 6f * s, 8f * s, 6f * s), White);
             }
             Text(new Rect(bar.x + 12f * s, bar.y, bar.width - 16f * s, bar.height), text, 14f, White, TextAnchor.MiddleLeft, 0f, Mathf.Clamp01((since - 0.1f) / 0.12f));
         }
