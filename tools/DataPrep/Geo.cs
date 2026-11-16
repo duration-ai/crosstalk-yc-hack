@@ -48,7 +48,43 @@ static class Geo
     public static double Dist(P a, P b) => Math.Sqrt((a.x - b.x) * (a.x - b.x) + (a.z - b.z) * (a.z - b.z));
 
     public static double MinX, MaxX, MinZ, MaxZ;
-    public static bool Inside(P p) => p.x >= MinX && p.x <= MaxX && p.z >= MinZ && p.z <= MaxZ;
+    // Optional outline of the world when it isn't the box (DataPrep --soma). Inside and ClipLine follow it.
+    public static List<P> Edge;
+    public static bool Inside(P p) => p.x >= MinX && p.x <= MaxX && p.z >= MinZ && p.z <= MaxZ && (Edge == null || PointInPoly(p, Edge));
+
+    // Splits a run (already clipped to the box) where it crosses Edge, keeping the pieces inside it.
+    static List<List<P>> ClipToEdge(List<P> run)
+    {
+        var runs = new List<List<P>>(); var cur = new List<P>();
+        for (int i = 0; i + 1 < run.Count; i++)
+        {
+            var a = run[i]; var b = run[i + 1];
+            var ts = new List<double> { 0, 1 };
+            for (int k = 0; k < Edge.Count; k++)
+            {
+                var c = Edge[k]; var d = Edge[(k + 1) % Edge.Count];
+                double den = (b.x - a.x) * (d.z - c.z) - (b.z - a.z) * (d.x - c.x);
+                if (Math.Abs(den) < 1e-12) continue;
+                double t = ((c.x - a.x) * (d.z - c.z) - (c.z - a.z) * (d.x - c.x)) / den;
+                double u = ((c.x - a.x) * (b.z - a.z) - (c.z - a.z) * (b.x - a.x)) / den;
+                if (t > 0 && t < 1 && u >= 0 && u <= 1) ts.Add(t);
+            }
+            ts.Sort();
+            for (int j = 0; j + 1 < ts.Count; j++)
+            {
+                P p0 = (a.x + (b.x - a.x) * ts[j], a.z + (b.z - a.z) * ts[j]), p1 = (a.x + (b.x - a.x) * ts[j + 1], a.z + (b.z - a.z) * ts[j + 1]);
+                if (Dist(p0, p1) < 1e-9) continue;
+                if (PointInPoly(((p0.x + p1.x) / 2, (p0.z + p1.z) / 2), Edge))
+                {
+                    if (cur.Count == 0 || Dist(cur[^1], p0) > 1e-9) { if (cur.Count > 1) runs.Add(cur); cur = new List<P> { p0 }; }
+                    cur.Add(p1);
+                }
+                else { if (cur.Count > 1) runs.Add(cur); cur = new(); }
+            }
+        }
+        if (cur.Count > 1) runs.Add(cur);
+        return runs;
+    }
 
     public static (double lat, double lon) Unproj(P p) =>
         (OriginLat + p.z / MPerDeg, OriginLon + p.x / (Math.Cos(OriginLat * Math.PI / 180) * MPerDeg));
@@ -145,7 +181,7 @@ static class Geo
             if (t1 < 1) { runs.Add(run); run = new(); }
         }
         if (run.Count > 1) runs.Add(run);
-        return runs;
+        return Edge == null ? runs : runs.SelectMany(ClipToEdge).ToList();
     }
 
     static bool Clip(double p, double q, ref double t0, ref double t1)
