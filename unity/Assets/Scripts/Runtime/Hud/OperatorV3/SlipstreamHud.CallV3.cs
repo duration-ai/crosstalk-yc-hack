@@ -85,6 +85,7 @@ namespace Dogpatch.Slipstream
             {
                 float level = PreviewState != null ? 0.85f : Mathf.Clamp01(0.35f + Mathf.Sqrt(MicCapture.Level) * 1.4f);
                 V3.HudPlates.Call(r, V3.CallLook.Live, -1, s, level);
+                Listening(now, level);
                 float left = PreviewState != null ? 0.7f : Mathf.Clamp01(1f - (now - calls.StateSince) / TalkWindow);
                 float segW = (r.width - 6f * s) / TalkSegments;
                 for (int i = 0; i < TalkSegments; i++)
@@ -212,10 +213,34 @@ namespace Dogpatch.Slipstream
             if (blink) Panel(new Rect(cursor.x + 3f * s, cursor.y + 2f * s, 5f * s, 16f * s), Pink, 0.1f);
         }
 
+        // While the mic is open: a big LISTENING plate at the top centre with a mic and live voice bars,
+        // so a call is unmistakable even mid-race when the thumb chip is out of sight.
+        void Listening(float now, float level)
+        {
+            float pulse = 0.5f + 0.5f * Mathf.Sin(now * 6f);
+            const string label = "LISTENING";
+            var m = Measure(label, 30f);
+            float bars = 5 * 14f * s;
+            float w = 64f * s + m.x + 24f * s + bars + 24f * s, h = 64f * s;
+            var r = new Rect((Screen.width - w) * 0.5f, Gameplay.HudLayout.Top + 64f * s, w, h);
+            Panel(new Rect(r.x + 5f * s, r.y + 5f * s, w, h), Ink);
+            Panel(r, Pink);
+            DrawFrame(Inflate(r, (2f + pulse * 4f) * s), new Color(Pink.r, Pink.g, Pink.b, 0.35f + 0.5f * pulse), 2.5f * s);
+            V3.HudIcons.Draw("talk", new Rect(r.x + 14f * s, r.y + 10f * s, 44f * s, 44f * s), White);
+            Text(new Rect(r.x + 64f * s, r.y, m.x + 8f, h), label, 30f, White, TextAnchor.MiddleLeft, 1.6f * s);
+            float bx = r.x + 64f * s + m.x + 24f * s;
+            for (int i = 0; i < 5; i++)
+            {
+                float k = Mathf.Clamp01(level * (0.55f + 0.45f * Mathf.Abs(Mathf.Sin(now * 11f + i * 1.7f))));
+                float bh = Mathf.Lerp(8f * s, h - 18f * s, k);
+                Panel(new Rect(bx + i * 14f * s, r.center.y - bh * 0.5f, 8f * s, bh), White, 0f);
+            }
+        }
+
         void EdgeTint(float now)
         {
             float pulse = 0.5f + 0.5f * Mathf.Sin(now * 4f);
-            float e = 7f * s;
+            float e = 12f * s;
             var c = new Color(Pink.r, Pink.g, Pink.b, 0.5f + 0.25f * pulse);
             Panel(new Rect(0f, 0f, Screen.width, e), c, 0f);
             Panel(new Rect(0f, Screen.height - e, Screen.width, e), c, 0f);
