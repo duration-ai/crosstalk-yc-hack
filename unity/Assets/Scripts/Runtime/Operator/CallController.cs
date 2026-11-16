@@ -32,6 +32,8 @@ namespace Dogpatch.Operator
         const float AnswerShown = 2.6f;
         const float LatchWindow = 5f;
         const float LatchSilence = 1f;
+        const float QuietSpan = 0.55f;
+        const float QuietLevel = 0.06f;
         const float RetryDelay = 1.5f;
 
         public GameController Game;
@@ -66,6 +68,8 @@ namespace Dogpatch.Operator
         bool latched;
         string lastPartial = "";
         float partialAt;
+        float loudAt;
+        bool spoke;
         float listenAt;
         float greetingLead;
         bool pickupCall;
@@ -169,7 +173,7 @@ namespace Dogpatch.Operator
                 Voice?.BeginTalk();
                 return;
             }
-            greetingLead = greeting.clip.length + 0.55f;
+            greetingLead = greeting.clip.length + 0.1f;
             listenAt = Time.time + greetingLead;
         }
 
@@ -178,6 +182,7 @@ namespace Dogpatch.Operator
             latched = true;
             lastPartial = Voice?.Partial ?? "";
             partialAt = Time.time;
+            spoke = false;
         }
 
         // Typed words straight to the Operator, for live tests only (the dev-flag text field,
@@ -246,8 +251,9 @@ namespace Dogpatch.Operator
             if (State == CallState.Talking && listenAt > 0f && Time.time >= listenAt)
             {
                 listenAt = 0f;
-                Voice?.BeginTalk();
+                Voice?.BeginTalk(false);
                 partialAt = Time.time;
+                spoke = false;
             }
             if (State == CallState.Talking && latched && listenAt == 0f)
             {
@@ -257,7 +263,12 @@ namespace Dogpatch.Operator
                     lastPartial = partial;
                     partialAt = Time.time;
                 }
-                bool quiet = partial.Trim().Length > 0 && Time.time - partialAt >= LatchSilence;
+                if (global::Dogpatch.Operator.Voice.MicCapture.Level > QuietLevel)
+                {
+                    loudAt = Time.time;
+                    spoke = true;
+                }
+                bool quiet = partial.Trim().Length > 0 && (Time.time - partialAt >= LatchSilence || spoke && Time.time - loudAt >= QuietSpan);
                 if (quiet || Time.time - StateSince >= LatchWindow + greetingLead)
                 {
                     latched = false;
