@@ -469,12 +469,16 @@ namespace Dogpatch.Slipstream
                 if (since > 0.9f) return;
                 label = "GO!";
             }
-            float scale = since < 0.12f ? Mathf.Lerp(2.4f, 1f, since / 0.12f) : 1f + Mathf.Sin(Mathf.Min(since - 0.12f, 0.2f) / 0.2f * Mathf.PI) * 0.05f;
-            float size = 150f * scale;
+            bool go = Race.Started;
+            float hold = go ? 0.9f : 1f;
+            float alpha = Mathf.Clamp01((hold - since) / 0.08f);
+            float scale = Mathf.Lerp(1.25f, 1f, EaseOut(Mathf.Clamp01(since / 0.12f)));
+            float pt = HudV3.V3Draw.P / s;
+            float size = (go ? 128f : 150f) * pt * scale;
             var m = Measure(label, size);
-            float shake = since < 0.2f ? Mathf.Sin(since * 90f) * 4f * s * (1f - since / 0.2f) : 0f;
-            var r = new Rect(Screen.width * 0.5f - m.x * 0.5f + shake, Screen.height * 0.42f - m.y * 0.5f, m.x, m.y);
-            Text(r, label, size, Sun, TextAnchor.UpperLeft, 5f * s * scale);
+            var r = new Rect(Screen.width * 0.5f - m.x * 0.5f, Screen.height * 0.43f - m.y * 0.5f, m.x, m.y);
+            Text(r, label, size, Sun, TextAnchor.UpperLeft, 5f * s * scale, alpha);
+            StartLights(Screen.width * 0.5f, r.yMax + 6f * HudV3.V3Draw.P, go ? 3 : 4 - Mathf.Clamp(Mathf.CeilToInt(Race.MsToStart / 1000f), 1, 3), go, alpha);
         }
 
         // Once you're over the line: your place and time, and how long until the results at the latest.
