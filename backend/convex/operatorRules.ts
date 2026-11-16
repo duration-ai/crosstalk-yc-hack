@@ -260,6 +260,10 @@ export function decide(a: Answers, view: View, active: ActiveSummary[]): Command
   if (scope === "world" && a.world_group.choice === "physics" && a.physics_effect.choice === "x_gravity_direction") {
     return refuse("unsupported");
   }
+  const carPhysics = a.physics_effect.choice;
+  if (scope === "class" && isA(a.class.choice, "vehicle") && !OBJECT_EFFECTS[a.object_effect.choice] && (carPhysics === "cars_on_water" || carPhysics === "cars_fly") && a.physics_effect.confidence >= 0.9) {
+    return effectCommand(a, "world", carPhysics);
+  }
   if (objectLike && a.object_effect.choice === "x_transform") return refuse("transformation");
 
   if (
@@ -287,6 +291,8 @@ export function decide(a: Answers, view: View, active: ActiveSummary[]): Command
       const effect = a.player_effect.choice;
       if (effect === NONE || !PLAYER_EFFECTS[effect]) return refuse("vague");
       if (effect === "bigger" && view.mode === "driving" && a.other_player < 0.5 && !forEveryone(a)) return onCar(a, "grow", OWN_CAR, false);
+      if (effect === "flight" && view.mode === "driving" && a.vehicle.choice === "flying_car" && a.vehicle.confidence >= 0.95) return effectCommand(a, "players", "change_vehicle");
+      if (effect === "flight" && view.mode === "driving" && a.physics_effect.choice === "cars_fly") return effectCommand(a, "world", "cars_fly");
       return effectCommand(a, "players", effect, { confirm: a.other_player >= 0.5 });
     }
     case "world": {
@@ -396,7 +402,7 @@ export function standInLine(transcript: string, label: string, vehicle: string) 
 }
 
 /** The ask explicitly covers every player (everyone, all of us, every car), not just the caller. */
-export const forEveryone = (a: Answers) => a.everyone >= 0.7;
+export const forEveryone = (a: Answers) => a.everyone >= 0.5;
 
 const OWN_CAR: ViewEntity = {
   id: "veh_me",
