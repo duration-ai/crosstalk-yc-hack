@@ -139,6 +139,25 @@ namespace Dogpatch.Race
         public List<RaceEvent> events;
         public long cursor;
         public List<RaceResult> results;
+        public RunningRace running;
+    }
+
+    // In a mission lobby, the same mission's race already under way in the shard, whose racers come
+    // into this lobby once it ends; endsAt is the server's estimate.
+    [Serializable]
+    public class RunningRace
+    {
+        public List<RunningRacer> racers;
+        public long endsAt;
+    }
+
+    [Serializable]
+    public class RunningRacer
+    {
+        public string playerId;
+        public string displayName;
+        public string color;
+        public string colorHex;
     }
 
     [Serializable]

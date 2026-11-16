@@ -651,21 +651,32 @@ namespace Dogpatch.Map
                 if (Inside(p, 5f * s)) Car(p, MapDirection(race.MyCar.transform.eulerAngles.y), 0.8f, mySlotColor);
             }
 
+            void RacerMark(Vector3 world, string slotColor)
+            {
+                var p = ToMap(world);
+                var color = SlipstreamHud.SlotColor(slotColor);
+                if (Inside(p, 5f * s))
+                {
+                    if (FullOpen) return;
+                    Parallelogram(p, 5.2f * s, 5.2f * s, 1.6f * s, Ink);
+                    Parallelogram(p, 3.8f * s, 3.8f * s, 1.6f * s, color);
+                }
+                else Pin(p, 3.6f * s, color);
+            }
+
             if (raceUp && race.Last?.racers != null)
                 foreach (var r in race.Last.racers)
                 {
                     if (r.left || r.playerId == race.MyId) continue;
                     var body = race.BodyOf(r.playerId);
-                    var world = body != null ? body.position : new Vector3(r.position.x, r.position.y, r.position.z);
-                    var p = ToMap(world);
-                    var color = SlipstreamHud.SlotColor(r.color);
-                    if (Inside(p, 5f * s))
-                    {
-                        if (FullOpen) continue;
-                        Parallelogram(p, 5.2f * s, 5.2f * s, 1.6f * s, Ink);
-                        Parallelogram(p, 3.8f * s, 3.8f * s, 1.6f * s, color);
-                    }
-                    else Pin(p, 3.6f * s, color);
+                    RacerMark(body != null ? body.position : new Vector3(r.position.x, r.position.y, r.position.z), r.color);
+                }
+
+            if (raceUp && race.Running != null)
+                foreach (var r in race.Running.racers)
+                {
+                    var body = race.Remotes.Get(r.playerId)?.Body;
+                    if (body != null) RacerMark(body.position, r.color);
                 }
 
             foreach (var r in WorldPlayers(race))
