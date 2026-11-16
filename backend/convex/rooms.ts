@@ -237,7 +237,7 @@ export const setReady = mutation({
     if (status === "racing") fail("CONFLICT", "The race is running");
     if (status !== "finished" && isLocked(room, now)) fail("CONFLICT", "The race is about to start");
 
-    await ctx.db.patch(row._id, { ready: args.ready });
+    await ctx.db.patch(row._id, { ready: args.ready, readySent: true });
     if (status !== "finished") {
       await ctx.db.patch(room._id, lobbyPatch(room, await roomPlayers(ctx, room._id), now));
     }
