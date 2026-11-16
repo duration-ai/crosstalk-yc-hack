@@ -408,7 +408,7 @@ namespace Dogpatch.Traffic
                 Limit(ref target, allowed, Mathf.Max(brake, 4f));
                 if (target >= before) continue;
                 if (ob.Agent) blockedByAgent = true;
-                if (Rage > 0f && gap < 14f) audioSource?.Signal(2.5f - Rage * 1.5f);
+                if (Rage > 0f && gap < 14f) audioSource?.Signal(Mathf.Max(0.5f, 2.5f - Rage * 1.5f));
                 State = ob.Player ? "braking for player" : "following";
                 if (!ob.Player) continue;
                 playerAhead = true;
