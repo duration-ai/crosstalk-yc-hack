@@ -52,6 +52,12 @@ namespace Dogpatch.Backend
             vehicles[id] = new Vehicle { id = id, model = model, position = position, heading = heading, occupiedBy = null, updatedAt = Now };
         }
 
+        // Not part of IGameBackend: the server renames through players:rename.
+        public void RenamePlayer(string playerId, string displayName)
+        {
+            if (players.TryGetValue(playerId ?? "", out var player)) player.displayName = displayName;
+        }
+
         public Task<Player> CreatePlayerAsync(string displayName)
         {
             string name = displayName?.Trim() ?? "";

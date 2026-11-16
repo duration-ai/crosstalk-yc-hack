@@ -38,6 +38,37 @@ describe("players", () => {
     expect(await t.query(api.players.get, { playerId: created.id })).toEqual(created);
   });
 
+  it("renames a player in place, and the rooms they are in follow", async () => {
+    const t = convexTest(schema, modules);
+    const tim = await t.mutation(api.players.create, { displayName: "Racer 42" });
+    const { room } = await t.mutation(api.rooms.create, { playerId: tim.id });
+    const renamed = await t.mutation(api.players.rename, { playerId: tim.id, displayName: "  Sudhir " });
+    expect(renamed).toEqual({ ...tim, displayName: "Sudhir" });
+    expect(await t.query(api.players.get, { playerId: tim.id })).toEqual(renamed);
+    expect(await t.run((ctx) => ctx.db.query("players").collect())).toHaveLength(1);
+    const seats = await t.run((ctx) => ctx.db.query("roomPlayers").collect());
+    expect(seats.map((s) => [s.roomId, s.displayName])).toEqual([[room.id, "Sudhir"]]);
+  });
+
+  it("rejects a blank or too long rename and keeps the old name", async () => {
+    const t = convexTest(schema, modules);
+    const tim = await t.mutation(api.players.create, { displayName: "Tim" });
+    for (const displayName of ["   ", "x".repeat(33)]) {
+      await expect(t.mutation(api.players.rename, { playerId: tim.id, displayName })).rejects.toThrow(/INVALID_ARGUMENT|displayName/);
+    }
+    expect((await t.query(api.players.get, { playerId: tim.id })).displayName).toBe("Tim");
+  });
+
+  it("renames over HTTP", async () => {
+    const t = convexTest(schema, modules);
+    const tim = await t.mutation(api.players.create, { displayName: "Racer 7" });
+    const ok = await call(t, "POST", "/api/players/rename", { playerId: tim.id, displayName: "Sudhir" });
+    expect(ok).toEqual({ status: 200, body: { player: { ...tim, displayName: "Sudhir" } } });
+    const bad = await call(t, "POST", "/api/players/rename", { playerId: tim.id, displayName: " " });
+    expect(bad.status).toBe(400);
+    expect(bad.body.error.code).toBe("INVALID_ARGUMENT");
+  });
+
   it("rejects an empty display name", async () => {
     const t = convexTest(schema, modules);
     await expect(t.mutation(api.players.create, { displayName: "   " })).rejects.toThrow(
