@@ -134,10 +134,10 @@ namespace Dogpatch.World
             return (int)n;
         }
 
-        // Streaming (-stream-world): detailed building chunks, most of the merged-mesh memory, are built
-        // only within StreamLoad of the camera and freed past StreamUnload (WorldStreamer). Footprint
-        // colliders stay loaded, so buildings are always solid; plain extrusions show everywhere else.
-        public static bool Streaming => Array.IndexOf(Environment.GetCommandLineArgs(), "-stream-world") >= 0;
+        // Streaming (on unless -no-stream-world): detailed building chunks, most of the merged-mesh memory,
+        // are built only within StreamLoad of the camera and freed past StreamUnload (WorldStreamer).
+        // Footprint colliders stay loaded, so buildings are always solid; plain extrusions show elsewhere.
+        public static bool Streaming => Array.IndexOf(Environment.GetCommandLineArgs(), "-no-stream-world") < 0;
         public const float StreamLoad = 360f, StreamUnload = 480f;
 
         Transform emitParent;
