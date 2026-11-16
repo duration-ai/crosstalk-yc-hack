@@ -545,6 +545,10 @@ describe("supersize", () => {
     expect(decide(fly, onFoot, [])).toEqual(effect({ scope: "players", effect: "flight" }));
     const ride = answers({ scope: "players", player_effect: "flight", world_group: "physics", physics_effect: "cars_fly", vehicle: "flying_car" });
     expect(decide(ride, driving, [])).toMatchObject({ kind: "effect", effect: "change_vehicle", vehicle: "flying_car" });
+    const everyoneRide = answers({ scope: "players", player_effect: "flight", world_group: "physics", physics_effect: "cars_fly", vehicle: "flying_car", everyone: 0.9 });
+    expect(decide(everyoneRide, driving, [])).toMatchObject({ kind: "effect", effect: "cars_fly" });
+    const theirs = answers({ scope: "players", player_effect: "flight", world_group: "physics", physics_effect: "cars_fly", other_player: 0.8 });
+    expect(decide(theirs, driving, [])).toMatchObject({ kind: "effect", effect: "cars_fly", confirm: true });
   });
 
   it("reads every car driving on water as boat cars rather than a transformation", () => {

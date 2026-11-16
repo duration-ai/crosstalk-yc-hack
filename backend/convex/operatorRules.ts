@@ -291,8 +291,9 @@ export function decide(a: Answers, view: View, active: ActiveSummary[]): Command
       const effect = a.player_effect.choice;
       if (effect === NONE || !PLAYER_EFFECTS[effect]) return refuse("vague");
       if (effect === "bigger" && view.mode === "driving" && a.other_player < 0.5 && !forEveryone(a)) return onCar(a, "grow", OWN_CAR, false);
-      if (effect === "flight" && view.mode === "driving" && a.vehicle.choice === "flying_car" && a.vehicle.confidence >= 0.95) return effectCommand(a, "players", "change_vehicle");
-      if (effect === "flight" && view.mode === "driving" && a.physics_effect.choice === "cars_fly") return effectCommand(a, "world", "cars_fly");
+      const ask = { confirm: a.other_player >= 0.5 };
+      if (effect === "flight" && view.mode === "driving" && !forEveryone(a) && a.vehicle.choice === "flying_car" && a.vehicle.confidence >= 0.95) return effectCommand(a, "players", "change_vehicle", ask);
+      if (effect === "flight" && view.mode === "driving" && a.physics_effect.choice === "cars_fly") return effectCommand(a, "world", "cars_fly", ask);
       return effectCommand(a, "players", effect, { confirm: a.other_player >= 0.5 });
     }
     case "world": {
