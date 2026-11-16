@@ -345,19 +345,21 @@ namespace Dogpatch.Gameplay
             catch (BackendException e) when (e.Code == AvatarErrorCodes.Retake)
             {
                 Debug.Log("[Avatar] retake: " + e.Message);
-                stage = Stage.Refused;
+                if (stage == Stage.Uploading) stage = Stage.Refused;
                 return;
             }
             catch (Exception e)
             {
                 Debug.LogWarning("[Avatar] photo failed: " + (e is BackendException b ? b.Code + " " : "") + e.Message);
-                Fail("TRY AGAIN");
+                if (stage == Stage.Uploading) Fail("TRY AGAIN");
                 return;
             }
             var d = result.decision;
             Debug.Log($"[Avatar] decided by {d?.provider} in {d?.latencyMs}ms realPerson={d?.realPerson} costume={d?.costume}: {result.avatar.@base} {result.avatar.glbUrl}");
             Save(result.avatar);
-            if (!await WearAsync(result.avatar))
+            bool wore = await WearAsync(result.avatar);
+            if (stage != Stage.Uploading) return;
+            if (!wore)
             {
                 Fail("TRY AGAIN");
                 return;
@@ -465,13 +467,10 @@ namespace Dogpatch.Gameplay
                     list.Add(("ok", new Rect(field.xMax - 150f * s, field.y - 18f * s - bh, 150f * s, bh)));
                     break;
                 case Stage.Viewfinder:
+                case Stage.Uploading:
                 case Stage.Refused:
                 case Stage.Failed:
-                    float sw = 170f * s, sh = 96f * s;
-                    list.Add((stage == Stage.Viewfinder ? "shutter" : "open", new Rect(safe.center.x - sw / 2f, safe.yMin + 40f * s, sw, sh)));
-                    list.Add(("skip", new Rect(safe.xMin + 28f * s, safe.yMin + 52f * s, 100f * s, 72f * s)));
-                    if (stage == Stage.Viewfinder && feed != null && devices.Length > 1)
-                        list.Add(("flip", new Rect(safe.xMax - 28f * s - 100f * s, safe.yMin + 52f * s, 100f * s, 72f * s)));
+                    BoothButtons(list);
                     break;
             }
             return list;
@@ -530,6 +529,7 @@ namespace Dogpatch.Gameplay
                 && !(Race.RaceDirector.Instance is Race.RaceDirector race && (race.Gridded || race.Locked))) OpenName();
             if (stage == Stage.Menu && !PortraitVisible) stage = Stage.Closed;
             if (stage == Stage.Name) UpdateName();
+            UpdateCount();
             var buttons = Buttons();
             if (down && stage == Stage.Menu && Hit(buttons, p) == null) stage = Stage.Closed;
             if (down) pressed = Hit(buttons, p);
@@ -549,7 +549,8 @@ namespace Dogpatch.Gameplay
             else if (id == "dice") RollName();
             else if (id == "field") ShowKeyboard();
             else if (id == "open") Open();
-            else if (id == "shutter") Shoot();
+            else if (id == "shutter") PressShutter();
+            else if (id == "settings") Application.OpenURL("app-settings:");
             else if (id == "flip") Flip();
             else if (id == "skip") Close();
         }
@@ -594,24 +595,7 @@ namespace Dogpatch.Gameplay
                 return;
             }
 
-            DrawPhoto();
-            bool refused = stage == Stage.Refused;
-            string text = stage == Stage.Uploading ? "SUITING UP" : refused ? "NO ONE IN SHOT" : stage == Stage.Failed ? failure : "FULL BODY";
-            var panel = TagRect(text);
-            BeginShapes();
-            if (refused || stage == Stage.Failed) Dim();
-            if (stage == Stage.Viewfinder) Silhouette(s);
-            Para(panel, refused ? Sunshine : Ink);
-            if (stage == Stage.Uploading) Segments(new Rect(panel.x + 10f * s, panel.y - 26f * s, panel.width, 14f * s));
-            foreach (var (id, rect) in Buttons())
-            {
-                bool down = pressed == id;
-                if (id == "shutter" || id == "open") Plate(rect, Sunshine, Ink, down, r => CameraPictogram(r.center, r.height * 0.3f, down ? Sunshine : Ink));
-                else if (id == "flip") Plate(rect, Ink, White, down, r => FlipPictogram(r.center, r.height * 0.26f, down ? Ink : White));
-                else Plate(rect, Ink, White, down, r => ClosePictogram(r.center, r.height * 0.24f, down ? Ink : White));
-            }
-            EndShapes();
-            Label(panel, text, refused ? Ink : Sunshine, 34f * s);
+            DrawBooth();
         }
 
         void DrawMenu()
