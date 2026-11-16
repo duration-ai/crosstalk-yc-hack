@@ -38,6 +38,15 @@ namespace Dogpatch.Gameplay
             if (on) Enable();
         }
 
+        public bool On => on;
+
+        public void Set(bool value)
+        {
+            if (value == on) return;
+            if (value) Enable();
+            else Disable();
+        }
+
         void Enable()
         {
             on = true;
