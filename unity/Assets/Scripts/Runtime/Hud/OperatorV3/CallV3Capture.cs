@@ -25,6 +25,15 @@ namespace Dogpatch.Slipstream
             go.AddComponent<CallV3Capture>().output = at + 1 < args.Length ? args[at + 1] : Path.Combine(Application.persistentDataPath, "call-v3");
         }
 
+        IEnumerator Shot(string name)
+        {
+            yield return new WaitForEndOfFrame();
+            var tex = ScreenCapture.CaptureScreenshotAsTexture();
+            File.WriteAllBytes(Path.Combine(output, name + ".png"), tex.EncodeToPNG());
+            Destroy(tex);
+            Debug.Log("[CallV3] captured " + name);
+        }
+
         IEnumerator Start()
         {
             Directory.CreateDirectory(output);
@@ -38,25 +47,37 @@ namespace Dogpatch.Slipstream
                 game.Follow.Snap(game.Player.transform, false);
             }
             yield return new WaitForSecondsRealtime(8f);
-            var shots = new (string name, CallState state, string words, int asks)[]
+            var shots = new (string name, CallState state, string words, int asks, bool refused, string line)[]
             {
-                ("1-call-ready", CallState.None, "", 2),
-                ("2-hold-to-talk", CallState.Talking, "make it night and everyone tiny", 2),
-                ("3-thinking", CallState.Waiting, "make it night and everyone tiny", 2),
+                ("1-call-ready", CallState.None, "", 2, false, ""),
+                ("2-hold-to-talk", CallState.Talking, "make it night and everyone tiny", 2, false, ""),
+                ("3-thinking", CallState.Waiting, "make it night and everyone tiny", 2, false, ""),
+                ("4-done", CallState.Answered, "", 1, false, "Lights out, Dogpatch."),
+                ("5-nope", CallState.Answered, "", 2, true, "Not on my watch, sugar."),
             };
             foreach (var shot in shots)
             {
                 SlipstreamHud.PreviewState = shot.state;
                 SlipstreamHud.PreviewWords = shot.words;
                 SlipstreamHud.PreviewAsks = shot.asks;
-                yield return new WaitForSecondsRealtime(1.2f);
-                yield return new WaitForEndOfFrame();
-                var tex = ScreenCapture.CaptureScreenshotAsTexture();
-                File.WriteAllBytes(Path.Combine(output, shot.name + ".png"), tex.EncodeToPNG());
-                Destroy(tex);
-                Debug.Log("[CallV3] captured " + shot.name);
+                SlipstreamHud.PreviewRefused = shot.refused;
+                SlipstreamHud.PreviewLine = shot.line;
+                SlipstreamHud.PreviewAt = Time.time;
+                yield return new WaitForSecondsRealtime(shot.state == CallState.Answered ? 0.6f : 1.2f);
+                yield return Shot(shot.name);
             }
             SlipstreamHud.PreviewState = null;
+            SlipstreamHud.PreviewAsks = 1;
+            var hud = FindAnyObjectByType<OperatorHud>();
+            if (hud != null && hud.Effects != null)
+            {
+                double now = hud.Effects.ServerNow();
+                hud.Effects.Optimistic(new ActiveEffect { id = "capture-night", effect = "night", label = "night", status = "active", scope = "world", startsAt = now, endsAt = now + 58000, durationS = 60f, requestedBy = race.Calls.PlayerId() });
+                hud.Effects.Optimistic(new ActiveEffect { id = "capture-gravity", effect = "gravity_lower", label = "gravity", status = "active", scope = "world", startsAt = now, endsAt = now + 4000, durationS = 30f, requestedBy = "someone-else" });
+            }
+            race.Hud.PushNews("MAYA MADE IT NIGHT", "time", "purple");
+            yield return new WaitForSecondsRealtime(0.8f);
+            yield return Shot("6-news-chips");
             Debug.Log("[CallV3] capture done");
             Application.Quit();
         }
