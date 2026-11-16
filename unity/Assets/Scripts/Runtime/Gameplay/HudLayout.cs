@@ -160,8 +160,10 @@ namespace Dogpatch.Gameplay
         public static Vector2 LobbyPanel => new Vector2(Left, Top + 2f * U);
 
         // Effect countdown chips: under the top-left stack, or under the map in B.
+        // B: under the map and the race meters in portrait; in landscape, where that column runs into
+        // the stick, under the place in the top-left corner.
         public static Vector2 Chips => Option == HudOption.B
-            ? new Vector2(Right - 200f * U, MinimapBottomGui + 86f * U)
+            ? Portrait ? new Vector2(Right - 200f * U, MinimapBottomGui + 86f * U) : new Vector2(Left, Top + 96f * U)
             : new Vector2(Left, Top + (Stacked ? 140f : Narrow ? 124f : 92f) * U);
 
         // ---- Call (the Operator's hold-to-talk plate) and Ready ----
