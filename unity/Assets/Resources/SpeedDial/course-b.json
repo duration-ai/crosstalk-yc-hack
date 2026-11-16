@@ -21,5 +21,75 @@
     }
   ],
   "finishRadius": 15,
-  "ringRadius": 7.2
+  "ringRadius": 7.2,
+  "setPieces": [
+    {
+      "type": "scooters",
+      "lat": 37.751604,
+      "lon": -122.387113,
+      "offset": 3.3,
+      "count": 6
+    },
+    {
+      "type": "boost",
+      "lat": 37.753133,
+      "lon": -122.387113
+    },
+    {
+      "type": "puddle",
+      "lat": 37.754302,
+      "lon": -122.387056,
+      "offset": -1.4
+    },
+    {
+      "type": "puddle",
+      "lat": 37.754644,
+      "lon": -122.387033,
+      "offset": 1.6,
+      "width": 3.5
+    },
+    {
+      "type": "boost",
+      "lat": 37.755651,
+      "lon": -122.386999
+    },
+    {
+      "type": "puddle",
+      "lat": 37.75664,
+      "lon": -122.386976,
+      "offset": 0,
+      "width": 4.5
+    },
+    {
+      "type": "chicane",
+      "lat": 37.758007,
+      "lon": -122.385748,
+      "count": 4,
+      "spacing": 14,
+      "width": 5.2
+    },
+    {
+      "type": "dock",
+      "lat": 37.758061,
+      "lon": -122.38461,
+      "width": 5,
+      "height": 1.2,
+      "spacing": 8
+    },
+    {
+      "type": "chicane",
+      "lat": 37.758799,
+      "lon": -122.383302,
+      "count": 4,
+      "spacing": 14,
+      "width": 5.2
+    },
+    {
+      "type": "scooters",
+      "lat": 37.760462,
+      "lon": -122.384269,
+      "offset": -3.3,
+      "count": 7
+    }
+  ]
 }

@@ -12,5 +12,44 @@
   },
   "via": [],
   "finishRadius": 15,
-  "ringRadius": 7.2
+  "ringRadius": 7.2,
+  "setPieces": [
+    {
+      "type": "ramp",
+      "lat": 37.757791,
+      "lon": -122.390866,
+      "width": 7
+    },
+    {
+      "type": "boost",
+      "lat": 37.757872,
+      "lon": -122.388932
+    },
+    {
+      "type": "parklet",
+      "lat": 37.757854,
+      "lon": -122.389615,
+      "offset": 3.4,
+      "length": 7
+    },
+    {
+      "type": "scooters",
+      "lat": 37.757827,
+      "lon": -122.390525,
+      "offset": -3.3,
+      "count": 7
+    },
+    {
+      "type": "boost",
+      "lat": 37.759248,
+      "lon": -122.388705
+    },
+    {
+      "type": "scooters",
+      "lat": 37.760597,
+      "lon": -122.387113,
+      "offset": 3.3,
+      "count": 6
+    }
+  ]
 }
