@@ -5,8 +5,8 @@ using UnityEngine.Rendering;
 
 namespace Dogpatch.Nav
 {
-    // The direction collar (HUD v3): a chunky flat-shaded vertex-colour chevron lying on the road on
-    // a ring of dashes around you, on foot or driving, that swings smoothly toward the next stretch
+    // The direction collar (HUD v3): a chunky flat-shaded vertex-colour chevron lying on the road
+    // around you, on foot or driving, that swings smoothly toward the next stretch
     // of the street path to the current objective (GroundCollar places it). Sunshine for routes,
     // waypoints and mission starts, hotline pink only for Operator asks. It pops in when an
     // objective appears and shrinks away on arrival.
@@ -32,7 +32,6 @@ namespace Dogpatch.Nav
 
         MeshFilter filter;
         MeshRenderer view;
-        MeshRenderer ring;
         Mesh sunshine;
         Mesh pink;
         float shown;
@@ -53,14 +52,6 @@ namespace Dogpatch.Nav
             view.shadowCastingMode = ShadowCastingMode.Off;
             view.receiveShadows = false;
             view.enabled = false;
-            var dashes = new GameObject("CollarRing");
-            dashes.transform.SetParent(transform, false);
-            dashes.AddComponent<MeshFilter>().sharedMesh = HudV3.GroundCollar.Ring(SpeedDial.Hex("#FFCB1F"), SpeedDial.Hex("#1C2347"));
-            ring = dashes.AddComponent<MeshRenderer>();
-            ring.sharedMaterial = Nav.Game.SharedMaterial;
-            ring.shadowCastingMode = ShadowCastingMode.Off;
-            ring.receiveShadows = false;
-            ring.enabled = false;
         }
 
         void LateUpdate()
@@ -71,7 +62,6 @@ namespace Dogpatch.Nav
             bool want = Nav.HasObjective && !Nav.Arrived && focus != null && cam != null;
             shown = Mathf.MoveTowards(shown, want ? 1f : 0f, Time.deltaTime * (want ? 3.5f : 5f));
             view.enabled = shown > 0.001f;
-            ring.enabled = view.enabled;
             if (!view.enabled)
             {
                 placed = false;
@@ -86,7 +76,7 @@ namespace Dogpatch.Nav
             yaw = Mathf.SmoothDampAngle(yaw, target, ref yawVelocity, 0.12f);
             placed = true;
             float size = EaseOutBack(shown);
-            HudV3.GroundCollar.Place(t, ring.transform, focus.position, yaw, size, game.CurrentCar != null);
+            HudV3.GroundCollar.Place(t, focus.position, yaw, size, game.CurrentCar != null);
         }
 
         static float EaseOutBack(float x)
