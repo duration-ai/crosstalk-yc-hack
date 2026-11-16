@@ -557,7 +557,11 @@ namespace Dogpatch.Gameplay
             else if (id == "settings") Application.OpenURL("app-settings:");
             else if (id == "flip") Flip();
             else if (id == "skip") Close();
-            else if (id == "done") Close();
+            else if (id == "done" || id == "close") Close();
+            else if (id == "photo") Open();
+            else if (id == "dice2") RollAndRename();
+            else if (id == "spinL") spinOffset -= 90f;
+            else if (id == "spinR") spinOffset += 90f;
             else if (id == "ticket") TapTicket();
         }
 

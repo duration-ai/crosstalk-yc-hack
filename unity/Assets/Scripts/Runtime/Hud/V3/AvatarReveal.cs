@@ -18,6 +18,26 @@ namespace Dogpatch.Gameplay
         Camera turntableCam;
         RenderTexture turntableRt;
         float revealAt;
+        float spinOffset;
+
+        static readonly Color Bright = new Color32(0x00, 0x6E, 0xFF, 0xFF);
+        static readonly Color BrightRay = new Color32(0x4F, 0xA8, 0xFF, 0xFF);
+
+        Rect RevealPlate()
+        {
+            float s = Scale;
+            var safe = HudLayout.Safe;
+            float w = Mathf.Min(360f * s, safe.width - 180f * s);
+            return new Rect(safe.center.x - w / 2f - 50f * s, safe.yMax - 200f * s, w, 70f * s);
+        }
+
+        void RollAndRename()
+        {
+            typed = "";
+            RollName();
+            if (game != null) game.Rename(typed);
+            Race.RaceDirector.Instance?.Rename(typed);
+        }
 
         bool TicketVisible => stage == Stage.Closed && PortraitVisible && !ticketDone && NameAsked
             && PlayerPrefs.GetInt(TicketKey, 0) == 0 && string.IsNullOrEmpty(PlayerPrefs.GetString(AvatarKey, ""));
@@ -130,7 +150,7 @@ namespace Dogpatch.Gameplay
             if (turntable == null || turntableCam == null) return;
             float t = Time.unscaledTime - revealAt;
             float spin = t < 1.2f ? Mathf.SmoothStep(0f, 360f, t / 1.2f) : 360f + Mathf.Sin((t - 1.2f) * 0.8f) * 25f;
-            turntable.transform.rotation = Quaternion.Euler(0f, spin - 15f, 0f);
+            turntable.transform.rotation = Quaternion.Euler(0f, spin - 15f + spinOffset, 0f);
             turntableCam.Render();
         }
 
@@ -138,7 +158,15 @@ namespace Dogpatch.Gameplay
         {
             float s = Scale;
             var safe = HudLayout.Safe;
-            list.Add(("done", new Rect(safe.xMax - 28f * s - 210f * s, safe.yMin + 44f * s, 200f * s, 88f * s)));
+            list.Add(("done", new Rect(safe.xMax - 28f * s - 150f * s, safe.yMin + 44f * s, 140f * s, 88f * s)));
+            list.Add(("photo", new Rect(safe.center.x - 190f * s, safe.yMin + 44f * s, 300f * s, 88f * s)));
+            list.Add(("close", new Rect(safe.xMin + 24f * s, safe.yMax - 24f * s - 64f * s, 90f * s, 64f * s)));
+            bool tall = Screen.height > Screen.width;
+            float y = safe.yMin + (tall ? 170f : 150f) * s;
+            list.Add(("spinL", new Rect(safe.center.x - 260f * s, y, 90f * s, 64f * s)));
+            list.Add(("spinR", new Rect(safe.center.x + 170f * s, y, 90f * s, 64f * s)));
+            var plate = RevealPlate();
+            list.Add(("dice2", new Rect(plate.xMax + 18f * s, plate.y, 90f * s, plate.height)));
         }
 
         // NEW RACER: the sunburst, the title, the new racer idling on the turntable, a big tick.
@@ -148,7 +176,7 @@ namespace Dogpatch.Gameplay
             var safe = HudLayout.Safe;
             bool tall = Screen.height > Screen.width;
             BeginShapes();
-            Sunburst(new Vector2(Screen.width * 0.5f, Screen.height * 0.5f), Burst, BurstRay);
+            Sunburst(new Vector2(Screen.width * 0.5f, Screen.height * 0.5f), Bright, BrightRay);
             EndShapes();
 
             float pop = Mathf.Clamp01((Time.unscaledTime - revealAt) / 0.3f);
@@ -160,17 +188,13 @@ namespace Dogpatch.Gameplay
             Disc(feet, w * 0.46f, w * 0.1f, Ink);
             Disc(feet, w * 0.4f, w * 0.08f, Sunshine);
             Disc(feet, w * 0.34f, w * 0.064f, Ink);
-            Line(feet + new Vector2(-w * 0.58f, 0f), feet + new Vector2(-w * 0.5f, w * 0.05f), 5f * s, White);
-            Line(feet + new Vector2(-w * 0.58f, 0f), feet + new Vector2(-w * 0.5f, -w * 0.05f), 5f * s, White);
-            Line(feet + new Vector2(w * 0.58f, 0f), feet + new Vector2(w * 0.5f, w * 0.05f), 5f * s, White);
-            Line(feet + new Vector2(w * 0.58f, 0f), feet + new Vector2(w * 0.5f, -w * 0.05f), 5f * s, White);
             EndShapes();
             if (turntableRt != null) GUI.DrawTexture(new Rect(area.x, Screen.height - area.yMax, w, h), turntableRt);
 
             if (big == null) big = new GUIStyle { font = font, alignment = TextAnchor.MiddleCenter, wordWrap = false };
             big.alignment = TextAnchor.MiddleLeft;
             big.fontSize = Mathf.RoundToInt(64f * s);
-            var title = new Rect(safe.xMin + 30f * s, Screen.height - safe.yMax + 30f * s, safe.width, 90f * s);
+            var title = new Rect(safe.xMin + 130f * s, Screen.height - safe.yMax + 30f * s, safe.width, 90f * s);
             big.normal.textColor = Ink;
             GUI.Label(new Rect(title.x + 4f * s, title.y + 4f * s, title.width, title.height), "NEW RACER", big);
             big.normal.textColor = Sunshine;
@@ -183,12 +207,35 @@ namespace Dogpatch.Gameplay
                 float y = Screen.height - title.center.y + (8f - i * 12f) * s;
                 Line(new Vector2(title.x + tw + (20f + i * 10f) * s, y), new Vector2(title.x + tw + (70f + i * 10f) * s, y), 5f * s, White);
             }
+            var np = RevealPlate();
+            Para(new Rect(np.x - 4f * s, np.y - 4f * s, np.width + 8f * s, np.height + 8f * s), Ink);
+            Para(np, White);
             foreach (var (id, rect) in Buttons())
             {
                 bool down = pressed == id;
                 if (id == "done") Plate(rect, Sunshine, Ink, down, r => TickPictogram(r.center, r.height * 0.26f, down ? Sunshine : Ink));
+                else if (id == "photo") Plate(rect, Sunshine, Ink, down, _ => { });
             }
             EndShapes();
+            string myName = Race.RaceDirector.Instance?.MyName;
+            if (string.IsNullOrWhiteSpace(myName)) myName = game?.Profile?.displayName ?? "RACER";
+            myName = myName.ToUpperInvariant();
+            Label(np, myName, Ink, 30f * s);
+            float u = HudLayout.U;
+            foreach (var (id, rect) in Buttons())
+            {
+                bool down = pressed == id;
+                var g = new Rect(rect.x, Screen.height - rect.yMax, rect.width, rect.height);
+                if (id == "close") Slipstream.V3.HudPlates.Secondary(g, "close", down, u);
+                else if (id == "spinL") Slipstream.V3.HudPlates.Secondary(g, "back", down, u);
+                else if (id == "spinR") Slipstream.V3.HudPlates.Secondary(g, "skip", down, u);
+                else if (id == "dice2") Slipstream.V3.HudPlates.Secondary(g, "random-name", down, u);
+                else if (id == "photo")
+                {
+                    Slipstream.V3.HudIcons.Draw("shutter", new Rect(g.x + 26f * s, g.center.y - 22f * s, 44f * s, 44f * s), Ink);
+                    Label(new Rect(rect.x + 70f * s, rect.y, rect.width, rect.height), "TAKE PHOTO", down ? Sunshine : Ink, 32f * s);
+                }
+            }
         }
     }
 }

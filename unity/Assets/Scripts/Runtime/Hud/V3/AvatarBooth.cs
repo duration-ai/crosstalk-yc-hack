@@ -98,7 +98,6 @@ namespace Dogpatch.Gameplay
             {
                 DrawPhoto();
                 BeginShapes();
-                if (stage == Stage.Refused) Dim();
                 Brackets(tall ? new Rect(safe.xMin + 36f * s, safe.yMin + 210f * s, safe.width - 72f * s, safe.height - 330f * s)
                     : new Rect(safe.center.x - safe.height * 0.42f, safe.yMin + 30f * s, safe.height * 0.84f, safe.height - 60f * s), White, s);
                 EndShapes();
