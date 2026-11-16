@@ -59,9 +59,19 @@ namespace Dogpatch.Operator
 
     public sealed class RunFasterEffect : OperatorEffect
     {
-        public override void Apply(string strength, EffectTarget target) => PlayerController.RunScale = Scale(strength, 2.5f, 4f, 6f);
+        float k = 1f;
 
-        public override void Revert() => PlayerController.RunScale = 1f;
+        public override void Apply(string strength, EffectTarget target)
+        {
+            k = Scale(strength, 2.5f, 4f, 6f);
+            PlayerController.RunScale *= k;
+        }
+
+        public override void Revert()
+        {
+            PlayerController.RunScale /= k;
+            k = 1f;
+        }
     }
 
     // Racers' cars bounce while it lasts.
