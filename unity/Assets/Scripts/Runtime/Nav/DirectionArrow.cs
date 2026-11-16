@@ -5,18 +5,16 @@ using UnityEngine.Rendering;
 
 namespace Dogpatch.Nav
 {
-    // The Hit & Run arrow: a chunky flat-shaded vertex-colour arrow floating near the top of the
-    // view, ahead of you and at your depth, on foot or driving, that swings smoothly toward the next
-    // stretch of the street path to the current objective. It runs after the follow camera and
-    // the camera feel (shake, speed FOV), so it stays pinned to the same spot on screen. It leans back toward the camera so its top face reads as an arrow from the
-    // low chase view. Sunshine for routes and waypoints, hotline pink when it leads to a mission
-    // start (the race's start ring). It pops in when an objective appears and shrinks away on arrival.
+    // The direction collar (HUD v3): a chunky flat-shaded vertex-colour chevron lying on the road on
+    // a ring of dashes around you, on foot or driving, that swings smoothly toward the next stretch
+    // of the street path to the current objective (GroundCollar places it). Sunshine for routes,
+    // waypoints and mission starts, hotline pink only for Operator asks. It pops in when an
+    // objective appears and shrinks away on arrival.
     [DefaultExecutionOrder(10100)]
     public sealed class DirectionArrow : MonoBehaviour
     {
         const float Thickness = 0.32f;
         const float Chamfer = 0.1f;
-        const float Tilt = 32f;
 
         public NavService Nav;
 
@@ -34,6 +32,7 @@ namespace Dogpatch.Nav
 
         MeshFilter filter;
         MeshRenderer view;
+        MeshRenderer ring;
         Mesh sunshine;
         Mesh pink;
         float shown;
@@ -54,6 +53,14 @@ namespace Dogpatch.Nav
             view.shadowCastingMode = ShadowCastingMode.Off;
             view.receiveShadows = false;
             view.enabled = false;
+            var dashes = new GameObject("CollarRing");
+            dashes.transform.SetParent(transform, false);
+            dashes.AddComponent<MeshFilter>().sharedMesh = HudV3.GroundCollar.Ring(SpeedDial.Hex("#FFCB1F"), SpeedDial.Hex("#1C2347"));
+            ring = dashes.AddComponent<MeshRenderer>();
+            ring.sharedMaterial = Nav.Game.SharedMaterial;
+            ring.shadowCastingMode = ShadowCastingMode.Off;
+            ring.receiveShadows = false;
+            ring.enabled = false;
         }
 
         void LateUpdate()
@@ -64,6 +71,7 @@ namespace Dogpatch.Nav
             bool want = Nav.HasObjective && !Nav.Arrived && focus != null && cam != null;
             shown = Mathf.MoveTowards(shown, want ? 1f : 0f, Time.deltaTime * (want ? 3.5f : 5f));
             view.enabled = shown > 0.001f;
+            ring.enabled = view.enabled;
             if (!view.enabled)
             {
                 placed = false;
@@ -71,39 +79,14 @@ namespace Dogpatch.Nav
             }
             if (focus == null || cam == null) return;
 
-            filter.sharedMesh = Nav.Kind == NavKind.Mission ? pink : sunshine;
-            float scale = game.CurrentCar != null ? 1f : 0.65f;
+            filter.sharedMesh = Nav.Kind == NavKind.Ask ? pink : sunshine;
             var t = view.transform;
             float target = Mathf.Atan2(Nav.Heading.x, Nav.Heading.y) * Mathf.Rad2Deg;
             if (!placed) yaw = target;
-            yaw = Mathf.SmoothDampAngle(yaw, target, ref yawVelocity, 0.14f);
+            yaw = Mathf.SmoothDampAngle(yaw, target, ref yawVelocity, 0.12f);
             placed = true;
-            t.rotation = Quaternion.AngleAxis(-Tilt, cam.transform.right) * Quaternion.Euler(0f, yaw, 0f);
-            float size = scale * EaseOutBack(shown);
-            t.localScale = new Vector3(size, size, size);
-            PlaceUnderTopRow(t, cam, Mathf.Max(Vector3.Distance(cam.transform.position, focus.position), 4f));
-            t.position += Vector3.up * Mathf.Sin(Time.time * 3.2f) * 0.05f;
-        }
-
-        // Puts the arrow depth metres along the camera ray through the top middle of the safe area,
-        // as high as it goes with its top edge just under the top HUD row (place, meters, pause, and
-        // in portrait the news band that drops below them). Read from Screen and the safe area every
-        // frame, so it follows rotation; measured from the arrow's projected corners, so any yaw fits.
-        void PlaceUnderTopRow(Transform t, Camera cam, float depth)
-        {
-            var safe = Screen.safeArea;
-            float s = Mathf.Min(Screen.height / 402f, Screen.width / 560f);
-            float limit = safe.yMax - (safe.width - 44f * s < 700f * s ? 116f : 88f) * s;
-            Vector3 At(float y) => cam.ScreenPointToRay(new Vector3(safe.center.x, y, 0f)).GetPoint(depth);
-            t.position = At(limit);
-            var b = filter.sharedMesh.bounds;
-            float top = float.MinValue;
-            for (int i = 0; i < 8; i++)
-            {
-                var corner = b.center + Vector3.Scale(b.extents, new Vector3((i & 1) == 0 ? -1f : 1f, (i & 2) == 0 ? -1f : 1f, (i & 4) == 0 ? -1f : 1f));
-                top = Mathf.Max(top, cam.WorldToScreenPoint(t.TransformPoint(corner)).y);
-            }
-            t.position = At(limit - (top - limit) - 6f * s);
+            float size = EaseOutBack(shown);
+            HudV3.GroundCollar.Place(t, ring.transform, focus.position, yaw, size, game.CurrentCar != null);
         }
 
         static float EaseOutBack(float x)

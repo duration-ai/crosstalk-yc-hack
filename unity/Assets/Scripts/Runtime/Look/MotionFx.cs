@@ -455,9 +455,14 @@ namespace Dogpatch.Look
             }
             var s = Tune.squash;
             float omega = 2f * Mathf.PI / Mathf.Max(s.period, 0.05f);
-            squashVelocity += (-omega * omega * squash - 2f * s.damping * omega * squashVelocity) * dt;
-            squash += squashVelocity * dt;
-            if (Mathf.Abs(squash) < 0.001f && Mathf.Abs(squashVelocity) < 0.01f) squash = squashVelocity = 0f;
+            int steps = Mathf.Clamp(Mathf.CeilToInt(dt * 60f), 1, 30);
+            float step = dt / steps;
+            for (int i = 0; i < steps; i++)
+            {
+                squashVelocity += (-omega * omega * squash - 2f * s.damping * omega * squashVelocity) * step;
+                squash += squashVelocity * step;
+            }
+            if (float.IsNaN(squash) || float.IsNaN(squashVelocity) || (Mathf.Abs(squash) < 0.001f && Mathf.Abs(squashVelocity) < 0.01f)) squash = squashVelocity = 0f;
             float y = 1f + squash;
             float xz = 1f / Mathf.Sqrt(Mathf.Max(y, 0.5f));
             carVisual.localScale = new Vector3(xz, y, xz);

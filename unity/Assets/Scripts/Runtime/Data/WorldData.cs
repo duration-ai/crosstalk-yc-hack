@@ -25,6 +25,8 @@ namespace Dogpatch.Data
         public Polygon[] parks;
         public Polygon[] land;
         public float[] trees;
+        // The world's outline when it isn't the minX..maxZ box (DataPrep --soma): x,z pairs, counter-clockwise.
+        public float[] edge;
         public TreeRecord[] treeRecords;
         public Prop[] props;
         public Landmark[] landmarks;

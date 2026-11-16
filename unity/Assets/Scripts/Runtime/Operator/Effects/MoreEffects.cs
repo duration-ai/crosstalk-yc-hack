@@ -335,18 +335,19 @@ namespace Dogpatch.Operator
     public sealed class ResizeEffect : OperatorEffect
     {
         readonly bool grow;
-        readonly List<(Transform t, Vector3 scale)> resized = new List<(Transform, Vector3)>();
+        readonly List<Transform> resized = new List<Transform>();
+        float k = 1f;
         readonly List<(CarController car, float k)> sped = new List<(CarController, float)>();
 
         public ResizeEffect(bool grow) => this.grow = grow;
 
         public override void Apply(string strength, EffectTarget target)
         {
-            float k = grow ? Scale(strength, 2f, 3f, 4.5f) : Scale(strength, 0.32f, 0.28f, 0.22f);
+            k = grow ? Scale(strength, 2f, 3f, 4.5f) : Scale(strength, 0.32f, 0.28f, 0.22f);
             foreach (var tag in target.Entities)
             {
                 if (tag.Span != null) continue;
-                resized.Add((tag.transform, tag.transform.localScale));
+                resized.Add(tag.transform);
                 tag.transform.localScale *= k;
                 if (!tag.TryGetComponent<CarController>(out var car)) continue;
                 float speed = Mathf.Clamp(k, 0.6f, 1.6f);
@@ -357,7 +358,7 @@ namespace Dogpatch.Operator
 
         public override void Revert()
         {
-            foreach (var (t, scale) in resized) if (t != null) t.localScale = scale;
+            foreach (var t in resized) if (t != null) t.localScale /= k;
             resized.Clear();
             foreach (var (car, speed) in sped) if (car != null) car.SpeedMul /= speed;
             sped.Clear();
@@ -437,7 +438,7 @@ namespace Dogpatch.Operator
             }));
             r.Register("vehicle_slower", () => new KnobEffect((e, s) => { CarController.SpeedScale = OperatorEffect.Scale(s, 0.4f, 0.25f, 0.15f); return () => CarController.SpeedScale = 1f; }));
             r.Register("nitro", () => new NitroEffect());
-            r.Register("run_slower", () => new KnobEffect((e, s) => { PlayerController.RunScale = OperatorEffect.Scale(s, 0.4f, 0.25f, 0.15f); return () => PlayerController.RunScale = 1f; }));
+            r.Register("run_slower", () => new KnobEffect((e, s) => { float k = OperatorEffect.Scale(s, 0.4f, 0.25f, 0.15f); PlayerController.RunScale *= k; return () => PlayerController.RunScale /= k; }));
             r.Register("jump_higher", () => new KnobEffect((e, s) => { PlayerController.JumpScale = OperatorEffect.Scale(s, 2f, 3f, 4.5f); return () => PlayerController.JumpScale = 1f; }));
             r.Register("slow_fall", () => new KnobEffect((e, s) => { PlayerController.GravityScale = OperatorEffect.Scale(s, 0.35f, 0.2f, 0.1f); return () => PlayerController.GravityScale = 1f; }));
             r.Register("bigger", () => new SizeEffect(1.8f, 2.5f, 3.5f));

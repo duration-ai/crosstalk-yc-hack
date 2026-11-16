@@ -10,7 +10,7 @@ namespace Dogpatch.Gameplay
     // trace from the centre while a thumb holds it. Everything is flat
     // GL geometry in screen space; the only typeface is Exo 2 Black Italic. Speed lines are drawn
     // by Look.SpeedLines.
-    public sealed class Hud : MonoBehaviour
+    public sealed partial class Hud : MonoBehaviour
     {
         const float TraceFade = 0.3f;
         const float Rest = 0.45f;
@@ -24,7 +24,6 @@ namespace Dogpatch.Gameplay
 
         Material material;
         Font font;
-        GUIStyle title;
 
         public bool Paused { get; private set; }
         float gestureStart = -1f;
@@ -51,13 +50,14 @@ namespace Dogpatch.Gameplay
 
         void Start()
         {
-            if (Input != null) Input.IgnoreAt = p => Paused;
+            if (Input != null) Input.IgnoreAt = p => Paused || (PlateShown && InPausePlate(p));
         }
 
         float Scale => Mathf.Min(Screen.width, Screen.height) / 720f;
 
         void Update()
         {
+            HandlePausePlate();
             HandlePause();
 
             bool dragging = Input != null && Input.Dragging;
@@ -79,7 +79,7 @@ namespace Dogpatch.Gameplay
 
         }
 
-        // There is no pause button: a quick two-finger tap anywhere off the stick pauses and resumes
+        // The pause plate (Hud.Pause.cs) pauses; so does a quick two-finger tap anywhere off the stick pauses and resumes
         // (both fingers up within 0.4 s, barely moving, never a third finger, which is the perf
         // readout's gesture). Escape does the same on desktop.
         void HandlePause()
@@ -119,7 +119,7 @@ namespace Dogpatch.Gameplay
         void OnGUI()
         {
             float s = Scale;
-            if (Paused && Event.current.type != EventType.Repaint) DrawEnvironmentMenu(s);
+            if (Paused && Event.current.type != EventType.Repaint) DrawPauseMenu();
             if (Event.current.type != EventType.Repaint) return;
             material.SetPass(0);
             GL.PushMatrix();
@@ -130,8 +130,8 @@ namespace Dogpatch.Gameplay
             else if (!Paused && traceAlpha > 0.01f) DrawTrace(s);
             GL.End();
             GL.PopMatrix();
-            if (Paused) DrawPausedText(s);
-            if (Paused) DrawEnvironmentMenu(s);
+            DrawPausePlateButton();
+            if (Paused) DrawPauseMenu();
         }
 
         // The tap-a-car pictogram: a bobbing, forward-leaning sunshine chevron with an ink outline
@@ -201,86 +201,6 @@ namespace Dogpatch.Gameplay
             }
             Disc(tip, reach * 0.36f + 1.4f * s, new Color(Ink.r, Ink.g, Ink.b, 0.6f * traceAlpha), 32);
             Disc(tip, reach * 0.36f, new Color(1f, 1f, 1f, 0.85f * traceAlpha), 32);
-        }
-
-        void DrawPausedText(float s)
-        {
-            if (title == null)
-            {
-                title = new GUIStyle { font = font, alignment = TextAnchor.MiddleLeft };
-            }
-            title.fontSize = Mathf.RoundToInt(44f * s);
-            var safe = HudLayout.Safe;
-            float left = safe.xMin + 24f * s, top = Screen.height - safe.yMax + 22f * s;
-            Outlined(new Rect(left, top, 400f * s, 56f * s), "PAUSED", title, White, s);
-        }
-
-        static readonly (string label, string query)[][] EnvironmentRows =
-        {
-            new[] { ("DAWN", "time=dawn"), ("DAY", "time=day"), ("GOLDEN", "time=golden"), ("DUSK", "time=dusk"), ("NIGHT", "time=night") },
-            new[] { ("SUN", "weather=sun"), ("RAIN", "weather=rain"), ("SNOW", "weather=snow"), ("FOG", "fog=1"), ("CLEAR", "fog=0.35") },
-        };
-
-        static readonly (string label, float intensity)[] EffectsRow =
-        {
-            ("FX LOW", EffectsSettings.Low), ("FX MED", EffectsSettings.Medium), ("FX HIGH", EffectsSettings.High),
-        };
-
-        GUIStyle chip;
-
-        // Debug menu while paused, as flat chips under PAUSED: time of day, weather and fog presets,
-        // then the effects intensity (the current level in sunshine) and the minimap toggle. They
-        // apply at once.
-        void DrawEnvironmentMenu(float s)
-        {
-            if (chip == null) chip = new GUIStyle { font = font, alignment = TextAnchor.MiddleCenter };
-            chip.fontSize = Mathf.RoundToInt(18f * s);
-            var safe = HudLayout.Safe;
-            float left = safe.xMin + 24f * s, top = Screen.height - safe.yMax + 92f * s;
-            float w = 104f * s, h = 40f * s, gap = 12f * s;
-            for (int row = 0; row < EnvironmentRows.Length; row++)
-                for (int i = 0; i < EnvironmentRows[row].Length; i++)
-                {
-                    var (label, query) = EnvironmentRows[row][i];
-                    if (Chip(new Rect(left + i * (w + gap), top + row * (h + gap), w, h), label, false, s)) WorldEnvironment.Apply(query);
-                }
-            float effectsTop = top + EnvironmentRows.Length * (h + gap);
-            for (int i = 0; i < EffectsRow.Length; i++)
-            {
-                var (label, intensity) = EffectsRow[i];
-                bool selected = Mathf.Approximately(EffectsSettings.Intensity, intensity);
-                if (Chip(new Rect(left + i * (w + gap), effectsTop, w, h), label, selected, s)) EffectsSettings.Intensity = intensity;
-            }
-            if (Chip(new Rect(left + EffectsRow.Length * (w + gap), effectsTop, w, h), "MAP", Minimap.Shown, s)) Minimap.Shown = !Minimap.Shown;
-            var controls = new Rect(left + 232f * s, effectsTop + h + gap, 230f * s, h);
-            if (Chip(controls, DragInput.DragAnywhere ? "CONTROLS: DRAG" : "CONTROLS: STICK", false, s))
-            {
-                DragInput.DragAnywhere = !DragInput.DragAnywhere;
-                Input?.Cancel();
-                Debug.Log("[Hud] controls " + (DragInput.DragAnywhere ? "drag anywhere" : "fixed stick"));
-            }
-            if (Chip(new Rect(left, controls.y, 220f * s, h), "MAP STYLE: " + Minimap.StyleNames[Minimap.MapStyle], false, s))
-                Minimap.MapStyle = (Minimap.MapStyle + 1) % Minimap.StyleNames.Length;
-            if (Chip(new Rect(left, controls.y + h + gap, 220f * s, h), "MAP LOOK: " + Dogpatch.Map.MapLook.Current.Name, false, s))
-                Dogpatch.Map.MapLook.Index = (Dogpatch.Map.MapLook.Index + 1) % Dogpatch.Map.MapLook.All.Length;
-            if (Chip(new Rect(controls.xMax + gap, controls.y, w, h), "SOCKET", Dogpatch.Race.ConvexRaceSession.SocketEnabled, s))
-                Dogpatch.Race.ConvexRaceSession.SocketEnabled = !Dogpatch.Race.ConvexRaceSession.SocketEnabled;
-        }
-
-        bool Chip(Rect r, string label, bool selected, float s)
-        {
-            if (Event.current.type == EventType.Repaint)
-            {
-                material.SetPass(0);
-                GL.PushMatrix();
-                GL.LoadPixelMatrix();
-                GL.Begin(GL.TRIANGLES);
-                Parallelogram(new Vector2(r.center.x, Screen.height - r.center.y), r.width * 0.5f, r.height * 0.5f, 7f * s, selected ? Sunshine : Ink);
-                GL.End();
-                GL.PopMatrix();
-            }
-            chip.normal.textColor = selected ? Ink : White;
-            return GUI.Button(r, label, chip);
         }
 
         static void Outlined(Rect r, string text, GUIStyle style, Color color, float s)

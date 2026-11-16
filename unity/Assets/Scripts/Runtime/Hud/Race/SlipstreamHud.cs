@@ -360,51 +360,7 @@ namespace Dogpatch.Slipstream
         void Lobby(Room room)
         {
             Gameplay.HudLayout.LobbyShowing = true;
-            var racers = Race.Last.racers.OrderBy(r => r.slot).ToList();
-            var at = Gameplay.HudLayout.LobbyPanel;
-            float y = at.y;
-            for (int i = 0; i < racers.Count; i++)
-            {
-                var r = racers[i];
-                bool me = r.playerId == Race.MyId;
-                float slide = Mathf.Clamp01((Time.time - lobbyShownAt - i * 0.07f) / 0.26f);
-                float dx = (1f - Overshoot(slide)) * -(at.x + 220f * s);
-                var block = new Rect(at.x + dx, y, 30f * s, 24f * s);
-                var bar = new Rect(block.xMax + 3f * s, y, 150f * s, 24f * s);
-                if (slide < 1f) Stripes(block.x - 6f * s, y + 5f * s, 20f * s, 46f * s, SlotColor(r.color), false);
-                Panel(bar, me ? Ink : Paper);
-                Panel(block, SlotColor(r.color));
-                if (!Race.Online) Icon(new Rect(block.x + 6f * s, block.y + 2f * s, 20f * s, 20f * s), r.ready ? "ready" : "dash", White);
-                Text(new Rect(bar.x + 12f * s, bar.y, bar.width, bar.height), r.displayName.ToUpperInvariant(), 14f, me ? White : Ink);
-                y += 31f * s;
-            }
-
-            if (room.status == RoomStatus.Countdown)
-            {
-                float f = Race.MsToStart / 1000f;
-                int secs = Mathf.Clamp(Mathf.CeilToInt(f), 0, 99);
-                var label = secs.ToString("00");
-                var size = Measure(label, 44f);
-                var r = new Rect(Screen.width * 0.5f - size.x * 0.5f, top - 4f * s, size.x, size.y);
-                Text(r, label, 44f, Sun, TextAnchor.UpperLeft, 2.4f * s);
-                int count = 10;
-                float segW = 9f * s;
-                float gap = 3f * s;
-                float x0 = Screen.width * 0.5f - (count * (segW + gap) - gap) * 0.5f;
-                for (int i = 0; i < count; i++)
-                {
-                    var seg = new Rect(x0 + i * (segW + gap), r.yMax + 1f * s, segW, 5f * s);
-                    if (i < secs) Panel(seg, Sun);
-                    else if (i == secs)
-                    {
-                        float p = Mathf.Clamp01((secs + 1 - f) * 2.2f);
-                        if (p >= 1f) continue;
-                        seg.y += EaseOut(p) * 18f * s;
-                        Panel(seg, new Color(Sun.r, Sun.g, Sun.b, 1f - p));
-                    }
-                    else Panel(seg, new Color(Ink.r, Ink.g, Ink.b, 0.35f));
-                }
-            }
+            HudV3.ArrivalCard.Draw(Race, room, lobbyShownAt);
 
             ReadyButton(Race.Me != null && Race.Me.ready);
         }
@@ -461,12 +417,16 @@ namespace Dogpatch.Slipstream
                 if (since > 0.9f) return;
                 label = "GO!";
             }
-            float scale = since < 0.12f ? Mathf.Lerp(2.4f, 1f, since / 0.12f) : 1f + Mathf.Sin(Mathf.Min(since - 0.12f, 0.2f) / 0.2f * Mathf.PI) * 0.05f;
-            float size = 150f * scale;
+            bool go = Race.Started;
+            float hold = go ? 0.9f : 1f;
+            float alpha = Mathf.Clamp01((hold - since) / 0.08f);
+            float scale = Mathf.Lerp(1.25f, 1f, EaseOut(Mathf.Clamp01(since / 0.12f)));
+            float pt = HudV3.V3Draw.P / s;
+            float size = (go ? 128f : 150f) * pt * scale;
             var m = Measure(label, size);
-            float shake = since < 0.2f ? Mathf.Sin(since * 90f) * 4f * s * (1f - since / 0.2f) : 0f;
-            var r = new Rect(Screen.width * 0.5f - m.x * 0.5f + shake, Screen.height * 0.42f - m.y * 0.5f, m.x, m.y);
-            Text(r, label, size, Sun, TextAnchor.UpperLeft, 5f * s * scale);
+            var r = new Rect(Screen.width * 0.5f - m.x * 0.5f, Screen.height * 0.43f - m.y * 0.5f, m.x, m.y);
+            Text(r, label, size, Sun, TextAnchor.UpperLeft, 5f * s * scale, alpha);
+            StartLights(Screen.width * 0.5f, r.yMax + 6f * HudV3.V3Draw.P, go ? 3 : 4 - Mathf.Clamp(Mathf.CeilToInt(Race.MsToStart / 1000f), 1, 3), go, alpha);
         }
 
         // Once you're over the line: your place and time, and how long until the results at the latest.
@@ -695,26 +655,7 @@ namespace Dogpatch.Slipstream
 
         void OperatorAndNews()
         {
-            var calls = Race.Calls;
-            bool operatorUp = calls.State == CallState.Answered;
-            if (operatorUp)
-            {
-                float t = Time.time - calls.StateSince;
-                float inP = Overshoot(Mathf.Clamp01(t / 0.24f));
-                float outP = Mathf.Clamp01((t - 2.3f) / 0.25f);
-                float baseX = narrow ? left : Screen.width * 0.5f - 150f * s;
-                float x = Mathf.Lerp(-360f * s, baseX, inP) - outP * outP * (baseX + 400f * s);
-                float lineY = band;
-                var size = Measure(calls.Line, 18f);
-                var handset = new Rect(x, lineY, 40f * s, 38f * s);
-                var line = new Rect(handset.xMax + 2f * s, lineY, size.x + 34f * s, 38f * s);
-                Stripes(handset.x - 6f * s, lineY + 8f * s, 30f * s, 48f * s, Pink, false);
-                Panel(line, Pink);
-                Panel(handset, White);
-                Icon(new Rect(handset.x + 7f * s, handset.y + 6f * s, 26f * s, 26f * s), "call", Pink);
-                Text(new Rect(line.x + 14f * s, line.y, line.width, line.height), calls.Line, 18f, White);
-                return;
-            }
+            if (OperatorBand()) return;
 
             if (showing == null && queue.Count > 0)
             {
@@ -766,6 +707,7 @@ namespace Dogpatch.Slipstream
             float stripeLength = since < 0.18f ? 90f * s : 30f * s;
             Stripes(bar.xMax + 6f * s, y + 8f * s, 24f * s, stripeLength, showing.Color, true);
         }
+<<<<<<< HEAD
 
         // The cell-phone button: the Operator, always in reach. Hold to talk, let go to send. The badge is
         // the asks left; with none the button greys out and pressing it shows the no-asks line. It
@@ -804,5 +746,7 @@ namespace Dogpatch.Slipstream
                 Text(new Rect(bar.x + 12f * s, bar.y, bar.width, bar.height), line, 14f, new Color(1f, 1f, 1f, a));
             }
         }
+=======
+>>>>>>> origin/main
     }
 }

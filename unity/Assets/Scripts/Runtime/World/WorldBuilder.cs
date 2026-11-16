@@ -72,28 +72,45 @@ namespace Dogpatch.World
                 Buildings = new BuildingIndex(),
                 Bounds = Rect.MinMaxRect(data.minX, data.minZ, data.maxX, data.maxZ),
             };
+            CityRegions.Edge = data.edge != null && data.edge.Length >= 6 ? Geometry.ToPoints(data.edge) : null;
             ctx.Statics = new StaticModels(models);
+            MemoryStages.Mark("start");
 
             var ground = BuildGround(data, ctx, material);
+            MemoryStages.Mark("ground");
             ctx.Surface = new RoadSurface(ctx, data);
             ctx.Surface.Build(material);
-            BuildBuildings(data, ctx, models, measure);
+            MemoryStages.Mark("surface");
+            BuildBuildings(data, ctx, models, material, measure);
+            MemoryStages.Mark("buildings");
             ctx.Roads.AttachFreeway(Freeway.Build(data, ctx, material));
+            MemoryStages.Mark("freeway");
             ctx.Furniture = new StreetFurniture(ctx, ctx.Statics);
             ctx.Furniture.PlaceTrees(data.treeRecords);
             ctx.Furniture.PlaceProps(data.props);
+            MemoryStages.Mark("furniture");
             ctx.Landmarks = new Landmarks(ctx, ctx.Statics);
             ctx.Landmarks.Build(data);
+            MemoryStages.Mark("landmarks");
             var rails = new List<Vector2[]>();
             foreach (var rail in data.rails) rails.Add(Geometry.ToPoints(rail.pts));
             var keepClear = new List<Vector2>();
             foreach (var landmark in data.landmarks)
                 if (landmark.kind == "yc" || landmark.kind == "caltrain_22nd") keepClear.Add(new Vector2(landmark.x, landmark.z));
             YardClutter.Build(ctx, ground, rails, keepClear.ToArray(), material);
+            MemoryStages.Mark("clutter");
             ChooseSpawns(ctx, random);
 
             var lod = ctx.Root.AddComponent<DistanceLod>();
             ctx.Statics.Emit(ctx.Root.transform, material, lod);
+            if (StaticModels.Streaming)
+            {
+                ctx.Statics.Stream(ctx.HeroCar.Position, int.MaxValue);
+                var streamer = ctx.Root.AddComponent<WorldStreamer>();
+                streamer.Statics = ctx.Statics;
+                streamer.Lod = lod;
+            }
+            MemoryStages.Mark("statics emit");
             return ctx;
         }
 
@@ -138,6 +155,22 @@ namespace Dogpatch.World
                 w.center = center;
                 w.size = size;
             }
+            var edge = CityRegions.Edge;
+            if (edge != null)
+            {
+                for (int i = 0; i < edge.Length; i++)
+                {
+                    var a = edge[i];
+                    var d = edge[(i + 1) % edge.Length] - a;
+                    var outward = new Vector2(d.y, -d.x).normalized;
+                    var mid = a + d * 0.5f + outward;
+                    var segment = new GameObject("MapEdge " + i);
+                    segment.transform.SetParent(walls.transform, false);
+                    segment.transform.SetPositionAndRotation(new Vector3(mid.x, 10f, mid.y), Quaternion.LookRotation(new Vector3(d.x, 0f, d.y)));
+                    segment.AddComponent<BoxCollider>().size = new Vector3(2f, 40f, d.magnitude + 4f);
+                }
+                return cover;
+            }
             Wall(new Vector3(b.xMin - 1f, 10f, b.center.y), new Vector3(2f, 40f, b.height + 4f));
             Wall(new Vector3(b.xMax + 1f, 10f, b.center.y), new Vector3(2f, 40f, b.height + 4f));
             Wall(new Vector3(b.center.x, 10f, b.yMin - 1f), new Vector3(b.width + 4f, 40f, 2f));
@@ -147,10 +180,12 @@ namespace Dogpatch.World
 
         // Every footprint becomes Polyfork models fitted by BuildingFitter; the extruded footprint
         // is kept as the collider so cars and the player hit the real outline.
-        static void BuildBuildings(WorldData data, WorldContext ctx, ModelLibrary models, bool measure)
+        static void BuildBuildings(WorldData data, WorldContext ctx, ModelLibrary models, Material material, bool measure)
         {
             ctx.Fitter = new BuildingFitter(ctx, models, ctx.Statics, data.landmarks, measure);
             var colliders = new ChunkedMeshBuilder(ChunkSize);
+            var annex = new ChunkedMeshBuilder(ChunkSize);
+            var tones = new System.Random(415);
             foreach (var building in data.buildings)
             {
                 var poly = Geometry.ToPoints(building.pts);
@@ -158,7 +193,8 @@ namespace Dogpatch.World
                 if (Geometry.SignedArea(poly) < 0f) System.Array.Reverse(poly);
                 float h = Mathf.Clamp(building.height, 3f, 150f);
                 ctx.Buildings.Add(poly);
-                ctx.Fitter.Add(building, poly, h);
+                if (ctx.Bounds.Contains(Geometry.Centroid(poly))) ctx.Fitter.Add(building, poly, h);
+                else CityRegions.Extrude(annex.At(Geometry.Centroid(poly)), poly, h, CityRegions.Walls[tones.Next(CityRegions.Walls.Length)]);
 
                 var cb = colliders.At(Geometry.Centroid(poly));
                 for (int i = 0, j = poly.Length - 1; i < poly.Length; j = i++)
@@ -169,6 +205,8 @@ namespace Dogpatch.World
                 cb.Polygon(poly, h, Color.white);
             }
 
+            foreach (var (key, builder) in annex.All())
+                Emit(ctx.Root.transform, "Annex buildings " + key, builder.ToMesh("annex buildings " + key), material, false);
             foreach (var (key, builder) in colliders.All())
             {
                 var go = new GameObject("BuildingCollider " + key);

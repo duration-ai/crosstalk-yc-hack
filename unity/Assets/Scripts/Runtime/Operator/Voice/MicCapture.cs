@@ -7,7 +7,8 @@ namespace Dogpatch.Operator.Voice
     // Once started, the microphone keeps recording until Release: on iOS every Microphone.Start and
     // End reconfigures the audio session on the main thread, a 0.3-0.6 s stall at each call's pickup
     // and hang-up. Stop only stops handing samples on, and Start after it resumes from the current
-    // position, so nothing recorded between calls is ever sent.
+    // position, so nothing recorded between calls is ever sent. iOS can still stop the recording on its
+    // own (an interruption or a memory warning), so Start checks and starts a fresh one when it has.
     public sealed class MicCapture
     {
         const int LoopSeconds = 2;
@@ -29,9 +30,14 @@ namespace Dogpatch.Operator.Voice
         {
             if (clip != null)
             {
-                if (!listening) readAt = Math.Max(0, Microphone.GetPosition(device));
-                listening = true;
-                return true;
+                if (Microphone.IsRecording(device))
+                {
+                    if (!listening) readAt = Math.Max(0, Microphone.GetPosition(device));
+                    listening = true;
+                    return true;
+                }
+                Debug.LogWarning("[Operator] the warm microphone stopped recording (an iOS interruption or memory warning): starting it again");
+                Release();
             }
             if (Microphone.devices.Length == 0)
             {

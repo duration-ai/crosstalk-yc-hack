@@ -620,26 +620,36 @@ namespace Dogpatch.Map
                     }
                 info += waiting == 1 ? "    1 PLAYER WAITING" : $"    {waiting} PLAYERS WAITING";
             }
+            if (picked.Kind == TargetKind.Ring && (picked.World - new Vector2(race.Course.RingCenter.x, race.Course.RingCenter.z)).sqrMagnitude < 1f)
+                info += "    TO " + race.Course.Data.finishName.ToUpperInvariant();
             bool can = TravelReady(out string blocked);
-            var c = cardRect.center;
-            var button = new Rect(x0 + 18f * s, y0 + 14f * s, w - 36f * s, 52f * s);
+            float nameH = 44f * s, numbersH = 38f * s, buttonH = 52f * s;
+            var namePlate = new Rect(x0, y0 + h - nameH, w, nameH);
+            var numbers = new Rect(x0 + 10f * s, namePlate.y - 4f * s - numbersH, w - 10f * s, numbersH);
+            float buttonW = can ? w - 60f * s : Mathf.Min(w - 60f * s, 250f * s);
+            var button = new Rect(x0 + 40f * s, y0 + 6f * s, buttonW, buttonH);
             cardButton = new Rect(button.x - 8f * s, button.y - 8f * s, button.width + 16f * s, button.height + 16f * s);
             Gl(() =>
             {
-                Parallelogram(c + new Vector2(7f * s, -8f * s), w * 0.5f, h * 0.5f, 9f * s, new Color(0f, 0f, 0f, 0.35f));
-                Parallelogram(c, w * 0.5f, h * 0.5f, 9f * s, White);
-                Parallelogram(c, w * 0.5f - 3f * s, h * 0.5f - 3f * s, 9f * s, Ink);
-                Parallelogram(button.center, button.width * 0.5f, button.height * 0.5f, 8f * s, can ? Sunshine : new Color(0.55f, 0.57f, 0.65f, 1f));
+                Parallelogram(namePlate.center + new Vector2(5f * s, -6f * s), w * 0.5f, nameH * 0.5f, 8f * s, new Color(0f, 0f, 0f, 0.3f));
+                Parallelogram(namePlate.center, w * 0.5f, nameH * 0.5f, 8f * s, Ink);
+                Parallelogram(new Vector2(namePlate.x + 20f * s, namePlate.center.y), 9f * s, nameH * 0.5f - 7f * s, 4f * s, Sunshine);
+                Parallelogram(numbers.center + new Vector2(5f * s, -6f * s), numbers.width * 0.5f, numbersH * 0.5f, 7f * s, new Color(0f, 0f, 0f, 0.25f));
+                Parallelogram(numbers.center, numbers.width * 0.5f, numbersH * 0.5f, 7f * s, White);
+                Parallelogram(button.center + new Vector2(5f * s, -6f * s), button.width * 0.5f, button.height * 0.5f, 8f * s, new Color(0f, 0f, 0f, 0.3f));
+                Parallelogram(button.center, button.width * 0.5f, button.height * 0.5f, 8f * s, can ? Sunshine : Ink);
+                if (!can) Parallelogram(new Vector2(button.x + 26f * s, button.center.y), 9f * s, buttonH * 0.5f - 12f * s, 4f * s, Sunshine);
                 for (int i = 0; i < 3; i++)
                 {
-                    float y = y0 + h - (30f + i * 12f) * s;
-                    Quad(new Vector2(x0 - (34f + i * 10f) * s, y - 2.5f * s), new Vector2(x0 - (34f + i * 10f) * s, y + 2.5f * s), new Vector2(x0 - 6f * s, y + 2.5f * s), new Vector2(x0 - 6f * s, y - 2.5f * s), i == 1 ? Pink : Sunshine);
+                    float y = button.center.y + (12f - i * 12f) * s;
+                    Quad(new Vector2(button.x - (34f + i * 8f) * s, y - 2.5f * s), new Vector2(button.x - (34f + i * 8f) * s, y + 2.5f * s), new Vector2(button.x - 10f * s, y + 2.5f * s), new Vector2(button.x - 10f * s, y - 2.5f * s), i == 1 ? Pink : Sunshine);
                 }
             });
-            TextAt(new Vector2(x0 + 24f * s, y0 + h - 14f * s), picked.Name, 24f, White);
-            TextAt(new Vector2(x0 + 24f * s, y0 + h - 46f * s), sub, 12.5f, Sunshine);
-            TextAt(new Vector2(x0 + 24f * s, y0 + h - 68f * s), info, 12.5f, White);
-            Label(button.center, can ? "FAST TRAVEL" : blocked, 22f, Ink);
+            TextAt(new Vector2(namePlate.x + 40f * s, namePlate.yMax - 9f * s), picked.Name, 22f, White);
+            TextAt(new Vector2(numbers.x + 22f * s, numbers.yMax - 10f * s), info, 13f, Ink);
+            if (can) Label(button.center, "FAST TRAVEL", 22f, Ink);
+            else TextAt(new Vector2(button.x + 46f * s, button.yMax - 15f * s), blocked, 16f, Sunshine);
+            if (picked.Kind != TargetKind.Ring) TextAt(new Vector2(namePlate.xMax - 20f * s - sub.Length * 6.6f * s, namePlate.yMax - 15f * s), sub, 10.5f, Sunshine);
         }
 
         // Left-aligned text with its top-left corner at p (GL pixels).

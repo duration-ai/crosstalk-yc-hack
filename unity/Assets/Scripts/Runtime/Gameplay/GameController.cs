@@ -103,7 +103,9 @@ namespace Dogpatch.Gameplay
             gameObject.AddComponent<PerfReadout>().Game = this;
             gameObject.AddComponent<HitchLogger>();
             Debug.Log($"[Dogpatch] world built in {Time.realtimeSinceStartup - t0:F1}s: {data.roads.Length} roads, {data.buildings.Length} buildings, {world.ParkedCars.Count + 1} cars");
+            Dogpatch.World.MemoryStages.Mark("world built");
             PedestrianSystem.Create(world, data);
+            Dogpatch.World.MemoryStages.Mark("pedestrians");
             Ambient.BannerPlanes.Create(world, material);
             Ambient.SidewalkRobots.Create(material);
 
@@ -155,6 +157,7 @@ namespace Dogpatch.Gameplay
             try
             {
                 await LoadFromBackendAsync();
+                Dogpatch.World.MemoryStages.Mark("vehicles loaded");
                 ready = true;
                 StatusLine = "On foot";
                 WorldReady?.Invoke(this);

@@ -144,12 +144,15 @@ namespace Dogpatch.World
         public void Restore(int id)
         {
             var instance = Get(id);
-            if (instance == null || !detached.Remove(id)) return;
+            if (instance == null || !detached.Remove(id) || instance.Chunk == null) return;
             var state = State(instance.Chunk.sharedMesh);
             Array.Copy(state.Original, instance.IndexStart, state.Current, instance.IndexStart, instance.IndexCount);
             state.Mesh.SetTriangles(state.Current, instance.SubMesh, false);
             if (instance.Collider != null) instance.Collider.enabled = true;
         }
+
+        // A streamed chunk mesh being freed: drop its hide/restore state.
+        public void Forget(Mesh mesh) => chunks.Remove(mesh);
 
         ChunkState State(Mesh mesh)
         {

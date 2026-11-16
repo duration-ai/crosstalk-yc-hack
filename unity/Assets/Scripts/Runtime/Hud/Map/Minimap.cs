@@ -418,7 +418,7 @@ namespace Dogpatch.Map
 
         void DrawAll()
         {
-            if (Event.current.type != EventType.Repaint || geometry == null || Game == null || !Game.IsReady || (!Shown && !FullOpen)) return;
+            if (Event.current.type != EventType.Repaint || geometry == null || Game == null || !Game.IsReady || (!Shown && !FullOpen) || Dogpatch.Gameplay.AvatarCapture.CardOpen) return;
             var focus = Game.Focus;
             var cam = Game.View;
             if (focus == null || cam == null) return;

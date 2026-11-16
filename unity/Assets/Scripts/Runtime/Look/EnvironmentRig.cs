@@ -144,11 +144,11 @@ namespace Dogpatch.Look
             float fog = WorldEnvironment.FogDensity;
             float reach = fog <= WorldEnvironment.DefaultFog
                 ? Mathf.Lerp(1.4f, 1f, fog / WorldEnvironment.DefaultFog)
-                : Mathf.Lerp(1f, 0.1f, (fog - WorldEnvironment.DefaultFog) / (1f - WorldEnvironment.DefaultFog));
+                : Mathf.Lerp(1f, 0.03f, Mathf.Sqrt((fog - WorldEnvironment.DefaultFog) / (1f - WorldEnvironment.DefaultFog)));
             reach *= (1f - 0.4f * rainAmount) * (1f - 0.5f * snowAmount);
             reach *= 1f + Mathf.Max(view.transform.position.y - 5f, 0f) / 60f;
             RenderSettings.fogColor = horizon.gamma;
-            RenderSettings.fogStartDistance = 220f * reach * Mathf.Lerp(1f, 0.2f, night);
+            RenderSettings.fogStartDistance = 220f * (fog > WorldEnvironment.DefaultFog ? reach * reach : reach) * Mathf.Lerp(1f, 0.2f, night);
             RenderSettings.fogEndDistance = 1900f * reach * Mathf.Lerp(1f, 0.3f, night);
             view.backgroundColor = horizon.gamma;
 

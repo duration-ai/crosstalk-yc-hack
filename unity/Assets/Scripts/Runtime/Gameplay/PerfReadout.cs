@@ -7,7 +7,8 @@ namespace Dogpatch.Gameplay
     // Debug performance readout: FPS, frame time, draw calls, triangles and world build time in a
     // corner, off by default. Launch with -perf (or --perf), set DOGPATCH_PERF in the launch
     // environment (devicectl passes environment variables but not arguments on a physical iPhone),
-    // or tap with three fingers to toggle.
+    // or tap with three fingers to toggle. Player builds compile out the on-screen text and the
+    // gesture, so -perf there only logs.
     // While on, it logs a one-line summary every 5 s through Debug.Log, which reaches Xcode and
     // "devicectl device process launch --console" on a physical phone.
     public sealed class PerfReadout : MonoBehaviour
@@ -19,7 +20,9 @@ namespace Dogpatch.Gameplay
         public static float WorldBuildSeconds;
 
         bool on;
+#pragma warning disable CS0414
         bool gestureUsed;
+#pragma warning restore CS0414
         ProfilerRecorder drawCalls, triangles;
         int windowFrames, logFrames;
         long windowDraws, windowTris, logDraws, logTris;
@@ -33,6 +36,15 @@ namespace Dogpatch.Gameplay
                 if (arg == "-perf" || arg == "--perf") on = true;
             if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DOGPATCH_PERF"))) on = true;
             if (on) Enable();
+        }
+
+        public bool On => on;
+
+        public void Set(bool value)
+        {
+            if (value == on) return;
+            if (value) Enable();
+            else Disable();
         }
 
         void Enable()
@@ -61,6 +73,7 @@ namespace Dogpatch.Gameplay
 
         void Update()
         {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
             if (Input.touchCount == 0) gestureUsed = false;
             else if (Input.touchCount == 3 && !gestureUsed)
             {
@@ -68,6 +81,7 @@ namespace Dogpatch.Gameplay
                 if (on) Disable();
                 else Enable();
             }
+#endif
             if (!on) return;
 
             float dt = Time.unscaledDeltaTime;
@@ -110,6 +124,7 @@ namespace Dogpatch.Gameplay
             return v >= 1_000_000 ? $"{v / 1_000_000f:F2}M" : v >= 1000 ? $"{v / 1000f:F0}k" : v.ToString();
         }
 
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
         void OnGUI()
         {
             if (!on) return;
@@ -121,5 +136,6 @@ namespace Dogpatch.Gameplay
             GUI.color = Color.white;
             GUI.Label(rect, text, style);
         }
+#endif
     }
 }
