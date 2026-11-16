@@ -97,7 +97,7 @@ namespace Dogpatch.Traffic
             Knocked = false;
             hasRear = false;
             bool cautious = spec.Robotaxi;
-            accel = cautious ? 1.8f : spec.TwoWheeler ? 1.6f : spec.Id == VehicleTypes.MuniBus ? 1.1f : spec.Id == VehicleTypes.TThird ? 1.0f : 2.6f;
+            accel = cautious ? 1.8f : spec.TwoWheeler ? 1.6f : spec.Id == VehicleTypes.MuniBus || spec.Id == VehicleTypes.TechShuttle ? 1.1f : spec.Id == VehicleTypes.TThird ? 1.0f : 2.6f;
             brake = cautious ? 3.5f : spec.Id == VehicleTypes.TThird ? 1.4f : 5f;
             headway = cautious ? 2.0f : 1.3f;
             minGap = cautious ? 3.5f : spec.TwoWheeler ? 1.5f : 2.5f;
