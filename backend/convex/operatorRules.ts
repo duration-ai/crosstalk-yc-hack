@@ -284,6 +284,7 @@ export function decide(a: Answers, view: View, active: ActiveSummary[]): Command
     case "players": {
       const effect = a.player_effect.choice;
       if (effect === NONE || !PLAYER_EFFECTS[effect]) return refuse("vague");
+      if (effect === "bigger" && view.mode === "driving" && a.other_player < 0.5) return onCar(a, "grow", OWN_CAR, false);
       return effectCommand(a, "players", effect, { confirm: a.other_player >= 0.5 });
     }
     case "world": {
