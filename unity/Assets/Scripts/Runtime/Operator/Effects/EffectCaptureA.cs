@@ -67,7 +67,7 @@ namespace Dogpatch.Operator
 
             foreach (var id in ids)
             {
-                bool foot = OnFoot.Contains(id);
+                bool foot = OnFoot.Contains(id) || (id == "change_vehicle" && Environment.GetEnvironmentVariable("EFFECT_ON_FOOT") == "1");
                 heading = dir;
                 throttle = 0f;
                 walking = false;
