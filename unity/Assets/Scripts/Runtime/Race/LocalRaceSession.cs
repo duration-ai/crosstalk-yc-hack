@@ -18,7 +18,7 @@ namespace Dogpatch.Race
         const int MaxPlayers = 4;
         const long AllReadyMs = 3000;
         const long LockMs = 3000;
-        const long CloseAfterFirstFinishMs = 30000;
+        const long CloseAfterFirstFinishMs = 45000;
         const int DefaultAsks = 100;
         const int MaxAsks = 100;
         const int MaxPickups = 64;
