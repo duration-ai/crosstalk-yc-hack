@@ -21,6 +21,7 @@ namespace Dogpatch.Vehicles
         public const string ArtCar = "art-car";
         public const string DuckBoat = "duck-boat";
         public const string FireTruck = "fire-truck";
+        public const string TechShuttle = "tech-shuttle";
         public const string MuniBus = "muni-bus";
         public const string ShoppingCart = "shopping-cart";
         public const string BayWheels = "bay-wheels-ebike";
@@ -35,7 +36,7 @@ namespace Dogpatch.Vehicles
         public static readonly string[] All =
         {
             WaymoSuv, WaymoOjai, WaymoVan, Zoox, Cybertruck, RaceCar, SportsCar, FlyingCar, CableCar, MonsterTruck, Lowrider, ArtCar, MuniBus, ShoppingCart, BayWheels, Scooter,
-            DoorDashBike, UberEatsBike, Hatchback, Sedan, YellowCab, TThird, DuckBoat, FireTruck,
+            DoorDashBike, UberEatsBike, Hatchback, Sedan, YellowCab, TThird, DuckBoat, FireTruck, TechShuttle,
         };
     }
 
@@ -151,6 +152,13 @@ namespace Dogpatch.Vehicles
                 Recolor = { ["#ece5d3"] = "#d5d9de", ["#6f8fa0"] = "#c8102e", ["#6f8fa2"] = "#2c4fa3", ["#b5aea0"] = "#d5d9de" },
                 Lamps = { ["#e8a825"] = 0.7f, ["#a34a38"] = 0.55f },
                 Handling = H(13f, 2.5f, 7f, 38f, 1f, 14000f, 1e6f, 1f, false, 4f), CruiseSpeed = 9f,
+            });
+            Add(new VehicleSpec
+            {
+                Id = VehicleTypes.TechShuttle, Title = "Tech shuttle", Source = ModelSource.Glb, Resource = "Vehicles/muni-bus", PolyforkId = "city-bus-49fd97",
+                Recolor = { ["#ece5d3"] = "#f5f6f8", ["#6f8fa0"] = "#e6e8eb", ["#6f8fa2"] = "#23272e", ["#b5aea0"] = "#f5f6f8" },
+                Lamps = { ["#e8a825"] = 0.7f, ["#a34a38"] = 0.55f },
+                Handling = H(13f, 2.5f, 7f, 38f, 1f, 14000f, 1e6f, 1f, false, 4f), CruiseSpeed = 10f,
             });
             Add(new VehicleSpec
             {

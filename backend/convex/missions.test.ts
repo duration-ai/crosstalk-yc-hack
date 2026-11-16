@@ -2,7 +2,7 @@ import { convexTest } from "convex-test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "./_generated/api";
 import schema from "./schema";
-import { LATE_JOIN_MS, MISSION_COUNTDOWN_MS } from "./raceModel";
+import { AUTO_READY_MS, LATE_JOIN_MS, MISSION_COUNTDOWN_MS } from "./raceModel";
 
 const modules = import.meta.glob("./**/*.*s");
 const T0 = Date.UTC(2026, 10, 15, 22, 0, 0);
@@ -16,7 +16,7 @@ afterEach(() => vi.useRealTimers());
 const here = { x: 1, y: 0, z: 2 };
 
 describe("mission lobby", () => {
-  it("puts players who enter the ring in one room, counts down only once everyone is ready, and holds again on a join", async () => {
+  it("puts players who enter the ring in one room, counts down once everyone is ready or AUTO_READY_MS after a never-readied join, and holds while anyone un-readies", async () => {
     const t = convexTest(schema, modules);
     const ids = [];
     for (const name of ["Tim", "Maya", "Jun"]) {
@@ -31,11 +31,14 @@ describe("mission lobby", () => {
     expect(again.room.id).toBe(a.room.id);
     const b = await t.mutation(internal.missions.enter, { playerId: ids[1], mission: "yc" });
     expect(b.room.id).toBe(a.room.id);
-    expect(b.room.status).toBe("lobby");
-    const oneReady = await t.mutation(api.rooms.setReady, { playerId: ids[0], roomId: a.room.id, ready: true });
-    expect(oneReady.room).toMatchObject({ status: "lobby", startsAt: 0, readyCount: 1 });
+    expect(b.room.status).toBe("countdown");
+    expect(Math.abs(b.room.startsAt - (T0 + AUTO_READY_MS + MISSION_COUNTDOWN_MS))).toBeLessThan(50);
+    await t.mutation(api.rooms.setReady, { playerId: ids[0], roomId: a.room.id, ready: true });
+    const holding = await t.mutation(api.rooms.setReady, { playerId: ids[0], roomId: a.room.id, ready: false });
+    expect(holding.room).toMatchObject({ status: "lobby", startsAt: 0, readyCount: 0 });
     vi.setSystemTime(T0 + 60_000);
     expect((await t.query(internal.rooms.poll, { roomId: a.room.id, now: Date.now() })).room.status).toBe("lobby");
+    await t.mutation(api.rooms.setReady, { playerId: ids[0], roomId: a.room.id, ready: true });
     const bothReady = await t.mutation(api.rooms.setReady, { playerId: ids[1], roomId: a.room.id, ready: true });
     expect(bothReady.room.status).toBe("countdown");
     expect(bothReady.room.startsAt - (T0 + 60_000) - MISSION_COUNTDOWN_MS).toBeLessThan(50);
@@ -47,7 +50,8 @@ describe("mission lobby", () => {
     vi.setSystemTime(T0 + 64_000);
     const c = await t.mutation(internal.missions.enter, { playerId: ids[2], mission: "yc" });
     expect(c.room.id).toBe(a.room.id);
-    expect(c.room).toMatchObject({ status: "lobby", startsAt: 0 });
+    expect(c.room.status).toBe("countdown");
+    expect(Math.abs(c.room.startsAt - (T0 + 64_000 + AUTO_READY_MS + MISSION_COUNTDOWN_MS))).toBeLessThan(50);
     await expect(t.mutation(api.rooms.join, { playerId: ids[2], code: c.room.code })).rejects.toThrow(/location/);
 
     await t.mutation(api.rooms.leave, { playerId: ids[2], roomId: c.room.id });

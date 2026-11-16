@@ -57,6 +57,14 @@ namespace Dogpatch.Gameplay
         public bool ExternalInput;
         public IGameBackend Backend => backend;
         public Player Profile => profile;
+
+        // The offline race reads this profile through the local backend, so it carries the name too.
+        public void Rename(string name)
+        {
+            if (profile == null) return;
+            profile.displayName = name;
+            (backend as InMemoryGameBackend)?.RenamePlayer(profile.id, name);
+        }
         public WorldContext World => world;
         public WorldData Data { get; private set; }
         public ModelLibrary Models => models;
@@ -96,6 +104,8 @@ namespace Dogpatch.Gameplay
             gameObject.AddComponent<HitchLogger>();
             Debug.Log($"[Dogpatch] world built in {Time.realtimeSinceStartup - t0:F1}s: {data.roads.Length} roads, {data.buildings.Length} buildings, {world.ParkedCars.Count + 1} cars");
             PedestrianSystem.Create(world, data);
+            Ambient.BannerPlanes.Create(world, material);
+            Ambient.SidewalkRobots.Create(material);
 
             input = gameObject.AddComponent<DragInput>();
             input.Tapped += OnTap;
@@ -167,7 +177,8 @@ namespace Dogpatch.Gameplay
             }
             if (profile == null)
             {
-                profile = await backend.CreatePlayerAsync("Dogpatch Driver");
+                var saved = PlayerPrefs.GetString(Race.RaceDirector.NameKey, "").Trim();
+                profile = await backend.CreatePlayerAsync(saved.Length > 0 ? saved : "Dogpatch Driver");
                 PlayerPrefs.SetString(PlayerIdKey, profile.id);
                 PlayerPrefs.Save();
             }

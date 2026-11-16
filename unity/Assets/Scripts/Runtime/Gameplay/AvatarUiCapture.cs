@@ -40,7 +40,7 @@ namespace Dogpatch.Gameplay
                 yield return null;
             }
             float until = Time.realtimeSinceStartup + 30f;
-            while (!capture.Showing("open") && Time.realtimeSinceStartup < until) yield return null;
+            while (!capture.Showing("menu") && Time.realtimeSinceStartup < until) yield return null;
             yield return new WaitForSecondsRealtime(2f);
             yield return Shot("01-portrait-button");
 

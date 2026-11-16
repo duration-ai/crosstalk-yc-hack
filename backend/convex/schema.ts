@@ -55,6 +55,7 @@ export default defineSchema({
     displayName: v.string(),
     slot: v.number(),
     ready: v.boolean(),
+    readySent: v.optional(v.boolean()),
     position: vec3,
     heading: v.number(),
     progress: v.number(),

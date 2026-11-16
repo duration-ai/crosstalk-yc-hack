@@ -14,6 +14,7 @@ export const MAX_PLAYERS = COLORS.length;
 export const COUNTDOWN_MS = 3_000;
 export const MISSION_COUNTDOWN_MS = 10_000;
 export const MISSION_MIN_RACERS = 2;
+export const AUTO_READY_MS = 20_000;
 /** A mission race takes late joiners from its locked countdown until it has been racing this long. */
 export const LATE_JOIN_MS = 10_000;
 /** Pace used to guess a running race's end, in metres per millisecond: typical, and the clamp on a racer's own. */
@@ -143,14 +144,22 @@ export function countdownPatch(room: Room, rows: RoomPlayer[], now: number) {
   return { status: "lobby" as const, startsAt: 0 };
 }
 
-/** A mission lobby counts down once at least MISSION_MIN_RACERS are in it and all of them are ready;
- * anyone unready, a new joiner included, holds it. */
+/** A mission lobby counts down once at least MISSION_MIN_RACERS are in it and all of them are ready.
+ * A racer who has never touched READY (builds before the READY lobby have no READY button online)
+ * counts as ready AUTO_READY_MS after joining, so the countdown is set for then; anyone who has
+ * un-readied holds it. */
 export function missionPatch(room: Room, rows: RoomPlayer[], now: number) {
   const live = rows.filter((row) => !row.left);
-  if (live.length >= MISSION_MIN_RACERS && live.every((row) => row.ready)) {
-    return { status: "countdown" as const, startsAt: room.status === "countdown" ? room.startsAt : now + MISSION_COUNTDOWN_MS };
+  if (live.length < MISSION_MIN_RACERS || live.some((row) => !row.ready && row.readySent)) {
+    return { status: "lobby" as const, startsAt: 0 };
   }
-  return { status: "lobby" as const, startsAt: 0 };
+  const pending = live.filter((row) => !row.ready);
+  if (pending.length === 0) {
+    const startsAt = now + MISSION_COUNTDOWN_MS;
+    return { status: "countdown" as const, startsAt: room.status === "countdown" ? Math.min(room.startsAt, startsAt) : startsAt };
+  }
+  const autoReadyAt = Math.max(...pending.map((row) => row._creationTime + AUTO_READY_MS));
+  return { status: "countdown" as const, startsAt: Math.round(Math.max(now, autoReadyAt)) + MISSION_COUNTDOWN_MS };
 }
 
 /** A mission room a player stepping into its ring joins straight onto the grid, already ready: locked in its
