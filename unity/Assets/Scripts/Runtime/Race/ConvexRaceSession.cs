@@ -190,10 +190,11 @@ namespace Dogpatch.Race
 
         // A bump is added only when there is one, so everyday presence still suits a deployment
         // that predates bumps.
-        public static Request Presence(string playerId, Vec3 position, float heading, float speed, string mode, string vehicleType, PresenceBump bump = null)
+        public static Request Presence(string playerId, Vec3 position, float heading, float speed, string mode, string vehicleType, PresenceBump bump = null, PresenceLook look = null)
         {
             var json = JsonUtility.ToJson(new PresenceRequest { playerId = playerId, position = position, heading = Mathf.Repeat(heading, 360f), speed = speed, mode = mode, vehicleType = vehicleType ?? "", protocol = Protocol });
             if (bump != null) json = json.Substring(0, json.Length - 1) + ",\"bump\":" + JsonUtility.ToJson(bump) + "}";
+            if (look != null) json = json.Substring(0, json.Length - 1) + ",\"look\":" + JsonUtility.ToJson(look) + "}";
             return new Request("POST", "/api/world/presence", json);
         }
 
@@ -440,10 +441,10 @@ namespace Dogpatch.Race
             return poll;
         }
 
-        public async Task<WorldPresenceResponse> PresenceAsync(string playerId, Vec3 position, float heading, float speed, string mode, string vehicleType, PresenceBump bump = null)
+        public async Task<WorldPresenceResponse> PresenceAsync(string playerId, Vec3 position, float heading, float speed, string mode, string vehicleType, PresenceBump bump = null, PresenceLook look = null)
         {
             double sent = LocalMs;
-            var request = Presence(playerId, position, heading, speed, mode, vehicleType, bump);
+            var request = Presence(playerId, position, heading, speed, mode, vehicleType, bump, look);
             WorldPresenceResponse world = null;
             var s = Socket();
             if (s != null)

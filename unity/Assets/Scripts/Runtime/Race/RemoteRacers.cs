@@ -61,6 +61,10 @@ namespace Dogpatch.Race
             public int Protocol;
             internal string SwapType;
             internal GameObject Rider;
+            internal bool LookKnown;
+            internal int Paint = -1;
+            internal string Tint;
+            internal string AvatarId;
             internal float WorldSeenAt = -1000f;
             internal long ModeSince;
             internal long WorldUpdatedAt;
@@ -170,18 +174,63 @@ namespace Dogpatch.Race
                     remote.WorldSeenAt = Time.time;
                     remote.Left = false;
                 }
-                if (player.vehicleType != remote.SwapType)
+                var look = player.look;
+                if (look != null && look.Known)
                 {
-                    remote.SwapType = player.vehicleType;
-                    if (Vehicles.VehicleCatalog.Has(player.vehicleType) && player.vehicleType != Vehicles.VehicleRoster.TypeOf(remote.Car))
+                    if (!remote.LookKnown || look.tint != remote.Tint) remote.PaintedHex = null;
+                    remote.LookKnown = true;
+                    remote.Tint = look.tint ?? "";
+                    remote.Paint = look.paint;
+                    if (!string.IsNullOrEmpty(look.avatar) && look.avatar != remote.AvatarId)
                     {
-                        Vehicles.VehicleRoster.SwapInto(remote.Car, player.vehicleType);
+                        remote.AvatarId = look.avatar;
+                        Wear(remote, look.avatar);
+                    }
+                }
+                var want = player.vehicleType + "#" + remote.Paint;
+                if (want != remote.SwapType)
+                {
+                    remote.SwapType = want;
+                    var identity = remote.Car.GetComponent<Vehicles.VehicleIdentity>();
+                    bool repaint = remote.Paint >= 0 && identity != null && identity.Paint != remote.Paint;
+                    if (Vehicles.VehicleCatalog.Has(player.vehicleType) && (repaint || player.vehicleType != Vehicles.VehicleRoster.TypeOf(remote.Car)))
+                    {
+                        Vehicles.VehicleRoster.SwapInto(remote.Car, player.vehicleType, remote.Paint);
+                        var stale = remote.Car.GetComponent<PaintJob>();
+                        if (stale != null) DestroyImmediate(stale);
                         SeatRider(remote);
                         foreach (var c in remote.Car.GetComponents<Collider>()) c.isTrigger = true;
                         remote.PaintedHex = null;
                     }
                 }
                 if (!remote.InRace) AddSample(remote, player.updatedAt, player.position, player.heading, serverTime);
+            }
+        }
+
+        // The figure the player made from their photo, fetched by the id their presence names and
+        // swapped in for the stock one, untinted, as it looks on their phone.
+        async void Wear(Remote remote, string avatarId)
+        {
+            try
+            {
+                var avatar = await new Dogpatch.Backend.AvatarHttpClient(Dogpatch.Backend.AvatarHttpClient.ConfiguredBaseUrl()).GetAvatarAsync(avatarId);
+                if (avatar == null || avatar.IsEmpty || remote.AvatarId != avatarId || Get(remote.Id) != remote) return;
+                var game = Race.Game;
+                var glb = await Dogpatch.Glb.AvatarLoader.LoadAsync(avatar, game.Models.Get(game.Models.Role("player")[0].id));
+                if (glb == null || remote.AvatarId != avatarId || Get(remote.Id) != remote) return;
+                var old = remote.Avatar;
+                var fresh = RacerAvatar.Create(glb, game.SharedMaterial, Color.white, remote.Name);
+                PaintJob.For(fresh.gameObject, glb.Id).SetBase(null);
+                fresh.transform.SetParent(old.transform.parent, true);
+                fresh.Stand(old.transform.position, old.transform.eulerAngles.y);
+                fresh.gameObject.SetActive(old.gameObject.activeSelf);
+                remote.Avatar = fresh;
+                Destroy(old.gameObject);
+                Debug.Log($"[SpeedDial] remote player {remote.Name} wears their avatar ({avatar.@base})");
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"[SpeedDial] {remote.Name}'s avatar did not load: {e.Message}");
             }
         }
 
@@ -284,14 +333,14 @@ namespace Dogpatch.Race
         // Slot colour while racing together, world colour otherwise.
         static void Paint(Remote remote, RaceDirector race)
         {
-            var hex = remote.InRace && !string.IsNullOrEmpty(remote.RaceColorHex) ? remote.RaceColorHex : remote.WorldColorHex;
-            if (string.IsNullOrEmpty(hex) || hex == remote.PaintedHex) return;
+            var hex = remote.InRace && !string.IsNullOrEmpty(remote.RaceColorHex) ? remote.RaceColorHex : remote.LookKnown ? remote.Tint : remote.WorldColorHex;
+            if (hex == null || (hex == "" && !remote.LookKnown) || hex == remote.PaintedHex) return;
             remote.PaintedHex = hex;
             if (!remote.InRace) remote.Color = remote.WorldColor;
-            var color = PaintJob.Linear(hex);
+            var color = hex == "" ? (Color?)null : PaintJob.Linear(hex);
             PaintJob.For(remote.Car.gameObject, remote.Car.ModelId).SetBase(color);
             race.Changes.Paint(remote.Car);
-            PaintJob.For(remote.Avatar.gameObject, race.Game.Models.Role("player")[0].id).SetBase(color);
+            if (remote.AvatarId == null) PaintJob.For(remote.Avatar.gameObject, race.Game.Models.Role("player")[0].id).SetBase(remote.LookKnown ? null : color);
         }
 
         // Pose at server time t: interpolated between samples, and past the newest one dead-reckoned
