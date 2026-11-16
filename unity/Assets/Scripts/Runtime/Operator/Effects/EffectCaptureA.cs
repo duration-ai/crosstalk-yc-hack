@@ -108,6 +108,13 @@ namespace Dogpatch.Operator
                         status = "active", instant = false, startsAt = effects.ServerNow(), endsAt = effects.ServerNow() + 120000, durationS = 120, label = part, requestedBy = part == "change_vehicle" ? EntityTagger.MyPlayerId : "capture",
                         vehicle = part == "change_vehicle" ? Environment.GetEnvironmentVariable("EFFECT_VEHICLE") ?? "sports_car" : null,
                     };
+                    if ((part == "ghost" || part == "see_through") && car != null)
+                    {
+                        var tag = car.GetComponent<EntityTag>() ?? EntityTag.Add(car.gameObject, "car:capture", "car", "capture car", "", false, "me");
+                        row.scope = "object";
+                        row.target = tag.Id;
+                        row.targetClass = tag.Class;
+                    }
                     effects.Optimistic(row);
                     rows.Add(row);
                 }
