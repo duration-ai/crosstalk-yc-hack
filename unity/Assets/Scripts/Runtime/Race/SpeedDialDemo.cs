@@ -258,6 +258,7 @@ namespace Dogpatch.Race
                 var rings = FindObjectsByType<StartRingFx>(FindObjectsSortMode.None);
                 float nearest = rings.Length == 0 ? -1f : rings.Min(f => Vector2.Distance(RoutePath.Flat(f.transform.position), RoutePath.Flat(course.RingCenter)));
                 Log($"tour {name}: lobby {race.Room?.status} in room {race.RoomCode}, {rings.Length} beacon rings, nearest {nearest:F1} m from this ring, {race.Last?.racers.Count(r => !r.left)} racers, phones shown {Shown()}");
+                yield return Until(() => FindAnyObjectByType<Dogpatch.Gameplay.LoadingCard>() == null, 30f, name + " loading card gone", fatal: false);
                 yield return Seconds(1f);
                 yield return Shot("tour-ring-" + (id.Length > 0 ? id : "classic"));
                 race.Hud.PressReady();
