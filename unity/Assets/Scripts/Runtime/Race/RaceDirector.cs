@@ -109,8 +109,11 @@ namespace Dogpatch.Race
         public float MsToStart => Room == null || Room.startsAt == 0 ? float.MaxValue : Room.startsAt - NowMs;
         public bool Locked => Gridded && !Started;
 
-        // On the start ring, counting down or racing: the race owns the arrow and the route.
-        public bool Joined => Setup && (Gridded || inRing || (Room != null && Room.status == RoomStatus.Countdown));
+        // In a mission's lobby (online room or on its ring), counting down or racing until the
+        // results close: the race owns the arrow, the route and the map.
+        public bool Joined => Setup && (Gridded || inRing || (Online && RoomId != null) || (Room != null && Room.status == RoomStatus.Countdown));
+
+        public bool IsCourseRing(Vector3 at) => (RoutePath.Flat(at) - RoutePath.Flat(Course.RingCenter)).sqrMagnitude < 1f;
         public CarController MyCar => myCar;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]

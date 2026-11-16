@@ -18,7 +18,7 @@ namespace Dogpatch.Traffic
 
         public static TrafficWorld Load()
         {
-            var world = JsonUtility.FromJson<TrafficWorld>(Resources.Load<TextAsset>("World/dogpatch").text);
+            var world = JsonUtility.FromJson<TrafficWorld>(Resources.Load<TextAsset>(Dogpatch.World.CityRegions.WorldResource).text);
             world.props = world.props ?? Array.Empty<TrafficProp>();
             world.platforms = world.platforms ?? Array.Empty<TrafficPlatform>();
             world.rails = world.rails ?? Array.Empty<TrafficRail>();

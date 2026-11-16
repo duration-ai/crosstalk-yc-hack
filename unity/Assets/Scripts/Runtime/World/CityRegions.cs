@@ -19,8 +19,25 @@ namespace Dogpatch.World
     public sealed class CityRegions : MonoBehaviour
     {
         // The world-bounds setting: regions stream in, in this order, up to and including the one named
-        // here; "dogpatch" switches the expansion off. The command line -world-bounds <name> overrides it.
-        public const string WorldBounds = "soma";
+        // here; "dogpatch" switches the expansion off. "drivable" loads Dogpatch and Mission Bay as one
+        // playable world (World/dogpatch-missionbay, extracted with DataPrep --north) and streams the
+        // regions beyond it as scenery. The command line -world-bounds <name> overrides it.
+        public const string WorldBounds = "drivable";
+
+        public static string Bounds
+        {
+            get
+            {
+                var args = Environment.GetCommandLineArgs();
+                int i = Array.IndexOf(args, "-world-bounds");
+                return i >= 0 && i + 1 < args.Length ? args[i + 1] : WorldBounds;
+            }
+        }
+
+        public static bool Drivable => Bounds == "drivable";
+
+        // The world data every system loads (GameController, TrafficData).
+        public static string WorldResource => Drivable ? "World/dogpatch-missionbay" : "World/dogpatch";
 
         static readonly (string name, Rect rect)[] Regions =
         {
@@ -50,14 +67,12 @@ namespace Dogpatch.World
 
         public static List<(string name, Rect rect)> Active()
         {
-            var args = Environment.GetCommandLineArgs();
-            int i = Array.IndexOf(args, "-world-bounds");
-            string bounds = i >= 0 && i + 1 < args.Length ? args[i + 1] : WorldBounds;
+            string bounds = Bounds;
             var active = new List<(string, Rect)>();
             if (bounds == "dogpatch") return active;
             foreach (var region in Regions)
             {
-                active.Add(region);
+                if (!(Drivable && region.name == "missionbay")) active.Add(region);
                 if (region.name == bounds) break;
             }
             return active;
