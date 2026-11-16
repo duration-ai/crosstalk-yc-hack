@@ -235,8 +235,11 @@ namespace Dogpatch.Race
         {
             var game = race.Game;
             yield return TopDown();
+            var args = Environment.GetCommandLineArgs();
+            int only = Array.IndexOf(args, "-speeddial-tour-route");
             foreach (var id in RaceDirector.Routes)
             {
+                if (only >= 0 && only + 1 < args.Length && args[only + 1] != (id.Length > 0 ? id : "classic")) continue;
                 var course = race.CourseOf(id);
                 string name = race.RouteName(id);
                 if (course == null)
