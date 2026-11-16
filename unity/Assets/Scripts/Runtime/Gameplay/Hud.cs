@@ -118,6 +118,7 @@ namespace Dogpatch.Gameplay
 
         void OnGUI()
         {
+            GUI.depth = Paused ? -9000 : 0;
             float s = Scale;
             if (Paused && Event.current.type != EventType.Repaint) DrawPauseMenu();
             if (Event.current.type != EventType.Repaint) return;
