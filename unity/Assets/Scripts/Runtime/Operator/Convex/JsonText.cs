@@ -23,14 +23,14 @@ namespace Dogpatch.Operator
                 if (json[i] == ',') { i++; continue; }
                 int keyStart = i;
                 SkipValue(json, ref i);
-                string key = Unquote(json.Substring(keyStart, i - keyStart));
+                bool match = KeyIs(json, keyStart, i, name);
                 Skip(json, ref i);
                 if (i >= json.Length || json[i] != ':') return null;
                 i++;
                 Skip(json, ref i);
                 int valueStart = i;
                 SkipValue(json, ref i);
-                if (key == name) return json.Substring(valueStart, i - valueStart);
+                if (match) return json.Substring(valueStart, i - valueStart);
             }
         }
 
@@ -54,9 +54,19 @@ namespace Dogpatch.Operator
             }
         }
 
+        // Compares the raw key json[start, end) with name without allocating; escaped keys fall back to
+        // Unquote.
+        static bool KeyIs(string json, int start, int end, string name)
+        {
+            if (end - start < 2 || json[start] != '"') return json.Substring(start, end - start) == name;
+            if (json.IndexOf('\\', start, end - start) >= 0) return Unquote(json.Substring(start, end - start)) == name;
+            return end - start - 2 == name.Length && string.CompareOrdinal(json, start + 1, name, 0, name.Length) == 0;
+        }
+
         public static string Unquote(string raw)
         {
             if (raw == null || raw.Length < 2 || raw[0] != '"') return raw;
+            if (raw.IndexOf('\\') < 0) return raw.Substring(1, raw.Length - 2);
             var sb = new StringBuilder();
             for (int i = 1; i < raw.Length - 1; i++)
             {

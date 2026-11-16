@@ -302,7 +302,7 @@ namespace Dogpatch.Operator
         void Thinking(Rect body, float now)
         {
             Text(new Rect(body.x, body.y, body.width, 26f * s), "THINKING", 24f, Color.white, TextAnchor.MiddleLeft, false, 1.6f * s);
-            float tw = style.CalcSize(new GUIContent("THINKING")).x;
+            float tw = style.CalcSize(Dogpatch.Gameplay.HudLayout.Text("THINKING")).x;
             for (int i = 0; i < 3; i++)
             {
                 float hop = Mathf.Max(0f, Mathf.Sin(now * 8f - i * 0.9f));

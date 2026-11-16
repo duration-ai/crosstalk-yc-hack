@@ -38,6 +38,16 @@ namespace Dogpatch.Gameplay
 
         public static bool Portrait => Screen.height > Screen.width;
 
+        static readonly GUIContent measured = new GUIContent();
+
+        // One shared GUIContent for GUIStyle.CalcSize, so measuring HUD text doesn't allocate a new
+        // one per label per frame. Only valid until the next call.
+        public static GUIContent Text(string text)
+        {
+            measured.text = text;
+            return measured;
+        }
+
         public static Rect Safe
         {
             get
