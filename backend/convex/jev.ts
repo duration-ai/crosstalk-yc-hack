@@ -111,8 +111,8 @@ export function buildQuestions(view: View): Question[] {
       choices: [
         NONE,
         { value: "sky", description: "time of day, weather, sky, city lights" },
-        { value: "physics", description: "gravity, ground, air, slow motion or fast forward, flood water, lava, earthquake, cars flying or floating" },
-        { value: "population", description: "traffic (rush hour, jams, empty roads, a Waymo attack on the racers), traffic lights, pedestrians, crowd mood or costumes, big heads" },
+        { value: "physics", description: "gravity, ground, air, slow motion or fast forward of time itself, flood water, lava, earthquake, cars flying or floating" },
+        { value: "population", description: "traffic (rush hour, jams, empty roads, a Waymo attack on the racers), the city and its NPCs going fast (make the city go fast, speed up traffic), traffic lights, pedestrians, crowd mood or costumes, big heads" },
       ],
     },
     { type: "choice", name: "sky_effect", instructions: "Which time, weather or lighting change is asked for?", choices: options(SKY_EFFECTS) },
