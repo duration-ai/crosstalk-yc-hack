@@ -17,16 +17,26 @@ namespace Dogpatch.World
 
         readonly List<(StaticModels.Layer layer, Vector2Int chunk, Renderer renderer, Bounds bounds)> entries = new List<(StaticModels.Layer, Vector2Int, Renderer, Bounds)>();
         readonly Dictionary<Vector2Int, Bounds> buildingChunks = new Dictionary<Vector2Int, Bounds>();
+        readonly HashSet<Vector2Int> detailLoaded = new HashSet<Vector2Int>();
         float next;
 
         public void Add(StaticModels.Layer layer, Vector2Int chunk, Renderer renderer)
         {
             var bounds = renderer.bounds;
             entries.Add((layer, chunk, renderer, bounds));
+            if (layer == StaticModels.Layer.Buildings) detailLoaded.Add(chunk);
             if (layer != StaticModels.Layer.Buildings && layer != StaticModels.Layer.BuildingsFar) return;
             if (buildingChunks.TryGetValue(chunk, out var shared)) shared.Encapsulate(bounds);
             else shared = bounds;
             buildingChunks[chunk] = shared;
+        }
+
+        public void Remove(Renderer renderer)
+        {
+            int i = entries.FindIndex(e => e.renderer == renderer);
+            if (i < 0) return;
+            if (entries[i].layer == StaticModels.Layer.Buildings) detailLoaded.Remove(entries[i].chunk);
+            entries.RemoveAt(i);
         }
 
         public void Apply(Vector3 eye)
@@ -35,7 +45,7 @@ namespace Dogpatch.World
             {
                 float d = Mathf.Sqrt(bounds.SqrDistance(eye));
                 bool detail = layer == StaticModels.Layer.Buildings || layer == StaticModels.Layer.BuildingsFar
-                    ? Mathf.Sqrt(buildingChunks[chunk].SqrDistance(eye)) < BuildingDetail
+                    ? detailLoaded.Contains(chunk) && Mathf.Sqrt(buildingChunks[chunk].SqrDistance(eye)) < BuildingDetail
                     : false;
                 renderer.enabled = layer switch
                 {
