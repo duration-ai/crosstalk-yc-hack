@@ -57,13 +57,17 @@ namespace Dogpatch.Gameplay
             yield return Shot("03-capture-screen");
 
             capture.Press("shutter");
+            yield return new WaitForSecondsRealtime(1.2f);
+            yield return Shot("03b-countdown");
             yield return Until("Refused", 30f);
+            yield return new WaitForSecondsRealtime(0.6f);
             yield return Shot("05-no-one-in-shot");
 
             capture.Press("open");
             yield return Until("Viewfinder", 5f);
             capture.Press("shutter");
             yield return Until("Failed", 30f);
+            yield return new WaitForSecondsRealtime(0.6f);
             yield return Shot("06-try-again");
 
             capture.Press("open");
