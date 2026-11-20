@@ -738,7 +738,7 @@ namespace Dogpatch.Ambient
             }
             int node = ped.Path[ped.PathIndex];
             var target = PathPoint(ped, ped.PathIndex);
-            float speed = ped.Cruise * (ped.Hurry > 0f ? 1.3f : 1f) * PlayerController.RunScale * MoodPace * Hyper;
+            float speed = ped.Cruise * (ped.Hurry > 0f ? 1.3f : 1f) * PlayerController.RunScale * PlayerController.WadeScale * MoodPace * Hyper;
             ped.Hurry = Mathf.Max(0f, ped.Hurry - dt);
             bool crossing = ped.Crossing >= 0;
             if (crossing)

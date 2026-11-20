@@ -179,7 +179,10 @@ namespace Dogpatch.Operator
         {
             player = GetComponent<PlayerController>();
             body = GetComponent<CharacterController>();
+            player.Flying = true;
         }
+
+        void OnDestroy() => player.Flying = false;
 
         public void Land() => landing = true;
 
@@ -719,6 +722,13 @@ namespace Dogpatch.Operator
         readonly Dictionary<CarController, float> nextStall = new Dictionary<CarController, float>();
         const float WadeDepth = 0.3f, StallDepth = 0.9f, WaterSpeed = 0.6f, WaterGrip = 0.5f;
         Sheet sheet;
+
+        // Only a car driving through the water wades. A boat (the duck boat, or a car cars_on_water
+        // gave a hull) sails the flood at its own speed, a supersized car stands above it, and a car
+        // off the ground (flying, hovering, launched, hopping) or phasing (ghost, see-through) passes
+        // over or through it, as with every other ground effect.
+        static bool Wades(CarController car) =>
+            car.Handling.Draft <= 0f && car.transform.localScale.y < PlayerController.GiantScale && !BoatCarsEffect.Sails(car) && car.OnGround;
         GuardedKnob wade;
         EffectTicker ticker;
 
@@ -747,7 +757,7 @@ namespace Dogpatch.Operator
                 return Matrix4x4.TRS(p, Quaternion.Euler(Mathf.Sin(Time.time * 1.7f + i) * 6f, -a * Mathf.Rad2Deg, 0f), Vector3.one * 1.2f);
             }, true);
             ducks.transform.SetParent(sheet.transform, false);
-            wade = GuardedKnob.Times(() => PlayerController.RunScale, v => PlayerController.RunScale = v, Scale(strength, 0.8f, 0.65f, 0.5f));
+            wade = GuardedKnob.Times(() => PlayerController.WadeScale, v => PlayerController.WadeScale = v, Scale(strength, 0.8f, 0.65f, 0.5f));
             float drag = Scale(strength, 0.25f, 0.45f, 0.7f);
             float next = 0f;
             ticker = EffectTicker.On(Context, () =>
@@ -757,7 +767,7 @@ namespace Dogpatch.Operator
                 {
                     if (!Racers.Physical(car)) continue;
                     float depth = level - car.transform.position.y;
-                    bool wading = depth > WadeDepth;
+                    bool wading = depth > WadeDepth && Wades(car);
                     if (wading != wet.Contains(car))
                     {
                         var fx = CarFx.On(car);
@@ -774,7 +784,7 @@ namespace Dogpatch.Operator
                             fx.Grip /= WaterGrip;
                         }
                     }
-                    if (depth > StallDepth && (!nextStall.TryGetValue(car, out var stallAt) || Time.time >= stallAt))
+                    if (wading && depth > StallDepth && (!nextStall.TryGetValue(car, out var stallAt) || Time.time >= stallAt))
                     {
                         nextStall[car] = Time.time + 4f;
                         car.Stun(1f);
@@ -792,7 +802,7 @@ namespace Dogpatch.Operator
                     if (!Racers.Physical(car) || !seen.Add(car)) continue;
                     var syrup = Syrup.On(car);
                     var t = car.transform;
-                    syrup.Set(this, () => t.position.y < sheet.Level ? drag : 0f);
+                    syrup.Set(this, () => t.position.y < sheet.Level && Wades(car) ? drag : 0f);
                     syrups.Add(syrup);
                 }
                 foreach (var car in Racers.Nearby(eye.position, 200f, 80))
@@ -979,6 +989,15 @@ namespace Dogpatch.Operator
     // ride the surface, rock on the swell and throw a wake.
     public sealed class BoatCarsEffect : OperatorEffect
     {
+        static readonly List<BoatCarsEffect> active = new List<BoatCarsEffect>();
+
+        // Whether cars_on_water has given this car a hull, so a flood carries it instead of slowing it.
+        public static bool Sails(CarController car)
+        {
+            foreach (var e in active) if (e.seen.Contains(car)) return true;
+            return false;
+        }
+
         readonly List<GameObject> hulls = new List<GameObject>();
         readonly List<ShapeLayers> rocking = new List<ShapeLayers>();
         readonly HashSet<CarController> seen = new HashSet<CarController>();
@@ -989,6 +1008,7 @@ namespace Dogpatch.Operator
 
         public override void Apply(string strength, EffectTarget target)
         {
+            active.Add(this);
             var b = Context.Game.World.Bounds;
             water = new GameObject("Drivable water (operator)");
             floor = water.AddComponent<BoxCollider>();
@@ -1039,6 +1059,7 @@ namespace Dogpatch.Operator
         public override void Revert()
         {
             if (ticker != null) Object.Destroy(ticker);
+            active.Remove(this);
             if (water != null) Object.Destroy(water);
             foreach (var h in hulls) Pop.Out(h);
             foreach (var l in rocking) if (l != null) l.Remove(this);

@@ -18,6 +18,12 @@ namespace Dogpatch.Gameplay
         public static float JumpScale = 1f;
         public static float GravityScale = 1f;
 
+        // Wading through a flood on foot. It never slows a body in the air on flight or slow_fall, or a
+        // giant (scaled GiantScale or more), who stands above the water.
+        public static float WadeScale = 1f;
+        public const float GiantScale = 1.5f;
+        public bool Flying;
+
         CharacterController body;
         GlbAnimator animator;
         Vector3 desired;
@@ -103,8 +109,10 @@ namespace Dogpatch.Gameplay
         void Update()
         {
             float dt = Time.deltaTime;
-            float target = desired.sqrMagnitude > 0.01f ? strength * RunSpeed * RunScale : 0f;
-            speed = Mathf.MoveTowards(speed, target, Acceleration * RunScale * dt);
+            bool aboveWater = Flying || (GravityScale < 1f && !body.isGrounded) || transform.localScale.y >= GiantScale;
+            float run = RunScale * (aboveWater ? 1f : WadeScale);
+            float target = desired.sqrMagnitude > 0.01f ? strength * RunSpeed * run : 0f;
+            speed = Mathf.MoveTowards(speed, target, Acceleration * run * dt);
             if (target > 0f)
             {
                 var look = Quaternion.LookRotation(desired, Vector3.up);
