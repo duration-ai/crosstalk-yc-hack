@@ -10,9 +10,6 @@ namespace Dogpatch.Slipstream
     // SlipstreamHud (callRect).
     public sealed partial class SlipstreamHud
     {
-        const int TalkSegments = 12;
-        const float TalkWindow = 8f;
-
         // Headless stills (-call-v3-capture): forces a call state, the words heard and the asks left.
         public static CallState? PreviewState;
         public static string PreviewWords = "";

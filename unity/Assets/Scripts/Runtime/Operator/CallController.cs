@@ -56,6 +56,9 @@ namespace Dogpatch.Operator
         public float BuzzedAt { get; private set; } = -10f;
         public float TurnedDownAt { get; private set; } = -10f;
         public bool HasAsks => !CountsAsks || Asks() > 0;
+        // When an open call (a short tap or a phone pickup) sends what it heard at the latest, in
+        // Time.time; -1 while a held call waits for the finger, or when no call is listening.
+        public float ListenDeadline => State == CallState.Talking && latched ? StateSince + LatchWindow + greetingLead : -1f;
 
         // OPERATOR_ANYWHERE (on while Chris tests asks): outside a running race every call is free
         // and the badge hides. Racing says whether a race is running right now.
