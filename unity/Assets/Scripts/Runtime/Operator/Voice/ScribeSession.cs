@@ -57,10 +57,10 @@ namespace Dogpatch.Operator.Voice
             _ = ReceiveLoop();
         }
 
-        public void Send(short[] pcm, int count, bool commit)
+        public void Send(short[] pcm, int offset, int count, bool commit)
         {
             if (commit) committed = new TaskCompletionSource<string>();
-            outbox.Enqueue(Chunk(pcm, 0, count, commit));
+            outbox.Enqueue(Chunk(pcm, offset, count, commit));
             if (!pumping) _ = Pump();
         }
 
