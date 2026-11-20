@@ -51,7 +51,7 @@ namespace Dogpatch.EditorTools
             PlayerSettings.iOS.sdkVersion = simulator ? iOSSdkVersion.SimulatorSDK : iOSSdkVersion.DeviceSDK;
             PlayerSettings.iOS.simulatorSdkArchitecture = AppleMobileArchitectureSimulator.ARM64;
             PlayerSettings.iOS.targetDevice = iOSTargetDevice.iPhoneAndiPad;
-            PlayerSettings.iOS.cameraUsageDescription = "Take a full-body photo to make your avatar.";
+            PlayerSettings.iOS.cameraUsageDescription = "Take a full-body photo to make your avatar, and show your face on calls with the Operator.";
             PlayerSettings.iOS.microphoneUsageDescription = "Hold Call to talk to the Operator.";
             PlayerSettings.iOS.appleEnableAutomaticSigning = true;
             PlayerSettings.iOS.appleDeveloperTeamID = team;

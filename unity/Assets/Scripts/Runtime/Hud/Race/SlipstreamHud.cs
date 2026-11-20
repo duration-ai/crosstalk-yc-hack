@@ -90,7 +90,11 @@ namespace Dogpatch.Slipstream
             Audio.GameEvents.Paused += OnPaused;
         }
 
-        void OnDestroy() => Audio.GameEvents.Paused -= OnPaused;
+        void OnDestroy()
+        {
+            Audio.GameEvents.Paused -= OnPaused;
+            ReleaseCamera();
+        }
 
         void OnPaused(bool on) => paused = on;
 
@@ -136,6 +140,7 @@ namespace Dogpatch.Slipstream
 
         void Update()
         {
+            VideoCamera();
             if (Race == null || !Race.Setup) return;
             if (leaveAt >= 0f && Time.time >= leaveAt)
             {
@@ -163,6 +168,7 @@ namespace Dogpatch.Slipstream
         {
             float pad = 12f * s;
             if (OnlinePress(finger, p)) return;
+            if (HangUpPress(p)) return;
             if (readyVisible && Inflate(readyRect, pad).Contains(p))
             {
                 readyFinger = finger;
