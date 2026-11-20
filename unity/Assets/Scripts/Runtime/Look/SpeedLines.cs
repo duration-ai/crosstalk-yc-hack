@@ -12,8 +12,6 @@ namespace Dogpatch.Look
     [DefaultExecutionOrder(1200)]
     public sealed class SpeedLines : MonoBehaviour
     {
-        // During a boost the streaks warm to sunshine (Hot Wheels Unleashed / Rocket League boost lines).
-        static readonly Color BoostTint = QualitySettings.activeColorSpace == ColorSpace.Linear ? SpeedDial.Hex("#FFCB1F").linear : SpeedDial.Hex("#FFCB1F");
         struct Line
         {
             public float Angle;
@@ -30,12 +28,16 @@ namespace Dogpatch.Look
         Vector3[] vertices;
         Color[] colors;
         float level;
+        // During a boost the streaks warm to sunshine (Hot Wheels Unleashed / Rocket League boost lines).
+        // Set in Start: Unity refuses QualitySettings reads from a static or field initializer.
+        Color boostTint;
         readonly System.Random random = new System.Random(11);
 
         float R(float a, float b) => a + (float)random.NextDouble() * (b - a);
 
         void Start()
         {
+            boostTint = QualitySettings.activeColorSpace == ColorSpace.Linear ? SpeedDial.Hex("#FFCB1F").linear : SpeedDial.Hex("#FFCB1F");
             view = GetComponent<Camera>();
             var t = MotionTuning.Current.speedLines;
             lines = new Line[Mathf.Max(t.count, 1)];
@@ -132,7 +134,7 @@ namespace Dogpatch.Look
                 vertices[v + 1] = View(mid + normal, h, depth);
                 vertices[v + 2] = View(outer, h, depth);
                 vertices[v + 3] = View(mid - normal, h, depth);
-                var c = Color.Lerp(Color.white, BoostTint, MotionFx.BoostFactor * 0.85f);
+                var c = Color.Lerp(Color.white, boostTint, MotionFx.BoostFactor * 0.85f);
                 c.a = fade;
                 colors[v + 1] = colors[v + 3] = c;
                 c.a = fade * 0.9f;
