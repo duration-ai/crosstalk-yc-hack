@@ -26,7 +26,8 @@ namespace Dogpatch.Gameplay
         const string AvatarKey = "dogpatch.avatar";
         const string NameAskedKey = "dogpatch.nameAsked";
         const int MaxName = 16;
-        const int PortraitSize = 192;
+        // The portrait texture, at the HUD tile's aspect (AvatarButton: 55.2 x 45.2 U).
+        const int PortraitWidth = 192, PortraitHeight = 157;
         const int PortraitLayer = 31;
         const int MaxPhotoSide = 1024;
         const float Lean = 0.22f;
@@ -643,19 +644,19 @@ namespace Dogpatch.Gameplay
             cam.cullingMask = 1 << PortraitLayer;
             cam.clearFlags = CameraClearFlags.SolidColor;
             cam.backgroundColor = PortraitSky;
-            cam.fieldOfView = 20f;
+            cam.fieldOfView = 15.6f;
             cam.nearClipPlane = 0.05f;
             cam.farClipPlane = 20f;
             cam.transform.position = head + new Vector3(0f, height * 0.02f, height * 0.85f);
             cam.transform.LookAt(head);
 
-            var rt = RenderTexture.GetTemporary(PortraitSize, PortraitSize, 24);
+            var rt = RenderTexture.GetTemporary(PortraitWidth, PortraitHeight, 24);
             cam.targetTexture = rt;
             cam.Render();
             var previous = RenderTexture.active;
             RenderTexture.active = rt;
-            if (portrait == null) portrait = new Texture2D(PortraitSize, PortraitSize, TextureFormat.RGBA32, false) { name = "AvatarPortrait" };
-            portrait.ReadPixels(new Rect(0, 0, PortraitSize, PortraitSize), 0, 0);
+            if (portrait == null) portrait = new Texture2D(PortraitWidth, PortraitHeight, TextureFormat.RGBA32, false) { name = "AvatarPortrait" };
+            portrait.ReadPixels(new Rect(0, 0, PortraitWidth, PortraitHeight), 0, 0);
             RenderTexture.active = previous;
             cam.targetTexture = null;
             RenderTexture.ReleaseTemporary(rt);
@@ -663,13 +664,13 @@ namespace Dogpatch.Gameplay
             DestroyImmediate(root);
 
             var pixels = portrait.GetPixels32();
-            float lean = PortraitSize * Lean;
-            for (int y = 0; y < PortraitSize; y++)
-                for (int x = 0; x < PortraitSize; x++)
+            float lean = PortraitHeight * Lean;
+            for (int y = 0; y < PortraitHeight; y++)
+                for (int x = 0; x < PortraitWidth; x++)
                 {
-                    float left = lean * (y + 0.5f) / PortraitSize;
-                    float d = Mathf.Min(x + 0.5f - left, left + PortraitSize - lean - (x + 0.5f));
-                    pixels[y * PortraitSize + x].a = (byte)(Mathf.Clamp01(d + 0.5f) * 255f);
+                    float left = lean * (y + 0.5f) / PortraitHeight;
+                    float d = Mathf.Min(x + 0.5f - left, left + PortraitWidth - lean - (x + 0.5f));
+                    pixels[y * PortraitWidth + x].a = (byte)(Mathf.Clamp01(d + 0.5f) * 255f);
                 }
             portrait.SetPixels32(pixels);
             portrait.Apply();
