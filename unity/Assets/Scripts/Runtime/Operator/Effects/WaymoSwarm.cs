@@ -81,6 +81,7 @@ namespace Dogpatch.Operator
                 var car = VehicleRoster.Spawn(i % 3 == 2 ? VehicleTypes.WaymoOjai : VehicleTypes.WaymoSuv, spot, heading, root);
                 car.name = "Swarm Waymo " + i + " for " + id;
                 car.Enterable = false;
+                car.Npc = true;
                 if (car.GetComponent<VehicleDamage>() == null) car.gameObject.AddComponent<VehicleDamage>();
                 var bot = car.gameObject.AddComponent<SwarmBot>();
                 bot.Target = body;

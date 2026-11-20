@@ -45,6 +45,10 @@ namespace Dogpatch.Smash
         public float burnSpotPerSecond = 0.15f;
         public float burnFloorHealth = 0.1f;
 
+        // How many times tougher armour (tougher) makes the players' own cars: crash damage through
+        // durability, blasts and lightning by dividing their burn. Never a bot driving on this phone.
+        public static float Armour = 1f;
+
         static DamageTuning current;
 
         public static DamageTuning Current => current ??= Load();

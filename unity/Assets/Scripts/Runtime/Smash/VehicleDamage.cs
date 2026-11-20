@@ -27,7 +27,8 @@ namespace Dogpatch.Smash
         public Rigidbody Body { get; private set; }
         public VehicleSpec Spec { get; private set; }
         public float Damage { get; private set; }
-        public float Durability => Spec.Durability * (Car.Driven ? DamageTuning.Current.playerDurabilityScale : DamageTuning.Current.otherDurabilityScale);
+        public float Armour => Car.Driven && !Car.Npc ? DamageTuning.Armour : 1f;
+        public float Durability => Spec.Durability * (Car.Driven ? DamageTuning.Current.playerDurabilityScale * Armour : DamageTuning.Current.otherDurabilityScale);
         public float Health01 => Mathf.Clamp01(1f - Damage / Mathf.Max(Durability, 1f));
         public bool IsWrecked { get; private set; }
         public int Invulnerable;

@@ -103,7 +103,7 @@ namespace Dogpatch.Operator
                 away = away.sqrMagnitude > 0.01f ? away.normalized : -car.transform.forward;
                 car.Stun(0.5f);
                 CarFx.On(car).Push(away * shove + Vector3.up * (shove * 0.5f));
-                damage.Burn(hurt / ToughEffect.Armour);
+                damage.Burn(hurt / damage.Armour);
                 Dogpatch.Feel.Haptics.Impact(Dogpatch.Feel.HapticStyle.Heavy, 1f);
             }
         }
