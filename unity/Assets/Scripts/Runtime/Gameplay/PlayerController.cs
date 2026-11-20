@@ -19,10 +19,14 @@ namespace Dogpatch.Gameplay
         public static float GravityScale = 1f;
 
         // Wading through a flood on foot. It never slows a body in the air on flight or slow_fall, or a
-        // giant (scaled GiantScale or more), who stands above the water.
+        // giant (scaled GiantScale or more), who stands above the water; a tiny body (TinyScale or less)
+        // is swamped and wades twice over.
         public static float WadeScale = 1f;
         public const float GiantScale = 1.5f;
+        public const float TinyScale = 0.5f;
         public bool Flying;
+        public bool Giant => transform.localScale.y >= GiantScale;
+        public bool Tiny => transform.localScale.y <= TinyScale;
 
         CharacterController body;
         GlbAnimator animator;
@@ -109,10 +113,13 @@ namespace Dogpatch.Gameplay
         void Update()
         {
             float dt = Time.deltaTime;
-            bool aboveWater = Flying || (GravityScale < 1f && !body.isGrounded) || transform.localScale.y >= GiantScale;
-            float run = RunScale * (aboveWater ? 1f : WadeScale);
+            // Underfoot: flood water, snow (down to 60% pace in deep snow) and ice (80% pace, and a quarter
+            // of the grip to speed up or stop). Giants stride over all of it and flyers never touch it.
+            bool sure = Flying || (GravityScale < 1f && !body.isGrounded) || Giant;
+            float ice = sure ? 0f : RoadConditions.Ice;
+            float run = sure ? RunScale : RunScale * WadeScale * (Tiny ? WadeScale : 1f) * Mathf.Lerp(1f, 0.6f, RoadConditions.SnowCover) * Mathf.Lerp(1f, 0.8f, ice);
             float target = desired.sqrMagnitude > 0.01f ? strength * RunSpeed * run : 0f;
-            speed = Mathf.MoveTowards(speed, target, Acceleration * run * dt);
+            speed = Mathf.MoveTowards(speed, target, Acceleration * run * Mathf.Lerp(1f, 0.25f, ice) * dt);
             if (target > 0f)
             {
                 var look = Quaternion.LookRotation(desired, Vector3.up);

@@ -166,6 +166,10 @@ async function activate(ctx: MutationCtx, fields: EffectFields, now: number, pen
   if (countered) {
     for (const row of active) if (countered.includes(row.effect)) await end(ctx, row, "countered");
   }
+  if (fields.effect === "change_vehicle") {
+    // A giant doesn't fit in a vehicle: a new ride shrinks the caller back first.
+    for (const row of active) if (row.effect === "bigger" && sameTarget(row)) await end(ctx, row, "replaced");
+  }
   if (fields.effect === "extinguish") {
     const fires = active.filter((row) => row.effect === "set_fire");
     const doused = fields.target

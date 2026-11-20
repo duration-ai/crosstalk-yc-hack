@@ -40,6 +40,15 @@ namespace Dogpatch.Gameplay
 
         public const float GroundReach = 1.5f;
 
+        // Big rigs (3.5 t and up: the monster truck, art car, fire truck, buses) and cars grown to
+        // giant size plough through crowds and lean on the wind; a shrunk car is knocked about more.
+        public bool Heavy => handling.Mass >= 3500f || transform.localScale.y >= PlayerController.GiantScale;
+        public bool Tiny => transform.localScale.y <= PlayerController.TinyScale;
+
+        // Heavy gravity drags everything that flies or hovers down toward the ground: the altitude it
+        // holds is divided by how many times stronger than normal gravity is.
+        public static float LiftScale => 9.81f / Mathf.Max(9.81f, -Physics.gravity.y);
+
         public int Phasing;
         public bool Grounding;
         public float HoverAltitude { get; private set; }
@@ -276,7 +285,7 @@ namespace Dogpatch.Gameplay
             bool opposing = Mathf.Sign(target) != Mathf.Sign(forwardSpeed) && Mathf.Abs(forwardSpeed) > 0.5f;
             if (floating) target *= 0.8f;
             float road = RoadConditions.GripMultiplier;
-            if (road < 0.999f && !OnGround) road = 1f;
+            if (road < 0.999f && (!OnGround || handling.AllWeather)) road = 1f;
             float grip = floating ? 0.55f : Mathf.Clamp01(handling.Grip * road);
             float rate = handbrake ? handling.Braking * 0.3f : brake ? handling.Braking : target == 0f ? handling.Coasting : opposing ? handling.Braking : handling.Acceleration * AccelScale;
             rate *= Mathf.Lerp(0.5f, 1f, grip);
@@ -325,7 +334,7 @@ namespace Dogpatch.Gameplay
                 HoverGround = hit.point;
             }
             HoverAltitude = body.position.y - HoverGround.y;
-            float lift = Driven && !Grounding ? handling.HoverHeight + Mathf.Sin(Time.time * 2.1f) * 0.12f : 0f;
+            float lift = Driven && !Grounding ? handling.HoverHeight * LiftScale + Mathf.Sin(Time.time * 2.1f) * 0.12f : 0f;
             float wanted = Mathf.Clamp((HoverGround.y + lift - body.position.y) * 3f, -5f, 5f);
             return Mathf.Lerp(body.linearVelocity.y, wanted, 1f - Mathf.Exp(-8f * dt));
         }

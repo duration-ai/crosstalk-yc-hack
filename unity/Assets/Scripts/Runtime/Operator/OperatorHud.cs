@@ -60,6 +60,10 @@ namespace Dogpatch.Operator
 
         void Awake() => font = Resources.Load<Font>("Fonts/Exo2-BlackItalic");
 
+        void OnEnable() => Gameplay.GameController.Cue += Toast;
+
+        void OnDisable() => Gameplay.GameController.Cue -= Toast;
+
         void Panel(Rect r, Color color, float lean = Lean)
         {
             var m = GUI.matrix;

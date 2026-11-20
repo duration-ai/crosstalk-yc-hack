@@ -47,6 +47,9 @@ namespace Dogpatch.Gameplay
         public static event Action<CarController> VehicleEntered;
         public static event Action<CarController> VehicleExited;
 
+        // A short spoken-style cue for the player, shown by the Operator HUD's toast ("Too big!").
+        public static event Action<string> Cue;
+
         public bool Driving => current != null;
         public bool IsReady => ready;
         public bool Riding => current != null && current.Handling.PassengerOnly;
@@ -269,7 +272,7 @@ namespace Dogpatch.Gameplay
             else player.SetInput(dir, input.Strength);
 
             var focus = current != null ? current.transform : player.transform;
-            NearestCar = current == null ? FindNearestCar(player.transform.position, 40f) : null;
+            NearestCar = current == null && !player.Giant ? FindNearestCar(player.transform.position, 40f) : null;
             StreetName = world.Roads.StreetNameAt(focus.position);
             float kmh = Mathf.Abs(current != null ? current.Speed : player.Speed) * 3.6f;
             StatusLine = (Riding ? "Riding" : current != null ? "Driving" : "On foot") + $" · {kmh:F0} km/h";
@@ -340,6 +343,12 @@ namespace Dogpatch.Gameplay
                 player.Jump();
                 return;
             }
+            if (player.Giant)
+            {
+                hud.Toast("Too big!");
+                Cue?.Invoke("Too big!");
+                return;
+            }
             if (tapped.GetComponent<VehicleDamage>()?.IsWrecked == true)
             {
                 hud.Toast("That one's wrecked");
@@ -402,7 +411,7 @@ namespace Dogpatch.Gameplay
                 while (t.position.y - car.HoverGround.y > 0.3f && Time.time < until) await Task.Yield();
             }
             var momentum = t.forward * car.Speed;
-            float side = car.HalfExtents.x + 0.9f;
+            float side = car.HalfExtents.x + 0.55f + 0.35f * player.transform.localScale.x;
             var exit = t.position - t.right * side;
             if (world.Buildings.Blocked(new Vector2(exit.x, exit.z), 0.5f)) exit = t.position + t.right * side;
             var door = exit - t.position;

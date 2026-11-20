@@ -73,6 +73,7 @@ namespace Dogpatch.WorldChanges
             var planar = new Vector3(v.x, 0f, v.z);
             float traction = Traction * Grip;
             if (traction < 0.999f && (airborne || !car.OnGround)) traction = 1f;
+            if (traction < 0.999f && car.Handling.AllWeather) traction = Mathf.Min(1f, traction * 4f);
             if (traction < 0.999f) planar = Vector3.Lerp(lastPlanar, planar, traction);
             planar += push + Wind;
             push = Vector3.MoveTowards(push, Vector3.zero, 14f * dt);

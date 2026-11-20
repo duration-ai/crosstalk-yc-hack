@@ -25,6 +25,10 @@ namespace Dogpatch.Gameplay
         public float HoverHeight;
         public float Draft;
 
+        // Grippy tyres (grip_up, the monster truck's off-road tyres): rain, snow and storms don't cut
+        // their grip, and ice and oil slide them a quarter as much.
+        public bool AllWeather;
+
         public static readonly HandlingProfile Default = Vehicles.Pace.Apply(new HandlingProfile());
 
         public HandlingProfile Clone() => (HandlingProfile)MemberwiseClone();
