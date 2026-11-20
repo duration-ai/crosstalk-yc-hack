@@ -6,7 +6,7 @@ namespace Dogpatch.Slipstream
 {
     // The Operator call as a FaceTime call (CRO-78): while a call is open the voice card grows in place
     // into a small low-poly smartphone. Your front camera fills its screen, mirrored like a selfie, so
-    // whoever watches the demo sees the person talking; Jay's name and the call timer sit at the top, a
+    // whoever watches the demo sees the person talking; Jay's name and the listening countdown sit at the top, a
     // waveform and the hang-up at the bottom, and your words caption the screen as Scribe hears them.
     // His DONE!/NOPE! and line caption it before it folds back into the card. No camera (denied,
     // missing, the editor) draws a placeholder in the same layout.
@@ -164,16 +164,8 @@ namespace Dogpatch.Slipstream
             float islandW = screen.width * 0.34f;
             Chamfer(new Rect(screen.center.x - islandW * 0.5f, screen.y + 4f * s, islandW, 9f * s), 4f * s, Ink);
 
-            if (talking)
-            {
-                float leftT = preview ? 0.7f : Mathf.Clamp01(1f - (now - calls.StateSince) / TalkWindow);
-                float segW = (phone.width - 6f * s) / TalkSegments;
-                for (int i = 0; i < TalkSegments; i++)
-                    Panel(new Rect(phone.x + 4f * s + i * segW, phone.y - 12f * s, segW * 0.72f, 5f * s), (float)i / TalkSegments < leftT ? White : new Color(1f, 1f, 1f, 0.28f), 0.3f);
-            }
-
             float level = preview ? 0.85f : Mathf.Clamp01(0.35f + Mathf.Sqrt(MicCapture.Level) * 1.4f);
-            CallBar(screen, now);
+            CallBar(screen, preview ? (talking ? 4f : -1f) : calls.ListenDeadline - now);
             var controls = Controls(screen, talking, level, now);
 
             if (state == CallState.Answered)
@@ -229,14 +221,15 @@ namespace Dogpatch.Slipstream
             GUI.matrix = old;
         }
 
-        // FaceTime's top line: who you're talking to and the call timer, centred under the island.
-        void CallBar(Rect screen, float now)
+        // The top line, centred under the island: who you're talking to and, while an open call is
+        // listening on its own, the seconds left before it sends what it heard. A held call has no
+        // deadline (it sends when you let go), so that spot stays empty, as it does while Jay thinks.
+        void CallBar(Rect screen, float secondsLeft)
         {
-            float secs = PreviewState != null ? 7f : now - videoOpenedAt;
-            string timer = Mathf.FloorToInt(secs / 60f) + ":" + Mathf.FloorToInt(secs % 60f).ToString("00");
             float y = screen.y + 17f * s;
             Text(new Rect(screen.x, y, screen.width, 16f * s), "Jay", 14f, White, TextAnchor.MiddleCenter, 1.2f * s);
-            Text(new Rect(screen.x, y + 16f * s, screen.width, 12f * s), timer, 10f, White, TextAnchor.MiddleCenter, 1.2f * s);
+            if (secondsLeft <= 0f) return;
+            Text(new Rect(screen.x, y + 16f * s, screen.width, 14f * s), Mathf.CeilToInt(secondsLeft) + "s", 12f, Sun, TextAnchor.MiddleCenter, 1.2f * s);
         }
 
         // The bottom row: a waveform that moves with your voice while the mic is open (flat and dim
