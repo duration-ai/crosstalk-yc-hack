@@ -6,13 +6,19 @@ namespace Dogpatch.Slipstream
 {
     // The Operator call as a FaceTime call (CRO-78): while a call is open the voice card grows in place
     // into a small low-poly smartphone. Your front camera fills its screen, mirrored like a selfie, so
-    // whoever watches the demo sees the person talking; Jay is the picture-in-picture tile, a call bar
-    // runs the timer and the hang-up, and your words caption the bottom of the screen as Scribe hears
-    // them. His DONE!/NOPE! and line caption it before it folds back into the card. No camera (denied,
+    // whoever watches the demo sees the person talking; Jay's name and the call timer sit at the top, a
+    // waveform and the hang-up at the bottom, and your words caption the screen as Scribe hears them.
+    // His DONE!/NOPE! and line caption it before it folds back into the card. No camera (denied,
     // missing, the editor) draws a placeholder in the same layout.
     public sealed partial class SlipstreamHud
     {
         const float VideoGrow = 0.26f;
+        // Held in landscape, the front camera sits at the phone's short edge (left in LandscapeLeft,
+        // right in LandscapeRight) while you look at the middle of the screen, so in the mirrored
+        // frame your face lands about this fraction of the frame's width off centre, away from the
+        // camera's side. The portrait phone screen keeps only ~40% of a landscape frame's width, so a
+        // centred crop cuts the face; the crop slides this far towards it instead.
+        const float LandscapeFaceShift = 0.15f;
 
         static WebCamTexture selfie;
         static bool selfieFront;
@@ -73,7 +79,7 @@ namespace Dogpatch.Slipstream
         Rect PhoneRect(bool readyShowing)
         {
             bool portrait = Gameplay.HudLayout.Portrait;
-            float w = (portrait ? 118f : 100f) * s, h = (portrait ? 218f : 184f) * s;
+            float w = (portrait ? 152f : 134f) * s, h = (portrait ? 282f : 236f) * s;
             var slot = Gameplay.HudLayout.Call(96f * s, 64f * s, readyShowing);
             float x = Gameplay.HudLayout.CallFromLeft ? slot.x : slot.xMax - w;
             x = Mathf.Clamp(x, left, Mathf.Max(left, right - w));
@@ -167,8 +173,7 @@ namespace Dogpatch.Slipstream
             }
 
             float level = preview ? 0.85f : Mathf.Clamp01(0.35f + Mathf.Sqrt(MicCapture.Level) * 1.4f);
-            var pip = JayTile(screen, thinking, now);
-            CallBar(screen, pip, talking, thinking, now);
+            CallBar(screen, now);
             var controls = Controls(screen, talking, level, now);
 
             if (state == CallState.Answered)
@@ -208,6 +213,13 @@ namespace Dogpatch.Slipstream
             var uv = texAspect > drawAspect
                 ? new Rect((1f - drawAspect / texAspect) * 0.5f, 0f, drawAspect / texAspect, 1f)
                 : new Rect(0f, (1f - texAspect / drawAspect) * 0.5f, 1f, texAspect / drawAspect);
+            float slack = 1f - uv.width;
+            if (!sideways && slack > 0f)
+            {
+                float towardFace = Screen.orientation == ScreenOrientation.LandscapeLeft ? 1f : Screen.orientation == ScreenOrientation.LandscapeRight ? -1f : 0f;
+                float uPerScreenX = (angle == 180 ? -1f : 1f) * (selfieFront ? -1f : 1f);
+                uv.x = Mathf.Clamp(uv.x + towardFace * uPerScreenX * LandscapeFaceShift, 0f, slack);
+            }
             var center = r.center;
             var old = GUI.matrix;
             if (cam.videoVerticallyMirrored) GUIUtility.ScaleAroundPivot(new Vector2(1f, -1f), center);
@@ -217,68 +229,42 @@ namespace Dogpatch.Slipstream
             GUI.matrix = old;
         }
 
-        // Jay, the other side of the call: a picture-in-picture tile at the top right of the screen.
-        Rect JayTile(Rect screen, bool thinking, float now)
+        // FaceTime's top line: who you're talking to and the call timer, centred under the island.
+        void CallBar(Rect screen, float now)
         {
-            float w = screen.width * 0.34f, h = w * 1.3f;
-            var t = new Rect(screen.xMax - w - 5f * s, screen.y + 18f * s, w, h);
-            Chamfer(Inflate(t, 1.5f * s), 4f * s, White);
-            Chamfer(t, 3f * s, Pink);
-            Handset(new Vector2(t.center.x, t.y + h * 0.42f), w * 0.46f, White);
-            if (thinking)
-            {
-                for (int i = 0; i < 3; i++)
-                {
-                    float hop = Mathf.Max(0f, Mathf.Sin(now * 9f - i * 0.9f));
-                    Panel(new Rect(t.center.x - 9f * s + i * 6.5f * s, t.yMax - 8f * s - hop * 3f * s, 4.5f * s, 3.5f * s), White, 0f);
-                }
-            }
-            else Text(new Rect(t.x, t.yMax - 13f * s, t.width, 11f * s), "JAY", 9f, White, TextAnchor.MiddleCenter);
-            return t;
-        }
-
-        // FaceTime's top bar: who you're talking to, the call timer, and LISTENING while the mic is open.
-        void CallBar(Rect screen, Rect pip, bool talking, bool thinking, float now)
-        {
-            float x = screen.x + 6f * s, y = screen.y + 18f * s;
             float secs = PreviewState != null ? 7f : now - videoOpenedAt;
             string timer = Mathf.FloorToInt(secs / 60f) + ":" + Mathf.FloorToInt(secs % 60f).ToString("00");
-            Text(new Rect(x, y, pip.x - x, 14f * s), "Jay", 12f, White, TextAnchor.MiddleLeft, 1.2f * s);
-            Text(new Rect(x, y + 14f * s, pip.x - x, 12f * s), timer, 10f, White, TextAnchor.MiddleLeft, 1.2f * s);
-            if (!talking && !thinking) return;
-            string tag = talking ? "LIVE" : "...";
-            var m = Measure(tag, 9f);
-            var chip = new Rect(x, y + 29f * s, m.x + 10f * s, 13f * s);
-            Panel(chip, talking ? Pink : Ink, 0.12f);
-            Text(chip, tag, 9f, White, TextAnchor.MiddleCenter);
+            float y = screen.y + 17f * s;
+            Text(new Rect(screen.x, y, screen.width, 16f * s), "Jay", 14f, White, TextAnchor.MiddleCenter, 1.2f * s);
+            Text(new Rect(screen.x, y + 16f * s, screen.width, 12f * s), timer, 10f, White, TextAnchor.MiddleCenter, 1.2f * s);
         }
 
-        // The bottom row: a mic plate whose bars follow your voice, and the pink hang-up (live while
-        // the mic is open). Returns the row's rect so the captions sit above it.
+        // The bottom row: a waveform that moves with your voice while the mic is open (flat and dim
+        // while Jay thinks or answers) and the pink hang-up, live while the mic is open. Returns the
+        // row's rect so the captions sit above it.
         Rect Controls(Rect screen, bool talking, float level, float now)
         {
             float b = 22f * s;
             var row = new Rect(screen.x, screen.yMax - b - 6f * s, screen.width, b);
-            var mic = new Rect(screen.center.x - b - 6f * s, row.y, b, b);
-            var end = new Rect(screen.center.x + 6f * s, row.y, b, b);
-            Chamfer(mic, 6f * s, talking ? White : Color.Lerp(Ink, White, 0.35f));
-            V3.HudIcons.Draw("talk", Inset(mic, 3f * s), talking ? Pink : White);
+            var end = new Rect(screen.xMax - b - 7f * s, row.y, b, b);
             Chamfer(end, 6f * s, Pink);
             var m = GUI.matrix;
             GUIUtility.RotateAroundPivot(135f, end.center);
             V3.HudIcons.Draw("call", Inset(end, 2f * s), White);
             GUI.matrix = m;
-            if (talking)
+
+            const int bars = 9;
+            float waveX = screen.x + 8f * s, waveW = end.x - 8f * s - waveX;
+            float step = waveW / bars;
+            var barColor = talking ? White : new Color(1f, 1f, 1f, 0.45f);
+            for (int i = 0; i < bars; i++)
             {
-                for (int i = 0; i < 3; i++)
-                {
-                    float k = Mathf.Clamp01(level * (0.55f + 0.45f * Mathf.Abs(Mathf.Sin(now * 11f + i * 1.7f))));
-                    float bh = Mathf.Lerp(3f * s, b * 0.8f, k);
-                    Panel(new Rect(mic.x - 12f * s + i * 3.5f * s, mic.center.y - bh * 0.5f, 2f * s, bh), White, 0f);
-                }
-                hangUpRect = end;
-                hangUpVisible = PreviewState == null;
+                float k = talking ? Mathf.Clamp01(level * (0.35f + 0.65f * Mathf.Abs(Mathf.Sin(now * 11f + i * 1.3f)))) : 0f;
+                float bh = Mathf.Lerp(3f * s, b, k);
+                Panel(new Rect(waveX + i * step + step * 0.2f, row.center.y - bh * 0.5f, step * 0.55f, bh), barColor, 0f);
             }
+            hangUpRect = end;
+            hangUpVisible = talking && PreviewState == null;
             return row;
         }
 
