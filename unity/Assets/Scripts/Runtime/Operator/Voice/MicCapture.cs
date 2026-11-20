@@ -5,10 +5,10 @@ namespace Dogpatch.Operator.Voice
 {
     // Unity's Microphone as a stream: a looping clip, read from the last position every frame.
     // Once started, the microphone keeps recording until Release: on iOS every Microphone.Start and
-    // End reconfigures the audio session on the main thread, a 0.3-0.6 s stall at each call's pickup
-    // and hang-up. Stop only stops handing samples on, and Start after it resumes from the current
-    // position, so nothing recorded between calls is ever sent. iOS can still stop the recording on its
-    // own (an interruption or a memory warning), so Start checks and starts a fresh one when it has.
+    // End reconfigures the audio session on the main thread, a 0.3-0.6 s stall, and the first words
+    // are lost while it starts, so ScribeVoice starts it once and keeps it warm. iOS can still stop
+    // the recording on its own (an interruption or a memory warning), so Start checks and starts a
+    // fresh one when it has.
     public sealed class MicCapture
     {
         const int LoopSeconds = 2;
@@ -75,12 +75,6 @@ namespace Dogpatch.Operator.Voice
             for (int i = 0; i < needed; i++) peak = Mathf.Max(peak, Mathf.Abs(block[i]));
             Level = peak;
             sink(block, frames, clip.channels);
-        }
-
-        public void Stop()
-        {
-            listening = false;
-            Level = 0f;
         }
 
         public void Release()
