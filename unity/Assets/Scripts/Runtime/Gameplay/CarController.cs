@@ -22,6 +22,10 @@ namespace Dogpatch.Gameplay
         public static float SpeedScale = 1f;
         public static float AccelScale = 1f;
         public float SpeedMul = 1f;
+
+        // A car a bot drives on this phone for an effect (a swarm Waymo): the players' speed and armour
+        // effects (vehicle_faster, vehicle_slower, nitro, tougher) don't reach it.
+        public bool Npc;
         public bool BrakeStrobe;
         public float Speed => forwardSpeed;
         public bool Reversing => reversing;
@@ -281,13 +285,13 @@ namespace Dogpatch.Gameplay
             bool handbrake = swinging;
             if (handbrake) steerInput = swingSign;
 
-            float target = throttle >= 0f ? throttle * handling.TopSpeed * SpeedScale * SpeedMul : throttle * handling.ReverseSpeed;
+            float target = throttle >= 0f ? throttle * handling.TopSpeed * (Npc ? 1f : SpeedScale) * SpeedMul : throttle * handling.ReverseSpeed;
             bool opposing = Mathf.Sign(target) != Mathf.Sign(forwardSpeed) && Mathf.Abs(forwardSpeed) > 0.5f;
             if (floating) target *= 0.8f;
             float road = RoadConditions.GripMultiplier;
             if (road < 0.999f && (!OnGround || handling.AllWeather)) road = 1f;
             float grip = floating ? 0.55f : Mathf.Clamp01(handling.Grip * road);
-            float rate = handbrake ? handling.Braking * 0.3f : brake ? handling.Braking : target == 0f ? handling.Coasting : opposing ? handling.Braking : handling.Acceleration * AccelScale;
+            float rate = handbrake ? handling.Braking * 0.3f : brake ? handling.Braking : target == 0f ? handling.Coasting : opposing ? handling.Braking : handling.Acceleration * (Npc ? 1f : AccelScale);
             rate *= Mathf.Lerp(0.5f, 1f, grip);
             brakeHeld = handbrake || brake || opposing;
             forwardSpeed = Mathf.MoveTowards(forwardSpeed, handbrake ? 0f : target, rate * dt);

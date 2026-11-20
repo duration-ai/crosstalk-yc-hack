@@ -306,19 +306,12 @@ namespace Dogpatch.Operator
         readonly List<GameObject> props = new List<GameObject>();
         readonly HashSet<Object> armoured = new HashSet<Object>();
         EffectTicker ticker;
-        GuardedKnob durability;
         float armour = 1f;
-
-        // How many times tougher armour makes driven cars. Crash damage already scales with it
-        // through durability; blasts and lightning, which burn a share of health, divide by it.
-        public static float Armour = 1f;
 
         public override void Apply(string strength, EffectTarget target)
         {
-            var tuning = DamageTuning.Current;
             armour = Scale(strength, 3f, 5f, 10f);
-            Armour *= armour;
-            durability = GuardedKnob.Times(() => tuning.playerDurabilityScale, v => tuning.playerDurabilityScale = v, armour);
+            DamageTuning.Armour *= armour;
             void Sweep()
             {
                 foreach (var car in Racers.Cars(Context, target))
@@ -359,8 +352,7 @@ namespace Dogpatch.Operator
         public override void Revert()
         {
             if (ticker != null) Object.Destroy(ticker);
-            durability?.Undo();
-            Armour /= armour;
+            DamageTuning.Armour /= armour;
             armour = 1f;
             foreach (var p in props) Pop.Out(p);
             props.Clear();
@@ -1354,7 +1346,7 @@ namespace Dogpatch.Operator
                 d.y = 0f;
                 if (d.sqrMagnitude > radius * radius) continue;
                 damage.Car.Stun(0.6f);
-                damage.Burn(scorch / ToughEffect.Armour);
+                damage.Burn(scorch / damage.Armour);
                 CarFx.On(damage.Car).Launch(3f);
                 Haptics.Impact(HapticStyle.Heavy, 1f);
             }
