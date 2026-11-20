@@ -165,7 +165,8 @@ namespace Dogpatch.Slipstream
             Chamfer(new Rect(screen.center.x - islandW * 0.5f, screen.y + 4f * s, islandW, 9f * s), 4f * s, Ink);
 
             float level = preview ? 0.85f : Mathf.Clamp01(0.35f + Mathf.Sqrt(MicCapture.Level) * 1.4f);
-            CallBar(screen, preview ? (talking ? 4f : -1f) : calls.ListenDeadline - now);
+            float deadline = calls.ListenDeadline;
+            CallBar(screen, preview ? (talking ? 0.7f : 0f) : deadline > 0f ? Mathf.Clamp01((deadline - now) / (deadline - calls.StateSince)) : 0f);
             var controls = Controls(screen, talking, level, now);
 
             if (state == CallState.Answered)
@@ -222,14 +223,19 @@ namespace Dogpatch.Slipstream
         }
 
         // The top line, centred under the island: who you're talking to and, while an open call is
-        // listening on its own, the seconds left before it sends what it heard. A held call has no
+        // listening on its own, white dashes that drain one by one until it sends what it heard (left
+        // is the share of CallController.ListenDeadline's window still to go). A held call has no
         // deadline (it sends when you let go), so that spot stays empty, as it does while Jay thinks.
-        void CallBar(Rect screen, float secondsLeft)
+        void CallBar(Rect screen, float left)
         {
             float y = screen.y + 17f * s;
             Text(new Rect(screen.x, y, screen.width, 16f * s), "Jay", 14f, White, TextAnchor.MiddleCenter, 1.2f * s);
-            if (secondsLeft <= 0f) return;
-            Text(new Rect(screen.x, y + 16f * s, screen.width, 14f * s), Mathf.CeilToInt(secondsLeft) + "s", 12f, Sun, TextAnchor.MiddleCenter, 1.2f * s);
+            if (left <= 0f) return;
+            const int segments = 10;
+            float w = screen.width * 0.62f, segW = w / segments;
+            float x0 = screen.center.x - w * 0.5f;
+            for (int i = 0; i < segments; i++)
+                Panel(new Rect(x0 + i * segW + segW * 0.14f, y + 20f * s, segW * 0.72f, 4f * s), (float)i / segments < left ? White : new Color(1f, 1f, 1f, 0.28f), 0.3f);
         }
 
         // The bottom row: a waveform that moves with your voice while the mic is open (flat and dim
