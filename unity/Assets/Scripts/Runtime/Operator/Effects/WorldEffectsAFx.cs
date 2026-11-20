@@ -586,7 +586,7 @@ namespace Dogpatch.Operator
             var planar = new Vector3(body.linearVelocity.x, 0f, body.linearVelocity.z);
             float top = p.y + h + 40f;
             float ground = Mathf.Max(Below(p, top), Below(p + planar * 0.9f, top));
-            float target = ground + h + Mathf.Sin(Time.time * 1.7f + seed) * 0.4f;
+            float target = ground + h * CarController.LiftScale + Mathf.Sin(Time.time * 1.7f + seed) * 0.4f;
             fx.Launch(Mathf.Clamp((target - p.y) * 2.2f, -6f, 10f));
         }
     }

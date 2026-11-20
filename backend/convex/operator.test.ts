@@ -285,6 +285,15 @@ describe("operator.call", () => {
     expect(log[log.length - 1]).toMatchObject({ transcript: "roll in the fog", outcome: "refused", reason: "no_asks" });
   });
 
+  it("shrinks a giant back before handing over a new ride", async () => {
+    const { tim, maya, say, effects } = await room();
+    await say("make me a giant", { scope: "players", player_effect: "bigger", self_ref: 0.95 });
+    await say("make me a giant", { scope: "players", player_effect: "bigger", self_ref: 0.95 }, maya.id);
+    const ride = await say("give me a sports car", { scope: "players", player_effect: "change_vehicle", vehicle: "sports_car", self_ref: 0.9 });
+    expect(ride).toMatchObject({ outcome: "applied", effect: { effect: "change_vehicle", vehicle: "sports_car" } });
+    expect((await effects()).map((e) => `${e.effect}:${e.target}`).sort()).toEqual([`bigger:self:${maya.id}`, `change_vehicle:self:${tim.id}`]);
+  });
+
   it("tells me from everyone: self asks stay on the caller, everyone asks reach every player", async () => {
     const { tim, say } = await room();
     const meTiny = await say("make me tiny", { scope: "players", player_effect: "smaller", self_ref: 0.95 });

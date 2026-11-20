@@ -172,6 +172,9 @@ namespace Dogpatch.Operator
             }
         }
 
+        // The fire truck drives through flames and can be set alight without a scratch.
+        static bool Fireproof(VehicleDamage car) => Vehicles.VehicleRoster.TypeOf(car.Car) == Vehicles.VehicleTypes.FireTruck;
+
         // Every BurnTick: the car this fire is attached to burns, and any racer whose car is inside
         // the flames' footprint and height takes the drive-through rate. Both go through
         // VehicleDamage.Burn, which never takes a racer below the burn floor.
@@ -185,7 +188,7 @@ namespace Dogpatch.Operator
                 resolved = true;
             }
             var tuning = DamageTuning.Current;
-            if (carried != null) carried.Burn(tuning.burnCarPerSecond * dt);
+            if (carried != null && !Fireproof(carried)) carried.Burn(tuning.burnCarPerSecond * dt);
             var c = transform.position;
             float reach = radius + 1.2f;
             var all = VehicleDamage.All;
@@ -196,7 +199,7 @@ namespace Dogpatch.Operator
                 var p = car.transform.position;
                 float dx = p.x - c.x;
                 float dz = p.z - c.z;
-                if (dx * dx + dz * dz > reach * reach || p.y > c.y + height || p.y + 2.5f < c.y - 1f || !car.Car.Driven) continue;
+                if (dx * dx + dz * dz > reach * reach || p.y > c.y + height || p.y + 2.5f < c.y - 1f || !car.Car.Driven || Fireproof(car)) continue;
                 car.Burn(tuning.burnSpotPerSecond * dt);
             }
         }

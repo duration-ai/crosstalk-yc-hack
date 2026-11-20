@@ -10,6 +10,8 @@ namespace Dogpatch.Gameplay
     {
         static Func<float> grip;
         static Func<float> night;
+        static Func<float> snow;
+        static Func<float> ice;
         static bool resolved;
 
         public static float GripMultiplier
@@ -30,6 +32,25 @@ namespace Dogpatch.Gameplay
             }
         }
 
+        // Snow lying on the ground and the icy glaze (slippery_ground), 0 to 1; what people on foot feel.
+        public static float SnowCover
+        {
+            get
+            {
+                Resolve();
+                return snow != null ? Mathf.Clamp01(snow()) : 0f;
+            }
+        }
+
+        public static float Ice
+        {
+            get
+            {
+                Resolve();
+                return ice != null ? Mathf.Clamp01(ice()) : 0f;
+            }
+        }
+
         static void Resolve()
         {
             if (resolved) return;
@@ -40,6 +61,8 @@ namespace Dogpatch.Gameplay
                 if (type == null) continue;
                 grip = Getter(type, "GripMultiplier");
                 night = Getter(type, "NightFactor");
+                snow = Getter(type, "SnowCover");
+                ice = Getter(type, "Ice");
                 return;
             }
         }

@@ -197,7 +197,7 @@ namespace Dogpatch.Operator
             }
             var ahead = p + transform.forward * Mathf.Max(player.Speed, 0f) * 0.7f;
             float ground = Mathf.Max(Ground(p), Ground(ahead));
-            float target = ground + Height + Mathf.Sin(Time.time * 2.1f) * 0.35f;
+            float target = ground + Height * CarController.LiftScale + Mathf.Sin(Time.time * 2.1f) * 0.35f;
             player.VerticalVelocity = Mathf.Clamp((target - p.y) * 2.4f, -7f, 9f);
         }
 
@@ -261,6 +261,7 @@ namespace Dogpatch.Operator
                     var before = car.Handling;
                     var mine = before.Clone();
                     mine.Grip = Mathf.Max(before.Grip, 1f) * 1.3f;
+                    mine.AllWeather = true;
                     mine.TurnRate = before.TurnRate * k;
                     mine.Acceleration = before.Acceleration * k;
                     mine.Braking = before.Braking * k;
@@ -306,11 +307,18 @@ namespace Dogpatch.Operator
         readonly HashSet<Object> armoured = new HashSet<Object>();
         EffectTicker ticker;
         GuardedKnob durability;
+        float armour = 1f;
+
+        // How many times tougher armour makes driven cars. Crash damage already scales with it
+        // through durability; blasts and lightning, which burn a share of health, divide by it.
+        public static float Armour = 1f;
 
         public override void Apply(string strength, EffectTarget target)
         {
             var tuning = DamageTuning.Current;
-            durability = GuardedKnob.Times(() => tuning.playerDurabilityScale, v => tuning.playerDurabilityScale = v, Scale(strength, 3f, 5f, 10f));
+            armour = Scale(strength, 3f, 5f, 10f);
+            Armour *= armour;
+            durability = GuardedKnob.Times(() => tuning.playerDurabilityScale, v => tuning.playerDurabilityScale = v, armour);
             void Sweep()
             {
                 foreach (var car in Racers.Cars(Context, target))
@@ -352,6 +360,8 @@ namespace Dogpatch.Operator
         {
             if (ticker != null) Object.Destroy(ticker);
             durability?.Undo();
+            Armour /= armour;
+            armour = 1f;
             foreach (var p in props) Pop.Out(p);
             props.Clear();
             armoured.Clear();
@@ -513,7 +523,8 @@ namespace Dogpatch.Operator
                         foreach (var car in Racers.Cars(Context, target))
                         {
                             if (!Racers.Physical(car)) continue;
-                            CarFx.On(car).Wind = gustDir * (gustSpeed * gust);
+                            float heft = car.Heavy ? 0.5f : car.Tiny || car.Handling.Mass < 200f ? 1.5f : 1f;
+                            CarFx.On(car).Wind = gustDir * (gustSpeed * gust * heft);
                             if (!windy.Contains(car)) windy.Add(car);
                         }
                     });
@@ -933,7 +944,7 @@ namespace Dogpatch.Operator
                     foreach (var car in Racers.Cars(Context, target))
                         if (Racers.Physical(car) && car.OnGround) CarFx.On(car).Push(new Vector3((R() - 0.5f) * 4f * k, Mathf.Lerp(1.5f, 3f, R()) * k, (R() - 0.5f) * 4f * k));
                     var player = Context.Game.Player;
-                    if (player != null && player.isActiveAndEnabled) player.Jump();
+                    if (player != null && player.isActiveAndEnabled && !player.Giant) player.Jump();
                 }
                 if (now >= nextDust)
                 {
@@ -1343,7 +1354,7 @@ namespace Dogpatch.Operator
                 d.y = 0f;
                 if (d.sqrMagnitude > radius * radius) continue;
                 damage.Car.Stun(0.6f);
-                damage.Burn(scorch);
+                damage.Burn(scorch / ToughEffect.Armour);
                 CarFx.On(damage.Car).Launch(3f);
                 Haptics.Impact(HapticStyle.Heavy, 1f);
             }

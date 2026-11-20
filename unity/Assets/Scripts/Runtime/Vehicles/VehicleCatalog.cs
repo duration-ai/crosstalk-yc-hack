@@ -140,7 +140,9 @@ namespace Dogpatch.Vehicles
             Add(new VehicleSpec { Id = VehicleTypes.FlyingCar, Title = "Flying car", Source = ModelSource.Procedural, Handling = hover, CruiseSpeed = 12f });
             var cable = H(11f, 2f, 5f, 28f, 1f, 16000f, 1e6f, 1f, false, 3f);
             cable.Coasting = 0.8f;
-            Add(new VehicleSpec { Id = VehicleTypes.MonsterTruck, Title = "Monster truck", Source = ModelSource.Procedural, Handling = H(24f, 9f, 16f, 70f, 1f, 3800f, 400f, 0.9f), CruiseSpeed = 12f, Ability = typeof(MonsterCrush) });
+            var monster = H(24f, 9f, 16f, 70f, 1f, 3800f, 400f, 0.9f);
+            monster.AllWeather = true;
+            Add(new VehicleSpec { Id = VehicleTypes.MonsterTruck, Title = "Monster truck", Source = ModelSource.Procedural, Handling = monster, CruiseSpeed = 12f, Ability = typeof(MonsterCrush) });
             Add(new VehicleSpec { Id = VehicleTypes.CableCar, Title = "Cable car", Source = ModelSource.Procedural, Handling = cable, CruiseSpeed = 6f });
             var duck = H(19f, 6.5f, 12f, 58f, 0.9f, 3400f, 110f, 0.7f);
             duck.Draft = 1.5f;
